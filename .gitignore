@@ -1,0 +1,8 @@
+node_modules/
+.pnpm-store/
+.turbo/
+build/
+.react-router/
+.env
+*.log
+.DS_Store
