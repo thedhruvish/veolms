@@ -1,0 +1,21 @@
+{
+  "name": "@veolms/api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch --env-file-if-exists=../../.env src/index.ts",
+    "start": "node --env-file-if-exists=../../.env src/index.ts",
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@veolms/config": "workspace:*",
+    "@veolms/contracts": "workspace:*",
+    "@veolms/database": "workspace:*",
+    "fastify": "^5.11.0",
+    "kysely": "^0.29.4"
+  },
+  "devDependencies": {
+    "pino-pretty": "^13.1.3"
+  }
+}

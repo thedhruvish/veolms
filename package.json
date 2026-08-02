@@ -1,0 +1,41 @@
+{
+  "name": "veolms",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.18.0",
+  "engines": {
+    "node": ">=24 <25",
+    "pnpm": ">=11 <12"
+  },
+  "scripts": {
+    "dev": "turbo run dev --filter=@veolms/api --filter=@veolms/web",
+    "dev:web": "pnpm --filter @veolms/web dev",
+    "dev:api": "pnpm --filter @veolms/api dev",
+    "build": "turbo run build",
+    "build:web": "pnpm --filter @veolms/web build",
+    "build:api": "pnpm --filter @veolms/api build",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "turbo run typecheck",
+    "db:migrate": "pnpm --filter @veolms/database migrate",
+    "db:seed": "pnpm --filter @veolms/database seed",
+    "db:reset": "pnpm --filter @veolms/database reset",
+    "compose:up": "docker compose up -d",
+    "compose:down": "docker compose down",
+    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "@types/node": "^24.10.13",
+    "eslint": "^9.39.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^17.3.0",
+    "prettier": "^3.9.6",
+    "turbo": "^2.10.8",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "typescript-eslint": "^8.65.0"
+  }
+}

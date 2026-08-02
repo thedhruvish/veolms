@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-veolms}
+      POSTGRES_USER: ${POSTGRES_USER:-veolms}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-veolms}
+      POSTGRES_INITDB_ARGS: --encoding=UTF8
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-veolms} -d ${POSTGRES_DB:-veolms}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres-data:
+    name: veolms-postgres-18-data

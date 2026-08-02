@@ -1,0 +1,22 @@
+{
+  "name": "@veolms/database",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "migrate": "node --env-file-if-exists=../../.env src/migrate.ts",
+    "seed": "node --env-file-if-exists=../../.env src/seed.ts",
+    "reset": "node --env-file-if-exists=../../.env src/reset.ts"
+  },
+  "dependencies": {
+    "@veolms/config": "workspace:*",
+    "@veolms/contracts": "workspace:*",
+    "kysely": "^0.29.4",
+    "pg": "^8.22.0"
+  },
+  "devDependencies": {
+    "@types/pg": "8.15.5"
+  }
+}
