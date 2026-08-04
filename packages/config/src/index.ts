@@ -14,6 +14,7 @@ const serverConfigSchema = z.object({
     .enum(["development", "test", "production"])
     .default("development"),
   API_DEV_PRETTY_LOGS: booleanEnvironmentValueSchema.default(true),
+  API_DOCS_ENABLED: booleanEnvironmentValueSchema.default(true),
 });
 
 const webConfigSchema = z.object({

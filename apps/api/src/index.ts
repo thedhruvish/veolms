@@ -16,7 +16,7 @@ const logger =
         },
       }
     : true;
-const app = createApp({ database, logger });
+const app = await createApp({ database, logger });
 let shuttingDown = false;
 
 async function shutdown(signal: string): Promise<void> {
