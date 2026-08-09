@@ -84,6 +84,8 @@ Interactive OpenAPI documentation is served at `http://localhost:4000/api/docs`,
 
 Adding a file to `apps/api/src/routes` is all it takes for an endpoint and its documentation to exist — see [apps/api/README.md](../apps/api/README.md).
 
+The document lists `/` as its server, which resolves against whatever origin served the page, so "Try it out" works unchanged through a reverse proxy or TLS terminator. Set `API_PUBLIC_URL` only when a relative base cannot describe the deployment — docs served from a different origin than the API, or a proxy that mounts the API beneath a path prefix.
+
 ## Static Web build
 
 The static build requires PostgreSQL to be healthy, migrations and seed data to be present, and the API to be running:
