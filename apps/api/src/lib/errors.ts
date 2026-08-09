@@ -4,14 +4,14 @@ import { z } from "zod";
 
 import { jsonResponse } from "./responses.ts";
 
-const validationIssueSchema = z.object({
+const validationIssueSchema = z.strictObject({
   path: z.string().meta({
     description: "Location of the offending value, e.g. `/slug`.",
   }),
   message: z.string().meta({ description: "What was wrong with that value." }),
 });
 
-export const errorResponseSchema = z.object({
+export const errorResponseSchema = z.strictObject({
   statusCode: z
     .number()
     .int()
