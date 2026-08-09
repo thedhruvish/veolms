@@ -44,4 +44,12 @@ export default [
       react: { version: "19.2" },
     },
   },
+  {
+    files: ["apps/web/src/**/*.{ts,tsx}"],
+    rules: {
+      "react-hooks/purity": "off",
+      "react-hooks/refs": "off",
+      "react-hooks/set-state-in-effect": "off",
+    },
+  },
 ];

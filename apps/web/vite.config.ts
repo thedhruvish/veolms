@@ -16,6 +16,9 @@ export default defineConfig(({ mode }) => {
 
   return {
     envDir: workspaceRoot,
+    optimizeDeps: {
+      include: ["react", "react-dom/client"],
+    },
     define: {
       "import.meta.env.STATIC_BUILD_API_URL": JSON.stringify(
         config.STATIC_BUILD_API_URL,
