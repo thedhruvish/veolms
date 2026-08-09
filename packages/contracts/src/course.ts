@@ -11,7 +11,7 @@ export interface PublicCourse extends CourseSummary {
   description: string;
 }
 
-const courseSummaryObjectSchema = z.object({
+const courseSummaryObjectSchema = z.strictObject({
   id: z.uuid().meta({ description: "Stable identifier of the course." }),
   slug: z
     .string()
@@ -35,7 +35,7 @@ export const publicCourseSchema: z.ZodType<PublicCourse> =
       .meta({ description: "Full course description." }),
   });
 
-export const courseListResponseSchema = z.object({
+export const courseListResponseSchema = z.strictObject({
   courses: z
     .array(courseSummarySchema)
     .meta({ description: "Published courses, oldest first." }),
