@@ -15,9 +15,26 @@ is no separate documentation step and nothing to regenerate.
 import { z } from "zod";
 
 import { jsonResponse } from "../lib/responses.ts";
+import { errorResponse } from "../lib/errors.ts";
 import type { RoutePlugin } from "../lib/route-plugin.ts";
 
-const lessonRoutes: RoutePlugin = async (app, { database }) => {
+// A minimal schema for the example so this snippet is copy-pasteable.
+const lessonSchema = z.object({
+  id: z.uuid().meta({ description: "Stable identifier for the lesson." }),
+  title: z.string().min(1).meta({ description: "Lesson title." }),
+  content: z.string().optional().meta({ description: "Lesson body (HTML or markdown)." }),
+});
+
+// Optionally register the schema so it becomes a reusable component in the
+// generated OpenAPI document. Not required for local/inline schemas.
+if ((z as any).globalRegistry && typeof (z as any).globalRegistry.add === "function") {
+  (z as any).globalRegistry.add(lessonSchema, {
+    id: "Lesson",
+    description: "A lesson returned by GET /lessons/:id",
+  });
+}
+
+const lessonRoutes: RoutePlugin = async (app) => {
   app.get(
     "/lessons/:id",
     {
@@ -32,8 +49,19 @@ const lessonRoutes: RoutePlugin = async (app, { database }) => {
         },
       },
     },
-    async (request) => {
-      // request.params.id is typed and already validated
+    // Simple handler that returns a value matching `lessonSchema`. A real
+    // implementation would look up the lesson from the database and return it,
+    // or reply with a 404 using the shared error shape.
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+
+      // Example success response — matches lessonSchema so the serializer
+      // accepts it and the OpenAPI example is valid.
+      return {
+        id,
+        title: "Example lesson",
+        content: "This is a short example lesson body.",
+      };
     },
   );
 };
@@ -65,3 +93,11 @@ pnpm dev:api
 
 Set `API_DOCS_ENABLED=false` to keep the API running without exposing Swagger UI.
 `/api/docs/json` goes away with it.
+
+The document's `servers` entry is the relative `/`, resolved against the origin
+the document was fetched from, so the docs stay callable behind a reverse proxy
+or TLS terminator without knowing its hostname. `API_HOST` and `API_PORT` are
+deliberately not used here — they are bind parameters, and `0.0.0.0` is not an
+address a reader can call. Set `API_PUBLIC_URL` only when a relative base cannot
+describe the deployment: docs on a different origin than the API, or a proxy that
+mounts the API beneath a path prefix.

@@ -25,17 +25,33 @@ const OPENAPI_TAGS = [
 ];
 
 /**
- * `API_HOST` is a bind address; `0.0.0.0` and `::` are not addresses a docs
- * reader can call, so document a loopback URL for those.
+ * The `servers` entry clients resolve request URLs against.
+ *
+ * Defaults to `/`, a relative URL the spec resolves against the location the
+ * document was served from — so "Try it out" targets whatever scheme, host and
+ * port the reader actually reached the docs on. `API_HOST` and `API_PORT` cannot
+ * answer that: they are bind parameters, `0.0.0.0` and `::` are not addresses
+ * anyone can call, and a TLS-terminating ingress serves the docs on a scheme,
+ * hostname and port the process never sees.
+ *
+ * Since every documented path already carries the `/api/v1` prefix, `/` is the
+ * correct base. Set `API_PUBLIC_URL` for the cases a relative base cannot cover:
+ * docs hosted on a different origin than the API, or a proxy that mounts the API
+ * beneath a path prefix.
  */
-function documentedServerUrl(): string {
-  const unspecified = ["0.0.0.0", "::", "::0"];
-  const host = unspecified.includes(config.API_HOST)
-    ? "127.0.0.1"
-    : config.API_HOST;
-  const authority = host.includes(":") ? `[${host}]` : host;
+function documentedServers(): OpenAPIV3_1.ServerObject[] {
+  if (config.API_PUBLIC_URL) {
+    return [
+      {
+        // A trailing slash would double up against the leading slash on each
+        // path, so normalise it away.
+        url: config.API_PUBLIC_URL.replace(/\/+$/u, ""),
+        description: "Public API endpoint",
+      },
+    ];
+  }
 
-  return `http://${authority}:${config.API_PORT}`;
+  return [{ url: "/", description: "The origin serving this document" }];
 }
 
 /**
@@ -127,9 +143,7 @@ export async function registerOpenApi(app: FastifyInstance): Promise<void> {
           "so this document is generated from the code that actually runs.",
         version: "1.0.0",
       },
-      servers: [
-        { url: documentedServerUrl(), description: "Local development server" },
-      ],
+      servers: documentedServers(),
       tags: OPENAPI_TAGS,
     },
     transform: jsonSchemaTransform,
