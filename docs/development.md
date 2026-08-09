@@ -78,6 +78,14 @@ The Web application runs at `http://localhost:3000` and proxies `/api` requests 
 
 API logs are formatted for readability in development by default. Set `API_DEV_PRETTY_LOGS=false` in `.env` to keep the original JSON log format. This setting is development-only; production logs always remain structured JSON.
 
+## API documentation
+
+Interactive OpenAPI documentation is served at `http://localhost:4000/api/docs`, with the raw document at `/api/docs/json` and `/api/docs/yaml`. It is generated from the Zod schemas each route uses to validate and serialise traffic, so it cannot drift from the running code and there is nothing to regenerate. Set `API_DOCS_ENABLED=false` in `.env` to run the API without exposing it.
+
+Adding a file to `apps/api/src/routes` is all it takes for an endpoint and its documentation to exist — see [apps/api/README.md](../apps/api/README.md).
+
+The document lists `/` as its server, which resolves against whatever origin served the page, so "Try it out" works unchanged through a reverse proxy or TLS terminator. Set `API_PUBLIC_URL` only when a relative base cannot describe the deployment — docs served from a different origin than the API, or a proxy that mounts the API beneath a path prefix.
+
 ## Static Web build
 
 The static build requires PostgreSQL to be healthy, migrations and seed data to be present, and the API to be running:

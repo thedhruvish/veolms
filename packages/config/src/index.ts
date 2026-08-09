@@ -14,6 +14,11 @@ const serverConfigSchema = z.object({
     .enum(["development", "test", "production"])
     .default("development"),
   API_DEV_PRETTY_LOGS: booleanEnvironmentValueSchema.default(true),
+  API_DOCS_ENABLED: booleanEnvironmentValueSchema.default(true),
+  // Only needed when the docs are served from a different origin than the API,
+  // or when a proxy mounts the API under a path prefix. Left unset, the
+  // documented server is the origin the document itself was fetched from.
+  API_PUBLIC_URL: z.url().optional(),
 });
 
 const webConfigSchema = z.object({
