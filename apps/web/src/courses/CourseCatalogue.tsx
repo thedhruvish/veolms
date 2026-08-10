@@ -7,6 +7,7 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { ThemedSelect } from "../ThemedSelect";
+import { handleRovingTabKeyDown } from "../accessibility/rovingTabFocus";
 import { CourseCard } from "./CourseCard";
 import type {
   Course,
@@ -92,8 +93,10 @@ export function CourseCatalogue({
                 type="button"
                 role="tab"
                 aria-selected={enrollmentFilter === value}
+                tabIndex={enrollmentFilter === value ? 0 : -1}
                 key={value}
                 onClick={() => onEnrollmentFilterChange(value)}
+                onKeyDown={handleRovingTabKeyDown}
               >
                 {label}
               </button>

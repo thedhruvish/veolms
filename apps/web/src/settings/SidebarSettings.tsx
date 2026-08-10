@@ -92,7 +92,10 @@ export function SidebarSettings({
             <p>Choose how icons are displayed in the sidebar.</p>
           </div>
         </div>
-        <RadioGroup className="settings-choice-grid settings-choice-grid--two settings-choice-grid--sidebar-style-options">
+        <RadioGroup
+          label="Sidebar icon style"
+          className="settings-choice-grid settings-choice-grid--two settings-choice-grid--sidebar-style-options"
+        >
           <ChoiceCard
             checked={iconStyle === "multicolor"}
             onChange={() => update({ iconStyle: "multicolor" })}
@@ -126,7 +129,10 @@ export function SidebarSettings({
             Multicolor style
           </span>
         </div>
-        <RadioGroup className="settings-icon-color-options">
+        <RadioGroup
+          label="Sidebar icon color mode"
+          className="settings-icon-color-options"
+        >
           {(
             [
               ["theme", "Follow color theme"],
@@ -172,6 +178,7 @@ export function SidebarSettings({
                   key={item.id}
                   className={`settings-color-swatch ${selectedPreset === item.id ? "is-selected" : ""}`}
                   aria-label={`${item.label} icon color`}
+                  aria-pressed={selectedPreset === item.id}
                   onClick={() =>
                     update({
                       monochromeMode: "custom",
@@ -190,6 +197,7 @@ export function SidebarSettings({
                 type="button"
                 className={`settings-color-swatch settings-color-swatch--custom ${selectedPreset === "custom" ? "is-selected" : ""}`}
                 aria-label="Custom icon color"
+                aria-pressed={selectedPreset === "custom"}
                 onClick={() => update({ monochromeMode: "custom" })}
               >
                 <Plus size={18} weight="bold" />
@@ -233,7 +241,10 @@ export function SidebarSettings({
 
       <section className="settings-section">
         <h2>Main content layout</h2>
-        <RadioGroup className="settings-choice-grid settings-choice-grid--two">
+        <RadioGroup
+          label="Main content layout"
+          className="settings-choice-grid settings-choice-grid--two"
+        >
           <ChoiceCard
             checked={layout === "framed"}
             onChange={() => update({ contentLayout: "framed" })}

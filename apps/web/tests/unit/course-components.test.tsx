@@ -52,30 +52,38 @@ const renderCard = (props: Partial<CourseCardProps> = {}) => {
 };
 
 describe("CourseCard", () => {
-  it("opens an enrolled course from click, Enter, and Space", () => {
+  it("opens an enrolled course from its full-card overlay button", () => {
     const { onOpen } = renderCard();
-    const card = screen.getByRole("article", {
-      name: /The Ultimate TypeScript Course, 50% complete/,
+    const card = screen.getByRole("article");
+    const open = screen.getByRole("button", {
+      name: "Open The Ultimate TypeScript Course",
     });
 
-    fireEvent.click(card);
-    fireEvent.keyDown(card, { key: "Enter" });
-    fireEvent.keyDown(card, { key: " " });
+    expect(card).not.toHaveAttribute("role");
+    expect(card).not.toHaveAttribute("tabindex");
+    expect(open).toHaveAttribute("type", "button");
+    expect(open).toHaveClass("course-card__open");
+    open.focus();
+    expect(open).toHaveFocus();
+    fireEvent.click(open);
 
-    expect(onOpen).toHaveBeenCalledTimes(3);
-    expect(onOpen).toHaveBeenLastCalledWith(enrolledCourse);
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    expect(onOpen).toHaveBeenCalledWith(enrolledCourse);
   });
 
-  it("explores a non-enrolled course from both its card and action", () => {
+  it("explores a non-enrolled course from its overlay and action", () => {
     const { onExplore, onOpen } = renderCard({ course: nonEnrolledCourse });
-    const card = screen.getByRole("article", {
-      name: /Figma UI Essentials, not enrolled/,
+    const card = screen.getByRole("article");
+    const exploreOverlay = screen.getByRole("button", {
+      name: "Explore Figma UI Essentials",
     });
 
-    fireEvent.click(card);
+    expect(card).not.toHaveAttribute("role");
+    expect(card).not.toHaveAttribute("tabindex");
+    expect(exploreOverlay).toHaveClass("course-card__open");
+    fireEvent.click(exploreOverlay);
     fireEvent.click(screen.getByRole("button", { name: "Explore Course" }));
 
-    expect(card).toHaveAttribute("tabindex", "-1");
     expect(onExplore).toHaveBeenCalledTimes(2);
     expect(onExplore).toHaveBeenLastCalledWith(nonEnrolledCourse);
     expect(onOpen).not.toHaveBeenCalled();

@@ -21,9 +21,10 @@ import {
   WarningCircle,
 } from "@phosphor-icons/react";
 import type { Icon } from "@phosphor-icons/react";
+import { handleRovingTabKeyDown } from "./accessibility/rovingTabFocus";
 import typescriptThumbnail from "./assets/course-thumbnails/typescript.jpg";
 import nodeThumbnail from "./assets/course-thumbnails/nodejs.jpg";
-import veolmsThumbnail from "./assets/learning-thumbnails/veolms-course.png";
+import veolmsThumbnail from "./assets/learning-thumbnails/veolms-course.webp";
 
 const creatorCourses = [
   {
@@ -507,9 +508,11 @@ function RevenuePanel({
               type="button"
               role="tab"
               aria-selected={range === option}
+              tabIndex={range === option ? 0 : -1}
               className={range === option ? "is-active" : ""}
               key={option}
               onClick={() => setRange(option)}
+              onKeyDown={handleRovingTabKeyDown}
             >
               {option}
             </button>
@@ -609,7 +612,12 @@ function CoursesPanel({ onNavigatePage }: NavigateProps) {
         {creatorCourses.map((course) => (
           <div className="creator-table-row" key={course.title}>
             <span className="creator-course-cell">
-              <img src={course.thumbnail} alt="" />
+              <img
+                src={course.thumbnail}
+                alt=""
+                loading="lazy"
+                decoding="async"
+              />
               <strong>{course.title}</strong>
             </span>
             <span>
@@ -652,7 +660,12 @@ function DiscussionsPanel({ onNavigatePage }: NavigateProps) {
               <p>{item.body}</p>
             </div>
             <time>{item.time}</time>
-            <button type="button">{item.action}</button>
+            <button
+              type="button"
+              onClick={() => onNavigatePage?.("Discussions")}
+            >
+              {item.action}
+            </button>
             <i />
           </article>
         ))}
@@ -692,7 +705,11 @@ function EnrollmentsPanel({ onNavigatePage }: NavigateProps) {
   );
 }
 
-function AttentionPanel() {
+function AttentionPanel({
+  setNotice,
+}: {
+  setNotice?: (notice: string) => void;
+}) {
   return (
     <DashboardPanel
       className="creator-attention-panel"
@@ -700,7 +717,13 @@ function AttentionPanel() {
     >
       <div className="creator-attention-list">
         {attentionItems.map(({ title, detail, action, icon: Icon, tone }) => (
-          <button type="button" key={title}>
+          <button
+            type="button"
+            key={title}
+            onClick={() =>
+              setNotice?.(`${action} selected for ${title.toLowerCase()}.`)
+            }
+          >
             <span className={`creator-icon-circle tone-${tone}`}>
               <Icon size={19} weight="duotone" />
             </span>
@@ -841,7 +864,7 @@ export function CreatorDashboard({
         <CoursesPanel onNavigatePage={onNavigatePage} />
         <DiscussionsPanel onNavigatePage={onNavigatePage} />
         <EnrollmentsPanel onNavigatePage={onNavigatePage} />
-        <AttentionPanel />
+        <AttentionPanel setNotice={setNotice} />
         <QuickActions onNavigatePage={onNavigatePage} setNotice={setNotice} />
       </div>
     </div>

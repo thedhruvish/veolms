@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { Outlet, useLocation, useMatches, useNavigate } from "react-router";
 import { CoursesPage } from "../CoursesPage";
 import type { Course } from "../courses/catalogue";
@@ -20,22 +21,28 @@ export default function AcademyLayout() {
   const navigate = useNavigate();
   const route = getMatchedRouteDescriptor(matches, location.pathname);
 
-  const navigateTo: NavigateTo = (destination) => {
-    const path = getDestinationPath(destination);
-    if (
-      normalizeNavigationPath(path) !==
-      normalizeNavigationPath(location.pathname)
-    ) {
-      void navigate(path);
-    }
-    window.scrollTo({ top: 0, behavior: "auto" });
-  };
+  const navigateTo: NavigateTo = useCallback(
+    (destination) => {
+      const path = getDestinationPath(destination);
+      if (
+        normalizeNavigationPath(path) !==
+        normalizeNavigationPath(location.pathname)
+      ) {
+        void navigate(path);
+      }
+      window.scrollTo({ top: 0, behavior: "auto" });
+    },
+    [location.pathname, navigate],
+  );
 
-  const openCourse = (course: Course | LearningCourse) => {
-    localStorage.setItem("veolms-current-course-title", course.title);
-    localStorage.setItem("veolms-current-course-id", course.id);
-    navigateTo(`/courses/${encodeURIComponent(course.id)}`);
-  };
+  const openCourse = useCallback(
+    (course: Course | LearningCourse) => {
+      localStorage.setItem("veolms-current-course-title", course.title);
+      localStorage.setItem("veolms-current-course-id", course.id);
+      navigateTo(`/courses/${encodeURIComponent(course.id)}`);
+    },
+    [navigateTo],
+  );
 
   return (
     <CoursesPage

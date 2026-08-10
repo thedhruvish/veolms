@@ -34,6 +34,8 @@ type EditableProfile = ProfilePreferences & {
   websiteUrl: string;
 };
 
+const MAX_PROFILE_PHOTO_BYTES = 2 * 1024 * 1024;
+
 export interface ProfileSettingsProps {
   role?: ProfileRole;
   onNavigatePage?: (page: string) => void;
@@ -108,7 +110,10 @@ function PublicVisibilityCheckbox({
         onChange={(event) => onChange(event.target.checked)}
         aria-label={label}
       />
-      <span className="settings-profile__visibility-checkbox-mark" aria-hidden="true">
+      <span
+        className="settings-profile__visibility-checkbox-mark"
+        aria-hidden="true"
+      >
         <Check size={10} weight="bold" />
       </span>
     </label>
@@ -130,10 +135,13 @@ export function ProfileSettings({
   const [usernameError, setUsernameError] = useState("");
   const [mobileError, setMobileError] = useState("");
   const [photoError, setPhotoError] = useState("");
+  const [saveError, setSaveError] = useState("");
   const [verificationRequested, setVerificationRequested] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
-  const [mobileVisibilityPromptOpen, setMobileVisibilityPromptOpen] = useState(false);
-  const [mobileVisibilityAcknowledged, setMobileVisibilityAcknowledged] = useState(false);
+  const [mobileVisibilityPromptOpen, setMobileVisibilityPromptOpen] =
+    useState(false);
+  const [mobileVisibilityAcknowledged, setMobileVisibilityAcknowledged] =
+    useState(false);
   const [avatarFailed, setAvatarFailed] = useState(false);
   const [isOnline, setIsOnline] = useState(() =>
     typeof navigator === "undefined" ? true : navigator.onLine,
@@ -155,6 +163,7 @@ export function ProfileSettings({
     setUsernameError("");
     setMobileError("");
     setPhotoError("");
+    setSaveError("");
     setVerificationRequested(false);
     setVerificationCode("");
     setMobileVisibilityPromptOpen(false);
@@ -190,7 +199,9 @@ export function ProfileSettings({
       return;
     }
     if (normalizedUsername && !/^[a-zA-Z0-9._-]+$/.test(normalizedUsername)) {
-      setUsernameError("Use letters, numbers, dots, underscores, or hyphens only.");
+      setUsernameError(
+        "Use letters, numbers, dots, underscores, or hyphens only.",
+      );
       return;
     }
 
@@ -207,7 +218,12 @@ export function ProfileSettings({
       };
       if (saveProfilePreferences(role, nextProfile)) {
         setSavedProfile(nextProfile);
+        setSaveError("");
         onProfileSaved?.(nextProfile);
+      } else {
+        setSaveError(
+          "We couldn't save these profile changes in this browser. Free some browser storage or choose a smaller profile photo, then try again.",
+        );
       }
     }, 350);
 
@@ -215,6 +231,7 @@ export function ProfileSettings({
   }, [draftProfile, isDirty, isOnline, onProfileSaved, role]);
 
   const updateText = (field: keyof EditableProfile, value: string) => {
+    setSaveError("");
     setDraftProfile((current) => ({ ...current, [field]: value }));
   };
 
@@ -234,7 +251,10 @@ export function ProfileSettings({
       mobileNumber: value,
       mobileVerified:
         current.mobileNumber === value ? current.mobileVerified : false,
+      mobilePublic:
+        current.mobileNumber === value ? current.mobilePublic : false,
     }));
+    setSaveError("");
     setVerificationRequested(false);
     setVerificationCode("");
     setMobileError("");
@@ -249,6 +269,7 @@ export function ProfileSettings({
       | "websitePublic",
     value: boolean,
   ) => {
+    setSaveError("");
     setDraftProfile((current) => ({ ...current, [field]: value }));
   };
 
@@ -265,6 +286,11 @@ export function ProfileSettings({
       updateVisibility("mobilePublic", false);
       return;
     }
+    if (!draftProfile.mobileVerified) {
+      setMobileError("Verify your mobile number before showing it publicly.");
+      return;
+    }
+    setMobileError("");
     setMobileVisibilityAcknowledged(false);
     setMobileVisibilityPromptOpen(true);
   };
@@ -304,23 +330,40 @@ export function ProfileSettings({
       setPhotoError("Choose an image file and try again.");
       return;
     }
+    if (file.size > MAX_PROFILE_PHOTO_BYTES) {
+      setPhotoError("Choose a profile photo that is 2 MB or smaller.");
+      return;
+    }
     const reader = new FileReader();
     reader.addEventListener("load", () => {
       if (typeof reader.result !== "string") {
-        setPhotoError("We couldn't read that photo. Choose another image and try again.");
+        setPhotoError(
+          "We couldn't read that photo. Choose another image and try again.",
+        );
         return;
       }
-      setDraftProfile((current) => ({ ...current, avatarDataUrl: reader.result as string }));
+      setDraftProfile((current) => ({
+        ...current,
+        avatarDataUrl: reader.result as string,
+      }));
       setPhotoError("");
     });
-    reader.addEventListener("error", () => setPhotoError("We couldn't read that photo. Choose another image and try again."));
+    reader.addEventListener("error", () =>
+      setPhotoError(
+        "We couldn't read that photo. Choose another image and try again.",
+      ),
+    );
     reader.readAsDataURL(file);
   };
 
   const avatar = (className: string) => (
     <span className={className} aria-hidden="true">
       {showAvatar ? (
-        <img src={draftProfile.avatarDataUrl ?? undefined} alt="" onError={() => setAvatarFailed(true)} />
+        <img
+          src={draftProfile.avatarDataUrl ?? undefined}
+          alt=""
+          onError={() => setAvatarFailed(true)}
+        />
       ) : (
         <strong>{getInitials(displayName)}</strong>
       )}
@@ -330,12 +373,20 @@ export function ProfileSettings({
   const publicSocialLinks = (
     <div className="settings-profile__public-links">
       {draftProfile.linkedinPublic && draftProfile.linkedinUrl && (
-        <a href={externalUrl(draftProfile.linkedinUrl)} target="_blank" rel="noreferrer">
+        <a
+          href={externalUrl(draftProfile.linkedinUrl)}
+          target="_blank"
+          rel="noreferrer"
+        >
           <LinkedinLogo size={16} weight="fill" /> LinkedIn
         </a>
       )}
       {draftProfile.githubPublic && draftProfile.githubUrl && (
-        <a href={externalUrl(draftProfile.githubUrl)} target="_blank" rel="noreferrer">
+        <a
+          href={externalUrl(draftProfile.githubUrl)}
+          target="_blank"
+          rel="noreferrer"
+        >
           <GithubLogo size={16} weight="fill" /> GitHub
         </a>
       )}
@@ -350,7 +401,11 @@ export function ProfileSettings({
         </a>
       )}
       {draftProfile.websitePublic && draftProfile.websiteUrl && (
-        <a href={externalUrl(draftProfile.websiteUrl)} target="_blank" rel="noreferrer">
+        <a
+          href={externalUrl(draftProfile.websiteUrl)}
+          target="_blank"
+          rel="noreferrer"
+        >
           <Globe size={16} /> Portfolio
         </a>
       )}
@@ -358,96 +413,261 @@ export function ProfileSettings({
   );
 
   return (
-    <section className="settings-profile" aria-labelledby="profile-settings-title">
+    <section
+      className="settings-profile"
+      aria-labelledby="profile-settings-title"
+    >
       <div className="settings-profile__layout">
         <div className="settings-profile__preview-column">
-          <section className="settings-profile__identity" aria-labelledby="profile-photo-title">
+          <section
+            className="settings-profile__identity"
+            aria-labelledby="profile-photo-title"
+          >
             <header className="settings-profile__identity-heading">
               <div>
                 <div className="settings-profile__title-line">
                   <h2 id="profile-photo-title">Your public profile</h2>
-                  <span className="settings-profile__public-ready"><CheckCircle size={14} weight="fill" /> Public-ready</span>
+                  <span className="settings-profile__public-ready">
+                    <CheckCircle size={14} weight="fill" /> Public-ready
+                  </span>
                 </div>
                 <p>This is how others will see your profile.</p>
               </div>
             </header>
 
             <div className="settings-profile__public-card">
-              <div className="settings-profile__public-art" aria-hidden="true" />
+              <div
+                className="settings-profile__public-art"
+                aria-hidden="true"
+              />
               <div className="settings-profile__public-content">
                 <div className="settings-profile__photo">
-                  {avatar("settings-profile__avatar settings-profile__avatar--large")}
-                  <button type="button" className="settings-profile__camera" aria-label="Choose a new profile photo" onClick={() => fileInputRef.current?.click()}>
+                  {avatar(
+                    "settings-profile__avatar settings-profile__avatar--large",
+                  )}
+                  <button
+                    type="button"
+                    className="settings-profile__camera"
+                    aria-label="Choose a new profile photo"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
                     <Camera size={17} weight="fill" />
                   </button>
                 </div>
-                <input ref={fileInputRef} className="settings-profile__file-input" type="file" accept="image/*" aria-label="Profile photo file" tabIndex={-1} onChange={handlePhotoChange} />
-                <h3>{displayName} <SealCheck size={21} weight="fill" aria-label="Verified profile" /></h3>
+                <input
+                  ref={fileInputRef}
+                  className="settings-profile__file-input"
+                  type="file"
+                  accept="image/*"
+                  aria-label="Profile photo file"
+                  tabIndex={-1}
+                  onChange={handlePhotoChange}
+                />
+                <h3>
+                  {displayName}{" "}
+                  <SealCheck
+                    size={21}
+                    weight="fill"
+                    aria-label="Verified profile"
+                  />
+                </h3>
                 <p className="settings-profile__username">@{username}</p>
-                <p className="settings-profile__bio">{draftProfile.bio || "Add a short bio so people know what you are learning."}</p>
+                <p className="settings-profile__bio">
+                  {draftProfile.bio ||
+                    "Add a short bio so people know what you are learning."}
+                </p>
                 {publicSocialLinks}
               </div>
             </div>
-            {photoError && <p className="settings-profile__error" role="alert">{photoError}</p>}
+            {photoError && (
+              <p className="settings-profile__error" role="alert">
+                {photoError}
+              </p>
+            )}
           </section>
         </div>
 
         <div className="settings-profile__form">
+          {saveError && (
+            <p
+              className="settings-profile__error settings-profile__save-error"
+              role="alert"
+            >
+              {saveError}
+            </p>
+          )}
           <section className="settings-profile__form-section">
             <div className="settings-profile__section-heading">
-              <div><h2>Personal details</h2><p>Edit your basic identity and contact information.</p></div>
+              <div>
+                <h2>Personal details</h2>
+                <p>Edit your basic identity and contact information.</p>
+              </div>
             </div>
             <div className="settings-profile__field-grid">
               <div className="settings-profile__field">
                 <label htmlFor="profile-display-name">Display name</label>
-                <input id="profile-display-name" name="displayName" value={draftProfile.displayName} autoComplete="name" aria-invalid={Boolean(nameError)} onChange={(event) => updateDisplayName(event.target.value)} />
-                {nameError && <small className="settings-profile__error" role="alert">{nameError}</small>}
+                <input
+                  id="profile-display-name"
+                  name="displayName"
+                  value={draftProfile.displayName}
+                  autoComplete="name"
+                  aria-invalid={Boolean(nameError)}
+                  onChange={(event) => updateDisplayName(event.target.value)}
+                />
+                {nameError && (
+                  <small className="settings-profile__error" role="alert">
+                    {nameError}
+                  </small>
+                )}
               </div>
               <div className="settings-profile__field">
                 <label htmlFor="profile-username">Username</label>
-                <span className="settings-profile__input-shell"><At size={17} aria-hidden="true" /><input id="profile-username" name="username" value={draftProfile.username ?? ""} autoComplete="username" onChange={(event) => updateUsername(event.target.value)} /></span>
-                {usernameError && <small className="settings-profile__error" role="alert">{usernameError}</small>}
+                <span className="settings-profile__input-shell">
+                  <At size={17} aria-hidden="true" />
+                  <input
+                    id="profile-username"
+                    name="username"
+                    value={draftProfile.username ?? ""}
+                    autoComplete="username"
+                    onChange={(event) => updateUsername(event.target.value)}
+                  />
+                </span>
+                {usernameError && (
+                  <small className="settings-profile__error" role="alert">
+                    {usernameError}
+                  </small>
+                )}
               </div>
             </div>
             <div className="settings-profile__field settings-profile__field--bio">
               <label htmlFor="profile-bio">Bio</label>
-              <textarea id="profile-bio" name="bio" value={draftProfile.bio} maxLength={160} rows={3} onChange={(event) => updateText("bio", event.target.value)} />
-              <small className="settings-profile__character-count">{draftProfile.bio.length} / 160</small>
+              <textarea
+                id="profile-bio"
+                name="bio"
+                value={draftProfile.bio}
+                maxLength={160}
+                rows={3}
+                onChange={(event) => updateText("bio", event.target.value)}
+              />
+              <small className="settings-profile__character-count">
+                {draftProfile.bio.length} / 160
+              </small>
             </div>
             <div className="settings-profile__field-grid">
               <div className="settings-profile__field">
                 <div className="settings-profile__field-heading">
                   <label htmlFor="profile-email">Email address</label>
-                  <PublicVisibilityCheckbox id="profile-email-public" checked={draftProfile.emailPublic} onChange={(value) => updateVisibility("emailPublic", value)} label="Show email address on your public profile" />
+                  <PublicVisibilityCheckbox
+                    id="profile-email-public"
+                    checked={draftProfile.emailPublic}
+                    onChange={(value) => updateVisibility("emailPublic", value)}
+                    label="Show email address on your public profile"
+                  />
                 </div>
-                <span className="settings-profile__input-shell settings-profile__input-shell--status"><EnvelopeSimple size={17} aria-hidden="true" /><input id="profile-email" value={initialIdentity.email} autoComplete="email" readOnly aria-readonly="true" /><span className="settings-profile__tag settings-profile__tag--warning">Not verified</span></span>
+                <span className="settings-profile__input-shell settings-profile__input-shell--status">
+                  <EnvelopeSimple size={17} aria-hidden="true" />
+                  <input
+                    id="profile-email"
+                    value={initialIdentity.email}
+                    autoComplete="email"
+                    readOnly
+                    aria-readonly="true"
+                  />
+                  <span className="settings-profile__tag settings-profile__tag--warning">
+                    Not verified
+                  </span>
+                </span>
               </div>
               <div className="settings-profile__field">
                 <div className="settings-profile__field-heading">
                   <label htmlFor="profile-mobile">Mobile number</label>
-                  <PublicVisibilityCheckbox id="profile-mobile-public" checked={draftProfile.mobilePublic} onChange={requestMobileVisibilityChange} label="Show mobile number on your public profile" />
+                  <PublicVisibilityCheckbox
+                    id="profile-mobile-public"
+                    checked={draftProfile.mobilePublic}
+                    onChange={requestMobileVisibilityChange}
+                    label="Show mobile number on your public profile"
+                  />
                 </div>
                 <div className="settings-profile__phone-control">
-                  <span className="settings-profile__input-shell settings-profile__input-shell--status"><Phone size={17} aria-hidden="true" /><input id="profile-mobile" name="mobileNumber" type="tel" value={draftProfile.mobileNumber ?? ""} autoComplete="tel" onChange={(event) => updateMobileNumber(event.target.value)} /><span className="settings-profile__tag settings-profile__tag--success"><SealCheck size={14} weight="fill" /> Verified</span></span>
-                  {!draftProfile.mobileVerified && <button type="button" className="settings-profile__verify-action" onClick={requestMobileVerification}>{verificationRequested ? "Resend code" : "Send code"}</button>}
+                  <span className="settings-profile__input-shell settings-profile__input-shell--status">
+                    <Phone size={17} aria-hidden="true" />
+                    <input
+                      id="profile-mobile"
+                      name="mobileNumber"
+                      type="tel"
+                      value={draftProfile.mobileNumber ?? ""}
+                      autoComplete="tel"
+                      onChange={(event) =>
+                        updateMobileNumber(event.target.value)
+                      }
+                    />
+                    {draftProfile.mobileVerified ? (
+                      <span className="settings-profile__tag settings-profile__tag--success">
+                        <SealCheck size={14} weight="fill" /> Verified
+                      </span>
+                    ) : (
+                      <span className="settings-profile__tag settings-profile__tag--warning">
+                        Not verified
+                      </span>
+                    )}
+                  </span>
+                  {!draftProfile.mobileVerified && (
+                    <button
+                      type="button"
+                      className="settings-profile__verify-action"
+                      onClick={requestMobileVerification}
+                    >
+                      {verificationRequested ? "Resend code" : "Send code"}
+                    </button>
+                  )}
                 </div>
-                {mobileError && <small className="settings-profile__error" role="alert">{mobileError}</small>}
+                {mobileError && (
+                  <small className="settings-profile__error" role="alert">
+                    {mobileError}
+                  </small>
+                )}
               </div>
             </div>
             {verificationRequested && !draftProfile.mobileVerified && (
-              <div className="settings-profile__verification-panel" role="group" aria-labelledby="profile-verification-title">
+              <div
+                className="settings-profile__verification-panel"
+                role="group"
+                aria-labelledby="profile-verification-title"
+              >
                 <div className="settings-profile__verification-copy">
-                  <span className="settings-profile__verification-icon" aria-hidden="true"><Phone size={18} /></span>
+                  <span
+                    className="settings-profile__verification-icon"
+                    aria-hidden="true"
+                  >
+                    <Phone size={18} />
+                  </span>
                   <div>
-                    <strong id="profile-verification-title">Verify your mobile number</strong>
+                    <strong id="profile-verification-title">
+                      Verify your mobile number
+                    </strong>
                     <p>Enter the 6-digit code we sent to your mobile number.</p>
                   </div>
                 </div>
                 <div className="settings-profile__verification-field">
-                  <label htmlFor="profile-verification-code">Verification code</label>
+                  <label htmlFor="profile-verification-code">
+                    Verification code
+                  </label>
                   <div className="settings-profile__verification-actions">
-                    <input id="profile-verification-code" value={verificationCode} inputMode="numeric" maxLength={6} placeholder="6-digit code" onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, ""))} />
-                    <button type="button" onClick={verifyMobileNumber}>Verify number</button>
+                    <input
+                      id="profile-verification-code"
+                      value={verificationCode}
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="6-digit code"
+                      onChange={(event) =>
+                        setVerificationCode(
+                          event.target.value.replace(/\D/g, ""),
+                        )
+                      }
+                    />
+                    <button type="button" onClick={verifyMobileNumber}>
+                      Verify number
+                    </button>
                   </div>
                 </div>
               </div>
@@ -455,11 +675,88 @@ export function ProfileSettings({
           </section>
 
           <section className="settings-profile__form-section">
-            <div className="settings-profile__section-heading"><div><h2>Social &amp; professional links</h2><p>Add links to your professional profiles and portfolio.</p></div></div>
+            <div className="settings-profile__section-heading">
+              <div>
+                <h2>Social &amp; professional links</h2>
+                <p>Add links to your professional profiles and portfolio.</p>
+              </div>
+            </div>
             <div className="settings-profile__link-grid">
-              <div className="settings-profile__field"><div className="settings-profile__field-heading"><label htmlFor="profile-linkedin">LinkedIn URL</label><PublicVisibilityCheckbox id="profile-linkedin-public" checked={draftProfile.linkedinPublic} onChange={(value) => updateVisibility("linkedinPublic", value)} label="Show LinkedIn profile on your public profile" /></div><span className="settings-profile__input-shell"><LinkedinLogo size={17} aria-hidden="true" /><input id="profile-linkedin" name="linkedinUrl" value={draftProfile.linkedinUrl ?? ""} inputMode="url" onChange={(event) => updateText("linkedinUrl", event.target.value)} /></span></div>
-              <div className="settings-profile__field"><div className="settings-profile__field-heading"><label htmlFor="profile-github">GitHub URL</label><PublicVisibilityCheckbox id="profile-github-public" checked={draftProfile.githubPublic} onChange={(value) => updateVisibility("githubPublic", value)} label="Show GitHub profile on your public profile" /></div><span className="settings-profile__input-shell"><GithubLogo size={17} aria-hidden="true" /><input id="profile-github" name="githubUrl" value={draftProfile.githubUrl ?? ""} inputMode="url" onChange={(event) => updateText("githubUrl", event.target.value)} /></span></div>
-              <div className="settings-profile__field"><div className="settings-profile__field-heading"><label htmlFor="profile-website">Portfolio</label><PublicVisibilityCheckbox id="profile-website-public" checked={draftProfile.websitePublic} onChange={(value) => updateVisibility("websitePublic", value)} label="Show portfolio on your public profile" /></div><span className="settings-profile__input-shell"><Globe size={17} aria-hidden="true" /><input id="profile-website" name="websiteUrl" value={draftProfile.websiteUrl} inputMode="url" onChange={(event) => updateText("websiteUrl", event.target.value)} /></span></div>
+              <div className="settings-profile__field">
+                <div className="settings-profile__field-heading">
+                  <label htmlFor="profile-linkedin">LinkedIn URL</label>
+                  <PublicVisibilityCheckbox
+                    id="profile-linkedin-public"
+                    checked={draftProfile.linkedinPublic}
+                    onChange={(value) =>
+                      updateVisibility("linkedinPublic", value)
+                    }
+                    label="Show LinkedIn profile on your public profile"
+                  />
+                </div>
+                <span className="settings-profile__input-shell">
+                  <LinkedinLogo size={17} aria-hidden="true" />
+                  <input
+                    id="profile-linkedin"
+                    name="linkedinUrl"
+                    value={draftProfile.linkedinUrl ?? ""}
+                    inputMode="url"
+                    onChange={(event) =>
+                      updateText("linkedinUrl", event.target.value)
+                    }
+                  />
+                </span>
+              </div>
+              <div className="settings-profile__field">
+                <div className="settings-profile__field-heading">
+                  <label htmlFor="profile-github">GitHub URL</label>
+                  <PublicVisibilityCheckbox
+                    id="profile-github-public"
+                    checked={draftProfile.githubPublic}
+                    onChange={(value) =>
+                      updateVisibility("githubPublic", value)
+                    }
+                    label="Show GitHub profile on your public profile"
+                  />
+                </div>
+                <span className="settings-profile__input-shell">
+                  <GithubLogo size={17} aria-hidden="true" />
+                  <input
+                    id="profile-github"
+                    name="githubUrl"
+                    value={draftProfile.githubUrl ?? ""}
+                    inputMode="url"
+                    onChange={(event) =>
+                      updateText("githubUrl", event.target.value)
+                    }
+                  />
+                </span>
+              </div>
+              <div className="settings-profile__field">
+                <div className="settings-profile__field-heading">
+                  <label htmlFor="profile-website">Portfolio</label>
+                  <PublicVisibilityCheckbox
+                    id="profile-website-public"
+                    checked={draftProfile.websitePublic}
+                    onChange={(value) =>
+                      updateVisibility("websitePublic", value)
+                    }
+                    label="Show portfolio on your public profile"
+                  />
+                </div>
+                <span className="settings-profile__input-shell">
+                  <Globe size={17} aria-hidden="true" />
+                  <input
+                    id="profile-website"
+                    name="websiteUrl"
+                    value={draftProfile.websiteUrl}
+                    inputMode="url"
+                    onChange={(event) =>
+                      updateText("websiteUrl", event.target.value)
+                    }
+                  />
+                </span>
+              </div>
             </div>
           </section>
         </div>
@@ -484,29 +781,49 @@ export function ProfileSettings({
         >
           <X size={18} />
         </button>
-        <div className="settings-profile__privacy-dialog-icon" aria-hidden="true">
+        <div
+          className="settings-profile__privacy-dialog-icon"
+          aria-hidden="true"
+        >
           <ShieldWarning size={25} weight="fill" />
         </div>
         <div className="settings-profile__privacy-dialog-copy">
-          <h2 id="mobile-visibility-dialog-title">Show your mobile number publicly?</h2>
+          <h2 id="mobile-visibility-dialog-title">
+            Show your mobile number publicly?
+          </h2>
           <p id="mobile-visibility-dialog-description">
-            Anyone who can view your profile will be able to see this number. They may call you directly or message you on WhatsApp.
+            Anyone who can view your profile will be able to see this number.
+            They may call you directly or message you on WhatsApp.
           </p>
         </div>
         <label className="settings-profile__privacy-consent">
           <input
             type="checkbox"
             checked={mobileVisibilityAcknowledged}
-            onChange={(event) => setMobileVisibilityAcknowledged(event.target.checked)}
+            onChange={(event) =>
+              setMobileVisibilityAcknowledged(event.target.checked)
+            }
           />
-          <span className="settings-profile__privacy-consent-mark" aria-hidden="true">
+          <span
+            className="settings-profile__privacy-consent-mark"
+            aria-hidden="true"
+          >
             <Check size={12} weight="bold" />
           </span>
-          <span>I understand that anyone can call or message me on WhatsApp using this number.</span>
+          <span>
+            I understand that anyone can call or message me on WhatsApp using
+            this number.
+          </span>
         </label>
         <div className="settings-profile__privacy-dialog-actions">
-          <button type="button" onClick={closeMobileVisibilityPrompt}>Cancel</button>
-          <button type="button" disabled={!mobileVisibilityAcknowledged} onClick={confirmMobileVisibility}>
+          <button type="button" onClick={closeMobileVisibilityPrompt}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={!mobileVisibilityAcknowledged}
+            onClick={confirmMobileVisibility}
+          >
             OK, show publicly
           </button>
         </div>

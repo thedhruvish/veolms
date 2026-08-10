@@ -1,5 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import type { PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type {
+  KeyboardEvent as ReactKeyboardEvent,
+  PointerEvent as ReactPointerEvent,
+} from "react";
 import {
   CaretLeft,
   CaretRight,
@@ -20,6 +23,21 @@ import {
 import type { CourseVideo } from "./learning/courseContent";
 
 const playbackSpeeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
+const RESUME_PERSIST_INTERVAL_MS = 5_000;
+const AMBIENT_FRAME_INTERVAL_MS = 480;
+
+const getAmbientDefault = () => {
+  if (typeof window === "undefined") return false;
+
+  const savedPreference = window.localStorage.getItem("veolms-player-ambient");
+  if (savedPreference === "on") return true;
+  if (savedPreference === "off") return false;
+
+  const constrainedDevice = window.matchMedia?.(
+    "(prefers-reduced-motion: reduce), (pointer: coarse)",
+  );
+  return !constrainedDevice?.matches;
+};
 
 const formatMediaTime = (seconds: number) => {
   if (!Number.isFinite(seconds) || seconds < 0) return "00:00";
@@ -69,6 +87,8 @@ export function VideoPlayer({
   const suppressNextPlayerActionRef = useRef(false);
   const controlsTimerRef = useRef<number | undefined>(undefined);
   const hudTimerRef = useRef<number | undefined>(undefined);
+  const lastResumePersistedAtRef = useRef<number | null>(null);
+  const lastKnownPlaybackTimeRef = useRef(0);
 
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -83,9 +103,7 @@ export function VideoPlayer({
   const [controlsVisible, setControlsVisible] = useState(true);
   const [hud, setHud] = useState("");
   const [mediaError, setMediaError] = useState(false);
-  const [ambient, setAmbient] = useState(
-    () => localStorage.getItem("veolms-player-ambient") !== "off",
-  );
+  const [ambient, setAmbient] = useState(getAmbientDefault);
 
   const showHud = (message: string) => {
     window.clearTimeout(hudTimerRef.current);
@@ -119,9 +137,17 @@ export function VideoPlayer({
   const skip = (amount: number, announce = true) => {
     const video = videoRef.current;
     if (!video) return;
-    video.currentTime = Math.max(
+    const nextTime = Math.max(
       0,
       Math.min(video.duration || duration, video.currentTime + amount),
+    );
+    video.currentTime = nextTime;
+    lastKnownPlaybackTimeRef.current = nextTime;
+    setCurrentTime(nextTime);
+    setProgress(
+      video.duration || duration
+        ? (nextTime / (video.duration || duration)) * 100
+        : 0,
     );
     if (announce)
       showHud(`${amount > 0 ? "+" : "−"}${Math.abs(amount)} seconds`);
@@ -130,9 +156,12 @@ export function VideoPlayer({
   const seekToProgress = (next: number) => {
     const safeProgress = Math.max(0, Math.min(100, next));
     setProgress(safeProgress);
-    if (videoRef.current?.duration)
-      videoRef.current.currentTime =
-        (safeProgress / 100) * videoRef.current.duration;
+    if (videoRef.current?.duration) {
+      const nextTime = (safeProgress / 100) * videoRef.current.duration;
+      videoRef.current.currentTime = nextTime;
+      lastKnownPlaybackTimeRef.current = nextTime;
+      setCurrentTime(nextTime);
+    }
   };
 
   const setPlaybackSpeed = (next: number, announce = true) => {
@@ -193,7 +222,32 @@ export function VideoPlayer({
       await shellRef.current.requestFullscreen();
   };
 
-  const paintAmbientFrame = () => {
+  const persistResumePosition = useCallback(
+    (position = lastKnownPlaybackTimeRef.current, force = false) => {
+      if (!Number.isFinite(position) || position <= 0) return;
+
+      const now = Date.now();
+      if (
+        !force &&
+        lastResumePersistedAtRef.current !== null &&
+        now - lastResumePersistedAtRef.current < RESUME_PERSIST_INTERVAL_MS
+      )
+        return;
+
+      try {
+        window.localStorage.setItem(
+          `veolms-watch-${media.fileName}`,
+          String(position),
+        );
+        lastResumePersistedAtRef.current = now;
+      } catch {
+        // Playback should remain available when browser storage is unavailable.
+      }
+    },
+    [media.fileName],
+  );
+
+  const paintAmbientFrame = useCallback(() => {
     const video = videoRef.current;
     const canvas = ambientCanvasRef.current;
     if (!ambient || !video || !canvas || video.readyState < 2) return;
@@ -206,7 +260,7 @@ export function VideoPlayer({
     } catch {
       // Playback remains available when a cross-origin media response cannot be drawn to canvas.
     }
-  };
+  }, [ambient]);
 
   const scheduleControlsHide = () => {
     window.clearTimeout(controlsTimerRef.current);
@@ -237,19 +291,34 @@ export function VideoPlayer({
     if (!video) return;
     video.pause();
     video.load();
-    video.playbackRate = speed;
-    video.volume = volume;
     setPlaying(false);
     setProgress(0);
     setCurrentTime(0);
     setDuration(media.duration);
     setMediaError(false);
     setControlsVisible(true);
-  }, [media.src]);
+    lastKnownPlaybackTimeRef.current = 0;
+    lastResumePersistedAtRef.current = null;
+  }, [media.duration, media.src]);
+
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.playbackRate = speed;
+  }, [speed]);
+
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.volume = volume;
+  }, [volume]);
 
   useEffect(() => {
     localStorage.setItem("veolms-player-ambient", ambient ? "on" : "off");
   }, [ambient]);
+
+  useEffect(
+    () => () => {
+      persistResumePosition(undefined, true);
+    },
+    [persistResumePosition],
+  );
 
   useEffect(() => {
     if (!settingsOpen) return undefined;
@@ -294,7 +363,7 @@ export function VideoPlayer({
     let animationFrame: number;
     let lastPaint = 0;
     const draw = (time: number) => {
-      if (time - lastPaint > 120) {
+      if (time - lastPaint > AMBIENT_FRAME_INTERVAL_MS) {
         paintAmbientFrame();
         lastPaint = time;
       }
@@ -302,82 +371,7 @@ export function VideoPlayer({
     };
     animationFrame = window.requestAnimationFrame(draw);
     return () => window.cancelAnimationFrame(animationFrame);
-  }, [ambient, playing, media.src]);
-
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      const activeElement = document.activeElement as HTMLElement | null;
-      if (
-        ["INPUT", "TEXTAREA", "SELECT"].includes(
-          activeElement?.tagName ?? "",
-        ) ||
-        activeElement?.isContentEditable
-      )
-        return;
-      if (event.ctrlKey || event.metaKey || event.altKey || settingsOpen)
-        return;
-
-      const key = event.key.toLowerCase();
-      const speedDown =
-        event.shiftKey &&
-        (event.code === "Comma" ||
-          event.code === "ArrowLeft" ||
-          event.key === "<");
-      const speedUp =
-        event.shiftKey &&
-        (event.code === "Period" ||
-          event.code === "ArrowRight" ||
-          event.key === ">");
-      if (speedDown || speedUp) {
-        event.preventDefault();
-        adjustSpeed(speedUp ? 1 : -1);
-        return;
-      }
-
-      if (event.code === "Space" || key === "k") {
-        event.preventDefault();
-        togglePlay();
-      } else if (event.code === "ArrowLeft") {
-        event.preventDefault();
-        skip(-5);
-      } else if (event.code === "ArrowRight") {
-        event.preventDefault();
-        skip(5);
-      } else if (key === "j") {
-        event.preventDefault();
-        skip(-10);
-      } else if (key === "l") {
-        event.preventDefault();
-        skip(10);
-      } else if (key === "m") {
-        event.preventDefault();
-        toggleMute();
-      } else if (key === "c") {
-        event.preventDefault();
-        toggleCaptions();
-      } else if (key === "f") {
-        event.preventDefault();
-        requestFullscreen();
-      } else if (key === "t") {
-        event.preventDefault();
-        onTheaterToggle();
-      } else if (key === "i") {
-        event.preventDefault();
-        requestPip();
-      } else if (event.code === "Home") {
-        event.preventDefault();
-        seekToProgress(0);
-      } else if (event.code === "End") {
-        event.preventDefault();
-        seekToProgress(100);
-      } else if (!event.shiftKey && /^Digit[0-9]$/.test(event.code)) {
-        event.preventDefault();
-        seekToProgress(Number(event.code.slice(-1)) * 10);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [speed, captions, muted, settingsOpen, onTheaterToggle]);
+  }, [ambient, paintAmbientFrame, playing]);
 
   useEffect(
     () => () => {
@@ -388,6 +382,75 @@ export function VideoPlayer({
   );
 
   const controlsAreVisible = controlsVisible || !playing || settingsOpen;
+
+  const handlePlayerKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
+    if (
+      event.currentTarget !== event.target ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.altKey ||
+      settingsOpen
+    )
+      return;
+
+    const key = event.key.toLowerCase();
+    const speedDown =
+      event.shiftKey &&
+      (event.code === "Comma" ||
+        event.code === "ArrowLeft" ||
+        event.key === "<");
+    const speedUp =
+      event.shiftKey &&
+      (event.code === "Period" ||
+        event.code === "ArrowRight" ||
+        event.key === ">");
+    if (speedDown || speedUp) {
+      event.preventDefault();
+      adjustSpeed(speedUp ? 1 : -1);
+      return;
+    }
+
+    if (event.code === "Space" || key === "k") {
+      event.preventDefault();
+      void togglePlay();
+    } else if (event.code === "ArrowLeft") {
+      event.preventDefault();
+      skip(-5);
+    } else if (event.code === "ArrowRight") {
+      event.preventDefault();
+      skip(5);
+    } else if (key === "j") {
+      event.preventDefault();
+      skip(-10);
+    } else if (key === "l") {
+      event.preventDefault();
+      skip(10);
+    } else if (key === "m") {
+      event.preventDefault();
+      toggleMute();
+    } else if (key === "c") {
+      event.preventDefault();
+      toggleCaptions();
+    } else if (key === "f") {
+      event.preventDefault();
+      void requestFullscreen();
+    } else if (key === "t") {
+      event.preventDefault();
+      onTheaterToggle();
+    } else if (key === "i") {
+      event.preventDefault();
+      void requestPip();
+    } else if (event.code === "Home") {
+      event.preventDefault();
+      seekToProgress(0);
+    } else if (event.code === "End") {
+      event.preventDefault();
+      seekToProgress(100);
+    } else if (!event.shiftKey && /^Digit[0-9]$/.test(event.code)) {
+      event.preventDefault();
+      seekToProgress(Number(event.code.slice(-1)) * 10);
+    }
+  };
 
   return (
     <div
@@ -401,8 +464,11 @@ export function VideoPlayer({
       />
       <section
         ref={frameRef}
+        role="region"
         aria-label={`Lesson video player for ${lessonTitle}`}
+        tabIndex={0}
         onPointerDownCapture={handleFramePointerDown}
+        onKeyDown={handlePlayerKeyDown}
         onMouseMove={scheduleControlsHide}
         onMouseLeave={() =>
           playing && !settingsOpen && setControlsVisible(false)
@@ -415,9 +481,10 @@ export function VideoPlayer({
             )
           )
             return;
+          event.currentTarget.focus({ preventScroll: true });
           runPlayerAction(togglePlay);
         }}
-        className={`youtube-player group relative z-10 w-full overflow-hidden rounded-[13px] border border-[var(--learning-panel-border)] bg-black shadow-[0_18px_50px_rgba(0,0,0,.2)] ${theaterMode ? "lg:h-[calc(100vh-94px)] lg:min-h-[420px]" : ""} ${playing && !controlsAreVisible ? "cursor-none" : ""}`}
+        className={`youtube-player group relative z-10 w-full overflow-hidden rounded-[13px] border border-[var(--learning-panel-border)] bg-black shadow-[0_18px_50px_rgba(0,0,0,.2)] focus-visible:outline-4 focus-visible:outline-[var(--accent)] focus-visible:outline-offset-2 ${theaterMode ? "lg:h-[calc(100vh-94px)] lg:min-h-[420px]" : ""} ${playing && !controlsAreVisible ? "cursor-none" : ""}`}
       >
         <video
           ref={videoRef}
@@ -437,6 +504,7 @@ export function VideoPlayer({
                     Math.max(0, event.currentTarget.duration - 1),
                   )
                 : Math.min(0.01, event.currentTarget.duration || 0);
+            lastKnownPlaybackTimeRef.current = event.currentTarget.currentTime;
             event.currentTarget.playbackRate = speed;
             event.currentTarget.volume = volume;
           }}
@@ -447,7 +515,9 @@ export function VideoPlayer({
             setPlaying(true);
             setControlsVisible(true);
           }}
-          onPause={() => {
+          onPause={(event) => {
+            lastKnownPlaybackTimeRef.current = event.currentTarget.currentTime;
+            persistResumePosition(event.currentTarget.currentTime, true);
             setPlaying(false);
             setControlsVisible(true);
           }}
@@ -456,14 +526,13 @@ export function VideoPlayer({
             const nextDuration = event.currentTarget.duration;
             setCurrentTime(nextTime);
             setProgress(nextDuration ? (nextTime / nextDuration) * 100 : 0);
-            if (nextTime > 0)
-              localStorage.setItem(
-                `veolms-watch-${media.fileName}`,
-                String(nextTime),
-              );
+            lastKnownPlaybackTimeRef.current = nextTime;
+            persistResumePosition(nextTime);
           }}
           onError={() => setMediaError(true)}
-          onEnded={() => {
+          onEnded={(event) => {
+            lastKnownPlaybackTimeRef.current = event.currentTarget.currentTime;
+            persistResumePosition(event.currentTarget.currentTime, true);
             setPlaying(false);
           }}
         >
@@ -495,7 +564,12 @@ export function VideoPlayer({
           type="button"
           data-player-control
           aria-label={playing ? "Pause video" : "Play video"}
-          onClick={() => runPlayerAction(togglePlay)}
+          aria-hidden={playing}
+          tabIndex={playing ? -1 : 0}
+          onClick={() => {
+            frameRef.current?.focus({ preventScroll: true });
+            runPlayerAction(togglePlay);
+          }}
           className={`absolute left-1/2 top-1/2 z-10 flex size-[68px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/65 text-white shadow-2xl transition duration-200 hover:bg-black/80 focus-visible:outline-4 focus-visible:outline-white/80 ${playing ? "pointer-events-none scale-90 opacity-0" : "opacity-100"}`}
         >
           <Play size={34} weight="fill" className="translate-x-0.5" />
@@ -618,7 +692,7 @@ export function VideoPlayer({
                   <div
                     ref={settingsMenuRef}
                     data-player-menu
-                    role="menu"
+                    role="group"
                     aria-label={
                       settingsPage === "speed"
                         ? "Playback speed"
@@ -630,8 +704,7 @@ export function VideoPlayer({
                       <>
                         <button
                           type="button"
-                          role="menuitemcheckbox"
-                          aria-checked={ambient}
+                          aria-pressed={ambient}
                           onClick={() => setAmbient((current) => !current)}
                           className="player-menu-row"
                         >
@@ -643,7 +716,6 @@ export function VideoPlayer({
                         </button>
                         <button
                           type="button"
-                          role="menuitem"
                           onClick={() => setSettingsPage("speed")}
                           className="player-menu-row"
                         >
@@ -670,7 +742,6 @@ export function VideoPlayer({
                       <>
                         <button
                           type="button"
-                          role="menuitem"
                           onClick={() => setSettingsPage("main")}
                           className="player-menu-row justify-start gap-3 border-b border-white/10"
                         >
@@ -680,8 +751,7 @@ export function VideoPlayer({
                         {playbackSpeeds.map((item) => (
                           <button
                             type="button"
-                            role="menuitemradio"
-                            aria-checked={speed === item}
+                            aria-pressed={speed === item}
                             key={item}
                             onClick={() => {
                               setPlaybackSpeed(item);

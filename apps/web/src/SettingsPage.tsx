@@ -8,6 +8,7 @@ import {
   UserCircle,
 } from "@phosphor-icons/react";
 import type { ComponentType } from "react";
+import { handleRovingTabKeyDown } from "./accessibility/rovingTabFocus";
 import { AccountSettings } from "./settings/AccountSettings";
 import { AppearanceSettings } from "./settings/AppearanceSettings";
 import type { DisplayMode } from "./settings/AppearanceSettings";
@@ -114,9 +115,16 @@ export function SettingsPage({
             role="tab"
             aria-selected={activeTab === id}
             aria-controls="settings-tab-panel"
+            tabIndex={activeTab === id ? 0 : -1}
             className={activeTab === id ? "is-active" : ""}
             onClick={() => navigateTab(id)}
-            onFocus={(event) => event.currentTarget.scrollIntoView({ block: "nearest", inline: "center" })}
+            onKeyDown={handleRovingTabKeyDown}
+            onFocus={(event) =>
+              event.currentTarget.scrollIntoView({
+                block: "nearest",
+                inline: "center",
+              })
+            }
           >
             <Icon size={17} weight={activeTab === id ? "fill" : "regular"} />
             <span>{label}</span>

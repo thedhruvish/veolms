@@ -55,8 +55,8 @@ test("lesson choice, curriculum width, and player preferences persist", async ({
   ).toHaveAttribute("aria-pressed", "true");
 
   await player.getByRole("button", { name: "Player settings" }).click();
-  await page.getByRole("menuitem", { name: /Playback speed/ }).click();
-  await page.getByRole("menuitemradio", { name: "1.5x" }).click();
+  await page.getByRole("button", { name: /Playback speed/ }).click();
+  await page.getByRole("button", { name: "1.5x" }).click();
   await expect
     .poll(() =>
       page
@@ -96,11 +96,15 @@ test("mobile lesson drawer closes with Escape and returns focus", async ({
   await expect
     .poll(() => page.evaluate(() => document.body.style.overflow))
     .toBe("hidden");
+  await expect(page.locator("main.learning-workspace__main")).toHaveAttribute(
+    "inert",
+    "",
+  );
 
   const focusable = dialog.locator(
-    "button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex='-1'])",
+    ".lesson-drawer-panel button:not([disabled]):not([tabindex='-1']), .lesson-drawer-panel input:not([disabled]), .lesson-drawer-panel [tabindex]:not([tabindex='-1'])",
   );
-  await focusable.first().focus();
+  await expect(focusable.first()).toBeFocused();
   await page.keyboard.press("Shift+Tab");
   await expect(focusable.last()).toBeFocused();
   await page.keyboard.press("Tab");
@@ -257,6 +261,7 @@ test("core player controls, shortcuts, seek state, and ambient preference remain
   await expect(
     player.getByRole("button", { name: "Unmute", exact: true }),
   ).toBeVisible();
+  await player.focus();
   await page.keyboard.press("m");
   await expect(
     player.getByRole("button", { name: "Mute", exact: true }),
@@ -272,6 +277,9 @@ test("core player controls, shortcuts, seek state, and ambient preference remain
       video.evaluate((element) => (element as HTMLVideoElement).currentTime),
     )
     .toBeGreaterThanOrEqual(15);
+  await video.evaluate((element) => {
+    element.dispatchEvent(new Event("pause"));
+  });
   await expectStoredValue(
     page,
     "veolms-watch-01 introduction to veolms.mp4",
@@ -279,7 +287,7 @@ test("core player controls, shortcuts, seek state, and ambient preference remain
   );
 
   await player.getByRole("button", { name: "Player settings" }).click();
-  const ambient = page.getByRole("menuitemcheckbox", { name: "Ambient mode" });
+  const ambient = page.getByRole("button", { name: "Ambient mode" });
   await ambient.click();
   await expectStoredValue(page, "veolms-player-ambient", "on");
 });

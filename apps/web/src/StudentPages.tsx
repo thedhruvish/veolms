@@ -19,15 +19,16 @@ import {
 } from "@phosphor-icons/react";
 import type { Icon } from "@phosphor-icons/react";
 import { ThemedSelect } from "./ThemedSelect";
+import { handleRovingTabKeyDown } from "./accessibility/rovingTabFocus";
 import typescriptThumbnail from "./assets/course-thumbnails/typescript.jpg";
 import nodeThumbnail from "./assets/course-thumbnails/nodejs.jpg";
 import mongodbThumbnail from "./assets/course-thumbnails/mongodb.jpg";
 import awsThumbnail from "./assets/course-thumbnails/aws.jpg";
-import typescriptInstructorHero from "./assets/learning-thumbnails/typescript-instructor-hero.png";
-import veolmsThumbnail from "./assets/learning-thumbnails/veolms-course.png";
-import illustratorThumbnail from "./assets/learning-thumbnails/illustrator-course.png";
-import reactThumbnail from "./assets/learning-thumbnails/react-course.png";
-import d3Thumbnail from "./assets/learning-thumbnails/d3-course.png";
+import typescriptInstructorHero from "./assets/learning-thumbnails/typescript-instructor-hero.webp";
+import veolmsThumbnail from "./assets/learning-thumbnails/veolms-course.webp";
+import illustratorThumbnail from "./assets/learning-thumbnails/illustrator-course.webp";
+import reactThumbnail from "./assets/learning-thumbnails/react-course.webp";
+import d3Thumbnail from "./assets/learning-thumbnails/d3-course.webp";
 
 export interface LearningCourse {
   id: string;
@@ -226,7 +227,8 @@ export function StudentHome({
   const currentCourse = learningCourses[0]!;
   const continueCourses = [learningCourses[0]!, learningCourses[1]!];
   const goalCompletion = 72;
-  const firstName = (studentName?.trim() || "Ashi Singh").split(/\s+/)[0] || "Ashi";
+  const firstName =
+    (studentName?.trim() || "Ashi Singh").split(/\s+/)[0] || "Ashi";
 
   return (
     <div className="student-home">
@@ -278,6 +280,10 @@ export function StudentHome({
             <img
               src={typescriptInstructorHero}
               alt="TypeScript instructor pointing toward the TS course mark"
+              width={1600}
+              height={900}
+              decoding="async"
+              fetchPriority="high"
             />
           </div>
           <div className="home-resume-copy">
@@ -340,7 +346,12 @@ export function StudentHome({
           <div className="home-mini-course-grid">
             {continueCourses.map((course) => (
               <article key={course.id} className="home-mini-course">
-                <img src={course.thumbnail} alt="" />
+                <img
+                  src={course.thumbnail}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                />
                 <div>
                   <h3>{course.title}</h3>
                   <p>
@@ -464,7 +475,12 @@ export function StudentHome({
                 key={course.id}
                 onClick={() => onOpenCourse(course)}
               >
-                <img src={course.thumbnail} alt="" />
+                <img
+                  src={course.thumbnail}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                />
                 <span>
                   <strong>{course.title}</strong>
                   <small>
@@ -505,7 +521,7 @@ function LearningCourseCard({
   return (
     <article className="learning-card">
       <div className="learning-card-media">
-        <img src={course.thumbnail} alt="" />
+        <img src={course.thumbnail} alt="" loading="lazy" decoding="async" />
         <span className={`learning-status ${course.status}`}>
           {statusLabel}
         </span>
@@ -652,11 +668,13 @@ export function MyLearningPage({
               type="button"
               role="tab"
               aria-selected={filter === value}
+              tabIndex={filter === value ? 0 : -1}
               key={value}
               onClick={() => {
                 setFilter(value);
                 setStatus("all");
               }}
+              onKeyDown={handleRovingTabKeyDown}
             >
               {label}
             </button>

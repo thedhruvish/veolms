@@ -10,7 +10,7 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   return (
-    <html lang="en" data-theme="dark" data-palette="graphite">
+    <html lang="en" data-theme="dark" data-palette="codex">
       <head>
         <meta charSet="UTF-8" />
         <meta
@@ -30,10 +30,10 @@ export function Layout({ children }: LayoutProps) {
 }
 
 export const meta = () => [
-  { title: "UI/UX Design Mastery \u00B7 VeoLMS" },
+  { title: "UI/UX Design Mastery \u00B7 ProCodrr" },
   {
     name: "description",
-    content: "VeoLMS focused learning workspace prototype",
+    content: "ProCodrr learning workspace",
   },
 ];
 

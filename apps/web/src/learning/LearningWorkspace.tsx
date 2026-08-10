@@ -330,7 +330,12 @@ export function LearningWorkspace({
 
     const dialog = lessonDialogRef.current;
     const focusableSelector =
-      'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])';
+      '.lesson-drawer-panel button:not([disabled]):not([tabindex="-1"]), .lesson-drawer-panel input:not([disabled]), .lesson-drawer-panel [tabindex]:not([tabindex="-1"])';
+    const initialFocusFrame = window.requestAnimationFrame(() => {
+      dialog
+        ?.querySelector<HTMLElement>(focusableSelector)
+        ?.focus({ preventScroll: true });
+    });
     const onDrawerKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -355,6 +360,7 @@ export function LearningWorkspace({
 
     document.addEventListener("keydown", onDrawerKeyDown);
     return () => {
+      window.cancelAnimationFrame(initialFocusFrame);
       document.body.style.overflow = "";
       document.removeEventListener("keydown", onDrawerKeyDown);
     };
@@ -366,6 +372,8 @@ export function LearningWorkspace({
     >
       <main
         className="learning-workspace__main"
+        inert={lessonDrawer ? true : undefined}
+        aria-hidden={lessonDrawer || undefined}
         style={
           {
             "--learning-curriculum-width": `${curriculumCollapsed ? 8 : curriculumWidth}px`,
@@ -451,6 +459,8 @@ export function LearningWorkspace({
           <button
             type="button"
             aria-label="Close lesson list"
+            aria-hidden="true"
+            tabIndex={-1}
             onClick={closeLessonDrawer}
             className="lesson-drawer-backdrop"
           />
