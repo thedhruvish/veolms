@@ -30,13 +30,6 @@ export function ChoiceCard({
   children,
   className = "",
 }: ChoiceCardProps) {
-  const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
-    if (event.key === " " || event.key === "Enter") {
-      event.preventDefault();
-      onChange();
-    }
-  };
-
   return (
     <button
       type="button"
@@ -45,7 +38,6 @@ export function ChoiceCard({
       aria-checked={checked}
       tabIndex={checked ? 0 : -1}
       onClick={onChange}
-      onKeyDown={handleKeyDown}
     >
       {preview}
       <span className="settings-choice-card__copy">
@@ -65,10 +57,15 @@ export function ChoiceCard({
 
 export interface RadioGroupProps {
   children: ReactNode;
+  label: string;
   className?: string;
 }
 
-export function RadioGroup({ children, className = "" }: RadioGroupProps) {
+export function RadioGroup({
+  children,
+  label,
+  className = "",
+}: RadioGroupProps) {
   const groupRef = useRef<HTMLDivElement>(null);
 
   const moveFocus = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -95,6 +92,7 @@ export function RadioGroup({ children, className = "" }: RadioGroupProps) {
       ref={groupRef}
       className={className}
       role="radiogroup"
+      aria-label={label}
       onKeyDown={moveFocus}
     >
       {children}

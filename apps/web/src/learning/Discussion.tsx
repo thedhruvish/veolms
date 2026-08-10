@@ -8,6 +8,7 @@ import {
   X,
 } from "@phosphor-icons/react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { handleRovingTabKeyDown } from "../accessibility/rovingTabFocus";
 import { CommentCard } from "./CommentCard";
 import type { Comment } from "./CommentCard";
 
@@ -162,6 +163,7 @@ export function Discussion() {
               type="button"
               role="tab"
               aria-selected={activeTab === label}
+              tabIndex={activeTab === label ? 0 : -1}
               key={label}
               onClick={() => {
                 setActiveTab(label);
@@ -169,6 +171,7 @@ export function Discussion() {
                 setSearchOpen(false);
                 setSearchFocused(false);
               }}
+              onKeyDown={handleRovingTabKeyDown}
               className={`relative inline-flex h-12 shrink-0 items-center gap-2 px-3 text-[15px] transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--accent)] ${activeTab === label ? "font-semibold text-[var(--accent)] after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-[var(--accent)]" : "text-[var(--muted)] hover:text-[var(--text)]"}`}
             >
               <Icon

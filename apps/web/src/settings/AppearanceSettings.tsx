@@ -135,7 +135,10 @@ export function AppearanceSettings({
     <div className="settings-content">
       <section className="settings-section">
         <h2>Display mode</h2>
-        <RadioGroup className="settings-choice-grid settings-choice-grid--display">
+        <RadioGroup
+          label="Display mode"
+          className="settings-choice-grid settings-choice-grid--display"
+        >
           {DISPLAY_MODES.map(({ id, label, note, icon }) => (
             <ChoiceCard
               key={id}
@@ -160,7 +163,10 @@ export function AppearanceSettings({
 
       <section className="settings-section">
         <h2>Color theme</h2>
-        <RadioGroup className="settings-choice-grid settings-choice-grid--colors">
+        <RadioGroup
+          label="Color theme"
+          className="settings-choice-grid settings-choice-grid--colors"
+        >
           {COLOR_THEMES.map((item) => (
             <ChoiceCard
               key={item.id}
@@ -204,6 +210,7 @@ export function AppearanceSettings({
             </div>
             <div
               className="settings-theme-pool__options"
+              role="group"
               aria-label="Themes included in random rotation"
             >
               {COLOR_THEMES.map((item) => {
@@ -300,10 +307,9 @@ export function AppearanceSettings({
             label="Text size"
             note="Adjust the size of text across the application"
           >
-            <div
+            <RadioGroup
+              label="Text size"
               className="settings-segmented settings-segmented--text-size"
-              role="radiogroup"
-              aria-label="Text size"
             >
               {(
                 [
@@ -318,13 +324,14 @@ export function AppearanceSettings({
                   key={value}
                   role="radio"
                   aria-checked={textSize === value}
+                  tabIndex={textSize === value ? 0 : -1}
                   className={textSize === value ? "is-selected" : ""}
                   onClick={() => setTextSize(value)}
                 >
                   {label}
                 </button>
               ))}
-            </div>
+            </RadioGroup>
           </SettingRow>
         </div>
       </section>

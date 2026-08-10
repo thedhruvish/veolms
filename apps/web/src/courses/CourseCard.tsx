@@ -7,7 +7,7 @@ import {
   Users,
   VideoCamera,
 } from "@phosphor-icons/react";
-import type { KeyboardEvent, MouseEvent } from "react";
+import type { MouseEvent } from "react";
 import type { Course, CourseRole } from "./catalogue";
 
 function formatStudents(value: number): string {
@@ -37,9 +37,6 @@ export function CourseCard({
   setMenuOpen,
   setNotice,
 }: CourseCardProps) {
-  const interactive =
-    role === "creator" || (role === "student" && course.enrolled);
-
   const openCard = () => {
     if (role === "creator" || course.enrolled) onOpen(course);
     else if (role === "student") onExplore(course);
@@ -47,22 +44,23 @@ export function CourseCard({
 
   return (
     <article
-      className={`course-card ${interactive ? "course-card--interactive" : ""}`}
-      onClick={openCard}
-      onKeyDown={(event: KeyboardEvent<HTMLElement>) => {
-        if (
-          (event.key === "Enter" || event.key === " ") &&
-          event.target === event.currentTarget
-        ) {
-          event.preventDefault();
-          openCard();
-        }
-      }}
-      tabIndex={interactive ? 0 : -1}
+      className="course-card course-card--interactive"
       aria-label={`${course.title}${role === "creator" ? ", preview course" : course.enrolled ? `, ${course.progress}% complete` : ", not enrolled"}`}
     >
+      <button
+        type="button"
+        className="course-card__open"
+        aria-label={`${role === "creator" ? "Preview" : course.enrolled ? "Open" : "Explore"} ${course.title}`}
+        onClick={openCard}
+      />
       <div className="course-card__media">
-        <img src={course.thumbnail} alt="" className="course-card__image" />
+        <img
+          src={course.thumbnail}
+          alt=""
+          className="course-card__image"
+          loading="lazy"
+          decoding="async"
+        />
         <span className="course-level">{course.level}</span>
         <button
           type="button"

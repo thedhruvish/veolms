@@ -147,7 +147,8 @@ function StudentsWorkspace({
           </div>
           <div className="workspace-toolbar">
             <label className="workspace-search">
-              <MagnifyingGlass size={17} />
+              <MagnifyingGlass size={17} aria-hidden="true" />
+              <span className="sr-only">Search students</span>
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}

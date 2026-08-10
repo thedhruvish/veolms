@@ -3,10 +3,10 @@ import nodeCourseThumbnail from "../assets/course-thumbnails/nodejs.jpg";
 import figmaCourseThumbnail from "../assets/course-thumbnails/figma.jpg";
 import mongodbCourseThumbnail from "../assets/course-thumbnails/mongodb.jpg";
 import awsCourseThumbnail from "../assets/course-thumbnails/aws.jpg";
-import veolmsCourseThumbnail from "../assets/learning-thumbnails/veolms-course.png";
-import illustratorCourseThumbnail from "../assets/learning-thumbnails/illustrator-course.png";
-import reactCourseThumbnail from "../assets/learning-thumbnails/react-course.png";
-import d3CourseThumbnail from "../assets/learning-thumbnails/d3-course.png";
+import veolmsCourseThumbnail from "../assets/learning-thumbnails/veolms-course.webp";
+import illustratorCourseThumbnail from "../assets/learning-thumbnails/illustrator-course.webp";
+import reactCourseThumbnail from "../assets/learning-thumbnails/react-course.webp";
+import d3CourseThumbnail from "../assets/learning-thumbnails/d3-course.webp";
 
 const courseTitlesBySlug: Record<string, string | undefined> = {
   "ui-ux-design-mastery": "UI/UX Design Mastery",

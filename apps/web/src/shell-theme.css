@@ -18,12 +18,13 @@
   --text-secondary: #d4d5d2;
   --muted: #919592;
   --accent: #8b68ff;
-  --accent-hover: #7a58ef;
+  --accent-hover: #8262f5;
+  --accent-ink: var(--accent);
   --accent-soft: rgba(139, 104, 255, 0.15);
   --accent-border: rgba(139, 104, 255, 0.38);
   --accent-shadow: rgba(119, 80, 255, 0.24);
-  --on-accent: #ffffff;
-  --on-accent-glyph: #ffffff;
+  --on-accent: #0b0b0d;
+  --on-accent-glyph: #0b0b0d;
   --card-surface: var(--surface);
   --card-surface-raised: var(--surface-strong);
   --card-surface-soft: color-mix(
@@ -666,7 +667,7 @@
   --border-strong: transparent;
   --text: #1c1f1d;
   --text-secondary: #464b48;
-  --muted: #707672;
+  --muted: #68706b;
   --accent: #7150df;
   --accent-hover: #6242ca;
   --accent-soft: rgba(113, 80, 223, 0.12);
@@ -906,7 +907,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
 }
 
 .courses-placeholder-eyebrow {
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   font-size: 0.72rem;
   font-weight: 750;
   letter-spacing: 0.11em;
@@ -919,7 +920,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   background: color-mix(in srgb, var(--accent) 15%, var(--surface));
   box-shadow: 0 14px 28px
     color-mix(in srgb, var(--accent-shadow) 28%, transparent);
@@ -1506,7 +1507,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
 }
 
 .sidebar-palette-menu > button.is-selected > svg {
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
 }
 
 .sidebar-palette-menu > button > i {
@@ -1998,7 +1999,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
 }
 
 .themed-select__item[data-state="checked"] {
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
@@ -2007,7 +2008,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   right: 10px;
   display: inline-flex;
   align-items: center;
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
 }
 
 @keyframes themed-select-in {
@@ -2913,7 +2914,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
 
 .creator-panel-link {
   gap: 5px;
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   font-size: 0.7rem;
   font-weight: 700;
 }
@@ -3263,7 +3264,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
 }
 .creator-discussion-list article small {
   overflow: hidden;
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   font-size: 0.62rem;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3289,7 +3290,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   border: 0;
   padding: 0;
   background: transparent;
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   font: inherit;
   font-size: 0.64rem;
   cursor: pointer;
@@ -3358,7 +3359,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   font-size: 0.61rem;
 }
 .creator-attention-list em {
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   font-size: 0.62rem;
   font-style: normal;
   white-space: nowrap;
@@ -3586,7 +3587,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   }
 
   :root:not([data-theme="light"]) .sidebar-nav-tooltip__pointer {
-    color: var(--accent);
+    color: var(--accent-ink, var(--accent));
   }
 
   :root:not([data-theme="light"]) .sidebar-nav-tooltip.is-active {
@@ -3599,7 +3600,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   :root:not([data-theme="light"])
     .sidebar-nav-tooltip.is-active
     .sidebar-nav-tooltip__pointer {
-    color: var(--accent);
+    color: var(--accent-ink, var(--accent));
   }
 
   .sidebar-nav-tooltip.is-focus-visible {
@@ -3665,7 +3666,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   align-items: center;
   justify-content: center;
   border-radius: 15px;
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   background: color-mix(in srgb, var(--accent) 15%, var(--surface));
   box-shadow: 0 10px 28px
     color-mix(in srgb, var(--accent-shadow) 30%, transparent);
@@ -3724,7 +3725,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
 }
 .settings-tabs button.is-active {
   border-bottom-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
 }
 
 .settings-tab-content {
@@ -4186,7 +4187,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   justify-content: center;
   border-radius: 9px;
   padding: 0 10px;
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   background: color-mix(in srgb, var(--accent) 12%, var(--surface-strong));
   font-size: 0.78rem;
   font-weight: 750;
@@ -4271,7 +4272,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   align-items: center;
   justify-content: center;
   border-radius: 9px;
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   background: color-mix(in srgb, var(--accent) 14%, var(--surface));
 }
 .settings-row__copy {
@@ -4383,7 +4384,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   flex: 0 0 auto;
   border-radius: 999px;
   padding: 4px 8px;
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   background: var(--accent-soft);
   font-size: 0.68rem;
   font-weight: 700;
@@ -4517,7 +4518,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   gap: 5px;
   border-radius: 7px;
   padding: 10px 11px;
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   background: color-mix(in srgb, var(--canvas) 90%, var(--accent) 10%);
 }
 
@@ -4551,7 +4552,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
 }
 
 :root[data-sidebar-monochrome-mode="theme"] .settings-icon-preview--mono {
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
 }
 :root[data-sidebar-monochrome-mode="neutral"] .settings-icon-preview--mono {
   color: var(--text);
@@ -5073,7 +5074,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   align-items: center;
   gap: 9px;
   margin-bottom: 10px;
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
 }
 
 .settings-learning-card__heading h3 {
@@ -5338,7 +5339,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
 }
 
 .settings-profile__identity-heading > div,
@@ -5563,7 +5564,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   margin-top: 28px;
   padding-top: 22px;
   border-top: 1px solid color-mix(in srgb, var(--text) 7%, transparent);
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
 }
 
 .settings-profile__form-section-heading > div {
@@ -6316,8 +6317,8 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   --accent-soft: rgba(236, 77, 155, 0.17);
   --accent-border: rgba(236, 77, 155, 0.44);
   --accent-shadow: rgba(190, 35, 117, 0.27);
-  --on-accent: #32051d;
-  --on-accent-glyph: #32051d;
+  --on-accent: #280317;
+  --on-accent-glyph: #280317;
   --card-surface: #351326;
   --card-surface-raised: #431a31;
   --card-surface-soft: #270e1d;
@@ -6456,7 +6457,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   --border-strong: transparent;
   --text: #08251f;
   --text-secondary: #36554e;
-  --muted: #5b7b72;
+  --muted: #547268;
   --accent: #087a70;
   --accent-hover: #06685f;
   --accent-soft: rgba(8, 122, 112, 0.12);
@@ -6469,6 +6470,25 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   --card-surface-soft: #f5fdfb;
   --card-surface-hover: #eaf8f3;
   --card-shadow: 0 14px 32px rgba(19, 89, 75, 0.1);
+}
+
+/* Accent fills and accent-colored copy have different contrast needs on the
+   deepest palettes. Keep the brand fill intact while giving small text a
+   foreground value that clears WCAG AA on its card surface. */
+:root[data-palette] {
+  --accent-ink: var(--accent);
+}
+
+:root[data-theme="dark"][data-palette="midnight"] {
+  --accent-ink: #6b88e6;
+}
+
+:root[data-theme="dark"][data-palette="graphite"] {
+  --accent-ink: #a184ff;
+}
+
+:root[data-theme="dark"][data-palette="signal"] {
+  --accent-ink: #ed5972;
 }
 
 /* Settings detail pages and shared workspace views */
@@ -6522,7 +6542,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   gap: 6px;
   padding: 8px 10px;
   border-radius: 999px;
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   background: var(--accent-soft);
   font-size: 0.75rem;
   font-weight: 650;
@@ -6536,7 +6556,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
 .settings-section__heading > svg {
   flex: 0 0 auto;
   margin-top: 2px;
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
 }
 
 .settings-section__heading h3 {
@@ -6564,7 +6584,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   align-items: center;
   justify-content: center;
   border-radius: 10px;
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   background: var(--accent-soft);
 }
 
@@ -6588,7 +6608,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
 .settings-session em {
   border-radius: 999px;
   padding: 5px 8px;
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   background: var(--accent-soft);
   font-size: 0.72rem;
   font-style: normal;
@@ -6799,7 +6819,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
 }
 
 .workspace-stat small {
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   font-weight: 650;
 }
 
@@ -6848,7 +6868,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
 }
 
 .workspace-segmented button.is-active {
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   background: var(--surface);
   box-shadow: 0 2px 7px color-mix(in srgb, var(--card-shadow) 38%, transparent);
 }
@@ -6861,7 +6881,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   background: var(--accent-soft);
   font-size: 0.72rem;
   font-style: normal;
@@ -6987,7 +7007,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   align-items: center;
   justify-content: center;
   border-radius: 12px;
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   background: var(--accent-soft);
 }
 .workspace-page--logout {
@@ -7176,7 +7196,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   align-items: center;
   justify-content: center;
   border-radius: 19px;
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   background: color-mix(in srgb, var(--accent) 16%, var(--surface));
   box-shadow: 0 14px 26px
     color-mix(in srgb, var(--accent-shadow) 40%, transparent);
@@ -7232,7 +7252,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
 }
 .discussion-hub__tabs button.is-active {
   border-bottom-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
 }
 .discussion-hub__tabs button:focus-visible {
   outline: 2px solid var(--accent);
@@ -7373,7 +7393,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
 .discussion-hub__composer-actions button,
 .discussion-hub__empty button {
   border: 0;
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   background: transparent;
   font: inherit;
   font-size: 0.76rem;
@@ -7552,7 +7572,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
 }
 .discussion-thread__context > span:first-child {
   overflow: hidden;
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   font-size: 0.76rem;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -7608,11 +7628,11 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   background: color-mix(in srgb, var(--success) 12%, var(--surface));
 }
 .discussion-thread__status.is-mentioned {
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   background: var(--accent-soft);
 }
 .discussion-thread__status.is-open {
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   background: color-mix(in srgb, var(--accent) 12%, var(--surface));
 }
 .discussion-thread__more {
@@ -7660,7 +7680,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
 .discussion-side-card header button {
   border: 0;
   padding: 0;
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   background: transparent;
   font: inherit;
   font-size: 0.73rem;
@@ -7765,7 +7785,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   background: var(--accent-soft);
 }
 .discussion-side-card--actions > button > div {
@@ -7785,7 +7805,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   white-space: nowrap;
 }
 .discussion-side-card--actions > button > svg {
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
 }
 
 .discussion-hub__empty {
@@ -7800,7 +7820,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text) 4%, transparent);
 }
 .discussion-hub__empty svg {
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
 }
 .discussion-hub__empty h2 {
   margin: 4px 0 0;
@@ -8200,7 +8220,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
 
 .settings-profile__public-content h3 svg,
 .settings-profile__preview-card h3 svg {
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
 }
 
 .settings-profile__username,
@@ -8339,6 +8359,17 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   padding: 0 20px;
 }
 
+.settings-profile__error.settings-profile__save-error {
+  margin: 16px 0 0;
+  border: 1px solid color-mix(in srgb, var(--danger) 34%, transparent);
+  border-radius: 9px;
+  padding: 10px 12px;
+  color: color-mix(in srgb, var(--danger) 58%, var(--text)) !important;
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface-strong));
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
 .settings-profile__form-section {
   padding: 21px 0;
   border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
@@ -8445,7 +8476,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   align-items: center;
   flex: 0 0 auto;
   gap: 5px;
-  min-height: 22px;
+  min-height: 24px;
   color: var(--text-secondary);
   font-size: 0.71rem;
   font-weight: 600;
@@ -8628,7 +8659,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   border: 1px solid color-mix(in srgb, var(--accent) 42%, transparent);
   border-radius: 8px;
   padding: 0 10px;
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   background: color-mix(in srgb, var(--accent) 9%, transparent);
   font: inherit;
   font-size: 0.68rem;
@@ -8663,7 +8694,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   background: color-mix(in srgb, var(--accent) 13%, transparent);
 }
 

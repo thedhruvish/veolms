@@ -590,7 +590,7 @@ export function CoursesPage({
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onEscape);
     };
-  }, []);
+  }, [onNavigatePage]);
 
   useEffect(() => {
     if (!notice) return undefined;

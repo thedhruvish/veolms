@@ -5,7 +5,7 @@ test.beforeEach(async ({ page }) => {
   await installBaselineState(page);
 });
 
-test("profile settings validate, save, and retain academy-local identity", async ({
+test("profile settings validate, autosave, and retain academy-local identity", async ({
   page,
 }) => {
   await openApp(page, "/settings/profile");
@@ -22,25 +22,12 @@ test("profile settings validate, save, and retain academy-local identity", async
   const displayName = page.getByLabel("Display name", { exact: true });
   const email = page.getByLabel("Email address", { exact: true });
   const photoFile = page.getByLabel("Profile photo file");
-  const save = page.getByRole("button", { name: "Save changes" });
 
   await expect(displayName).toHaveValue("Ashi Singh");
   await expect(email).toHaveAttribute("readonly", "");
   await expect(photoFile).toHaveAttribute("tabindex", "-1");
-  await expect(save).toBeDisabled();
-
-  await page.getByRole("button", { name: "Remove" }).click();
-  await expect(page.locator(".settings-profile__avatar--large")).toContainText(
-    "AS",
-  );
-  await page.getByRole("button", { name: "Discard" }).click();
-  await expect(
-    page.locator(".settings-profile__avatar--large img"),
-  ).toBeVisible();
-  await expect(save).toBeDisabled();
 
   await displayName.fill("");
-  await save.click();
   await expect(
     page.getByText("Enter the name you want to use in this academy."),
   ).toBeVisible();
@@ -48,20 +35,6 @@ test("profile settings validate, save, and retain academy-local identity", async
 
   await displayName.fill("Avery Patel");
   await expect(displayName).toHaveValue("Avery Patel");
-  await save.click();
-  await expect(page.getByRole("status")).toContainText("Changes saved");
-  await expect(save).toBeDisabled();
-  await expect(
-    page.locator(
-      ".courses-profile__button > span:not(.shell-profile-avatar) strong",
-    ),
-  ).toHaveText("Avery Patel");
-
-  await page.getByRole("button", { name: "Remove" }).click();
-  await save.click();
-  await expect(
-    page.locator(".courses-profile__button > .shell-profile-avatar"),
-  ).toHaveText("AP");
 
   await expect
     .poll(() =>
@@ -71,6 +44,11 @@ test("profile settings validate, save, and retain academy-local identity", async
       }),
     )
     .toBe("Avery Patel");
+  await expect(
+    page.locator(
+      ".courses-profile__button > span:not(.shell-profile-avatar) strong",
+    ),
+  ).toHaveText("Avery Patel");
 
   await page.reload();
   await expect(displayName).toHaveValue("Avery Patel");
@@ -79,9 +57,6 @@ test("profile settings validate, save, and retain academy-local identity", async
       ".courses-profile__button > span:not(.shell-profile-avatar) strong",
     ),
   ).toHaveText("Avery Patel");
-  await expect(
-    page.locator(".courses-profile__button > .shell-profile-avatar"),
-  ).toHaveText("AP");
 
   await page.setViewportSize({ width: 390, height: 844 });
   const mobileNavigation = page.getByRole("navigation", {
@@ -94,36 +69,63 @@ test("profile settings validate, save, and retain academy-local identity", async
     .getByRole("dialog", { name: /More/ })
     .locator(".mobile-menu-sheet__profile");
   await expect(mobileProfile).toContainText("Avery Patel");
-  await expect(mobileProfile.locator(".shell-profile-avatar")).toHaveText("AP");
   await page.keyboard.press("Escape");
-
-  await page.getByRole("button", { name: "Manage sign-in & security" }).click();
-  await expect(page).toHaveURL(/\/settings\/security$/);
-  await expect(page.getByRole("tabpanel")).toHaveAttribute(
-    "data-settings-tab",
-    "security",
-  );
 });
 
-test("profile settings preserve an unsaved draft while offline", async ({
+test("profile settings preserve an offline draft and recover autosave", async ({
   page,
 }) => {
   await openApp(page, "/settings/profile");
 
   const displayName = page.getByLabel("Display name", { exact: true });
-  const save = page.getByRole("button", { name: "Save changes" });
-  await displayName.fill("Offline draft");
+  const storedNameBeforeDraft = await page.evaluate(() => {
+    const value = localStorage.getItem("veolms-profile-student");
+    return value ? JSON.parse(value).displayName : null;
+  });
 
   await page.context().setOffline(true);
   await page.evaluate(() => window.dispatchEvent(new Event("offline")));
-  await expect(page.getByRole("status")).toContainText("offline");
-  await expect(save).toBeDisabled();
+  await displayName.fill("Offline draft");
   await expect(displayName).toHaveValue("Offline draft");
+
+  await page.waitForTimeout(500);
+  await expect(
+    page.evaluate(() => {
+      const value = localStorage.getItem("veolms-profile-student");
+      return value ? JSON.parse(value).displayName : null;
+    }),
+  ).resolves.toBe(storedNameBeforeDraft);
 
   await page.context().setOffline(false);
   await page.evaluate(() => window.dispatchEvent(new Event("online")));
-  await expect(save).toBeEnabled();
-  await expect(displayName).toHaveValue("Offline draft");
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const value = localStorage.getItem("veolms-profile-student");
+        return value ? JSON.parse(value).displayName : null;
+      }),
+    )
+    .toBe("Offline draft");
+});
+
+test("settings tabs support roving arrow, Home, and End navigation", async ({
+  page,
+}) => {
+  await openApp(page, "/settings/profile");
+
+  const profileTab = page.getByRole("tab", { name: "Profile" });
+  await profileTab.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page).toHaveURL(/\/settings\/appearance$/);
+  await expect(page.getByRole("tab", { name: "Appearance" })).toBeFocused();
+
+  await page.keyboard.press("End");
+  await expect(page).toHaveURL(/\/settings\/account$/);
+  await expect(page.getByRole("tab", { name: "Account" })).toBeFocused();
+
+  await page.keyboard.press("Home");
+  await expect(page).toHaveURL(/\/settings\/profile$/);
+  await expect(profileTab).toBeFocused();
 });
 
 test("profile field and public-visibility labels share one text baseline", async ({

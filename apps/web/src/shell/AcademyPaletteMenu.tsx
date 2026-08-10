@@ -42,7 +42,7 @@ export function AcademyPaletteMenu({
     itemRefs.current[Math.max(0, selectedIndex)]?.focus({
       preventScroll: true,
     });
-  }, []);
+  }, [selectedTheme, themes]);
 
   const previewThemeAt = (index: number) => {
     const nextTheme = themes[index];
