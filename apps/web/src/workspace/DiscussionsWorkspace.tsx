@@ -147,7 +147,11 @@ function DiscussionComposer({
 }: {
   kind: "question" | "discussion";
   onCancel: () => void;
-  onPublish: (title: string, content: string) => void;
+  onPublish: (
+    kind: "question" | "discussion",
+    title: string,
+    content: string,
+  ) => void;
 }) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -155,7 +159,7 @@ function DiscussionComposer({
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!title.trim() || !content.trim()) return;
-    onPublish(title.trim(), content.trim());
+    onPublish(kind, title.trim(), content.trim());
   };
 
   return (
@@ -261,7 +265,14 @@ export function DiscussionsWorkspace({
       : matching;
   }, [activeTab, course, query, sort, status, threads]);
 
-  const publish = (title: string, excerpt: string) => {
+  const publish = (
+    kind: "question" | "discussion",
+    title: string,
+    excerpt: string,
+  ) => {
+    const destinationTab: DiscussionTab =
+      kind === "question" ? "q-and-a" : "comments";
+
     setThreads((current) => [
       {
         id: `thread-${Date.now()}`,
@@ -276,13 +287,15 @@ export function DiscussionsWorkspace({
         status: "open",
         replies: 0,
         activity: "Just now",
-        tabs: ["q-and-a", "following"],
+        tabs: [destinationTab, "following"],
       },
       ...current,
     ]);
     setComposer(null);
-    navigateTab("q-and-a");
-    setNotice?.("Your discussion has been published.");
+    navigateTab(destinationTab);
+    setNotice?.(
+      `Your ${kind === "question" ? "question" : "discussion"} has been published.`,
+    );
   };
 
   const openThread = (thread: DiscussionThread) => {

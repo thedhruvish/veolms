@@ -1,36 +1,14 @@
-import { useEffect, useState } from "react";
-import { CheckCircle, DeviceMobile, Laptop, LockKey, ShieldCheck, SignOut } from "@phosphor-icons/react";
+import {
+  DeviceMobile,
+  Laptop,
+  LockKey,
+  ShieldCheck,
+  SignOut,
+  WarningCircle,
+} from "@phosphor-icons/react";
 import { SettingRow, SettingsToggle } from "./SettingsControls";
 
-interface SecurityPreferences {
-  twoFactor: boolean;
-  newDeviceAlerts: boolean;
-  loginAlerts: boolean;
-}
-
-const STORAGE_KEY = "veolms-security-preferences";
-const defaults: SecurityPreferences = { twoFactor: false, newDeviceAlerts: true, loginAlerts: true };
-
-function readPreferences(): SecurityPreferences {
-  if (typeof window === "undefined") return defaults;
-  try {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    const parsed: unknown = stored ? JSON.parse(stored) : {};
-    return { ...defaults, ...(typeof parsed === "object" && parsed !== null ? parsed : {}) };
-  } catch {
-    return defaults;
-  }
-}
-
 export function SecuritySettings() {
-  const [preferences, setPreferences] = useState(readPreferences);
-  const [otherSessions, setOtherSessions] = useState(true);
-  const update = (next: Partial<SecurityPreferences>) => setPreferences((current) => ({ ...current, ...next }));
-
-  useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
-  }, [preferences]);
-
   return (
     <div className="settings-detail" aria-label="Privacy and security settings">
       <header className="settings-detail__header">
@@ -38,23 +16,68 @@ export function SecuritySettings() {
           <h2>Privacy &amp; security</h2>
           <p>Protect your account and keep track of where it is active.</p>
         </div>
-        <span className="settings-detail__saved"><CheckCircle size={17} weight="fill" /> Saved automatically</span>
+        <span className="settings-detail__saved">
+          <WarningCircle size={17} weight="fill" /> Preview only
+        </span>
       </header>
 
-      <section className="settings-section" aria-labelledby="protection-heading">
+      <p
+        id="security-unavailable-note"
+        className="settings-danger-note"
+        role="status"
+      >
+        Security services are not connected yet. These controls are read-only
+        previews: settings will not be saved or enforced, and no device can be
+        signed out from this page.
+      </p>
+
+      <section
+        className="settings-section"
+        aria-labelledby="protection-heading"
+      >
         <header className="settings-section__heading">
           <ShieldCheck size={20} weight="duotone" />
-          <div><h3 id="protection-heading">Account protection</h3><p>Add safeguards to the way you sign in.</p></div>
+          <div>
+            <h3 id="protection-heading">Account protection</h3>
+            <p>Add safeguards to the way you sign in.</p>
+          </div>
         </header>
         <div className="settings-row-list">
-          <SettingRow icon={LockKey} label="Two-factor authentication" note="Require a verification code when signing in on a new device.">
-            <SettingsToggle checked={preferences.twoFactor} onChange={(twoFactor) => update({ twoFactor })} label="Two-factor authentication" />
+          <SettingRow
+            icon={LockKey}
+            label="Two-factor authentication"
+            note="Unavailable until server-side sign-in protection is connected."
+          >
+            <SettingsToggle
+              checked={false}
+              onChange={() => undefined}
+              label="Two-factor authentication"
+              disabled
+            />
           </SettingRow>
-          <SettingRow icon={DeviceMobile} label="New device alerts" note="Get notified when your account is used on a new device.">
-            <SettingsToggle checked={preferences.newDeviceAlerts} onChange={(newDeviceAlerts) => update({ newDeviceAlerts })} label="New device alerts" />
+          <SettingRow
+            icon={DeviceMobile}
+            label="New device alerts"
+            note="Unavailable until account activity alerts are connected."
+          >
+            <SettingsToggle
+              checked={false}
+              onChange={() => undefined}
+              label="New device alerts"
+              disabled
+            />
           </SettingRow>
-          <SettingRow icon={ShieldCheck} label="Sign-in alerts" note="Receive an alert for sign-ins from an unfamiliar location.">
-            <SettingsToggle checked={preferences.loginAlerts} onChange={(loginAlerts) => update({ loginAlerts })} label="Sign-in alerts" />
+          <SettingRow
+            icon={ShieldCheck}
+            label="Sign-in alerts"
+            note="Unavailable until account activity alerts are connected."
+          >
+            <SettingsToggle
+              checked={false}
+              onChange={() => undefined}
+              label="Sign-in alerts"
+              disabled
+            />
           </SettingRow>
         </div>
       </section>
@@ -62,21 +85,39 @@ export function SecuritySettings() {
       <section className="settings-section" aria-labelledby="sessions-heading">
         <header className="settings-section__heading">
           <Laptop size={20} weight="duotone" />
-          <div><h3 id="sessions-heading">Active sessions</h3><p>Review the devices that currently have access to your account.</p></div>
+          <div>
+            <h3 id="sessions-heading">Active sessions</h3>
+            <p>Preview layout only. Live session data is not connected yet.</p>
+          </div>
         </header>
         <div className="settings-session-list">
           <div className="settings-session">
-            <span className="settings-session__icon"><Laptop size={20} weight="duotone" /></span>
-            <span><strong>This device</strong><small>Windows · Chrome · Active now</small></span>
-            <em>Current</em>
+            <span className="settings-session__icon">
+              <Laptop size={20} weight="duotone" />
+            </span>
+            <span>
+              <strong>Example desktop</strong>
+              <small>Live session status unavailable</small>
+            </span>
+            <em>Preview</em>
           </div>
-          {otherSessions && (
-            <div className="settings-session">
-              <span className="settings-session__icon"><DeviceMobile size={20} weight="duotone" /></span>
-              <span><strong>Mobile device</strong><small>Android · Last active yesterday</small></span>
-              <button type="button" className="settings-action settings-action--quiet" onClick={() => setOtherSessions(false)}><SignOut size={16} /> Sign out</button>
-            </div>
-          )}
+          <div className="settings-session">
+            <span className="settings-session__icon">
+              <DeviceMobile size={20} weight="duotone" />
+            </span>
+            <span>
+              <strong>Example mobile device</strong>
+              <small>Live session status unavailable</small>
+            </span>
+            <button
+              type="button"
+              className="settings-action settings-action--quiet"
+              aria-describedby="security-unavailable-note"
+              disabled
+            >
+              <SignOut size={16} /> Sign out unavailable
+            </button>
+          </div>
         </div>
       </section>
     </div>

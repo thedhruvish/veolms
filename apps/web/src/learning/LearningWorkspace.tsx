@@ -1,5 +1,11 @@
 import { ArrowLeft } from "@phosphor-icons/react";
-import { useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import type {
   CSSProperties,
   KeyboardEvent as ReactKeyboardEvent,
@@ -87,23 +93,20 @@ export function LearningWorkspace({
 
   const toggleTheaterMode = () => {
     setLessonDrawer(false);
-    setTheaterMode((current) => {
-      const nextMode = !current;
+    const nextMode = !theaterMode;
+    setTheaterMode(nextMode);
 
-      if (nextMode) {
-        window.requestAnimationFrame(() => {
-          window.scrollTo({
-            top: 0,
-            behavior: window.matchMedia("(prefers-reduced-motion: reduce)")
-              .matches
-              ? "auto"
-              : "smooth",
-          });
+    if (nextMode) {
+      window.requestAnimationFrame(() => {
+        window.scrollTo({
+          top: 0,
+          behavior: window.matchMedia("(prefers-reduced-motion: reduce)")
+            .matches
+            ? "auto"
+            : "smooth",
         });
-      }
-
-      return nextMode;
-    });
+      });
+    }
   };
 
   const openLessonDrawer = () => {
@@ -124,14 +127,14 @@ export function LearningWorkspace({
     );
   };
 
-  const commitCurriculumWidth = (value: number) => {
+  const commitCurriculumWidth = useCallback((value: number) => {
     const nextWidth = Math.min(560, Math.max(300, value));
     setCurriculumWidth(nextWidth);
     localStorage.setItem(
       "veolms-curriculum-width",
       String(Math.round(nextWidth)),
     );
-  };
+  }, []);
 
   const startCurriculumResize = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (window.matchMedia("(max-width: 1080px)").matches) return;
@@ -153,111 +156,125 @@ export function LearningWorkspace({
     setCurriculumResizing(true);
   };
 
-  const collapseCurriculumFromDrag = (
-    resize: CurriculumResize,
-    pointerX: number,
-  ) => {
-    // Keep the active resize session and pointer capture alive. The rail stays
-    // interactive while collapsed so the same held gesture can move back left
-    // and expand the curriculum again without a second pointer-down.
-    resize.collapsedDuringDrag = true;
-    resize.collapsedAtX = pointerX;
-    resize.expandedFromRail = false;
-    resize.expandedAtX = null;
-    setCurriculumCollapsed(true);
-  };
+  const collapseCurriculumFromDrag = useCallback(
+    (resize: CurriculumResize, pointerX: number) => {
+      // Keep the active resize session and pointer capture alive. The rail stays
+      // interactive while collapsed so the same held gesture can move back left
+      // and expand the curriculum again without a second pointer-down.
+      resize.collapsedDuringDrag = true;
+      resize.collapsedAtX = pointerX;
+      resize.expandedFromRail = false;
+      resize.expandedAtX = null;
+      setCurriculumCollapsed(true);
+    },
+    [],
+  );
 
-  const moveCurriculumResize = (event: CurriculumPointerEvent) => {
-    const resize = curriculumResizeRef.current;
-    if (!resize || resize.pointerId !== event.pointerId) return;
+  const moveCurriculumResize = useCallback(
+    (event: CurriculumPointerEvent) => {
+      const resize = curriculumResizeRef.current;
+      if (!resize || resize.pointerId !== event.pointerId) return;
 
-    if (resize.collapsedDuringDrag && !resize.expandedFromRail) {
-      const expandDelta = resize.collapsedAtX! - event.clientX;
-      if (expandDelta < CURRICULUM_EXPAND_DRAG_DISTANCE) return;
-      resize.collapsedDuringDrag = false;
-      resize.expandedFromRail = true;
-      resize.expandedAtX = event.clientX;
-      resize.width = CURRICULUM_MIN_WIDTH;
+      if (resize.collapsedDuringDrag && !resize.expandedFromRail) {
+        const expandDelta = resize.collapsedAtX! - event.clientX;
+        if (expandDelta < CURRICULUM_EXPAND_DRAG_DISTANCE) return;
+        resize.collapsedDuringDrag = false;
+        resize.expandedFromRail = true;
+        resize.expandedAtX = event.clientX;
+        resize.width = CURRICULUM_MIN_WIDTH;
+        setCurriculumCollapsed(false);
+        setCurriculumWidth(CURRICULUM_MIN_WIDTH);
+        return;
+      }
+
+      if (resize.collapsedAtStart && !resize.expandedFromRail) {
+        const expandDelta = resize.startX - event.clientX;
+        if (expandDelta < CURRICULUM_EXPAND_DRAG_DISTANCE) return;
+        resize.expandedFromRail = true;
+        resize.expandedAtX = event.clientX;
+        resize.width = CURRICULUM_MIN_WIDTH;
+        setCurriculumCollapsed(false);
+        setCurriculumWidth(CURRICULUM_MIN_WIDTH);
+        return;
+      }
+
+      // The rail sits on the curriculum's left edge: dragging right narrows the
+      // panel, while dragging left gives it more room.
+      const dragStartX = resize.expandedFromRail
+        ? resize.expandedAtX!
+        : resize.startX;
+      const widthDelta = dragStartX - event.clientX;
+      const baseWidth = resize.expandedFromRail
+        ? CURRICULUM_MIN_WIDTH
+        : resize.startWidth;
+      const widthPastMinimum = baseWidth + widthDelta - CURRICULUM_MIN_WIDTH;
+      const forceClose = widthPastMinimum <= -CURRICULUM_COLLAPSE_DRAG_DISTANCE;
+      if (forceClose) {
+        collapseCurriculumFromDrag(resize, event.clientX);
+        return;
+      }
+
+      resize.width = Math.min(
+        560,
+        Math.max(CURRICULUM_MIN_WIDTH, baseWidth + widthDelta),
+      );
+      setCurriculumWidth(resize.width);
+    },
+    [collapseCurriculumFromDrag],
+  );
+
+  const endCurriculumResize = useCallback(
+    (event: CurriculumPointerEvent, cancelled = false) => {
+      const resize = curriculumResizeRef.current;
+      if (!resize || resize.pointerId !== event.pointerId) return;
+      const dragStartX = resize.expandedFromRail
+        ? resize.expandedAtX!
+        : resize.startX;
+      const widthDelta = dragStartX - event.clientX;
+      curriculumResizeRef.current = null;
+      setCurriculumResizing(false);
+      resize.handle?.releasePointerCapture?.(resize.pointerId);
+
+      if (cancelled) {
+        setCurriculumCollapsed(resize.collapsedAtStart);
+        setCurriculumWidth(resize.startWidth);
+        return;
+      }
+      if (resize.collapsedDuringDrag) {
+        setCurriculumCollapsed(true);
+        return;
+      }
+      if (resize.collapsedAtStart && !resize.expandedFromRail) {
+        setCurriculumCollapsed(true);
+        return;
+      }
+      const baseWidth = resize.expandedFromRail
+        ? CURRICULUM_MIN_WIDTH
+        : resize.startWidth;
+      const widthPastMinimum = baseWidth + widthDelta - CURRICULUM_MIN_WIDTH;
+      if (widthPastMinimum <= -CURRICULUM_COLLAPSE_DRAG_DISTANCE) {
+        setCurriculumCollapsed(true);
+        return;
+      }
       setCurriculumCollapsed(false);
-      setCurriculumWidth(CURRICULUM_MIN_WIDTH);
-      return;
-    }
+      commitCurriculumWidth(resize.width);
+    },
+    [commitCurriculumWidth],
+  );
 
-    if (resize.collapsedAtStart && !resize.expandedFromRail) {
-      const expandDelta = resize.startX - event.clientX;
-      if (expandDelta < CURRICULUM_EXPAND_DRAG_DISTANCE) return;
-      resize.expandedFromRail = true;
-      resize.expandedAtX = event.clientX;
-      resize.width = CURRICULUM_MIN_WIDTH;
-      setCurriculumCollapsed(false);
-      setCurriculumWidth(CURRICULUM_MIN_WIDTH);
-      return;
-    }
+  useLayoutEffect(() => {
+    curriculumResizeMoveRef.current = moveCurriculumResize;
+    curriculumResizeFinishRef.current = endCurriculumResize;
 
-    // The rail sits on the curriculum's left edge: dragging right narrows the
-    // panel, while dragging left gives it more room.
-    const dragStartX = resize.expandedFromRail
-      ? resize.expandedAtX!
-      : resize.startX;
-    const widthDelta = dragStartX - event.clientX;
-    const baseWidth = resize.expandedFromRail
-      ? CURRICULUM_MIN_WIDTH
-      : resize.startWidth;
-    const widthPastMinimum = baseWidth + widthDelta - CURRICULUM_MIN_WIDTH;
-    const forceClose = widthPastMinimum <= -CURRICULUM_COLLAPSE_DRAG_DISTANCE;
-    if (forceClose) {
-      collapseCurriculumFromDrag(resize, event.clientX);
-      return;
-    }
-
-    resize.width = Math.min(
-      560,
-      Math.max(CURRICULUM_MIN_WIDTH, baseWidth + widthDelta),
-    );
-    setCurriculumWidth(resize.width);
-  };
-
-  const endCurriculumResize = (
-    event: CurriculumPointerEvent,
-    cancelled = false,
-  ) => {
-    const resize = curriculumResizeRef.current;
-    if (!resize || resize.pointerId !== event.pointerId) return;
-    const dragStartX = resize.expandedFromRail
-      ? resize.expandedAtX!
-      : resize.startX;
-    const widthDelta = dragStartX - event.clientX;
-    curriculumResizeRef.current = null;
-    setCurriculumResizing(false);
-    resize.handle?.releasePointerCapture?.(resize.pointerId);
-
-    if (cancelled) {
-      setCurriculumCollapsed(resize.collapsedAtStart);
-      setCurriculumWidth(resize.startWidth);
-      return;
-    }
-    if (resize.collapsedDuringDrag) {
-      setCurriculumCollapsed(true);
-      return;
-    }
-    if (resize.collapsedAtStart && !resize.expandedFromRail) {
-      setCurriculumCollapsed(true);
-      return;
-    }
-    const baseWidth = resize.expandedFromRail
-      ? CURRICULUM_MIN_WIDTH
-      : resize.startWidth;
-    const widthPastMinimum = baseWidth + widthDelta - CURRICULUM_MIN_WIDTH;
-    if (widthPastMinimum <= -CURRICULUM_COLLAPSE_DRAG_DISTANCE) {
-      setCurriculumCollapsed(true);
-      return;
-    }
-    setCurriculumCollapsed(false);
-    commitCurriculumWidth(resize.width);
-  };
-
-  curriculumResizeMoveRef.current = moveCurriculumResize;
-  curriculumResizeFinishRef.current = endCurriculumResize;
+    return () => {
+      if (curriculumResizeMoveRef.current === moveCurriculumResize) {
+        curriculumResizeMoveRef.current = null;
+      }
+      if (curriculumResizeFinishRef.current === endCurriculumResize) {
+        curriculumResizeFinishRef.current = null;
+      }
+    };
+  }, [moveCurriculumResize, endCurriculumResize]);
 
   useEffect(() => {
     if (!curriculumResizing) return undefined;

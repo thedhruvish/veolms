@@ -27,7 +27,7 @@ beforeAll(() => {
 describe("ProfileSettings mobile visibility confirmation", () => {
   beforeEach(() => window.localStorage.clear());
 
-  it("requires an explicit acknowledgement before showing the mobile number", async () => {
+  it("requires acknowledgement but keeps the mobile number private while publishing is unconnected", async () => {
     render(<ProfileSettings role="student" />);
 
     const mobileVisibility = screen.getByRole("checkbox", {
@@ -44,7 +44,7 @@ describe("ProfileSettings mobile visibility confirmation", () => {
       name: /I understand that anyone can call or message me on WhatsApp/i,
     });
     const confirm = within(dialog).getByRole("button", {
-      name: "OK, show publicly",
+      name: "I understand, keep private",
     });
 
     expect(mobileVisibility).not.toBeChecked();
@@ -56,7 +56,12 @@ describe("ProfileSettings mobile visibility confirmation", () => {
     fireEvent.click(confirm);
 
     await waitFor(() => expect(dialog).not.toHaveAttribute("open"));
-    expect(mobileVisibility).toBeChecked();
+    expect(mobileVisibility).not.toBeChecked();
+    expect(
+      screen.getByText(
+        /Mobile publishing is unavailable until server verification is connected/i,
+      ),
+    ).toBeInTheDocument();
   });
 
   it("leaves the mobile number private when confirmation is cancelled", async () => {
@@ -101,6 +106,27 @@ describe("ProfileSettings mobile visibility confirmation", () => {
         name: "Show your mobile number publicly?",
       }),
     ).not.toBeInTheDocument();
+  });
+
+  it("does not accept a client-only verification code", async () => {
+    render(<ProfileSettings role="student" />);
+
+    const mobileNumber = screen.getByLabelText("Mobile number");
+    fireEvent.change(mobileNumber, { target: { value: "+91 90000 00000" } });
+    fireEvent.click(screen.getByRole("button", { name: "Verify number" }));
+
+    expect(
+      await screen.findByText("Mobile verification unavailable"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/No code was sent/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("textbox", { name: "Verification code" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(
+        mobileNumber.closest(".settings-profile__phone-control")!,
+      ).getByText("Not verified"),
+    ).toBeInTheDocument();
   });
 
   it("rejects profile photos larger than 2 MB before reading them", () => {
