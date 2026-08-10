@@ -75,6 +75,8 @@ jobs:
           aws s3 sync apps/web/build/client "s3://${AWS_S3_BUCKET}" \
             --delete \
             --exclude "index.html" \
+            --exclude "course-videos/" \
+            --exclude "course-videos/*" \
             --cache-control "public,max-age=300,must-revalidate" \
             --only-show-errors
 
