@@ -3,7 +3,7 @@ import { getCourseTitle } from "../learning/courseMetadata";
 const productName = "ProCodrr";
 
 export type ShellPage =
-  "home" | "my-learning" | "courses" | "placeholder" | "settings";
+  "home" | "my-learning" | "courses" | "placeholder" | "settings" | "workspace";
 
 export interface ShellRouteDescriptor {
   kind: "shell";
@@ -57,6 +57,20 @@ export const routeDescriptors = {
     title: "Courses",
     description: "Browse enrolled and available ProCodrr courses.",
   },
+  "course-create": {
+    kind: "shell",
+    page: "placeholder",
+    section: "Create Course",
+    title: "Create Course",
+    description: "Create and publish a new ProCodrr course.",
+  },
+  "course-overview": {
+    kind: "shell",
+    page: "placeholder",
+    section: "Course Overview",
+    title: "Course Overview",
+    description: "Review course information, curriculum, and progress.",
+  },
   wishlist: {
     kind: "shell",
     page: "courses",
@@ -66,7 +80,7 @@ export const routeDescriptors = {
   },
   students: {
     kind: "shell",
-    page: "placeholder",
+    page: "workspace",
     section: "Students",
     title: "Students",
     description: "Review learners, access, and progress across your academy.",
@@ -80,7 +94,7 @@ export const routeDescriptors = {
   },
   discussions: {
     kind: "shell",
-    page: "placeholder",
+    page: "workspace",
     section: "Discussions",
     title: "Discussions",
     description: "Bring course conversations, questions, and replies together.",
@@ -187,11 +201,10 @@ export const routeDescriptors = {
   },
   logout: {
     kind: "shell",
-    page: "placeholder",
+    page: "workspace",
     section: "Logout",
     title: "Sign out",
-    description:
-      "Your sign-out flow will live here when account sessions are connected.",
+    description: "End your session safely on this device.",
   },
   "home-fallback": {
     kind: "shell",
@@ -213,6 +226,7 @@ export const destinationPaths: Readonly<Record<string, string>> = {
   dashboard: "/dashboard",
   "my-learning": "/my-learning",
   courses: "/courses",
+  "create-course": "/courses/create",
   wishlist: "/wishlist",
   students: "/students",
   reviews: "/reviews",
@@ -230,6 +244,7 @@ export const destinationPaths: Readonly<Record<string, string>> = {
   Orders: "/orders",
   Messages: "/messages",
   Settings: "/settings",
+  "Create Course": "/courses/create",
   "Order History": "/order-history",
   Notifications: "/notifications",
   Logout: "/logout",
@@ -241,6 +256,7 @@ const canonicalPathsByRouteId = {
   dashboard: "/dashboard",
   "my-learning": "/my-learning",
   courses: "/courses",
+  "course-create": "/courses/create",
   wishlist: "/wishlist",
   students: "/students",
   reviews: "/reviews",
@@ -280,6 +296,18 @@ export const getEffectiveRouteId = (
 
   if (routeId === "learning") {
     const match = /^\/courses\/([^/]+)$/.exec(normalizedPath);
+    const encodedSlug = match?.[1];
+    if (!encodedSlug) return "home-fallback";
+    try {
+      decodeURIComponent(encodedSlug);
+      return routeId;
+    } catch {
+      return "home-fallback";
+    }
+  }
+
+  if (routeId === "course-overview") {
+    const match = /^\/courses\/([^/]+)\/overview$/.exec(normalizedPath);
     const encodedSlug = match?.[1];
     if (!encodedSlug) return "home-fallback";
     try {

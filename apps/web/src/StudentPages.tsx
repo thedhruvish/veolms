@@ -46,6 +46,7 @@ export interface LearningCourse {
 interface NavigationCallbacks {
   onOpenCourse: (course: LearningCourse) => void;
   onNavigatePage: (page: string) => void;
+  studentName?: string;
 }
 
 interface SectionHeaderProps {
@@ -220,17 +221,19 @@ function ProgressBar({ value, completed = false }: ProgressBarProps) {
 export function StudentHome({
   onOpenCourse,
   onNavigatePage,
+  studentName,
 }: NavigationCallbacks) {
   const currentCourse = learningCourses[0]!;
   const continueCourses = [learningCourses[0]!, learningCourses[1]!];
   const goalCompletion = 72;
+  const firstName = (studentName?.trim() || "Ashi Singh").split(/\s+/)[0] || "Ashi";
 
   return (
     <div className="student-home">
       <header className="home-greeting-row">
         <div>
           <h1>
-            Good evening, Ava{" "}
+            Good evening, {firstName}{" "}
             <span className="home-wave" aria-hidden="true">
               👋
             </span>

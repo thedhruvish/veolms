@@ -1,9 +1,11 @@
 import {
   Bell,
+  BookOpen,
   ChartBar,
   ChatCircleDots,
   EnvelopeSimple,
   GearSix,
+  PlusCircle,
   SignOut,
   Sparkle,
   Star,
@@ -23,6 +25,18 @@ interface PlaceholderContent {
 }
 
 const placeholderContent: Record<string, PlaceholderContent> = {
+  "Create Course": {
+    title: "Create Course",
+    description: "Create and publish a new course for your academy.",
+    message: "Course creation is not implemented yet.",
+    icon: PlusCircle,
+  },
+  "Course Overview": {
+    title: "Course Overview",
+    description: "Course information and curriculum will appear here.",
+    message: "The course overview is yet to be designed.",
+    icon: BookOpen,
+  },
   Students: {
     title: "Students",
     description: "Review learners, access, and progress across your academy.",

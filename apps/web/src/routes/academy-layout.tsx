@@ -34,7 +34,6 @@ export default function AcademyLayout() {
   const openCourse = (course: Course | LearningCourse) => {
     localStorage.setItem("veolms-current-course-title", course.title);
     localStorage.setItem("veolms-current-course-id", course.id);
-    sessionStorage.setItem("veolms-course-autostart", "true");
     navigateTo(`/courses/${encodeURIComponent(course.id)}`);
   };
 

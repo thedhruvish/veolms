@@ -75,6 +75,7 @@ type QuickAction = readonly [
   icon: Icon,
   tone: string,
   notice: string,
+  destination?: string,
 ];
 
 interface DashboardPanelProps {
@@ -716,7 +717,10 @@ function AttentionPanel() {
   );
 }
 
-function QuickActions({ setNotice }: { setNotice?: (notice: string) => void }) {
+function QuickActions({
+  onNavigatePage,
+  setNotice,
+}: NavigateProps & { setNotice?: (notice: string) => void }) {
   const actions: readonly QuickAction[] = [
     [
       "Create Course",
@@ -724,6 +728,7 @@ function QuickActions({ setNotice }: { setNotice?: (notice: string) => void }) {
       PlusCircle,
       "violet",
       "Create Course selected. The course editor will be added later.",
+      "Create Course",
     ],
     [
       "Add Lecture",
@@ -750,8 +755,14 @@ function QuickActions({ setNotice }: { setNotice?: (notice: string) => void }) {
   return (
     <DashboardPanel className="creator-quick-panel" title="Quick Actions">
       <div className="creator-quick-grid">
-        {actions.map(([title, detail, Icon, tone, notice]) => (
-          <button type="button" key={title} onClick={() => setNotice?.(notice)}>
+        {actions.map(([title, detail, Icon, tone, notice, destination]) => (
+          <button
+            type="button"
+            key={title}
+            onClick={() =>
+              destination ? onNavigatePage?.(destination) : setNotice?.(notice)
+            }
+          >
             <span className={`creator-icon-circle tone-${tone}`}>
               <Icon size={20} weight="duotone" />
             </span>
@@ -786,11 +797,7 @@ export function CreatorDashboard({
           <button
             type="button"
             className="creator-primary-action"
-            onClick={() =>
-              setNotice?.(
-                "Create Course selected. The course editor will be added later.",
-              )
-            }
+            onClick={() => onNavigatePage?.("Create Course")}
           >
             <Plus size={18} /> Create Course
           </button>
@@ -835,7 +842,7 @@ export function CreatorDashboard({
         <DiscussionsPanel onNavigatePage={onNavigatePage} />
         <EnrollmentsPanel onNavigatePage={onNavigatePage} />
         <AttentionPanel />
-        <QuickActions setNotice={setNotice} />
+        <QuickActions onNavigatePage={onNavigatePage} setNotice={setNotice} />
       </div>
     </div>
   );

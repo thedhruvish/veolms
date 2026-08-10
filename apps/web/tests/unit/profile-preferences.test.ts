@@ -60,4 +60,24 @@ describe("academy-local profile preferences", () => {
     });
     expect(getStoredProfilePreferences("student")).toBeNull();
   });
+
+  it("persists public visibility choices with the profile", () => {
+    saveProfilePreferences("student", {
+      displayName: "Ashi Singh",
+      avatarDataUrl: "/assets/sofia-avatar.jpg",
+      emailPublic: true,
+      mobilePublic: true,
+      linkedinPublic: false,
+      githubPublic: true,
+      websitePublic: false,
+    });
+
+    expect(getProfileIdentity("student")).toMatchObject({
+      emailPublic: true,
+      mobilePublic: true,
+      linkedinPublic: false,
+      githubPublic: true,
+      websitePublic: false,
+    });
+  });
 });

@@ -5,6 +5,7 @@ import {
   lessonSequence,
   lessonsById,
   lessonVideoMap,
+  resolveCourseMediaBaseUrl,
   resolveCourseVideoSrc,
   sections,
 } from "../../src/learning/courseContent.js";
@@ -55,17 +56,33 @@ describe("learning course content", () => {
     expect(lessonVideoMap[6]).toBe(lessonVideoMap[10]);
   });
 
-  it("joins relative and CloudFront media prefixes without double slashes", () => {
+  it("builds the course-video prefix from the configured media origin", () => {
+    expect(resolveCourseMediaBaseUrl()).toBe("/course-videos");
+    expect(resolveCourseMediaBaseUrl("  ")).toBe("/course-videos");
+    expect(
+      resolveCourseMediaBaseUrl("https://media.example.cloudfront.net///"),
+    ).toBe("https://media.example.cloudfront.net/course-videos");
+  });
+
+  it("joins relative and configured media prefixes without double slashes", () => {
     expect(resolveCourseVideoSrc("lesson #1.mp4", "/course-videos/")).toBe(
       "/course-videos/lesson%20%231.mp4",
     );
     expect(
       resolveCourseVideoSrc(
         "lesson #1.mp4",
-        "https://media.example.cloudfront.net/course-videos///",
+        resolveCourseMediaBaseUrl("https://media.example.cloudfront.net/"),
       ),
     ).toBe(
       "https://media.example.cloudfront.net/course-videos/lesson%20%231.mp4",
+    );
+    expect(
+      resolveCourseVideoSrc(
+        "03 creating velms respository.mp4",
+        resolveCourseMediaBaseUrl("https://media.example.cloudfront.net"),
+      ),
+    ).toBe(
+      "https://media.example.cloudfront.net/course-videos/03%20creating%20velms%20respository.mp4",
     );
   });
 });

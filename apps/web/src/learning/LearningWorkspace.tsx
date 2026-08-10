@@ -7,12 +7,7 @@ import type {
 } from "react";
 import { VideoPlayer as YouTubeVideoPlayer } from "../VideoPlayer";
 import { getInitialAcademyTheme, persistAcademyTheme } from "../themes";
-import {
-  courseVideos,
-  lessonSequence,
-  lessonsById,
-  lessonVideoMap,
-} from "./courseContent";
+import { courseVideos, lessonsById, lessonVideoMap } from "./courseContent";
 import { Curriculum } from "./Curriculum";
 import { getCourseThumbnail, getCourseTitle } from "./courseMetadata";
 import { Discussion } from "./Discussion";
@@ -60,9 +55,6 @@ export function LearningWorkspace({
     const savedLesson = Number(localStorage.getItem("veolms-last-lesson"));
     return lessonsById.has(savedLesson) ? savedLesson : 1;
   });
-  const [autoStart] = useState(
-    () => sessionStorage.getItem("veolms-course-autostart") === "true",
-  );
   const courseTitle = getCourseTitle(courseSlug);
   const [lessonDrawer, setLessonDrawer] = useState(false);
   const [curriculumFocusRequest, setCurriculumFocusRequest] = useState(0);
@@ -105,14 +97,6 @@ export function LearningWorkspace({
 
       return nextMode;
     });
-  };
-
-  const selectNextLesson = () => {
-    const currentIndex = lessonSequence.indexOf(selectedLesson);
-    const nextLesson = lessonSequence[currentIndex + 1];
-    if (!nextLesson) return false;
-    setSelectedLesson(nextLesson);
-    return true;
   };
 
   const openLessonDrawer = () => {
@@ -334,6 +318,7 @@ export function LearningWorkspace({
 
   useEffect(() => {
     sessionStorage.removeItem("veolms-course-autostart");
+    localStorage.removeItem("veolms-player-autoplay");
   }, []);
 
   useEffect(() => {
@@ -392,7 +377,7 @@ export function LearningWorkspace({
             <button
               type="button"
               className="learning-workspace__back"
-              aria-label="Return to course overview"
+              aria-label="Return to all courses"
               onClick={onNavigateCourses}
             >
               <ArrowLeft size={22} />
@@ -402,8 +387,6 @@ export function LearningWorkspace({
               lessonTitle={currentLesson[1]}
               theaterMode={theaterMode}
               onTheaterToggle={toggleTheaterMode}
-              onAutoplayNext={selectNextLesson}
-              autoStart={autoStart}
             />
           </div>
 

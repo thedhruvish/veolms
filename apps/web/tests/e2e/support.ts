@@ -14,7 +14,7 @@ export const baselinePreferences: Readonly<Record<string, string>> = {
   "veolms-sidebar-width": "300",
   "veolms-theme": "dark",
   "veolms-academy-theme": "graphite",
-  "veolms-academy-theme-version": "graphite-default-v1",
+  "veolms-academy-theme-version": "veo-onyx-default-v2",
   "veolms-wishlist": "[]",
   "veolms-reduce-animations": "true",
   "veolms-player-ambient": "off",

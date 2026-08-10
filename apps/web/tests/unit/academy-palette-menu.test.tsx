@@ -23,6 +23,9 @@ const themes = [
 describe("AcademyPaletteMenu", () => {
   it("renders selected state and delegates the selected theme id", () => {
     const onSelect = vi.fn();
+    const onPreview = vi.fn();
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
     const { container } = render(
       <AcademyPaletteMenu
         themes={themes}
@@ -31,6 +34,9 @@ describe("AcademyPaletteMenu", () => {
         id="mobile-theme-menu"
         mobile
         onSelect={onSelect}
+        onPreview={onPreview}
+        onConfirm={onConfirm}
+        onCancel={onCancel}
       />,
     );
 
@@ -51,5 +57,48 @@ describe("AcademyPaletteMenu", () => {
 
     fireEvent.click(selected);
     expect(onSelect).toHaveBeenCalledWith("ocean");
+  });
+
+  it("previews with arrow keys, confirms with Enter, and ignores hover", () => {
+    const onSelect = vi.fn();
+    const onPreview = vi.fn();
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+    render(
+      <AcademyPaletteMenu
+        themes={themes}
+        selectedTheme="graphite"
+        onSelect={onSelect}
+        onPreview={onPreview}
+        onConfirm={onConfirm}
+        onCancel={onCancel}
+      />,
+    );
+
+    const menu = screen.getByRole("menu", { name: "Choose a color theme" });
+    const graphite = screen.getByRole("menuitemradio", { name: /Graphite/ });
+    const ocean = screen.getByRole("menuitemradio", { name: /Ocean Blue/ });
+
+    expect(graphite).toHaveFocus();
+    fireEvent.mouseEnter(ocean);
+    expect(onPreview).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(menu, { key: "ArrowDown" });
+    expect(onPreview).toHaveBeenLastCalledWith("ocean");
+    expect(ocean).toHaveFocus();
+    expect(ocean).toHaveAttribute("aria-checked", "true");
+    expect(graphite).toHaveAttribute("aria-checked", "false");
+
+    fireEvent.keyDown(menu, { key: "ArrowUp" });
+    expect(onPreview).toHaveBeenLastCalledWith("graphite");
+    expect(graphite).toHaveFocus();
+
+    fireEvent.keyDown(menu, { key: "ArrowDown" });
+    fireEvent.keyDown(menu, { key: "Enter" });
+    expect(onConfirm).toHaveBeenCalledWith("ocean");
+
+    fireEvent.keyDown(menu, { key: "Escape" });
+    expect(onCancel).toHaveBeenCalledOnce();
+    expect(onSelect).not.toHaveBeenCalled();
   });
 });

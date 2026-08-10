@@ -10,6 +10,10 @@ export default [
     route("dashboard", marker, { id: "dashboard", caseSensitive: true }),
     route("my-learning", marker, { id: "my-learning", caseSensitive: true }),
     route("courses", marker, { id: "courses", caseSensitive: true }),
+    route("courses/create", marker, {
+      id: "course-create",
+      caseSensitive: true,
+    }),
     route("wishlist", marker, { id: "wishlist", caseSensitive: true }),
     route("students", marker, { id: "students", caseSensitive: true }),
     route("reviews", marker, { id: "reviews", caseSensitive: true }),
@@ -55,6 +59,10 @@ export default [
       caseSensitive: true,
     }),
     route("logout", marker, { id: "logout", caseSensitive: true }),
+    route("courses/:courseSlug/overview", marker, {
+      id: "course-overview",
+      caseSensitive: true,
+    }),
     route("courses/:courseSlug", "routes/learning.tsx", {
       id: "learning",
       caseSensitive: true,

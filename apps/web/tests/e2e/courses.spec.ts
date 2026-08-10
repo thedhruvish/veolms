@@ -38,7 +38,24 @@ test("course enrollment, search, category, and sort controls derive the visible 
   await page.getByRole("combobox", { name: "Filter by category" }).click();
   await page.getByRole("option", { name: "All Categories" }).click();
   await page.getByRole("combobox", { name: "Sort courses" }).click();
-  await page.getByRole("option", { name: "Sort by: Title" }).click();
+  const titleSortOption = page.getByRole("option", {
+    name: "Sort by: Title",
+  });
+  await titleSortOption.hover();
+  const optionInsets = await titleSortOption.evaluate((option) => {
+    const content = option.closest(".themed-select__content");
+    if (!(content instanceof HTMLElement)) return null;
+    const contentRect = content.getBoundingClientRect();
+    const optionRect = option.getBoundingClientRect();
+    return {
+      inlineStart: optionRect.left - contentRect.left,
+      inlineEnd: contentRect.right - optionRect.right,
+    };
+  });
+  expect(optionInsets).not.toBeNull();
+  expect(optionInsets?.inlineStart).toBeCloseTo(1, 0);
+  expect(optionInsets?.inlineEnd).toBeCloseTo(1, 0);
+  await titleSortOption.click();
   await expect(grid.getByRole("heading", { level: 2 })).toHaveText([
     "AWS Cloud Practitioner Essentials",
     "Complete Backend with Node.js",
@@ -89,4 +106,22 @@ test("wishlist state is shared across catalogue routes and survives reload", asy
     page.getByRole("heading", { name: "Your wishlist is empty" }),
   ).toBeVisible();
   await expectStoredValue(page, "veolms-wishlist", "[]");
+});
+
+test("unenrolled courses open their course overview from Explore Course", async ({
+  page,
+}) => {
+  const figmaCourse = page.getByRole("article", {
+    name: /Figma UI Essentials/,
+  });
+
+  await figmaCourse.getByRole("button", { name: "Explore Course" }).click();
+
+  await expect(page).toHaveURL(/\/courses\/figma-ui-essentials\/overview$/);
+  await expect(
+    page.getByRole("heading", { name: "Course Overview", level: 1 }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Nothing here yet", level: 2 }),
+  ).toBeVisible();
 });

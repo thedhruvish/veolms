@@ -126,10 +126,103 @@ test("profile settings preserve an unsaved draft while offline", async ({
   await expect(displayName).toHaveValue("Offline draft");
 });
 
+test("profile field and public-visibility labels share one text baseline", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1064, height: 753 });
+  await openApp(page, "/settings/profile");
+
+  const baselineDeltas = await page
+    .locator(".settings-profile__field-heading")
+    .evaluateAll((headings) => {
+      const textBottom = (element: Element) => {
+        const textNode = [...element.childNodes].find(
+          (node) =>
+            node.nodeType === Node.TEXT_NODE && node.textContent?.trim(),
+        );
+        if (!textNode) throw new Error("Expected a visible label text node");
+        const range = document.createRange();
+        range.selectNodeContents(textNode);
+        return range.getBoundingClientRect().bottom;
+      };
+
+      return headings.map((heading) => {
+        const fieldLabel = heading.querySelector(
+          ":scope > label:not(.settings-profile__visibility-checkbox)",
+        );
+        const visibilityLabel = heading.querySelector(
+          ".settings-profile__visibility-checkbox > span:first-child",
+        );
+        if (!fieldLabel || !visibilityLabel)
+          throw new Error("Expected both profile field labels");
+        return {
+          field: fieldLabel.textContent?.trim(),
+          delta: textBottom(visibilityLabel) - textBottom(fieldLabel),
+        };
+      });
+    });
+
+  expect(baselineDeltas.map(({ field }) => field)).toEqual([
+    "Email address",
+    "Mobile number",
+    "LinkedIn URL",
+    "GitHub URL",
+    "Portfolio",
+  ]);
+  for (const { delta } of baselineDeltas) {
+    expect(Math.abs(delta)).toBeLessThan(0.1);
+  }
+});
+
 test("appearance and sidebar preferences persist through their direct settings routes", async ({
   page,
 }) => {
   await openApp(page, "/settings/appearance");
+
+  const colorThemeSection = page
+    .locator(".settings-section")
+    .filter({ has: page.getByRole("heading", { name: "Color theme" }) });
+  const colorThemeOptions = colorThemeSection.getByRole("radio");
+  await expect(colorThemeOptions.nth(0)).toContainText("Veo Onyx");
+  await expect(colorThemeOptions.nth(1)).toContainText("Ocean Blue");
+  await expect(colorThemeOptions.nth(2)).toContainText("Midnight Azure");
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-sidebar-icon-style",
+    "monochrome",
+  );
+
+  const randomTheme = page.getByRole("switch", {
+    name: "Random theme on app open",
+  });
+  await randomTheme.click();
+  await expect(randomTheme).toHaveAttribute("aria-checked", "true");
+  const graphitePoolOption = page.getByRole("checkbox", {
+    name: /Graphite Studio/,
+  });
+  await graphitePoolOption.click();
+  await expect(graphitePoolOption).toHaveAttribute("aria-checked", "false");
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const pool = localStorage.getItem("veolms-random-academy-theme-pool");
+        return pool ? JSON.parse(pool) : null;
+      }),
+    )
+    .not.toContain("graphite");
+
+  await page.setViewportSize({ width: 350, height: 780 });
+  await expect
+    .poll(() =>
+      page.evaluate(() => ({
+        viewport: window.innerWidth,
+        content: document.documentElement.scrollWidth,
+      })),
+    )
+    .toEqual({ viewport: 350, content: 350 });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+
+  await randomTheme.click();
+  await expect(randomTheme).toHaveAttribute("aria-checked", "false");
 
   await page.getByRole("radio", { name: /Light/ }).click();
   await page.getByRole("radio", { name: /Ocean Blue/ }).click();
@@ -151,6 +244,40 @@ test("appearance and sidebar preferences persist through their direct settings r
 
   await page.getByRole("tab", { name: "Sidebar" }).click();
   await expect(page).toHaveURL(/\/settings\/sidebar$/);
+  const iconStyleSection = page
+    .locator(".settings-section")
+    .filter({ has: page.getByRole("heading", { name: "Icon style" }) });
+  await expect(iconStyleSection.getByText("Recommended")).toHaveCount(0);
+  await expect(page.getByRole("radio", { name: /Monochrome/ })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+  await expect(
+    page.getByRole("radio", { name: "Follow color theme" }),
+  ).toHaveAttribute("aria-checked", "true");
+  const showThemeIcon = page.getByRole("switch", {
+    name: "Show theme icon",
+  });
+  const sidebarThemePicker = page
+    .getByRole("complementary", { name: "Student navigation" })
+    .getByRole("button", { name: "Choose color theme" });
+  await expect(showThemeIcon).toHaveAttribute("aria-checked", "true");
+  await expect(sidebarThemePicker).toBeVisible();
+  await showThemeIcon.click();
+  await expect(showThemeIcon).toHaveAttribute("aria-checked", "false");
+  await expect(sidebarThemePicker).toHaveCount(0);
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const storedPreferences = localStorage.getItem(
+          "veolms-sidebar-preferences",
+        );
+        return storedPreferences
+          ? JSON.parse(storedPreferences).showThemeIcon
+          : null;
+      }),
+    )
+    .toBe(false);
   const widthInput = page.getByRole("spinbutton", {
     name: "Sidebar max width in pixels",
   });
@@ -170,6 +297,8 @@ test("appearance and sidebar preferences persist through their direct settings r
 
   await page.reload();
   await expect(widthInput).toHaveValue("420");
+  await expect(showThemeIcon).toHaveAttribute("aria-checked", "false");
+  await expect(sidebarThemePicker).toHaveCount(0);
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await expect(page.locator("html")).toHaveAttribute("data-palette", "ocean");
 });
@@ -183,9 +312,9 @@ test("learning settings save a coherent preference object", async ({
     "learning",
   );
 
-  const autoplay = page.getByRole("switch", { name: "Autoplay next lecture" });
-  const startingState = await autoplay.getAttribute("aria-checked");
-  await autoplay.click();
+  await expect(
+    page.getByRole("switch", { name: "Autoplay next lecture" }),
+  ).toHaveCount(0);
 
   const reminders = page.getByRole("switch", { name: "Learning reminders" });
   if ((await reminders.getAttribute("aria-checked")) !== "true")
@@ -200,15 +329,11 @@ test("learning settings save a coherent preference object", async ({
   });
   expect(stored).not.toBeNull();
   if (!stored) throw new Error("Expected learning preferences to be stored");
-  expect(stored.autoplayNextLecture).toBe(startingState !== "true");
+  expect(stored).not.toHaveProperty("autoplayNextLecture");
   expect(stored.learningReminders).toBe(true);
   expect(stored.reminderDays).toContain("sat");
 
   await page.reload();
-  await expect(autoplay).toHaveAttribute(
-    "aria-checked",
-    String(startingState !== "true"),
-  );
   await expect(
     page.getByRole("button", { name: "Sat", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");

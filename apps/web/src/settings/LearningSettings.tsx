@@ -90,14 +90,6 @@ export function LearningSettings() {
               ]}
             />
             <LearningToggleRow
-              label="Autoplay next lecture"
-              note="Automatically play the next lecture when the current one ends."
-              checked={preferences.autoplayNextLecture}
-              onChange={(autoplayNextLecture) =>
-                update({ autoplayNextLecture })
-              }
-            />
-            <LearningToggleRow
               label="Resume from last position"
               note="Continue videos from where you stopped."
               checked={preferences.resumeFromLastPosition}

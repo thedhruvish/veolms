@@ -30,6 +30,7 @@ describe("React Router framework route configuration", () => {
       dashboard: "dashboard",
       "my-learning": "my-learning",
       courses: "courses",
+      "course-create": "courses/create",
       wishlist: "wishlist",
       students: "students",
       reviews: "reviews",
@@ -48,6 +49,7 @@ describe("React Router framework route configuration", () => {
       "settings-security": "settings/security",
       "settings-account": "settings/account",
       logout: "logout",
+      "course-overview": "courses/:courseSlug/overview",
       learning: "courses/:courseSlug",
       "home-fallback": "*",
     });
@@ -61,6 +63,13 @@ describe("React Router framework route configuration", () => {
     expect(childRoutes.find(({ id }) => id === "learning")).toMatchObject({
       path: "courses/:courseSlug",
       file: "routes/learning.tsx",
+      caseSensitive: true,
+    });
+    expect(
+      childRoutes.find(({ id }) => id === "course-overview"),
+    ).toMatchObject({
+      path: "courses/:courseSlug/overview",
+      file: "routes/academy-marker.tsx",
       caseSensitive: true,
     });
     expect(childRoutes.find(({ id }) => id === "home-fallback")).toMatchObject({
@@ -129,6 +138,15 @@ describe("framework route descriptors", () => {
     expect(getEffectiveRouteId("learning", "/courses/%E0%A4%A")).toBe(
       "home-fallback",
     );
+    expect(
+      getEffectiveRouteId(
+        "course-overview",
+        "/courses/typescript-course/overview",
+      ),
+    ).toBe("course-overview");
+    expect(
+      getEffectiveRouteId("course-overview", "/courses/%E0%A4%A/overview"),
+    ).toBe("home-fallback");
   });
 
   it("selects the deepest matched descriptor and safely falls back home", () => {
@@ -170,6 +188,7 @@ describe("framework route descriptors", () => {
       home: "/",
       settings: "/settings/appearance",
       Settings: "/settings",
+      "Create Course": "/courses/create",
       Students: "/students",
       "Order History": "/order-history",
       Logout: "/logout",
@@ -178,5 +197,23 @@ describe("framework route descriptors", () => {
     expect(getDestinationPath("/courses/custom-course")).toBe(
       "/courses/custom-course",
     );
+  });
+
+  it("keeps deferred product surfaces on the shared empty state", () => {
+    for (const routeId of [
+      "reviews",
+      "course-create",
+      "course-overview",
+      "analytics",
+      "orders",
+      "messages",
+      "order-history",
+      "notifications",
+    ]) {
+      expect(getRouteDescriptor(routeId)).toMatchObject({
+        kind: "shell",
+        page: "placeholder",
+      });
+    }
   });
 });

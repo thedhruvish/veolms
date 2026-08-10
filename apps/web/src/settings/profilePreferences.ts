@@ -4,10 +4,17 @@ export interface ProfilePreferences {
   displayName: string;
   avatarDataUrl: string | null;
   username?: string;
+  bio?: string;
   mobileNumber?: string;
   mobileVerified?: boolean;
+  mobilePublic?: boolean;
+  emailPublic?: boolean;
   linkedinUrl?: string;
+  linkedinPublic?: boolean;
   githubUrl?: string;
+  githubPublic?: boolean;
+  websitePublic?: boolean;
+  websiteUrl?: string;
 }
 
 export interface ProfileIdentity extends ProfilePreferences {
@@ -25,22 +32,36 @@ const PROFILE_DEFAULTS: Readonly<Record<ProfileRole, ProfileIdentity>> = {
     displayName: "Ashi Singh",
     email: "ashi.singh@example.com",
     avatarDataUrl: "/assets/sofia-avatar.jpg",
-    username: "",
-    mobileNumber: "",
-    mobileVerified: false,
-    linkedinUrl: "",
-    githubUrl: "",
+    username: "ashisingh",
+    bio: "Computer science student and aspiring developer.\nBuilding projects, sharing learnings, and helping others grow.",
+    mobileNumber: "+91 98765 43210",
+    mobileVerified: true,
+    mobilePublic: false,
+    emailPublic: false,
+    linkedinUrl: "linkedin.com/in/ashi-singh",
+    linkedinPublic: true,
+    githubUrl: "github.com/ashisingh",
+    githubPublic: true,
+    websitePublic: true,
+    websiteUrl: "ashisingh.dev",
     roleLabel: "Student",
   },
   creator: {
     displayName: "Anurag Singh",
     email: "anurag.singh@example.com",
     avatarDataUrl: "/assets/ethan-avatar.jpg",
-    username: "",
-    mobileNumber: "",
-    mobileVerified: false,
-    linkedinUrl: "",
-    githubUrl: "",
+    username: "anuragdev",
+    bio: "Instructor, builder, and lifelong learner.\nSharing practical lessons for the next generation of developers.",
+    mobileNumber: "+91 98765 43210",
+    mobileVerified: true,
+    mobilePublic: false,
+    emailPublic: false,
+    linkedinUrl: "linkedin.com/in/anurag-singh",
+    linkedinPublic: true,
+    githubUrl: "github.com/anuragdev",
+    githubPublic: true,
+    websitePublic: true,
+    websiteUrl: "anurag.dev",
     roleLabel: "Instructor",
   },
 };
@@ -74,17 +95,38 @@ export const getStoredProfilePreferences = (
       ...(typeof storedProfile.username === "string"
         ? { username: storedProfile.username }
         : {}),
+      ...(typeof storedProfile.bio === "string"
+        ? { bio: storedProfile.bio }
+        : {}),
       ...(typeof storedProfile.mobileNumber === "string"
         ? { mobileNumber: storedProfile.mobileNumber }
         : {}),
       ...(typeof storedProfile.mobileVerified === "boolean"
         ? { mobileVerified: storedProfile.mobileVerified }
         : {}),
+      ...(typeof storedProfile.mobilePublic === "boolean"
+        ? { mobilePublic: storedProfile.mobilePublic }
+        : {}),
+      ...(typeof storedProfile.emailPublic === "boolean"
+        ? { emailPublic: storedProfile.emailPublic }
+        : {}),
       ...(typeof storedProfile.linkedinUrl === "string"
         ? { linkedinUrl: storedProfile.linkedinUrl }
         : {}),
+      ...(typeof storedProfile.linkedinPublic === "boolean"
+        ? { linkedinPublic: storedProfile.linkedinPublic }
+        : {}),
       ...(typeof storedProfile.githubUrl === "string"
         ? { githubUrl: storedProfile.githubUrl }
+        : {}),
+      ...(typeof storedProfile.githubPublic === "boolean"
+        ? { githubPublic: storedProfile.githubPublic }
+        : {}),
+      ...(typeof storedProfile.websitePublic === "boolean"
+        ? { websitePublic: storedProfile.websitePublic }
+        : {}),
+      ...(typeof storedProfile.websiteUrl === "string"
+        ? { websiteUrl: storedProfile.websiteUrl }
         : {}),
     };
   } catch {
@@ -123,18 +165,44 @@ export const getProfileIdentity = (role: ProfileRole): ProfileIdentity => {
         typeof storedProfile.username === "string"
           ? storedProfile.username
           : defaults.username,
+      bio:
+        typeof storedProfile.bio === "string" ? storedProfile.bio : defaults.bio,
       mobileNumber,
       mobileVerified: Boolean(
         mobileNumber && storedProfile.mobileVerified === true,
       ),
+      mobilePublic:
+        typeof storedProfile.mobilePublic === "boolean"
+          ? storedProfile.mobilePublic
+          : defaults.mobilePublic,
+      emailPublic:
+        typeof storedProfile.emailPublic === "boolean"
+          ? storedProfile.emailPublic
+          : defaults.emailPublic,
       linkedinUrl:
         typeof storedProfile.linkedinUrl === "string"
           ? storedProfile.linkedinUrl
           : defaults.linkedinUrl,
+      linkedinPublic:
+        typeof storedProfile.linkedinPublic === "boolean"
+          ? storedProfile.linkedinPublic
+          : defaults.linkedinPublic,
       githubUrl:
         typeof storedProfile.githubUrl === "string"
           ? storedProfile.githubUrl
           : defaults.githubUrl,
+      githubPublic:
+        typeof storedProfile.githubPublic === "boolean"
+          ? storedProfile.githubPublic
+          : defaults.githubPublic,
+      websitePublic:
+        typeof storedProfile.websitePublic === "boolean"
+          ? storedProfile.websitePublic
+          : defaults.websitePublic,
+      websiteUrl:
+        typeof storedProfile.websiteUrl === "string"
+          ? storedProfile.websiteUrl
+          : defaults.websiteUrl,
     };
   } catch {
     return { ...defaults };

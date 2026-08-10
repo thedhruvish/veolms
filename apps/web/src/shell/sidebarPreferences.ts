@@ -5,6 +5,7 @@ const SIDEBAR_MAX_WIDTH = 300;
 const SIDEBAR_MAX_WIDTH_LIMIT = 520;
 const SIDEBAR_DEFAULT_WIDTH = 300;
 const SIDEBAR_MAX_WIDTH_DEFAULT_VERSION = "300px-v1";
+const SIDEBAR_ICON_DEFAULT_VERSION = "monochrome-theme-v1";
 
 export const clampSidebarMaxWidth = (value: unknown): number => {
   const numericValue = Number(value);
@@ -34,13 +35,14 @@ export const getInitialSidebarWidth = (): number => {
 
 export const getInitialSidebarPreferences = (): SidebarPreferences => {
   const fallback: SidebarPreferences = {
-    iconStyle: "multicolor",
+    iconStyle: "monochrome",
     monochromeMode: "theme",
     monochromeColor: "#6c78ff",
     contentLayout: "framed",
     sidebarMaxWidth: SIDEBAR_MAX_WIDTH,
     showCollapsedLabels: true,
     showCollapsedLogo: true,
+    showThemeIcon: true,
     highlightActive: true,
   };
   try {
@@ -60,6 +62,18 @@ export const getInitialSidebarPreferences = (): SidebarPreferences => {
       localStorage.setItem(
         "veolms-sidebar-max-width-default-version",
         SIDEBAR_MAX_WIDTH_DEFAULT_VERSION,
+      );
+    }
+
+    const hasCurrentIconDefault =
+      localStorage.getItem("veolms-sidebar-icon-default-version") ===
+      SIDEBAR_ICON_DEFAULT_VERSION;
+    if (!hasCurrentIconDefault) {
+      preferences.iconStyle = "monochrome";
+      preferences.monochromeMode = "theme";
+      localStorage.setItem(
+        "veolms-sidebar-icon-default-version",
+        SIDEBAR_ICON_DEFAULT_VERSION,
       );
     }
 

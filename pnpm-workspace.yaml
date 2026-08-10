@@ -3,3 +3,7 @@ packages:
   - "packages/*"
 
 onlyBuiltDependencies: []
+
+# Turbo starts persistent workspace scripts concurrently. Keep dependency
+# installation explicit so parallel dev tasks cannot race while relinking.
+verifyDepsBeforeRun: false

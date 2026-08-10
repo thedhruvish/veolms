@@ -39,6 +39,7 @@ import type {
 import { CourseCatalogue } from "./courses/CourseCatalogue";
 import { AcademyPaletteMenu } from "./shell/AcademyPaletteMenu";
 import { PlaceholderPage } from "./courses/PlaceholderPage";
+import { WorkspacePage } from "./workspace/WorkspacePages";
 import {
   getInitialNavigationOrder,
   getNavigationDisplayLabel,
@@ -235,12 +236,17 @@ export function CoursesPage({
     () => (localStorage.getItem("veolms-theme") || "dark") as ThemePreference,
   );
   const [academyTheme, setAcademyTheme] = useState(getInitialAcademyTheme);
+  const [palettePreviewTheme, setPalettePreviewTheme] = useState<string | null>(
+    null,
+  );
+  const displayedAcademyTheme = palettePreviewTheme ?? academyTheme;
   const [sidebarPreferences, setSidebarPreferences] = useState(
     getInitialSidebarPreferences,
   );
   const sidebarMaxWidth = clampSidebarMaxWidth(
     sidebarPreferences?.sidebarMaxWidth,
   );
+  const showSidebarThemeIcon = sidebarPreferences.showThemeIcon !== false;
   const [activeSection, setActiveSection] = useState(() => {
     if (page === "home") return role === "creator" ? "Dashboard" : "Home";
     if (page === "my-learning") return "My Learning";
@@ -285,6 +291,9 @@ export function CoursesPage({
       ? "/assets/ethan-avatar.jpg"
       : "/assets/sofia-avatar.jpg";
   const profileRef = useRef<HTMLDivElement>(null);
+  const paletteTriggerRef = useRef<HTMLButtonElement>(null);
+  const collapsedPaletteTriggerRef = useRef<HTMLButtonElement>(null);
+  const mobilePaletteTriggerRef = useRef<HTMLButtonElement>(null);
   const navigationRef = useRef<HTMLElement>(null);
   const mobileMoreRef = useRef<HTMLButtonElement>(null);
   const mobileSheetRef = useRef<HTMLElement>(null);
@@ -327,14 +336,17 @@ export function CoursesPage({
   }, []);
 
   useEffect(() => {
-    document.documentElement.dataset.palette = academyTheme;
+    document.documentElement.dataset.palette = displayedAcademyTheme;
+  }, [displayedAcademyTheme]);
+
+  useEffect(() => {
     persistAcademyTheme(academyTheme);
   }, [academyTheme]);
 
   useEffect(() => {
     const next = sidebarPreferences || {};
     document.documentElement.dataset.sidebarIconStyle =
-      next.iconStyle || "multicolor";
+      next.iconStyle || "monochrome";
     document.documentElement.dataset.sidebarMonochromeMode =
       next.monochromeMode || "theme";
     document.documentElement.dataset.contentLayout =
@@ -474,6 +486,17 @@ export function CoursesPage({
   }, [mobileMenuOpen]);
 
   useEffect(() => {
+    if (!paletteMenu && !mobilePaletteMenu) setPalettePreviewTheme(null);
+  }, [mobilePaletteMenu, paletteMenu]);
+
+  useEffect(() => {
+    if (showSidebarThemeIcon) return;
+    setPalettePreviewTheme(null);
+    setPaletteMenu(false);
+    setMobilePaletteMenu(false);
+  }, [showSidebarThemeIcon]);
+
+  useEffect(() => {
     localStorage.setItem("veolms-wishlist", JSON.stringify([...wishlisted]));
   }, [wishlisted]);
 
@@ -489,6 +512,12 @@ export function CoursesPage({
         !profileRef.current?.contains(event.target)
       ) {
         setProfileMenu(false);
+      }
+      if (
+        !(event.target instanceof Element) ||
+        !event.target.closest("[data-palette-menu], [data-palette-trigger]")
+      ) {
+        setPalettePreviewTheme(null);
         setPaletteMenu(false);
       }
     };
@@ -518,6 +547,7 @@ export function CoursesPage({
       if (event.key === "Escape") {
         setCourseMenu(null);
         setProfileMenu(false);
+        setPalettePreviewTheme(null);
         setPaletteMenu(false);
         setMobileMenuOpen(false);
         setMobilePaletteMenu(false);
@@ -805,16 +835,59 @@ export function CoursesPage({
     return true;
   };
 
+  const selectAcademyTheme = (themeId: string) => {
+    setAcademyTheme(themeId);
+    setPalettePreviewTheme(null);
+  };
+
+  const focusPaletteTrigger = (trigger: HTMLButtonElement | null) => {
+    window.setTimeout(() => trigger?.focus({ preventScroll: true }), 0);
+  };
+
+  const confirmDesktopPaletteTheme = (themeId: string) => {
+    selectAcademyTheme(themeId);
+    setPaletteMenu(false);
+    focusPaletteTrigger(
+      sidebarCollapsed
+        ? collapsedPaletteTriggerRef.current
+        : paletteTriggerRef.current,
+    );
+  };
+
+  const cancelDesktopPalettePreview = () => {
+    setPalettePreviewTheme(null);
+    setPaletteMenu(false);
+    focusPaletteTrigger(
+      sidebarCollapsed
+        ? collapsedPaletteTriggerRef.current
+        : paletteTriggerRef.current,
+    );
+  };
+
+  const confirmMobilePaletteTheme = (themeId: string) => {
+    selectAcademyTheme(themeId);
+    setMobilePaletteMenu(false);
+    focusPaletteTrigger(mobilePaletteTriggerRef.current);
+  };
+
+  const cancelMobilePalettePreview = () => {
+    setPalettePreviewTheme(null);
+    setMobilePaletteMenu(false);
+    focusPaletteTrigger(mobilePaletteTriggerRef.current);
+  };
+
   const activateAppearanceOption = (
     option: AppearanceOption,
     mobile = false,
   ) => {
     if (option === "theme") {
+      if (!showSidebarThemeIcon) return;
       if (mobile) setMobilePaletteMenu(true);
       else setPaletteMenu(true);
       return;
     }
     setTheme(option);
+    setPalettePreviewTheme(null);
     if (mobile) setMobilePaletteMenu(false);
     else setPaletteMenu(false);
   };
@@ -1539,6 +1612,8 @@ export function CoursesPage({
           <div className="sidebar-appearance" aria-label="Appearance controls">
             {sidebarCollapsed ? (
               <button
+                ref={collapsedPaletteTriggerRef}
+                data-palette-trigger
                 type="button"
                 className="is-active"
                 aria-label={
@@ -1548,7 +1623,7 @@ export function CoursesPage({
                 }
                 onClick={(event) => {
                   if (consumeAppearanceSwipeClick(event)) return;
-                  if (paletteMenu) setPaletteMenu(false);
+                  if (paletteMenu) cancelDesktopPalettePreview();
                   else toggleAppearance();
                 }}
                 onPointerDown={(event) => startAppearanceSwipe(event, "mode")}
@@ -1602,9 +1677,11 @@ export function CoursesPage({
                 </button>
               </>
             )}
-            {!sidebarCollapsed && (
+            {!sidebarCollapsed && showSidebarThemeIcon && (
               <div className="sidebar-palette-wrap">
                 <button
+                  ref={paletteTriggerRef}
+                  data-palette-trigger
                   type="button"
                   className="sidebar-palette-trigger"
                   aria-label="Choose color theme"
@@ -1612,7 +1689,8 @@ export function CoursesPage({
                   aria-pressed={paletteMenu}
                   onClick={(event) => {
                     if (consumeAppearanceSwipeClick(event)) return;
-                    setPaletteMenu((current) => !current);
+                    if (paletteMenu) cancelDesktopPalettePreview();
+                    else setPaletteMenu(true);
                   }}
                   onPointerDown={(event) =>
                     startAppearanceSwipe(event, "theme")
@@ -1624,7 +1702,7 @@ export function CoursesPage({
                   <i
                     style={{
                       background: academyThemes.find(
-                        (item) => item.id === academyTheme,
+                        (item) => item.id === displayedAcademyTheme,
                       )?.preview,
                     }}
                   />
@@ -1632,24 +1710,24 @@ export function CoursesPage({
                 {paletteMenu && (
                   <AcademyPaletteMenu
                     themes={academyThemes}
-                    selectedTheme={academyTheme}
-                    onSelect={(themeId) => {
-                      setAcademyTheme(themeId);
-                      setPaletteMenu(false);
-                    }}
+                    selectedTheme={displayedAcademyTheme}
+                    onSelect={selectAcademyTheme}
+                    onPreview={setPalettePreviewTheme}
+                    onConfirm={confirmDesktopPaletteTheme}
+                    onCancel={cancelDesktopPalettePreview}
                   />
                 )}
               </div>
             )}
-            {sidebarCollapsed && paletteMenu && (
+            {sidebarCollapsed && showSidebarThemeIcon && paletteMenu && (
               <AcademyPaletteMenu
                 themes={academyThemes}
-                selectedTheme={academyTheme}
+                selectedTheme={displayedAcademyTheme}
                 className="sidebar-palette-menu sidebar-palette-menu--collapsed"
-                onSelect={(themeId) => {
-                  setAcademyTheme(themeId);
-                  setPaletteMenu(false);
-                }}
+                onSelect={selectAcademyTheme}
+                onPreview={setPalettePreviewTheme}
+                onConfirm={confirmDesktopPaletteTheme}
+                onCancel={cancelDesktopPalettePreview}
               />
             )}
           </div>
@@ -1696,6 +1774,7 @@ export function CoursesPage({
           <StudentHome
             onOpenCourse={onOpenCourse}
             onNavigatePage={onNavigatePage}
+            studentName={shellProfileDisplayName}
           />
         ) : role === "student" && page === "my-learning" ? (
           <MyLearningPage
@@ -1724,8 +1803,23 @@ export function CoursesPage({
             sidebarMode={sidebarMode}
             onSidebarModeChange={setSidebarMode}
           />
+        ) : page === "workspace" ? (
+          <WorkspacePage
+            section={requestedSection || activeSection}
+            role={role}
+            onNavigatePage={onNavigatePage}
+            setNotice={setNotice}
+            onSignOut={() => {
+              localStorage.removeItem("veolms-role");
+              sessionStorage.removeItem("veolms-course-section");
+              setRole("student");
+            }}
+          />
         ) : page === "placeholder" ? (
-          <PlaceholderPage section={activeSection} role={role} />
+          <PlaceholderPage
+            section={requestedSection || activeSection}
+            role={role}
+          />
         ) : (
           <CourseCatalogue
             activeSection={activeSection}
@@ -1745,6 +1839,7 @@ export function CoursesPage({
             courseMenu={courseMenu}
             setCourseMenu={setCourseMenu}
             setNotice={setNotice}
+            onNavigatePage={onNavigatePage}
             onResetCatalogue={resetCatalogue}
           />
         )}
@@ -1945,44 +2040,52 @@ export function CoursesPage({
               >
                 <Moon size={19} /> Dark
               </button>
-              <button
-                data-mobile-palette-trigger
-                type="button"
-                className={mobilePaletteMenu ? "is-active" : ""}
-                aria-haspopup="menu"
-                aria-expanded={mobilePaletteMenu}
-                aria-controls="mobile-theme-menu"
-                aria-label={`Choose color theme. Current theme: ${academyThemes[currentAcademyThemeIndex]?.name}`}
-                onClick={(event) => {
-                  if (consumeAppearanceSwipeClick(event)) return;
-                  setMobilePaletteMenu((current) => !current);
-                }}
-                onPointerDown={(event) => startAppearanceSwipe(event, "theme")}
-                onPointerUp={(event) =>
-                  finishAppearanceSwipe(event, "theme", true)
-                }
-                onPointerCancel={cancelAppearanceSwipe}
-              >
-                <Palette size={19} /> Theme
-                <i
-                  style={{
-                    background:
-                      academyThemes[currentAcademyThemeIndex]?.preview,
+              {showSidebarThemeIcon && (
+                <button
+                  ref={mobilePaletteTriggerRef}
+                  data-palette-trigger
+                  data-mobile-palette-trigger
+                  type="button"
+                  className={mobilePaletteMenu ? "is-active" : ""}
+                  aria-haspopup="menu"
+                  aria-expanded={mobilePaletteMenu}
+                  aria-controls="mobile-theme-menu"
+                  aria-label={`Choose color theme. Current theme: ${academyThemes[currentAcademyThemeIndex]?.name}`}
+                  onClick={(event) => {
+                    if (consumeAppearanceSwipeClick(event)) return;
+                    if (mobilePaletteMenu) cancelMobilePalettePreview();
+                    else setMobilePaletteMenu(true);
                   }}
-                />
-              </button>
+                  onPointerDown={(event) =>
+                    startAppearanceSwipe(event, "theme")
+                  }
+                  onPointerUp={(event) =>
+                    finishAppearanceSwipe(event, "theme", true)
+                  }
+                  onPointerCancel={cancelAppearanceSwipe}
+                >
+                  <Palette size={19} /> Theme
+                  <i
+                    style={{
+                      background: academyThemes.find(
+                        (item) => item.id === displayedAcademyTheme,
+                      )?.preview,
+                    }}
+                  />
+                </button>
+              )}
             </div>
-            {mobilePaletteMenu && (
+            {showSidebarThemeIcon && mobilePaletteMenu && (
               <AcademyPaletteMenu
                 themes={academyThemes}
-                selectedTheme={academyTheme}
+                selectedTheme={displayedAcademyTheme}
                 id="mobile-theme-menu"
                 className="sidebar-palette-menu mobile-palette-menu"
                 mobile
-                onSelect={(themeId) => {
-                  setAcademyTheme(themeId);
-                  setMobilePaletteMenu(false);
-                }}
+                onSelect={selectAcademyTheme}
+                onPreview={setPalettePreviewTheme}
+                onConfirm={confirmMobilePaletteTheme}
+                onCancel={cancelMobilePalettePreview}
               />
             )}
           </section>
