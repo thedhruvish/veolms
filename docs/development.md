@@ -74,7 +74,13 @@ wsl --shutdown
 
 ## Run the applications
 
-The Web application runs at `http://localhost:3000` and proxies `/api` requests to the API at `http://localhost:4000`. Set `WEB_PORT` in `.env` to override the frontend port. `pnpm dev` starts only Web and API; the fleet manager and media worker remain inactive shells.
+The Web application currently runs independently of the API and database. Start only the frontend with:
+
+```bash
+pnpm dev:web
+```
+
+It is available at `http://localhost:3000`. Set `WEB_PORT` in `.env` to override the frontend port. Use `pnpm dev` only when developing the Web and API applications together; the fleet manager and media worker remain inactive shells.
 
 API logs are formatted for readability in development by default. Set `API_DEV_PRETTY_LOGS=false` in `.env` to keep the original JSON log format. This setting is development-only; production logs always remain structured JSON.
 
@@ -88,11 +94,26 @@ The document lists `/` as its server, which resolves against whatever origin ser
 
 ## Static Web build
 
-The static build requires PostgreSQL to be healthy, migrations and seed data to be present, and the API to be running:
+The static Web build does not require PostgreSQL or the API. Build and preview it with:
 
 ```bash
-pnpm dev:api
 pnpm build:web
+pnpm --filter @veolms/web preview
 ```
 
-During the build, React Router uses `STATIC_BUILD_API_URL` to discover published course slugs and fetch their content. It writes deployable static files, including one HTML page per course, to `apps/web/build/client`. Browser navigation continues to use the relative `VITE_API_BASE_URL` path.
+React Router writes the deployable client-only application to `apps/web/build/client`. `VITE_COURSE_MEDIA_BASE_URL` is optional; when it is unset, course media uses relative `/course-videos/...` URLs.
+
+## Development UI deployment
+
+Every push to `development` runs `.github/workflows/deploy-development-ui.yml`. The workflow type-checks and tests the Web application, builds it, synchronises `apps/web/build/client` to S3, uploads `index.html` last with a no-cache policy, and waits for a CloudFront `/*` invalidation to finish. It can also be started manually from GitHub Actions.
+
+The workflow uses the GitHub `development` environment and exchanges GitHub's OIDC token for short-lived AWS credentials. Configure these GitHub Actions variables on that environment:
+
+- `AWS_DEPLOY_ROLE_ARN`
+- `AWS_ACCOUNT_ID`
+- `AWS_REGION`
+- `AWS_S3_BUCKET`
+- `AWS_CLOUDFRONT_DISTRIBUTION_ID`
+- `VITE_COURSE_MEDIA_BASE_URL` (optional)
+
+Do not add long-lived AWS access keys as GitHub secrets. Restrict the role's trust policy to the repository's immutable `development` environment subject, `repo:veolms@301170291/veolms@1320067532:environment:development`. Its permissions should be limited to listing the deployment bucket, putting and deleting objects in that bucket, and creating and reading invalidations for the development CloudFront distribution.
