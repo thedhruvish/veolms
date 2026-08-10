@@ -35,6 +35,11 @@ describe("React Router framework route configuration", () => {
       students: "students",
       reviews: "reviews",
       discussions: "discussions",
+      "discussions-q-and-a": "discussions/q-and-a",
+      "discussions-comments": "discussions/comments",
+      "discussions-mentions": "discussions/mentions",
+      "discussions-following": "discussions/following",
+      "discussions-saved": "discussions/saved",
       analytics: "analytics",
       orders: "orders",
       messages: "messages",
@@ -101,6 +106,12 @@ describe("framework route descriptors", () => {
       section: "Settings",
       settingsTab: "learning",
     });
+    expect(getRouteDescriptor("discussions-comments")).toMatchObject({
+      kind: "shell",
+      page: "workspace",
+      section: "Discussions",
+      discussionTab: "comments",
+    });
     expect(getRouteDescriptor("learning")).toEqual({
       kind: "learning",
       page: "learning",
@@ -119,6 +130,9 @@ describe("framework route descriptors", () => {
     expect(getEffectiveRouteId("settings-learning", "/settings/Learning")).toBe(
       "home-fallback",
     );
+    expect(
+      getEffectiveRouteId("discussions-comments", "/discussions/Comments"),
+    ).toBe("home-fallback");
   });
 
   it("validates learning-route structure and encoding without changing course-slug casing", () => {
@@ -188,6 +202,8 @@ describe("framework route descriptors", () => {
       home: "/",
       settings: "/settings/appearance",
       Settings: "/settings",
+      discussions: "/discussions/q-and-a",
+      Discussions: "/discussions/q-and-a",
       "Create Course": "/courses/create",
       Students: "/students",
       "Order History": "/order-history",
@@ -201,6 +217,7 @@ describe("framework route descriptors", () => {
 
   it("keeps deferred product surfaces on the shared empty state", () => {
     for (const routeId of [
+      "students",
       "reviews",
       "course-create",
       "course-overview",

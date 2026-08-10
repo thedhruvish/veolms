@@ -6504,7 +6504,6 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
 .settings-account-plan,
 .settings-session,
 .workspace-page__header,
-.workspace-panel__topline,
 .workspace-signout {
   display: flex;
   align-items: flex-start;
@@ -6666,9 +6665,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
 }
 
 .settings-action:focus-visible,
-.workspace-button:focus-visible,
-.workspace-segmented button:focus-visible,
-.workspace-search input:focus-visible {
+.workspace-button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
@@ -6750,11 +6747,6 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   line-height: 1.55;
 }
 
-.workspace-page__action {
-  flex: 0 0 auto;
-}
-
-.workspace-panel,
 .workspace-signout {
   min-width: 0;
   border-radius: 16px;
@@ -6762,241 +6754,6 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, var(--text) 4%, transparent),
     0 12px 28px color-mix(in srgb, var(--card-shadow) 43%, transparent);
-}
-
-.workspace-panel {
-  padding: clamp(16px, 2vw, 22px);
-}
-
-.workspace-panel__topline {
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.workspace-panel__topline h2 {
-  margin: 0;
-  color: var(--text);
-  font-size: 1.02rem;
-  font-weight: 720;
-  letter-spacing: -0.025em;
-}
-
-.workspace-panel__topline p {
-  margin: 4px 0 0;
-  color: var(--muted);
-  font-size: 0.8rem;
-  line-height: 1.45;
-}
-
-.workspace-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 18px;
-}
-
-.workspace-stat {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-  border-radius: 14px;
-  padding: 15px;
-  background: color-mix(in srgb, var(--surface) 86%, var(--surface-strong));
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text) 4%, transparent);
-}
-
-.workspace-stat span,
-.workspace-stat small {
-  color: var(--muted);
-  font-size: 0.75rem;
-  line-height: 1.35;
-}
-
-.workspace-stat strong {
-  color: var(--text);
-  font-size: clamp(1.3rem, 2.4vw, 1.7rem);
-  letter-spacing: -0.045em;
-}
-
-.workspace-stat small {
-  color: var(--accent-ink, var(--accent));
-  font-weight: 650;
-}
-
-.workspace-search input {
-  min-width: 0;
-  width: 100%;
-  border: 0;
-  border-radius: 10px;
-  padding: 0 12px;
-  color: var(--text);
-  background: var(--surface-strong);
-  font: inherit;
-  font-size: 0.84rem;
-}
-
-.workspace-search input::placeholder {
-  color: var(--muted);
-}
-
-.workspace-segmented {
-  display: inline-flex;
-  max-width: 100%;
-  gap: 3px;
-  overflow-x: auto;
-  border-radius: 10px;
-  padding: 3px;
-  background: var(--surface-strong);
-  scrollbar-width: none;
-}
-
-.workspace-segmented::-webkit-scrollbar {
-  display: none;
-}
-
-.workspace-segmented button {
-  min-height: 30px;
-  flex: 0 0 auto;
-  border: 0;
-  border-radius: 7px;
-  padding: 0 9px;
-  color: var(--muted);
-  background: transparent;
-  font: inherit;
-  font-size: 0.72rem;
-  font-weight: 700;
-}
-
-.workspace-segmented button.is-active {
-  color: var(--accent-ink, var(--accent));
-  background: var(--surface);
-  box-shadow: 0 2px 7px color-mix(in srgb, var(--card-shadow) 38%, transparent);
-}
-
-.workspace-person > i {
-  display: inline-flex;
-  width: 35px;
-  height: 35px;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  color: var(--accent-ink, var(--accent));
-  background: var(--accent-soft);
-  font-size: 0.72rem;
-  font-style: normal;
-  font-weight: 800;
-}
-
-.workspace-table__row > span:first-child {
-  display: grid;
-  gap: 3px;
-}
-
-.workspace-table small {
-  color: var(--muted);
-  font-size: 0.75rem;
-  line-height: 1.45;
-}
-
-.workspace-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.workspace-search {
-  display: inline-flex;
-  width: min(230px, 35vw);
-  min-height: 36px;
-  align-items: center;
-  gap: 7px;
-  border-radius: 10px;
-  padding: 0 9px;
-  color: var(--muted);
-  background: var(--surface-strong);
-}
-.workspace-search input {
-  height: 34px;
-  padding: 0;
-  background: transparent;
-}
-
-.workspace-table {
-  min-width: 0;
-}
-.workspace-table__head,
-.workspace-table__row {
-  display: grid;
-  grid-template-columns:
-    minmax(160px, 1.1fr) minmax(150px, 1fr) minmax(95px, 0.58fr)
-    minmax(95px, 0.58fr) minmax(82px, 0.45fr);
-  gap: 16px;
-  align-items: center;
-}
-
-.workspace-table--students .workspace-table__head,
-.workspace-table--students .workspace-table__row {
-  grid-template-columns:
-    minmax(180px, 1.1fr) minmax(170px, 1fr) minmax(110px, 0.55fr)
-    minmax(90px, 0.45fr);
-}
-
-.workspace-table__head {
-  padding: 0 0 9px;
-  color: var(--muted);
-  font-size: 0.71rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-.workspace-table__row {
-  min-width: 0;
-  padding: 13px 0;
-  border-top: 1px solid color-mix(in srgb, var(--text) 7%, transparent);
-  color: var(--text-secondary);
-  font-size: 0.78rem;
-}
-.workspace-table__row strong {
-  color: var(--text);
-  font-size: 0.8rem;
-}
-.workspace-table__row time {
-  color: var(--muted);
-  font-size: 0.76rem;
-}
-.workspace-table__course {
-  color: var(--text-secondary);
-  line-height: 1.4;
-}
-.workspace-person {
-  display: inline-flex !important;
-  align-items: center;
-  gap: 9px;
-}
-.workspace-person > span {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-.workspace-progress {
-  display: inline-flex;
-  min-width: 0;
-  align-items: center;
-  gap: 7px;
-}
-.workspace-progress i {
-  display: block;
-  width: 64px;
-  height: 5px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--surface-strong);
-}
-.workspace-progress b {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--accent);
 }
 
 .workspace-signout__icon {
@@ -7046,21 +6803,9 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   line-height: 1.45;
 }
 
-@media (max-width: 920px) {
-  .workspace-toolbar {
-    width: 100%;
-    justify-content: flex-end;
-  }
-  .workspace-panel__topline--tools {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-}
-
 @media (max-width: 680px) {
   .settings-detail__header,
   .workspace-page__header,
-  .workspace-panel__topline,
   .settings-account-plan {
     align-items: flex-start;
     flex-direction: column;
@@ -7071,51 +6816,6 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   .settings-account-plan .settings-action {
     width: 100%;
   }
-  .workspace-page__action,
-  .workspace-page__action .workspace-button {
-    width: 100%;
-  }
-  .workspace-stats {
-    grid-template-columns: 1fr;
-  }
-  .workspace-toolbar {
-    flex-wrap: wrap;
-    justify-content: flex-start;
-  }
-  .workspace-search {
-    width: 100%;
-  }
-  .workspace-table {
-    overflow: visible;
-  }
-  .workspace-table__head {
-    display: none;
-  }
-  .workspace-table__row,
-  .workspace-table--students .workspace-table__row {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 9px 14px;
-    padding: 15px 0;
-  }
-  .workspace-table__row > :first-child {
-    grid-column: 1 / -1;
-  }
-  .workspace-table__course {
-    grid-column: 1 / -1;
-  }
-  .workspace-table__row time {
-    text-align: left;
-  }
-  .workspace-table__row > strong {
-    text-align: right;
-  }
-  .workspace-table--students .workspace-table__row > :nth-child(3) {
-    grid-column: 1;
-  }
-  .workspace-table--students .workspace-table__row > :nth-child(4) {
-    grid-column: 2;
-    text-align: right;
-  }
 }
 
 @media (max-width: 390px) {
@@ -7125,16 +6825,6 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   }
   .workspace-page__header h1 {
     font-size: 1.7rem;
-  }
-  .workspace-panel {
-    border-radius: 13px;
-    padding: 14px;
-  }
-  .workspace-segmented {
-    width: 100%;
-  }
-  .workspace-segmented button {
-    flex: 1 0 auto;
   }
   .settings-session {
     align-items: flex-start;
@@ -8649,6 +8339,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
 
 .settings-profile__phone-control {
   display: grid;
+  align-items: center;
   gap: 7px;
 }
 
@@ -8665,6 +8356,11 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   font-size: 0.68rem;
   font-weight: 700;
   cursor: pointer;
+}
+
+.settings-profile__verify-action {
+  min-height: 36px;
+  font-size: 0.75rem;
 }
 
 .settings-profile__verification-panel {
@@ -9091,6 +8787,10 @@ html:has(.settings-profile__privacy-dialog[open]) {
 }
 
 @media (max-width: 640px) {
+  .settings-profile__verify-action {
+    min-height: 40px;
+  }
+
   .settings-tabs {
     position: sticky;
     scroll-padding-inline: 18px;

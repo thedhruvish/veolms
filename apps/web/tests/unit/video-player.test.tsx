@@ -38,6 +38,38 @@ describe("video playback consent", () => {
     expect(play).toHaveBeenCalledTimes(1);
   });
 
+  it("autoplays a newly selected lecture while keeping the initial lecture paused", () => {
+    const play = vi
+      .spyOn(HTMLMediaElement.prototype, "play")
+      .mockResolvedValue(undefined);
+    const { rerender } = render(
+      <VideoPlayer
+        media={{ fileName: "lesson-1.mp4", duration: 90, src: "/lesson-1.mp4" }}
+        lessonTitle="Initial lecture"
+        theaterMode={false}
+        onTheaterToggle={() => {}}
+      />,
+    );
+
+    expect(play).not.toHaveBeenCalled();
+
+    rerender(
+      <VideoPlayer
+        media={{
+          fileName: "lesson-2.mp4",
+          duration: 120,
+          src: "/lesson-2.mp4",
+        }}
+        lessonTitle="Selected lecture"
+        theaterMode={false}
+        onTheaterToggle={() => {}}
+        autoPlayOnMediaChange
+      />,
+    );
+
+    expect(play).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps shortcuts on the focusable player region and out of child controls", () => {
     const play = vi
       .spyOn(HTMLMediaElement.prototype, "play")

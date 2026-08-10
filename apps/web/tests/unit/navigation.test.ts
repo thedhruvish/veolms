@@ -30,7 +30,6 @@ const creatorDefault = [
   "Discussions",
   "Analytics",
   "Orders",
-  "Messages",
   "Settings",
 ];
 
@@ -84,11 +83,8 @@ describe("navigation order persistence", () => {
       ...studentDefault.filter((label) => label !== "Settings"),
     ]);
     expect(getInitialNavigationOrder("creator")).toEqual([
-      "Messages",
       "Dashboard",
-      ...creatorDefault.filter(
-        (label) => label !== "Messages" && label !== "Dashboard",
-      ),
+      ...creatorDefault.filter((label) => label !== "Dashboard"),
     ]);
     expect(
       labels(

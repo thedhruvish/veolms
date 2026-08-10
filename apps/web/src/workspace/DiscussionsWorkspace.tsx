@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import type { FormEvent, KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { FormEvent } from "react";
 import {
   ArrowRight,
   ArrowSquareOut,
@@ -18,9 +18,12 @@ import {
   UsersThree,
 } from "@phosphor-icons/react";
 import type { CourseRole } from "../courses/catalogue";
+import { handleRovingTabKeyDown } from "../accessibility/rovingTabFocus";
+import type { NavigateTo } from "../routing/navigation";
 import { ThemedSelect } from "../ThemedSelect";
 
-type DiscussionTab = "q-and-a" | "comments" | "mentions" | "following" | "saved";
+type DiscussionTab =
+  "q-and-a" | "comments" | "mentions" | "following" | "saved";
 type DiscussionStatus = "answered" | "mentioned" | "solved" | "open";
 
 interface DiscussionThread {
@@ -38,11 +41,16 @@ interface DiscussionThread {
 
 export interface DiscussionsWorkspaceProps {
   role: CourseRole;
-  onNavigatePage: (page: string) => void;
+  tab?: string;
+  onNavigatePage: NavigateTo;
   setNotice?: (message: string) => void;
 }
 
-const tabs: readonly { id: DiscussionTab; label: string; Icon: typeof Question }[] = [
+const tabs: readonly {
+  id: DiscussionTab;
+  label: string;
+  Icon: typeof Question;
+}[] = [
   { id: "q-and-a", label: "Q&A", Icon: Question },
   { id: "comments", label: "Comments", Icon: ChatTeardropText },
   { id: "mentions", label: "Mentions", Icon: At },
@@ -154,18 +162,38 @@ function DiscussionComposer({
     <form className="discussion-hub__composer" onSubmit={submit}>
       <div className="discussion-hub__composer-heading">
         <div>
-          <strong>{kind === "question" ? "Ask a question" : "Start a discussion"}</strong>
-          <span>Share enough context to help classmates give a useful answer.</span>
+          <strong>
+            {kind === "question" ? "Ask a question" : "Start a discussion"}
+          </strong>
+          <span>
+            Share enough context to help classmates give a useful answer.
+          </span>
         </div>
-        <button type="button" onClick={onCancel}>Cancel</button>
+        <button type="button" onClick={onCancel}>
+          Cancel
+        </button>
       </div>
       <label>
         <span>Title</span>
-        <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={kind === "question" ? "What would you like help with?" : "What should the discussion cover?"} autoFocus />
+        <input
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          placeholder={
+            kind === "question"
+              ? "What would you like help with?"
+              : "What should the discussion cover?"
+          }
+          autoFocus
+        />
       </label>
       <label>
         <span>Details</span>
-        <textarea value={content} onChange={(event) => setContent(event.target.value)} placeholder="Add the course context, what you tried, or the idea you want to explore." rows={3} />
+        <textarea
+          value={content}
+          onChange={(event) => setContent(event.target.value)}
+          placeholder="Add the course context, what you tried, or the idea you want to explore."
+          rows={3}
+        />
       </label>
       <div className="discussion-hub__composer-actions">
         <span>Posts are visible to people learning this course.</span>
@@ -179,23 +207,48 @@ function DiscussionComposer({
 
 export function DiscussionsWorkspace({
   role,
+  tab = "q-and-a",
   onNavigatePage,
   setNotice,
 }: DiscussionsWorkspaceProps) {
-  const [activeTab, setActiveTab] = useState<DiscussionTab>("q-and-a");
+  const activeTab: DiscussionTab = tabs.some((item) => item.id === tab)
+    ? (tab as DiscussionTab)
+    : "q-and-a";
+  const navigateTab = (id: DiscussionTab) =>
+    onNavigatePage(`/discussions/${id}`, { preserveScroll: true });
+  const tablistRef = useRef<HTMLElement>(null);
   const [query, setQuery] = useState("");
   const [course, setCourse] = useState("all");
   const [status, setStatus] = useState("all");
   const [sort, setSort] = useState("activity");
-  const [composer, setComposer] = useState<"question" | "discussion" | null>(null);
-  const [threads, setThreads] = useState<readonly DiscussionThread[]>(initialThreads);
+  const [composer, setComposer] = useState<"question" | "discussion" | null>(
+    null,
+  );
+  const [threads, setThreads] =
+    useState<readonly DiscussionThread[]>(initialThreads);
+
+  useEffect(() => {
+    const tablist = tablistRef.current;
+    if (!tablist || !tablist.contains(document.activeElement)) return undefined;
+
+    const activeTabButton = document.getElementById(
+      `discussion-tab-${activeTab}`,
+    );
+    if (activeTabButton === document.activeElement) return undefined;
+
+    const frame = window.requestAnimationFrame(() => {
+      activeTabButton?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeTab]);
 
   const visibleThreads = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     const matching = threads.filter((thread) => {
       const matchesTab =
         activeTab === "q-and-a" || thread.tabs.includes(activeTab);
-      const matchesQuery = !normalizedQuery ||
+      const matchesQuery =
+        !normalizedQuery ||
         `${thread.title} ${thread.excerpt} ${thread.course}`
           .toLowerCase()
           .includes(normalizedQuery);
@@ -214,7 +267,10 @@ export function DiscussionsWorkspace({
         id: `thread-${Date.now()}`,
         title,
         excerpt,
-        course: role === "creator" ? "Creator community" : "The Ultimate TypeScript Course",
+        course:
+          role === "creator"
+            ? "Creator community"
+            : "The Ultimate TypeScript Course",
         lesson: "General discussion",
         avatar: "/assets/sofia-avatar.jpg",
         status: "open",
@@ -225,38 +281,12 @@ export function DiscussionsWorkspace({
       ...current,
     ]);
     setComposer(null);
-    setActiveTab("q-and-a");
+    navigateTab("q-and-a");
     setNotice?.("Your discussion has been published.");
   };
 
   const openThread = (thread: DiscussionThread) => {
     setNotice?.(`Opened “${thread.title}”.`);
-  };
-
-  const moveTabFocus = (
-    event: ReactKeyboardEvent<HTMLButtonElement>,
-    currentIndex: number,
-  ) => {
-    let nextIndex = currentIndex;
-    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
-      nextIndex = (currentIndex + 1) % tabs.length;
-    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
-      nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
-    } else if (event.key === "Home") {
-      nextIndex = 0;
-    } else if (event.key === "End") {
-      nextIndex = tabs.length - 1;
-    } else {
-      return;
-    }
-
-    event.preventDefault();
-    const nextTab = tabs[nextIndex];
-    if (!nextTab) return;
-    setActiveTab(nextTab.id);
-    window.requestAnimationFrame(() => {
-      document.getElementById(`discussion-tab-${nextTab.id}`)?.focus();
-    });
   };
 
   return (
@@ -271,8 +301,13 @@ export function DiscussionsWorkspace({
         </span>
       </header>
 
-      <nav className="discussion-hub__tabs" aria-label="Discussion views" role="tablist">
-        {tabs.map(({ id, label, Icon }, index) => (
+      <nav
+        ref={tablistRef}
+        className="discussion-hub__tabs"
+        aria-label="Discussion views"
+        role="tablist"
+      >
+        {tabs.map(({ id, label, Icon }) => (
           <button
             type="button"
             key={id}
@@ -282,8 +317,14 @@ export function DiscussionsWorkspace({
             aria-controls="discussion-panel"
             tabIndex={activeTab === id ? 0 : -1}
             className={activeTab === id ? "is-active" : ""}
-            onClick={() => setActiveTab(id)}
-            onKeyDown={(event) => moveTabFocus(event, index)}
+            onClick={() => navigateTab(id)}
+            onKeyDown={handleRovingTabKeyDown}
+            onFocus={(event) =>
+              event.currentTarget.scrollIntoView({
+                block: "nearest",
+                inline: "center",
+              })
+            }
           >
             <Icon size={19} weight={activeTab === id ? "fill" : "regular"} />
             <span>{label}</span>
@@ -291,7 +332,13 @@ export function DiscussionsWorkspace({
         ))}
       </nav>
 
-      <div id="discussion-panel" role="tabpanel" aria-labelledby={`discussion-tab-${activeTab}`}>
+      <div
+        id="discussion-panel"
+        role="tabpanel"
+        aria-labelledby={`discussion-tab-${activeTab}`}
+        data-discussion-tab={activeTab}
+        tabIndex={0}
+      >
         {composer && (
           <DiscussionComposer
             kind={composer}
@@ -302,11 +349,18 @@ export function DiscussionsWorkspace({
 
         <div className="discussion-hub__layout">
           <main className="discussion-hub__feed">
-            <section className="discussion-hub__filters" aria-label="Filter discussions">
+            <section
+              className="discussion-hub__filters"
+              aria-label="Filter discussions"
+            >
               <label className="discussion-hub__search">
                 <MagnifyingGlass size={19} aria-hidden="true" />
                 <span className="sr-only">Search discussions</span>
-                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search discussions by title or keyword..." />
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search discussions by title or keyword..."
+                />
               </label>
               <div className="discussion-hub__select">
                 <ThemedSelect
@@ -315,12 +369,14 @@ export function DiscussionsWorkspace({
                   ariaLabel="Filter discussions by course"
                   triggerClassName="discussion-hub__select-trigger"
                   contentClassName="discussion-hub__select-content"
-                  options={[
-                    ["all", "Course"],
-                    ["The Ultimate TypeScript Course", "TypeScript"],
-                    ["Complete Backend with Node.js", "Backend with Node.js"],
-                    ["Complete SQL Mastery", "SQL Mastery"],
-                  ] as const}
+                  options={
+                    [
+                      ["all", "Course"],
+                      ["The Ultimate TypeScript Course", "TypeScript"],
+                      ["Complete Backend with Node.js", "Backend with Node.js"],
+                      ["Complete SQL Mastery", "SQL Mastery"],
+                    ] as const
+                  }
                 />
               </div>
               <div className="discussion-hub__select">
@@ -330,13 +386,15 @@ export function DiscussionsWorkspace({
                   ariaLabel="Filter discussions by status"
                   triggerClassName="discussion-hub__select-trigger"
                   contentClassName="discussion-hub__select-content"
-                  options={[
-                    ["all", "Status"],
-                    ["answered", "Answered"],
-                    ["mentioned", "Mentioned"],
-                    ["solved", "Solved"],
-                    ["open", "Open"],
-                  ] as const}
+                  options={
+                    [
+                      ["all", "Status"],
+                      ["answered", "Answered"],
+                      ["mentioned", "Mentioned"],
+                      ["solved", "Solved"],
+                      ["open", "Open"],
+                    ] as const
+                  }
                 />
               </div>
               <div className="discussion-hub__select discussion-hub__select--sort">
@@ -347,10 +405,12 @@ export function DiscussionsWorkspace({
                   ariaLabel="Sort discussions"
                   triggerClassName="discussion-hub__select-trigger"
                   contentClassName="discussion-hub__select-content"
-                  options={[
-                    ["activity", "Latest activity"],
-                    ["replies", "Most replies"],
-                  ] as const}
+                  options={
+                    [
+                      ["activity", "Latest activity"],
+                      ["replies", "Most replies"],
+                    ] as const
+                  }
                 />
               </div>
             </section>
@@ -366,26 +426,48 @@ export function DiscussionsWorkspace({
                       aria-label={`Open discussion: ${thread.title}`}
                       onClick={() => openThread(thread)}
                     >
-                    <div className="discussion-thread__avatar">
-                      <img src={thread.avatar} alt="" />
-                      {thread.status !== "open" && <i aria-hidden="true" />}
-                    </div>
-                    <div className="discussion-thread__body">
-                      <span className="discussion-thread__title">{thread.title}</span>
-                      <p>{thread.excerpt}</p>
-                      <div className="discussion-thread__context">
-                        <span>{thread.course}</span>
-                        <span aria-hidden="true" />
-                        <small>{thread.lesson}</small>
+                      <div className="discussion-thread__avatar">
+                        <img src={thread.avatar} alt="" />
+                        {thread.status !== "open" && <i aria-hidden="true" />}
                       </div>
-                    </div>
-                    <div className="discussion-thread__meta">
-                      <span className={`discussion-thread__status is-${thread.status}`}><StatusIcon size={15} weight="fill" /> {statusLabels[thread.status]}</span>
-                      <span><ChatTeardropText size={17} /> {thread.replies} {thread.replies === 1 ? "reply" : "replies"}</span>
-                      <time>{thread.activity}</time>
-                    </div>
+                      <div className="discussion-thread__body">
+                        <span className="discussion-thread__title">
+                          {thread.title}
+                        </span>
+                        <p>{thread.excerpt}</p>
+                        <div className="discussion-thread__context">
+                          <span>{thread.course}</span>
+                          <span aria-hidden="true" />
+                          <small>{thread.lesson}</small>
+                        </div>
+                      </div>
+                      <div className="discussion-thread__meta">
+                        <span
+                          className={`discussion-thread__status is-${thread.status}`}
+                        >
+                          <StatusIcon size={15} weight="fill" />{" "}
+                          {statusLabels[thread.status]}
+                        </span>
+                        <span>
+                          <ChatTeardropText size={17} /> {thread.replies}{" "}
+                          {thread.replies === 1 ? "reply" : "replies"}
+                        </span>
+                        <time>{thread.activity}</time>
+                      </div>
                     </button>
-                    <button type="button" className="discussion-thread__more" aria-label={`More options for ${thread.title}`} onClick={(event) => { event.stopPropagation(); setNotice?.("Thread actions will be available with connected discussions."); }}><DotsThreeVertical size={21} weight="bold" /></button>
+                    <button
+                      type="button"
+                      className="discussion-thread__more"
+                      aria-label={`More options for ${thread.title}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setNotice?.(
+                          "Thread actions will be available with connected discussions.",
+                        );
+                      }}
+                    >
+                      <DotsThreeVertical size={21} weight="bold" />
+                    </button>
                   </article>
                 );
               })}
@@ -393,43 +475,131 @@ export function DiscussionsWorkspace({
                 <div className="discussion-hub__empty">
                   <UsersThree size={30} weight="duotone" />
                   <h2>No discussions match these filters</h2>
-                  <p>Try clearing a filter or start a new question for the course.</p>
-                  <button type="button" onClick={() => { setQuery(""); setCourse("all"); setStatus("all"); }}>Clear filters</button>
+                  <p>
+                    Try clearing a filter or start a new question for the
+                    course.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuery("");
+                      setCourse("all");
+                      setStatus("all");
+                    }}
+                  >
+                    Clear filters
+                  </button>
                 </div>
               )}
             </div>
           </main>
 
-          <aside className="discussion-hub__side" aria-label="Discussion activity">
+          <aside
+            className="discussion-hub__side"
+            aria-label="Discussion activity"
+          >
             <section className="discussion-side-card discussion-side-card--activity">
-              <header><h2>My Activity</h2><button type="button" aria-label="Open activity details" onClick={() => setNotice?.("Activity details will open here when discussions are connected.")}><ArrowSquareOut size={18} /></button></header>
+              <header>
+                <h2>My Activity</h2>
+                <button
+                  type="button"
+                  aria-label="Open activity details"
+                  onClick={() =>
+                    setNotice?.(
+                      "Activity details will open here when discussions are connected.",
+                    )
+                  }
+                >
+                  <ArrowSquareOut size={18} />
+                </button>
+              </header>
               <dl>
-                <div><dt><Question size={17} weight="fill" /> Questions asked</dt><dd>8</dd></div>
-                <div><dt><ChatTeardropText size={17} weight="fill" /> Replies</dt><dd>23</dd></div>
-                <div><dt><CheckCircle size={17} weight="fill" /> Answers accepted</dt><dd>3</dd></div>
-                <div><dt><Bell size={17} weight="fill" /> Helpful votes</dt><dd>17</dd></div>
+                <div>
+                  <dt>
+                    <Question size={17} weight="fill" /> Questions asked
+                  </dt>
+                  <dd>8</dd>
+                </div>
+                <div>
+                  <dt>
+                    <ChatTeardropText size={17} weight="fill" /> Replies
+                  </dt>
+                  <dd>23</dd>
+                </div>
+                <div>
+                  <dt>
+                    <CheckCircle size={17} weight="fill" /> Answers accepted
+                  </dt>
+                  <dd>3</dd>
+                </div>
+                <div>
+                  <dt>
+                    <Bell size={17} weight="fill" /> Helpful votes
+                  </dt>
+                  <dd>17</dd>
+                </div>
               </dl>
             </section>
 
             <section className="discussion-side-card discussion-side-card--mentions">
-              <header><h2>Unread Mentions</h2><button type="button" onClick={() => setActiveTab("mentions")}>View all</button></header>
+              <header>
+                <h2>Unread Mentions</h2>
+                <button type="button" onClick={() => navigateTab("mentions")}>
+                  View all
+                </button>
+              </header>
               <div className="discussion-mention">
                 <img src="/assets/sofia-avatar.jpg" alt="" />
-                <p><strong>Anurag Singh mentioned you</strong><span>in “Understanding mapped types with modifiers”</span></p>
+                <p>
+                  <strong>Anurag Singh mentioned you</strong>
+                  <span>in “Understanding mapped types with modifiers”</span>
+                </p>
                 <time>18 min ago</time>
               </div>
               <div className="discussion-mention">
                 <img src="/assets/ethan-avatar.jpg" alt="" />
-                <p><strong>Instructor mentioned you</strong><span>in “Why does TypeScript require explicit return types”</span></p>
+                <p>
+                  <strong>Instructor mentioned you</strong>
+                  <span>
+                    in “Why does TypeScript require explicit return types”
+                  </span>
+                </p>
                 <time>2h ago</time>
               </div>
             </section>
 
             <section className="discussion-side-card discussion-side-card--actions">
               <h2>Quick Actions</h2>
-              <button type="button" onClick={() => setComposer("question")}><span><Question size={19} weight="duotone" /></span><div><strong>Ask a Question</strong><small>Get help from instructors and peers</small></div><ArrowRight size={18} /></button>
-              <button type="button" onClick={() => setComposer("discussion")}><span><ChatCircleDots size={19} weight="duotone" /></span><div><strong>Start a Discussion</strong><small>Share ideas and start a conversation</small></div><ArrowRight size={18} /></button>
-              <button type="button" onClick={() => onNavigatePage("/courses")}><span><BookmarkSimple size={19} weight="duotone" /></span><div><strong>Browse Guidelines</strong><small>Review course spaces and learning resources</small></div><ArrowRight size={18} /></button>
+              <button type="button" onClick={() => setComposer("question")}>
+                <span>
+                  <Question size={19} weight="duotone" />
+                </span>
+                <div>
+                  <strong>Ask a Question</strong>
+                  <small>Get help from instructors and peers</small>
+                </div>
+                <ArrowRight size={18} />
+              </button>
+              <button type="button" onClick={() => setComposer("discussion")}>
+                <span>
+                  <ChatCircleDots size={19} weight="duotone" />
+                </span>
+                <div>
+                  <strong>Start a Discussion</strong>
+                  <small>Share ideas and start a conversation</small>
+                </div>
+                <ArrowRight size={18} />
+              </button>
+              <button type="button" onClick={() => onNavigatePage("/courses")}>
+                <span>
+                  <BookmarkSimple size={19} weight="duotone" />
+                </span>
+                <div>
+                  <strong>Browse Guidelines</strong>
+                  <small>Review course spaces and learning resources</small>
+                </div>
+                <ArrowRight size={18} />
+              </button>
             </section>
           </aside>
         </div>

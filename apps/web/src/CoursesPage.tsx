@@ -64,6 +64,7 @@ import type {
 } from "./settings/settingsPreferences";
 import { getStoredProfilePreferences } from "./settings/profilePreferences";
 import type { ProfilePreferences } from "./settings/profilePreferences";
+import type { NavigateTo } from "./routing/navigation";
 
 type ThemePreference = "light" | "dark" | "device";
 type AppearanceOption = ThemePreference | "theme";
@@ -72,10 +73,11 @@ type NavigationDropPosition = "before" | "after";
 
 interface CoursesPageProps {
   onOpenCourse: (course: Course | LearningCourse) => void;
-  onNavigatePage: (page: string) => void;
+  onNavigatePage: NavigateTo;
   page?: string;
   section?: string | null;
   settingsTab?: string;
+  discussionTab?: string;
   renderMain?: (() => ReactNode) | null;
 }
 
@@ -193,6 +195,7 @@ export function CoursesPage({
   page = "courses",
   section: requestedSection = null,
   settingsTab = "appearance",
+  discussionTab = "q-and-a",
   renderMain = null,
 }: CoursesPageProps) {
   const [role, setRole] = useState<CourseRole>(
@@ -1807,6 +1810,7 @@ export function CoursesPage({
           <WorkspacePage
             section={requestedSection || activeSection}
             role={role}
+            discussionTab={discussionTab}
             onNavigatePage={onNavigatePage}
             setNotice={setNotice}
             onSignOut={() => {

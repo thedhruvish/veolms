@@ -174,6 +174,35 @@ test("profile field and public-visibility labels share one text baseline", async
   for (const { delta } of baselineDeltas) {
     expect(Math.abs(delta)).toBeLessThan(0.1);
   }
+
+  await page.locator("#profile-mobile").fill("+91 98765 43211");
+  const phoneControlAlignment = await page
+    .locator(".settings-profile__phone-control")
+    .evaluate((control) => {
+      const field = control.querySelector(".settings-profile__input-shell");
+      const button = control.querySelector(".settings-profile__verify-action");
+      if (!field || !button)
+        throw new Error("Expected the phone field and verification action");
+      const fieldRect = field.getBoundingClientRect();
+      const buttonRect = button.getBoundingClientRect();
+      return {
+        fieldHeight: fieldRect.height,
+        buttonHeight: buttonRect.height,
+        topInset: buttonRect.top - fieldRect.top,
+        bottomInset: fieldRect.bottom - buttonRect.bottom,
+        fontSize: Number.parseFloat(getComputedStyle(button).fontSize),
+      };
+    });
+
+  expect(phoneControlAlignment.buttonHeight).toBeLessThan(
+    phoneControlAlignment.fieldHeight,
+  );
+  expect(
+    Math.abs(
+      phoneControlAlignment.topInset - phoneControlAlignment.bottomInset,
+    ),
+  ).toBeLessThan(0.1);
+  expect(phoneControlAlignment.fontSize).toBe(12);
 });
 
 test("appearance and sidebar preferences persist through their direct settings routes", async ({

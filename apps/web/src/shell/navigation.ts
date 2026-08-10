@@ -18,6 +18,8 @@ import type { SidebarPreferences } from "../settings/settingsPreferences";
 
 export type NavigationItem = readonly [label: string, icon: Icon];
 
+export const MESSAGES_NAVIGATION_ENABLED = false;
+
 const studentNavigation: readonly NavigationItem[] = [
   ["Home", House],
   ["My Learning", GraduationCap],
@@ -29,7 +31,7 @@ const studentNavigation: readonly NavigationItem[] = [
   ["Settings", GearSix],
 ];
 
-const creatorNavigation: readonly NavigationItem[] = [
+const allCreatorNavigation: readonly NavigationItem[] = [
   ["Dashboard", SquaresFour],
   ["Courses", BookOpen],
   ["Students", Users],
@@ -41,6 +43,10 @@ const creatorNavigation: readonly NavigationItem[] = [
   ["Messages", EnvelopeSimple],
   ["Settings", GearSix],
 ];
+
+const creatorNavigation = allCreatorNavigation.filter(
+  ([label]) => MESSAGES_NAVIGATION_ENABLED || label !== "Messages",
+);
 
 const navigationByRole: Record<string, readonly NavigationItem[]> = {
   student: studentNavigation,

@@ -17,13 +17,13 @@ describe("Curriculum", () => {
   });
 
   it("toggles sections, filters lessons, and delegates lesson selection and close", () => {
-    const setSelectedLesson = vi.fn();
+    const onSelectLesson = vi.fn();
     const onClose = vi.fn();
 
     render(
       <Curriculum
         selectedLesson={1}
-        setSelectedLesson={setSelectedLesson}
+        onSelectLesson={onSelectLesson}
         courseTitle="UX Design Fundamentals"
         courseThumbnail="/course-thumbnail.png"
         onClose={onClose}
@@ -59,7 +59,7 @@ describe("Curriculum", () => {
     fireEvent.click(
       screen.getByRole("button", { name: /10\.\s*Usability Testing\s*11:39/ }),
     );
-    expect(setSelectedLesson).toHaveBeenCalledWith(10);
+    expect(onSelectLesson).toHaveBeenCalledWith(10);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

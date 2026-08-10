@@ -18,6 +18,26 @@ export default [
     route("students", marker, { id: "students", caseSensitive: true }),
     route("reviews", marker, { id: "reviews", caseSensitive: true }),
     route("discussions", marker, { id: "discussions", caseSensitive: true }),
+    route("discussions/q-and-a", marker, {
+      id: "discussions-q-and-a",
+      caseSensitive: true,
+    }),
+    route("discussions/comments", marker, {
+      id: "discussions-comments",
+      caseSensitive: true,
+    }),
+    route("discussions/mentions", marker, {
+      id: "discussions-mentions",
+      caseSensitive: true,
+    }),
+    route("discussions/following", marker, {
+      id: "discussions-following",
+      caseSensitive: true,
+    }),
+    route("discussions/saved", marker, {
+      id: "discussions-saved",
+      caseSensitive: true,
+    }),
     route("analytics", marker, { id: "analytics", caseSensitive: true }),
     route("orders", marker, { id: "orders", caseSensitive: true }),
     route("messages", marker, { id: "messages", caseSensitive: true }),

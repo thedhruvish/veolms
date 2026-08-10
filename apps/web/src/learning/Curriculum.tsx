@@ -8,13 +8,12 @@ import {
   X,
 } from "@phosphor-icons/react";
 import React, { useEffect, useRef, useState } from "react";
-import type { Dispatch, SetStateAction } from "react";
 import { lessonsById, sections } from "./courseContent";
 import { IconButton } from "./IconButton";
 
 interface CurriculumProps {
   selectedLesson: number;
-  setSelectedLesson: Dispatch<SetStateAction<number>>;
+  onSelectLesson: (lessonNumber: number) => void;
   courseTitle: string;
   courseThumbnail: string;
   onClose?: () => void;
@@ -23,7 +22,7 @@ interface CurriculumProps {
 
 export function Curriculum({
   selectedLesson,
-  setSelectedLesson,
+  onSelectLesson,
   courseTitle,
   courseThumbnail,
   onClose,
@@ -215,7 +214,7 @@ export function Curriculum({
                             key={number}
                             ref={active ? activeLessonRef : undefined}
                             onClick={() => {
-                              setSelectedLesson(number);
+                              onSelectLesson(number);
                               onClose?.();
                             }}
                             className={`learning-curriculum__lesson ${active ? "is-active" : ""}`}

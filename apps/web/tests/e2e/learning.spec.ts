@@ -47,7 +47,7 @@ test("lesson choice, curriculum width, and player preferences persist", async ({
     .poll(() =>
       lessonVideo.evaluate((video) => (video as HTMLVideoElement).paused),
     )
-    .toBe(true);
+    .toBe(false);
   await expect(player.getByRole("switch", { name: /Autoplay/ })).toHaveCount(0);
   await player.getByRole("button", { name: "Toggle captions" }).click();
   await expect(
