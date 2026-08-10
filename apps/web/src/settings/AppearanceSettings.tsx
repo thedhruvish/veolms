@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import {
+  ArrowsClockwise,
   ArrowsInLineHorizontal,
+  Check,
   CircleHalf,
   DeviceMobile,
   Moon,
@@ -9,7 +11,11 @@ import {
   Sun,
   TextAa,
 } from "@phosphor-icons/react";
-import { academyThemes } from "../themes";
+import {
+  academyThemes,
+  getThemeRotationPreferences,
+  persistThemeRotationPreferences,
+} from "../themes";
 import type { AcademyTheme } from "../themes";
 import {
   ChoiceCard,
@@ -72,9 +78,30 @@ export function AppearanceSettings({
   const [textSize, setTextSize] = useState(() =>
     readStored("veolms-text-size", "default"),
   );
+  const [themeRotation, setThemeRotation] = useState(
+    getThemeRotationPreferences,
+  );
   const selectedColor = COLOR_THEMES.some((item) => item.id === academyTheme)
     ? academyTheme
-    : "graphite";
+    : "codex";
+
+  const updateThemeRotation = (
+    next: Parameters<typeof persistThemeRotationPreferences>[0],
+  ) => {
+    setThemeRotation(persistThemeRotationPreferences(next));
+  };
+
+  const toggleThemeInPool = (themeId: string) => {
+    const isSelected = themeRotation.pool.includes(themeId);
+    if (isSelected && themeRotation.pool.length <= 2) return;
+
+    updateThemeRotation({
+      ...themeRotation,
+      pool: isSelected
+        ? themeRotation.pool.filter((id) => id !== themeId)
+        : [...themeRotation.pool, themeId],
+    });
+  };
 
   useEffect(() => {
     document.documentElement.dataset.reduceAnimations =
@@ -146,6 +173,78 @@ export function AppearanceSettings({
             />
           ))}
         </RadioGroup>
+      </section>
+
+      <section className="settings-section settings-theme-rotation">
+        <h2>Theme rotation</h2>
+        <div className="settings-row-list">
+          <SettingRow
+            icon={ArrowsClockwise}
+            label="Random theme on app open"
+            note="Start each new app session with a theme from your selected pool"
+          >
+            <SettingsToggle
+              checked={themeRotation.enabled}
+              onChange={(enabled) =>
+                updateThemeRotation({ ...themeRotation, enabled })
+              }
+              label="Random theme on app open"
+            />
+          </SettingRow>
+        </div>
+
+        {themeRotation.enabled && (
+          <div className="settings-theme-pool">
+            <div className="settings-theme-pool__heading">
+              <div>
+                <h3>Theme pool</h3>
+                <p>Select the themes that can appear when the app opens.</p>
+              </div>
+              <span>{themeRotation.pool.length} selected</span>
+            </div>
+            <div
+              className="settings-theme-pool__options"
+              aria-label="Themes included in random rotation"
+            >
+              {COLOR_THEMES.map((item) => {
+                const isSelected = themeRotation.pool.includes(item.id);
+                const isRequired = isSelected && themeRotation.pool.length <= 2;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    role="checkbox"
+                    aria-checked={isSelected}
+                    aria-disabled={isRequired}
+                    className={isSelected ? "is-selected" : ""}
+                    onClick={() => toggleThemeInPool(item.id)}
+                    title={
+                      isRequired
+                        ? "Keep at least two themes in the rotation"
+                        : undefined
+                    }
+                  >
+                    <span
+                      className={`settings-theme-pool__swatch ${item.darkInk ? "has-dark-ink" : ""}`}
+                      style={{ backgroundColor: item.preview }}
+                      aria-hidden="true"
+                    >
+                      {isSelected && <Check size={12} weight="bold" />}
+                    </span>
+                    <span className="settings-theme-pool__name">
+                      <strong>{item.name}</strong>
+                      <small>{item.note}</small>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="settings-theme-pool__footnote">
+              Your current theme stays unchanged. Rotation begins the next time
+              you open the app.
+            </p>
+          </div>
+        )}
       </section>
 
       <section className="settings-section">

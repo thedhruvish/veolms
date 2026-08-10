@@ -23,7 +23,7 @@ test.describe("@visual", () => {
       local: {
         "veolms-theme": "light",
         "veolms-academy-theme": "ocean",
-        "veolms-academy-theme-version": "graphite-default-v1",
+        "veolms-academy-theme-version": "veo-onyx-default-v2",
       },
     });
     await openApp(page, "/courses");

@@ -34,6 +34,7 @@ export interface CourseCatalogueProps {
   courseMenu: string | null;
   setCourseMenu: (courseId: string | null) => void;
   setNotice: (notice: string) => void;
+  onNavigatePage: (destination: string) => void;
   onResetCatalogue: () => void;
 }
 
@@ -55,6 +56,7 @@ export function CourseCatalogue({
   courseMenu,
   setCourseMenu,
   setNotice,
+  onNavigatePage,
   onResetCatalogue,
 }: CourseCatalogueProps) {
   return (
@@ -101,11 +103,7 @@ export function CourseCatalogue({
           <button
             type="button"
             className="create-course"
-            onClick={() =>
-              setNotice(
-                "Create Course selected. The course editor will be added later.",
-              )
-            }
+            onClick={() => onNavigatePage("Create Course")}
           >
             <Plus size={21} /> Create Course
           </button>
@@ -179,8 +177,8 @@ export function CourseCatalogue({
               onWishlist={onWishlist}
               onOpen={onOpenCourse}
               onExplore={(selected) =>
-                setNotice(
-                  `${selected.title} is not enrolled. Course details will be added next.`,
+                onNavigatePage(
+                  `/courses/${encodeURIComponent(selected.id)}/overview`,
                 )
               }
               menuOpen={courseMenu === course.id}

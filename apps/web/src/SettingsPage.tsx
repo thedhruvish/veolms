@@ -8,15 +8,18 @@ import {
   UserCircle,
 } from "@phosphor-icons/react";
 import type { ComponentType } from "react";
+import { AccountSettings } from "./settings/AccountSettings";
 import { AppearanceSettings } from "./settings/AppearanceSettings";
 import type { DisplayMode } from "./settings/AppearanceSettings";
 import { LearningSettings } from "./settings/LearningSettings";
+import { NotificationSettings } from "./settings/NotificationSettings";
 import { ProfileSettings } from "./settings/ProfileSettings";
 import type {
   ProfilePreferences,
   ProfileRole,
 } from "./settings/profilePreferences";
 import { SidebarSettings } from "./settings/SidebarSettings";
+import { SecuritySettings } from "./settings/SecuritySettings";
 import type {
   SidebarMode,
   SidebarPreferences,
@@ -52,28 +55,6 @@ const SETTINGS_TABS: readonly SettingsTabDefinition[] = [
   { id: "account", label: "Account", Icon: GearSix },
 ];
 
-interface SettingsPlaceholderProps {
-  title: string;
-}
-
-function SettingsPlaceholder({ title }: SettingsPlaceholderProps) {
-  return (
-    <section
-      className="courses-placeholder-empty settings-placeholder"
-      aria-label={`${title} placeholder`}
-    >
-      <span className="courses-placeholder-empty-icon" aria-hidden="true">
-        <GearSix size={34} weight="duotone" />
-      </span>
-      <h2>Nothing here yet</h2>
-      <p>
-        {title} is not implemented yet. This placeholder keeps the navigation
-        path ready while the feature is being built.
-      </p>
-    </section>
-  );
-}
-
 export interface SettingsPageProps {
   tab?: string;
   role?: ProfileRole;
@@ -106,9 +87,6 @@ export function SettingsPage({
   const activeTab: SettingsTab = SETTINGS_TABS.some((item) => item.id === tab)
     ? (tab as SettingsTab)
     : "appearance";
-  const activeLabel =
-    SETTINGS_TABS.find((item) => item.id === activeTab)?.label || "Appearance";
-
   const navigateTab = (id: SettingsTab) => onNavigatePage?.(`/settings/${id}`);
 
   return (
@@ -138,6 +116,7 @@ export function SettingsPage({
             aria-controls="settings-tab-panel"
             className={activeTab === id ? "is-active" : ""}
             onClick={() => navigateTab(id)}
+            onFocus={(event) => event.currentTarget.scrollIntoView({ block: "nearest", inline: "center" })}
           >
             <Icon size={17} weight={activeTab === id ? "fill" : "regular"} />
             <span>{label}</span>
@@ -178,9 +157,11 @@ export function SettingsPage({
           />
         )}
         {activeTab === "learning" && <LearningSettings />}
-        {!["profile", "appearance", "sidebar", "learning"].includes(
-          activeTab,
-        ) && <SettingsPlaceholder title={activeLabel} />}
+        {activeTab === "notifications" && <NotificationSettings />}
+        {activeTab === "security" && <SecuritySettings />}
+        {activeTab === "account" && (
+          <AccountSettings role={role} onNavigatePage={onNavigatePage} />
+        )}
       </div>
     </div>
   );

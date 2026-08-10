@@ -42,6 +42,13 @@ test("lesson choice, curriculum width, and player preferences persist", async ({
   const player = page.getByRole("region", {
     name: /Lesson video player for Usability Testing/,
   });
+  const lessonVideo = player.locator("video");
+  await expect
+    .poll(() =>
+      lessonVideo.evaluate((video) => (video as HTMLVideoElement).paused),
+    )
+    .toBe(true);
+  await expect(player.getByRole("switch", { name: /Autoplay/ })).toHaveCount(0);
   await player.getByRole("button", { name: "Toggle captions" }).click();
   await expect(
     player.getByRole("button", { name: "Toggle captions" }),
@@ -58,10 +65,6 @@ test("lesson choice, curriculum width, and player preferences persist", async ({
     )
     .toBe(1.5);
 
-  const autoplay = player.getByRole("switch", { name: "Autoplay off" });
-  await autoplay.click();
-  await expectStoredValue(page, "veolms-player-autoplay", "on");
-
   await player.getByRole("button", { name: "Enter theater mode" }).click();
   await expect(
     player.getByRole("button", { name: "Exit theater mode" }),
@@ -71,9 +74,13 @@ test("lesson choice, curriculum width, and player preferences persist", async ({
   await expect(
     page.getByRole("heading", { name: "Usability Testing", level: 1 }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("switch", { name: "Autoplay on" }),
-  ).toHaveAttribute("aria-checked", "true");
+  await expect
+    .poll(() =>
+      page
+        .locator("video")
+        .evaluate((video) => (video as HTMLVideoElement).paused),
+    )
+    .toBe(true);
 });
 
 test("mobile lesson drawer closes with Escape and returns focus", async ({

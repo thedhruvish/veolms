@@ -25,12 +25,16 @@ export const formatMediaTime = (seconds: number) => {
   return `${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
 };
 
-const configuredCourseMediaBaseUrl =
-  import.meta.env.VITE_COURSE_MEDIA_BASE_URL?.trim();
+export function resolveCourseMediaBaseUrl(configuredBaseUrl?: string) {
+  const normalizedBaseUrl = configuredBaseUrl?.trim().replace(/\/+$/, "");
+  return normalizedBaseUrl
+    ? `${normalizedBaseUrl}/course-videos`
+    : "/course-videos";
+}
 
-export const courseMediaBaseUrl = (
-  configuredCourseMediaBaseUrl || "/course-videos"
-).replace(/\/+$/, "");
+export const courseMediaBaseUrl = resolveCourseMediaBaseUrl(
+  import.meta.env.VITE_COURSE_MEDIA_BASE_URL,
+);
 
 export function resolveCourseVideoSrc(
   fileName: string,

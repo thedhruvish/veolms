@@ -52,8 +52,6 @@ interface VideoPlayerProps {
   lessonTitle: string;
   theaterMode: boolean;
   onTheaterToggle: () => void;
-  onAutoplayNext?: () => boolean;
-  autoStart?: boolean;
 }
 
 export function VideoPlayer({
@@ -61,8 +59,6 @@ export function VideoPlayer({
   lessonTitle,
   theaterMode,
   onTheaterToggle,
-  onAutoplayNext,
-  autoStart = false,
 }: VideoPlayerProps) {
   const shellRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLElement>(null);
@@ -71,8 +67,6 @@ export function VideoPlayer({
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const settingsMenuRef = useRef<HTMLDivElement>(null);
   const suppressNextPlayerActionRef = useRef(false);
-  const autoplayNextRef = useRef(false);
-  const courseLaunchRef = useRef(autoStart);
   const controlsTimerRef = useRef<number | undefined>(undefined);
   const hudTimerRef = useRef<number | undefined>(undefined);
 
@@ -89,9 +83,6 @@ export function VideoPlayer({
   const [controlsVisible, setControlsVisible] = useState(true);
   const [hud, setHud] = useState("");
   const [mediaError, setMediaError] = useState(false);
-  const [autoplay, setAutoplay] = useState(
-    () => localStorage.getItem("veolms-player-autoplay") === "on",
-  );
   const [ambient, setAmbient] = useState(
     () => localStorage.getItem("veolms-player-ambient") !== "off",
   );
@@ -244,7 +235,6 @@ export function VideoPlayer({
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    courseLaunchRef.current = autoStart;
     video.pause();
     video.load();
     video.playbackRate = speed;
@@ -255,11 +245,7 @@ export function VideoPlayer({
     setDuration(media.duration);
     setMediaError(false);
     setControlsVisible(true);
-  }, [media.src, autoStart]);
-
-  useEffect(() => {
-    localStorage.setItem("veolms-player-autoplay", autoplay ? "on" : "off");
-  }, [autoplay]);
+  }, [media.src]);
 
   useEffect(() => {
     localStorage.setItem("veolms-player-ambient", ambient ? "on" : "off");
@@ -456,14 +442,7 @@ export function VideoPlayer({
           }}
           onLoadedData={paintAmbientFrame}
           onSeeked={paintAmbientFrame}
-          onCanPlay={() => {
-            setMediaError(false);
-            if (autoplayNextRef.current || courseLaunchRef.current) {
-              autoplayNextRef.current = false;
-              courseLaunchRef.current = false;
-              videoRef.current?.play().catch(() => setControlsVisible(true));
-            }
-          }}
+          onCanPlay={() => setMediaError(false)}
           onPlay={() => {
             setPlaying(true);
             setControlsVisible(true);
@@ -486,7 +465,6 @@ export function VideoPlayer({
           onError={() => setMediaError(true)}
           onEnded={() => {
             setPlaying(false);
-            if (autoplay && onAutoplayNext?.()) autoplayNextRef.current = true;
           }}
         >
           <track
@@ -605,21 +583,6 @@ export function VideoPlayer({
                 {formatMediaTime(currentTime)} / {formatMediaTime(duration)}
               </span>
               <span className="flex-1" />
-
-              <button
-                data-player-control
-                type="button"
-                role="switch"
-                aria-checked={autoplay}
-                aria-label={`Autoplay ${autoplay ? "on" : "off"}`}
-                title={`Autoplay ${autoplay ? "on" : "off"}`}
-                onClick={() =>
-                  runPlayerAction(() => setAutoplay((current) => !current))
-                }
-                className="player-control autoplay-control"
-              >
-                <SwitchVisual checked={autoplay} />
-              </button>
 
               <button
                 data-player-control

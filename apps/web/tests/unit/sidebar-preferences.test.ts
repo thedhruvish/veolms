@@ -7,13 +7,14 @@ import {
 } from "../../src/shell/sidebarPreferences.js";
 
 const defaultPreferences = {
-  iconStyle: "multicolor",
+  iconStyle: "monochrome",
   monochromeMode: "theme",
   monochromeColor: "#6c78ff",
   contentLayout: "framed",
   sidebarMaxWidth: 300,
   showCollapsedLabels: true,
   showCollapsedLogo: true,
+  showThemeIcon: true,
   highlightActive: true,
 };
 
@@ -52,6 +53,9 @@ describe("sidebar preference storage", () => {
     expect(
       localStorage.getItem("veolms-sidebar-max-width-default-version"),
     ).toBe("300px-v1");
+    expect(localStorage.getItem("veolms-sidebar-icon-default-version")).toBe(
+      "monochrome-theme-v1",
+    );
     expect(localStorage.getItem("veolms-sidebar-preferences")).toBeNull();
   });
 
@@ -109,12 +113,36 @@ describe("sidebar preference storage", () => {
     });
   });
 
+  it("migrates icon styling once, then preserves an explicit user choice", () => {
+    localStorage.setItem(
+      "veolms-sidebar-preferences",
+      JSON.stringify({
+        iconStyle: "multicolor",
+        monochromeMode: "custom",
+      }),
+    );
+
+    expect(getInitialSidebarPreferences()).toMatchObject({
+      iconStyle: "monochrome",
+      monochromeMode: "theme",
+    });
+
+    localStorage.setItem(
+      "veolms-sidebar-preferences",
+      JSON.stringify({ iconStyle: "multicolor" }),
+    );
+    expect(getInitialSidebarPreferences().iconStyle).toBe("multicolor");
+  });
+
   it("returns defaults for invalid JSON without stamping the migration version", () => {
     localStorage.setItem("veolms-sidebar-preferences", "{");
 
     expect(getInitialSidebarPreferences()).toEqual(defaultPreferences);
     expect(
       localStorage.getItem("veolms-sidebar-max-width-default-version"),
+    ).toBeNull();
+    expect(
+      localStorage.getItem("veolms-sidebar-icon-default-version"),
     ).toBeNull();
     expect(localStorage.getItem("veolms-sidebar-preferences")).toBe("{");
   });

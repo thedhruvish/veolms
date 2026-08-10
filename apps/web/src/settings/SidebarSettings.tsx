@@ -5,6 +5,7 @@ import {
   Palette,
   Plus,
   SidebarSimple,
+  TextT,
 } from "@phosphor-icons/react";
 import { academyThemes } from "../themes";
 import type { AcademyTheme } from "../themes";
@@ -57,7 +58,7 @@ export function SidebarSettings({
   onSidebarModeChange,
 }: SidebarSettingsProps) {
   const preferences = sidebarPreferences || {};
-  const iconStyle = preferences.iconStyle || "multicolor";
+  const iconStyle = preferences.iconStyle || "monochrome";
   const colorMode = preferences.monochromeMode || "theme";
   const customColor = preferences.monochromeColor || "#6366f1";
   const themeColor =
@@ -72,6 +73,7 @@ export function SidebarSettings({
   const sidebarMaxWidth = normalizeSidebarMaxWidth(preferences.sidebarMaxWidth);
   const showLabels = preferences.showCollapsedLabels !== false;
   const showCollapsedLogo = preferences.showCollapsedLogo !== false;
+  const showThemeIcon = preferences.showThemeIcon !== false;
   const highlightActive = preferences.highlightActive !== false;
   const sidebarHidden = sidebarMode === "hidden";
   const selectedPreset =
@@ -98,16 +100,14 @@ export function SidebarSettings({
             note="Each icon is displayed with its own color"
             className="settings-choice-card--horizontal settings-choice-card--sidebar-style"
             preview={<SidebarIconPreview />}
-          >
-            <span className="settings-recommended">Recommended</span>
-          </ChoiceCard>
+          />
           <ChoiceCard
             checked={iconStyle === "monochrome"}
             onChange={() => update({ iconStyle: "monochrome" })}
             label="Monochrome"
             note="All icons use a single color"
             className="settings-choice-card--horizontal settings-choice-card--sidebar-style"
-            preview={<SidebarIconPreview monochrome monoColor="#9eacc0" />}
+            preview={<SidebarIconPreview monochrome monoColor={themeColor} />}
           />
         </RadioGroup>
       </section>
@@ -317,7 +317,7 @@ export function SidebarSettings({
         <h2>Additional sidebar options</h2>
         <div className="settings-row-list">
           <SettingRow
-            icon={Palette}
+            icon={TextT}
             label="Show labels in collapsed mode"
             note="Display text labels on hover in collapsed state"
           >
@@ -336,6 +336,17 @@ export function SidebarSettings({
               checked={showCollapsedLogo}
               onChange={(value) => update({ showCollapsedLogo: value })}
               label="Show logo when collapsed"
+            />
+          </SettingRow>
+          <SettingRow
+            icon={Palette}
+            label="Show theme icon"
+            note="Display the color theme picker in the sidebar"
+          >
+            <SettingsToggle
+              checked={showThemeIcon}
+              onChange={(value) => update({ showThemeIcon: value })}
+              label="Show theme icon"
             />
           </SettingRow>
           <SettingRow

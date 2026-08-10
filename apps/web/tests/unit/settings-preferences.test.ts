@@ -48,6 +48,15 @@ describe("learning preference persistence", () => {
     expect(readLearningPreferences()).toBe(LEARNING_PREFERENCE_DEFAULTS);
   });
 
+  it("removes the retired autoplay preference from stored settings", () => {
+    localStorage.setItem(
+      LEARNING_PREFERENCES_KEY,
+      JSON.stringify({ autoplayNextLecture: true }),
+    );
+
+    expect(readLearningPreferences()).not.toHaveProperty("autoplayNextLecture");
+  });
+
   it("falls back to default reminder days when stored days are not an array", () => {
     localStorage.setItem(
       LEARNING_PREFERENCES_KEY,

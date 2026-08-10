@@ -3,6 +3,7 @@ import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { CourseCatalogue } from "../../src/courses/CourseCatalogue.tsx";
 import type { CourseCatalogueProps } from "../../src/courses/CourseCatalogue.tsx";
+import { courses } from "../../src/courses/catalogue.ts";
 
 vi.mock("../../src/ThemedSelect.tsx", () => ({
   ThemedSelect: ({
@@ -37,6 +38,7 @@ const renderCatalogue = (props: Partial<CourseCatalogueProps> = {}) => {
     onOpenCourse: vi.fn(),
     setCourseMenu: vi.fn(),
     setNotice: vi.fn(),
+    onNavigatePage: vi.fn(),
     onResetCatalogue: vi.fn(),
   };
   const view = render(
@@ -88,14 +90,29 @@ describe("CourseCatalogue", () => {
     expect(onSortChange).toHaveBeenCalledWith("title");
   });
 
-  it("keeps the creator create notice exact", () => {
-    const { setNotice } = renderCatalogue({ role: "creator" });
+  it("opens the dedicated create-course route for creators", () => {
+    const { onNavigatePage, setNotice } = renderCatalogue({ role: "creator" });
 
     fireEvent.click(screen.getByRole("button", { name: "Create Course" }));
 
-    expect(setNotice).toHaveBeenCalledWith(
-      "Create Course selected. The course editor will be added later.",
+    expect(onNavigatePage).toHaveBeenCalledWith("Create Course");
+    expect(setNotice).not.toHaveBeenCalled();
+  });
+
+  it("opens the overview route when a student explores an unenrolled course", () => {
+    const unenrolledCourse = courses.find((course) => !course.enrolled);
+    expect(unenrolledCourse).toBeDefined();
+
+    const { onNavigatePage, setNotice } = renderCatalogue({
+      visibleCourses: [unenrolledCourse!],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Explore Course" }));
+
+    expect(onNavigatePage).toHaveBeenCalledWith(
+      `/courses/${encodeURIComponent(unenrolledCourse!.id)}/overview`,
     );
+    expect(setNotice).not.toHaveBeenCalled();
   });
 
   it("keeps wishlist empty copy and delegates reset to the parent", () => {

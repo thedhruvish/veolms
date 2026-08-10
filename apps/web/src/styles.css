@@ -716,10 +716,6 @@ button {
   transform: scale(0.94);
 }
 
-.autoplay-control {
-  width: 44px;
-}
-
 .player-switch {
   position: relative;
   display: inline-flex;
@@ -889,10 +885,6 @@ button.player-menu-row:focus-visible {
 
   .player-secondary-control {
     display: none;
-  }
-
-  .autoplay-control {
-    width: 38px;
   }
 
   .player-volume-slider {

@@ -10,7 +10,7 @@ test("compiled client serves direct routes and bundled course artwork", async ({
 }) => {
   await openApp(page, "/");
   await expect(
-    page.getByRole("heading", { name: /Good evening, Ava/ }),
+    page.getByRole("heading", { name: /Good evening, Ashi/ }),
   ).toBeVisible();
 
   await page.goto("/courses");
@@ -41,7 +41,7 @@ test("compiled client serves direct routes and bundled course artwork", async ({
 
   await page.goto("/COURSES");
   await expect(
-    page.getByRole("heading", { name: /Good evening, Ava/ }),
+    page.getByRole("heading", { name: /Good evening, Ashi/ }),
   ).toBeVisible();
   await expect(page).toHaveTitle(/^Home .* ProCodrr$/);
   expect(new URL(page.url()).pathname).toBe("/COURSES");

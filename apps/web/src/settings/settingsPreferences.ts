@@ -15,13 +15,13 @@ export interface SidebarPreferences {
   sidebarMaxWidth?: number;
   showCollapsedLabels?: boolean;
   showCollapsedLogo?: boolean;
+  showThemeIcon?: boolean;
   highlightActive?: boolean;
 }
 
 export interface LearningPreferences {
   videoQuality: string;
   playbackSpeed: string;
-  autoplayNextLecture: boolean;
   resumeFromLastPosition: boolean;
   startInTheaterMode: boolean;
   weeklyGoal: string;
@@ -43,7 +43,6 @@ export const LEARNING_PREFERENCES_KEY = "veolms-learning-preferences";
 export const LEARNING_PREFERENCE_DEFAULTS: LearningPreferences = {
   videoQuality: "auto",
   playbackSpeed: "1",
-  autoplayNextLecture: true,
   resumeFromLastPosition: true,
   startInTheaterMode: false,
   weeklyGoal: "5",
@@ -103,13 +102,15 @@ export const readLearningPreferences = (): LearningPreferences => {
       typeof parsedPreferences === "object" && parsedPreferences !== null
         ? (parsedPreferences as Partial<LearningPreferences>)
         : {};
-    return {
+    const preferences = {
       ...LEARNING_PREFERENCE_DEFAULTS,
       ...storedPreferences,
       reminderDays: Array.isArray(storedPreferences.reminderDays)
         ? storedPreferences.reminderDays
         : LEARNING_PREFERENCE_DEFAULTS.reminderDays,
     };
+    delete (preferences as Record<string, unknown>).autoplayNextLecture;
+    return preferences;
   } catch {
     return LEARNING_PREFERENCE_DEFAULTS;
   }

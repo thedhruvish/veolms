@@ -22,13 +22,16 @@ test("role, appearance, and academy palette persist across routes and reloads", 
   await expectStoredValue(page, "veolms-theme", "light");
 
   await sidebar.getByRole("button", { name: "Choose color theme" }).click();
+  const paletteMenu = page.getByRole("menu", { name: "Choose a color theme" });
   await page.getByRole("menuitemradio", { name: /Ocean Blue/ }).click();
   await expect(page.locator("html")).toHaveAttribute("data-palette", "ocean");
   await expectStoredValue(page, "veolms-academy-theme", "ocean");
+  await expect(paletteMenu).toBeVisible();
 
   await sidebar
     .getByRole("button", { name: "Open role and appearance menu" })
     .click();
+  await expect(paletteMenu).toBeHidden();
   await page.getByRole("menuitemradio", { name: "Creator" }).click();
   await expect(
     page.getByRole("complementary", { name: "Creator navigation" }),
@@ -52,6 +55,60 @@ test("role, appearance, and academy palette persist across routes and reloads", 
   await expect(page).toHaveURL(/\/courses$/);
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await expect(page.locator("html")).toHaveAttribute("data-palette", "ocean");
+});
+
+test("theme picker keeps pointer choices open and makes keyboard previews reversible", async ({
+  page,
+}) => {
+  await openApp(page, "/");
+  const sidebar = page.getByRole("complementary", {
+    name: "Student navigation",
+  });
+  const trigger = sidebar.getByRole("button", { name: "Choose color theme" });
+
+  await trigger.click();
+  const menu = page.getByRole("menu", { name: "Choose a color theme" });
+  const graphite = menu.getByRole("menuitemradio", {
+    name: /Graphite Studio/,
+  });
+  const ocean = menu.getByRole("menuitemradio", { name: /Ocean Blue/ });
+
+  await expect(graphite).toBeFocused();
+  await ocean.hover();
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-palette",
+    "graphite",
+  );
+  await expectStoredValue(page, "veolms-academy-theme", "graphite");
+
+  await page.keyboard.press("ArrowDown");
+  const copper = menu.getByRole("menuitemradio", { name: /Copper Slate/ });
+  await expect(copper).toBeFocused();
+  await expect(copper).toHaveAttribute("aria-checked", "true");
+  await expect(page.locator("html")).toHaveAttribute("data-palette", "violet");
+  await expectStoredValue(page, "veolms-academy-theme", "graphite");
+
+  await page.getByRole("main").click({ position: { x: 20, y: 20 } });
+  await expect(menu).toBeHidden();
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-palette",
+    "graphite",
+  );
+
+  await trigger.click();
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect(menu).toBeHidden();
+  await expect(trigger).toBeFocused();
+  await expect(page.locator("html")).toHaveAttribute("data-palette", "violet");
+  await expectStoredValue(page, "veolms-academy-theme", "violet");
+
+  await trigger.click();
+  await ocean.click();
+  await expect(menu).toBeVisible();
+  await expect(ocean).toHaveAttribute("aria-checked", "true");
+  await expect(page.locator("html")).toHaveAttribute("data-palette", "ocean");
+  await expectStoredValue(page, "veolms-academy-theme", "ocean");
 });
 
 test("sidebar collapse and hide shortcuts persist without losing navigation", async ({
