@@ -10,6 +10,7 @@ export interface ShellRouteDescriptor {
   page: ShellPage;
   section?: string;
   settingsTab?: string;
+  discussionTab?: string;
   title: string;
   description: string;
 }
@@ -19,9 +20,18 @@ export interface LearningRouteDescriptor {
   page: "learning";
   section: "Courses";
   settingsTab?: undefined;
+  discussionTab?: undefined;
 }
 
 export type RouteDescriptor = ShellRouteDescriptor | LearningRouteDescriptor;
+
+const discussionsRouteBase = {
+  kind: "shell",
+  page: "workspace",
+  section: "Discussions",
+  title: "Discussions",
+  description: "Bring course conversations, questions, and replies together.",
+} as const;
 
 export const routeDescriptors = {
   home: {
@@ -80,7 +90,7 @@ export const routeDescriptors = {
   },
   students: {
     kind: "shell",
-    page: "workspace",
+    page: "placeholder",
     section: "Students",
     title: "Students",
     description: "Review learners, access, and progress across your academy.",
@@ -93,11 +103,28 @@ export const routeDescriptors = {
     description: "Keep an eye on learner feedback and course sentiment.",
   },
   discussions: {
-    kind: "shell",
-    page: "workspace",
-    section: "Discussions",
-    title: "Discussions",
-    description: "Bring course conversations, questions, and replies together.",
+    ...discussionsRouteBase,
+    discussionTab: "q-and-a",
+  },
+  "discussions-q-and-a": {
+    ...discussionsRouteBase,
+    discussionTab: "q-and-a",
+  },
+  "discussions-comments": {
+    ...discussionsRouteBase,
+    discussionTab: "comments",
+  },
+  "discussions-mentions": {
+    ...discussionsRouteBase,
+    discussionTab: "mentions",
+  },
+  "discussions-following": {
+    ...discussionsRouteBase,
+    discussionTab: "following",
+  },
+  "discussions-saved": {
+    ...discussionsRouteBase,
+    discussionTab: "saved",
   },
   analytics: {
     kind: "shell",
@@ -230,7 +257,7 @@ export const destinationPaths: Readonly<Record<string, string>> = {
   wishlist: "/wishlist",
   students: "/students",
   reviews: "/reviews",
-  discussions: "/discussions",
+  discussions: "/discussions/q-and-a",
   analytics: "/analytics",
   orders: "/orders",
   messages: "/messages",
@@ -239,7 +266,7 @@ export const destinationPaths: Readonly<Record<string, string>> = {
   logout: "/logout",
   Students: "/students",
   Reviews: "/reviews",
-  Discussions: "/discussions",
+  Discussions: "/discussions/q-and-a",
   Analytics: "/analytics",
   Orders: "/orders",
   Messages: "/messages",
@@ -261,6 +288,11 @@ const canonicalPathsByRouteId = {
   students: "/students",
   reviews: "/reviews",
   discussions: "/discussions",
+  "discussions-q-and-a": "/discussions/q-and-a",
+  "discussions-comments": "/discussions/comments",
+  "discussions-mentions": "/discussions/mentions",
+  "discussions-following": "/discussions/following",
+  "discussions-saved": "/discussions/saved",
   analytics: "/analytics",
   orders: "/orders",
   messages: "/messages",

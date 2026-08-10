@@ -55,6 +55,7 @@ export function LearningWorkspace({
     const savedLesson = Number(localStorage.getItem("veolms-last-lesson"));
     return lessonsById.has(savedLesson) ? savedLesson : 1;
   });
+  const [autoPlayOnLessonChange, setAutoPlayOnLessonChange] = useState(false);
   const courseTitle = getCourseTitle(courseSlug);
   const [lessonDrawer, setLessonDrawer] = useState(false);
   const [curriculumFocusRequest, setCurriculumFocusRequest] = useState(0);
@@ -77,6 +78,12 @@ export function LearningWorkspace({
   >(null);
   const currentLesson = lessonsById.get(selectedLesson) || lessonsById.get(9)!;
   const courseThumbnail = getCourseThumbnail(courseSlug);
+
+  const selectLesson = (lessonNumber: number) => {
+    if (lessonNumber === selectedLesson) return;
+    setAutoPlayOnLessonChange(true);
+    setSelectedLesson(lessonNumber);
+  };
 
   const toggleTheaterMode = () => {
     setLessonDrawer(false);
@@ -395,6 +402,7 @@ export function LearningWorkspace({
               lessonTitle={currentLesson[1]}
               theaterMode={theaterMode}
               onTheaterToggle={toggleTheaterMode}
+              autoPlayOnMediaChange={autoPlayOnLessonChange}
             />
           </div>
 
@@ -440,7 +448,7 @@ export function LearningWorkspace({
           />
           <Curriculum
             selectedLesson={selectedLesson}
-            setSelectedLesson={setSelectedLesson}
+            onSelectLesson={selectLesson}
             courseTitle={courseTitle}
             courseThumbnail={courseThumbnail}
             focusRequest={curriculumFocusRequest}
@@ -467,7 +475,7 @@ export function LearningWorkspace({
           <div className="lesson-drawer-panel">
             <Curriculum
               selectedLesson={selectedLesson}
-              setSelectedLesson={setSelectedLesson}
+              onSelectLesson={selectLesson}
               courseTitle={courseTitle}
               courseThumbnail={courseThumbnail}
               focusRequest={curriculumFocusRequest}

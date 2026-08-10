@@ -25,6 +25,7 @@ import type {
   SidebarMode,
   SidebarPreferences,
 } from "./settings/settingsPreferences";
+import type { NavigateTo } from "./routing/navigation";
 
 export type SettingsTab =
   | "profile"
@@ -59,7 +60,7 @@ const SETTINGS_TABS: readonly SettingsTabDefinition[] = [
 export interface SettingsPageProps {
   tab?: string;
   role?: ProfileRole;
-  onNavigatePage?: (page: string) => void;
+  onNavigatePage?: NavigateTo;
   onProfileSaved?: (profile: ProfilePreferences) => void;
   theme: DisplayMode;
   onThemeChange: (theme: DisplayMode) => void;
@@ -88,7 +89,8 @@ export function SettingsPage({
   const activeTab: SettingsTab = SETTINGS_TABS.some((item) => item.id === tab)
     ? (tab as SettingsTab)
     : "appearance";
-  const navigateTab = (id: SettingsTab) => onNavigatePage?.(`/settings/${id}`);
+  const navigateTab = (id: SettingsTab) =>
+    onNavigatePage?.(`/settings/${id}`, { preserveScroll: true });
 
   return (
     <div className="settings-page" aria-labelledby="settings-page-title">

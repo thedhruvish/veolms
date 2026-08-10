@@ -70,6 +70,7 @@ interface VideoPlayerProps {
   lessonTitle: string;
   theaterMode: boolean;
   onTheaterToggle: () => void;
+  autoPlayOnMediaChange?: boolean;
 }
 
 export function VideoPlayer({
@@ -77,6 +78,7 @@ export function VideoPlayer({
   lessonTitle,
   theaterMode,
   onTheaterToggle,
+  autoPlayOnMediaChange = false,
 }: VideoPlayerProps) {
   const shellRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLElement>(null);
@@ -289,6 +291,7 @@ export function VideoPlayer({
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+    let active = true;
     video.pause();
     video.load();
     setPlaying(false);
@@ -299,7 +302,19 @@ export function VideoPlayer({
     setControlsVisible(true);
     lastKnownPlaybackTimeRef.current = 0;
     lastResumePersistedAtRef.current = null;
-  }, [media.duration, media.src]);
+
+    if (autoPlayOnMediaChange) {
+      void video.play().catch(() => {
+        if (!active) return;
+        setPlaying(false);
+        setControlsVisible(true);
+      });
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [autoPlayOnMediaChange, media.duration, media.src]);
 
   useEffect(() => {
     if (videoRef.current) videoRef.current.playbackRate = speed;

@@ -35,6 +35,58 @@ test("canonical home and direct routes preserve their titles", async ({
   ).toBeVisible();
 });
 
+test("discussion tabs use canonical routes and browser history", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 650 });
+  await openApp(page, "/discussions/q-and-a");
+
+  const tabs = page.getByRole("tablist", { name: "Discussion views" });
+  const questions = tabs.getByRole("tab", { name: "Q&A" });
+  const comments = tabs.getByRole("tab", { name: "Comments" });
+  const mentions = tabs.getByRole("tab", { name: "Mentions" });
+
+  await expect(questions).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tabpanel")).toHaveAttribute(
+    "data-discussion-tab",
+    "q-and-a",
+  );
+
+  await page.evaluate(() => window.scrollTo(0, 250));
+  const discussionScrollPosition = await page.evaluate(() => window.scrollY);
+  expect(discussionScrollPosition).toBeGreaterThan(200);
+
+  await comments.focus();
+  await expect
+    .poll(() => page.evaluate(() => window.scrollY))
+    .toBe(discussionScrollPosition);
+  await comments.click();
+  await expect(page).toHaveURL(/\/discussions\/comments$/);
+  await expect(comments).toHaveAttribute("aria-selected", "true");
+  await expect
+    .poll(() => page.evaluate(() => window.scrollY))
+    .toBe(discussionScrollPosition);
+
+  await comments.press("ArrowRight");
+  await expect(page).toHaveURL(/\/discussions\/mentions$/);
+  await expect(mentions).toBeFocused();
+  await expect(mentions).toHaveAttribute("aria-selected", "true");
+
+  await page.goBack();
+  await expect(page).toHaveURL(/\/discussions\/comments$/);
+  await expect(comments).toHaveAttribute("aria-selected", "true");
+  await expect(comments).toBeFocused();
+
+  await comments.press("ArrowRight");
+  await expect(page).toHaveURL(/\/discussions\/mentions$/);
+  await page.goBack();
+  await expect(comments).toBeFocused();
+
+  await page.reload();
+  await expect(comments).toHaveAttribute("aria-selected", "true");
+  await expect(page).toHaveTitle(/^Discussions .* ProCodrr$/);
+});
+
 test("unknown, nested, and case-mismatched URLs retain the Home fallback contract", async ({
   page,
 }) => {
@@ -60,6 +112,7 @@ test("deferred workspace routes use the clean empty state", async ({
   for (const [path, title] of [
     ["/courses/create", "Create Course"],
     ["/courses/typescript-course/overview", "Course Overview"],
+    ["/students", "Students"],
     ["/reviews", "Reviews"],
     ["/analytics", "Analytics"],
     ["/orders", "Orders"],
@@ -90,6 +143,11 @@ test("every creator Create Course action opens the dedicated empty route", async
     .getByRole("button", { name: "Open role and appearance menu" })
     .click();
   await page.getByRole("menuitemradio", { name: "Creator" }).click();
+  await expect(
+    page
+      .getByRole("complementary", { name: "Creator navigation" })
+      .getByRole("button", { name: "Messages", exact: true }),
+  ).toHaveCount(0);
 
   const expectEmptyCreateCourseRoute = async () => {
     await expect(page).toHaveURL(/\/courses\/create$/);
