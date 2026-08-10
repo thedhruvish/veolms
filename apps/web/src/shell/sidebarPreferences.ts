@@ -27,7 +27,12 @@ export const clampSidebarWidth = (
   );
 
 export const getInitialSidebarWidth = (): number => {
-  const savedWidth = Number(localStorage.getItem("veolms-sidebar-width"));
+  const rawSavedWidth = localStorage.getItem("veolms-sidebar-width");
+  if (rawSavedWidth === null || rawSavedWidth.trim() === "") {
+    return SIDEBAR_DEFAULT_WIDTH;
+  }
+
+  const savedWidth = Number(rawSavedWidth);
   return Number.isFinite(savedWidth)
     ? clampSidebarWidth(savedWidth)
     : SIDEBAR_DEFAULT_WIDTH;
@@ -57,24 +62,39 @@ export const getInitialSidebarPreferences = (): SidebarPreferences => {
       localStorage.getItem("veolms-sidebar-max-width-default-version") ===
       SIDEBAR_MAX_WIDTH_DEFAULT_VERSION;
 
-    if (!hasCurrentMaxWidthDefault) {
+    const needsMaxWidthMigration = !hasCurrentMaxWidthDefault;
+    if (needsMaxWidthMigration) {
       preferences.sidebarMaxWidth = SIDEBAR_MAX_WIDTH;
-      localStorage.setItem(
-        "veolms-sidebar-max-width-default-version",
-        SIDEBAR_MAX_WIDTH_DEFAULT_VERSION,
-      );
     }
 
     const hasCurrentIconDefault =
       localStorage.getItem("veolms-sidebar-icon-default-version") ===
       SIDEBAR_ICON_DEFAULT_VERSION;
-    if (!hasCurrentIconDefault) {
+    const needsIconMigration = !hasCurrentIconDefault;
+    if (needsIconMigration) {
       preferences.iconStyle = "monochrome";
       preferences.monochromeMode = "theme";
+    }
+
+    if (needsMaxWidthMigration || needsIconMigration) {
       localStorage.setItem(
-        "veolms-sidebar-icon-default-version",
-        SIDEBAR_ICON_DEFAULT_VERSION,
+        "veolms-sidebar-preferences",
+        JSON.stringify(preferences),
       );
+
+      if (needsMaxWidthMigration) {
+        localStorage.setItem(
+          "veolms-sidebar-max-width-default-version",
+          SIDEBAR_MAX_WIDTH_DEFAULT_VERSION,
+        );
+      }
+
+      if (needsIconMigration) {
+        localStorage.setItem(
+          "veolms-sidebar-icon-default-version",
+          SIDEBAR_ICON_DEFAULT_VERSION,
+        );
+      }
     }
 
     return preferences;

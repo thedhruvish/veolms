@@ -33,8 +33,11 @@ describe("sidebar width helpers", () => {
     expect(Number.isNaN(clampSidebarWidth("not-a-width", 420))).toBe(true);
   });
 
-  it("retains missing-key coercion and the fixed initial 300-pixel cap", () => {
-    expect(getInitialSidebarWidth()).toBe(220);
+  it("uses the default for missing or blank storage before parsing widths", () => {
+    expect(getInitialSidebarWidth()).toBe(300);
+
+    localStorage.setItem("veolms-sidebar-width", "   ");
+    expect(getInitialSidebarWidth()).toBe(300);
 
     localStorage.setItem("veolms-sidebar-width", "275");
     expect(getInitialSidebarWidth()).toBe(275);
@@ -56,7 +59,10 @@ describe("sidebar preference storage", () => {
     expect(localStorage.getItem("veolms-sidebar-icon-default-version")).toBe(
       "monochrome-theme-v1",
     );
-    expect(localStorage.getItem("veolms-sidebar-preferences")).toBeNull();
+    expect(
+      JSON.parse(localStorage.getItem("veolms-sidebar-preferences") ?? "null"),
+    ).toEqual(defaultPreferences);
+    expect(getInitialSidebarPreferences()).toEqual(defaultPreferences);
   });
 
   it("resets a stored custom maximum once when the version is stale", () => {
@@ -87,8 +93,13 @@ describe("sidebar preference storage", () => {
     );
     expect(storedPreferences).not.toBeNull();
     expect(JSON.parse(storedPreferences ?? "null")).toEqual({
-      iconStyle: "monochrome",
-      sidebarMaxWidth: 420,
+      ...defaultPreferences,
+      sidebarMaxWidth: 300,
+      retainedUnknownField: true,
+    });
+    expect(getInitialSidebarPreferences()).toEqual({
+      ...defaultPreferences,
+      sidebarMaxWidth: 300,
       retainedUnknownField: true,
     });
   });
@@ -113,7 +124,7 @@ describe("sidebar preference storage", () => {
     });
   });
 
-  it("migrates icon styling once, then preserves an explicit user choice", () => {
+  it("persists icon migration before its marker, then preserves user choices", () => {
     localStorage.setItem(
       "veolms-sidebar-preferences",
       JSON.stringify({
@@ -122,10 +133,15 @@ describe("sidebar preference storage", () => {
       }),
     );
 
-    expect(getInitialSidebarPreferences()).toMatchObject({
+    const migratedPreferences = getInitialSidebarPreferences();
+    expect(migratedPreferences).toMatchObject({
       iconStyle: "monochrome",
       monochromeMode: "theme",
     });
+    expect(
+      JSON.parse(localStorage.getItem("veolms-sidebar-preferences") ?? "null"),
+    ).toEqual(migratedPreferences);
+    expect(getInitialSidebarPreferences()).toEqual(migratedPreferences);
 
     localStorage.setItem(
       "veolms-sidebar-preferences",

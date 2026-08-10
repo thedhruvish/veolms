@@ -313,6 +313,7 @@ test("appearance and sidebar preferences persist through their direct settings r
     name: "Sidebar max width in pixels",
   });
   await widthInput.fill("420");
+  await widthInput.press("Enter");
   await expect
     .poll(async () =>
       page.evaluate(() => {

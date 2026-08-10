@@ -50,7 +50,9 @@ const toEditableProfile = (profile: ProfileIdentity): EditableProfile => ({
   mobileNumber: profile.mobileNumber ?? "",
   mobileVerified: profile.mobileVerified ?? false,
   emailPublic: profile.emailPublic ?? false,
-  mobilePublic: profile.mobilePublic ?? false,
+  // Public mobile visibility requires server confirmation. Never restore a
+  // browser-only value left by an earlier client-only implementation.
+  mobilePublic: false,
   linkedinUrl: profile.linkedinUrl ?? "",
   linkedinPublic: profile.linkedinPublic ?? true,
   githubUrl: profile.githubUrl ?? "",
@@ -137,7 +139,6 @@ export function ProfileSettings({
   const [photoError, setPhotoError] = useState("");
   const [saveError, setSaveError] = useState("");
   const [verificationRequested, setVerificationRequested] = useState(false);
-  const [verificationCode, setVerificationCode] = useState("");
   const [mobileVisibilityPromptOpen, setMobileVisibilityPromptOpen] =
     useState(false);
   const [mobileVisibilityAcknowledged, setMobileVisibilityAcknowledged] =
@@ -165,7 +166,6 @@ export function ProfileSettings({
     setPhotoError("");
     setSaveError("");
     setVerificationRequested(false);
-    setVerificationCode("");
     setMobileVisibilityPromptOpen(false);
     setMobileVisibilityAcknowledged(false);
   }, [role]);
@@ -256,7 +256,6 @@ export function ProfileSettings({
     }));
     setSaveError("");
     setVerificationRequested(false);
-    setVerificationCode("");
     setMobileError("");
   };
 
@@ -297,8 +296,11 @@ export function ProfileSettings({
 
   const confirmMobileVisibility = () => {
     if (!mobileVisibilityAcknowledged) return;
-    updateVisibility("mobilePublic", true);
+    updateVisibility("mobilePublic", false);
     closeMobileVisibilityPrompt();
+    setMobileError(
+      "Mobile publishing is unavailable until server verification is connected. Your number remains private, and no request was sent.",
+    );
   };
 
   const requestMobileVerification = () => {
@@ -307,19 +309,7 @@ export function ProfileSettings({
       return;
     }
     setMobileError("");
-    setVerificationCode("");
     setVerificationRequested(true);
-  };
-
-  const verifyMobileNumber = () => {
-    if (!/^\d{6}$/.test(verificationCode)) {
-      setMobileError("Enter the 6-digit verification code.");
-      return;
-    }
-    setDraftProfile((current) => ({ ...current, mobileVerified: true }));
-    setVerificationRequested(false);
-    setVerificationCode("");
-    setMobileError("");
   };
 
   const handlePhotoChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -616,8 +606,10 @@ export function ProfileSettings({
                       type="button"
                       className="settings-profile__verify-action"
                       onClick={requestMobileVerification}
+                      aria-expanded={verificationRequested}
+                      aria-controls="profile-verification-availability"
                     >
-                      {verificationRequested ? "Resend code" : "Send code"}
+                      {verificationRequested ? "Unavailable" : "Verify number"}
                     </button>
                   )}
                 </div>
@@ -630,8 +622,9 @@ export function ProfileSettings({
             </div>
             {verificationRequested && !draftProfile.mobileVerified && (
               <div
+                id="profile-verification-availability"
                 className="settings-profile__verification-panel"
-                role="group"
+                role="status"
                 aria-labelledby="profile-verification-title"
               >
                 <div className="settings-profile__verification-copy">
@@ -643,31 +636,27 @@ export function ProfileSettings({
                   </span>
                   <div>
                     <strong id="profile-verification-title">
-                      Verify your mobile number
+                      Mobile verification unavailable
                     </strong>
-                    <p>Enter the 6-digit code we sent to your mobile number.</p>
+                    <p>
+                      The server verification service has not been connected
+                      yet.
+                    </p>
                   </div>
                 </div>
-                <div className="settings-profile__verification-field">
-                  <label htmlFor="profile-verification-code">
-                    Verification code
-                  </label>
-                  <div className="settings-profile__verification-actions">
-                    <input
-                      id="profile-verification-code"
-                      value={verificationCode}
-                      inputMode="numeric"
-                      maxLength={6}
-                      placeholder="6-digit code"
-                      onChange={(event) =>
-                        setVerificationCode(
-                          event.target.value.replace(/\D/g, ""),
-                        )
-                      }
-                    />
-                    <button type="button" onClick={verifyMobileNumber}>
-                      Verify number
-                    </button>
+                <div className="settings-profile__verification-copy">
+                  <span
+                    className="settings-profile__verification-icon"
+                    aria-hidden="true"
+                  >
+                    <ShieldWarning size={18} />
+                  </span>
+                  <div>
+                    <strong>No request sent</strong>
+                    <p>
+                      No code was sent. This number remains unverified and
+                      private until the server confirms it.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -793,7 +782,9 @@ export function ProfileSettings({
           </h2>
           <p id="mobile-visibility-dialog-description">
             Anyone who can view your profile will be able to see this number.
-            They may call you directly or message you on WhatsApp.
+            They may call you directly or message you on WhatsApp. Publishing is
+            not connected yet, so this acknowledgement will keep your number
+            private and will not send a request.
           </p>
         </div>
         <label className="settings-profile__privacy-consent">
@@ -824,7 +815,7 @@ export function ProfileSettings({
             disabled={!mobileVisibilityAcknowledged}
             onClick={confirmMobileVisibility}
           >
-            OK, show publicly
+            I understand, keep private
           </button>
         </div>
       </dialog>

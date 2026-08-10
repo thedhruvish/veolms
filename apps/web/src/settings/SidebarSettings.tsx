@@ -7,6 +7,7 @@ import {
   SidebarSimple,
   TextT,
 } from "@phosphor-icons/react";
+import { useEffect, useState } from "react";
 import { academyThemes } from "../themes";
 import type { AcademyTheme } from "../themes";
 import {
@@ -42,6 +43,8 @@ const SIDEBAR_ICON_COLORS: readonly SidebarIconColor[] = [
   { id: "cyan", label: "Cyan", color: "#1bb4c7" },
 ];
 
+const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
+
 export interface SidebarSettingsProps {
   sidebarPreferences?: SidebarPreferences;
   onSidebarPreferencesChange?: (preferences: SidebarPreferences) => void;
@@ -60,7 +63,9 @@ export function SidebarSettings({
   const preferences = sidebarPreferences || {};
   const iconStyle = preferences.iconStyle || "monochrome";
   const colorMode = preferences.monochromeMode || "theme";
-  const customColor = preferences.monochromeColor || "#6366f1";
+  const customColor = HEX_COLOR_PATTERN.test(preferences.monochromeColor || "")
+    ? (preferences.monochromeColor ?? "#6366f1")
+    : "#6366f1";
   const themeColor =
     COLOR_THEMES.find((item) => item.id === academyTheme)?.preview || "#6366f1";
   const displayColor =
@@ -76,12 +81,38 @@ export function SidebarSettings({
   const showThemeIcon = preferences.showThemeIcon !== false;
   const highlightActive = preferences.highlightActive !== false;
   const sidebarHidden = sidebarMode === "hidden";
+  const [colorDraft, setColorDraft] = useState(displayColor);
+  const [sidebarWidthDraft, setSidebarWidthDraft] = useState(
+    String(sidebarMaxWidth),
+  );
   const selectedPreset =
     SIDEBAR_ICON_COLORS.find(
       (item) => item.color.toLowerCase() === displayColor.toLowerCase(),
     )?.id || (colorMode === "theme" ? "indigo" : "custom");
   const update = (next: SidebarPreferences) =>
     onSidebarPreferencesChange?.({ ...preferences, ...next });
+
+  useEffect(() => {
+    setColorDraft(displayColor);
+  }, [displayColor]);
+
+  useEffect(() => {
+    setSidebarWidthDraft(String(sidebarMaxWidth));
+  }, [sidebarMaxWidth]);
+
+  const commitColorDraft = () => {
+    if (!HEX_COLOR_PATTERN.test(colorDraft)) return;
+    update({
+      monochromeMode: "custom",
+      monochromeColor: colorDraft,
+    });
+  };
+
+  const commitSidebarWidthDraft = () => {
+    const normalizedWidth = normalizeSidebarMaxWidth(sidebarWidthDraft);
+    setSidebarWidthDraft(String(normalizedWidth));
+    update({ sidebarMaxWidth: normalizedWidth });
+  };
 
   return (
     <div className="settings-content">
@@ -211,27 +242,26 @@ export function SidebarSettings({
               <span className="sr-only">Custom monochrome icon color</span>
               <input
                 type="color"
-                value={
-                  /^#[0-9a-fA-F]{6}$/.test(displayColor)
-                    ? displayColor
-                    : "#6366f1"
-                }
-                onChange={(event) =>
+                value={displayColor}
+                onChange={(event) => {
+                  setColorDraft(event.target.value);
                   update({
                     monochromeMode: "custom",
                     monochromeColor: event.target.value,
-                  })
-                }
+                  });
+                }}
               />
               <input
-                value={displayColor}
-                onChange={(event) =>
-                  update({
-                    monochromeMode: "custom",
-                    monochromeColor: event.target.value,
-                  })
-                }
+                value={colorDraft}
+                onChange={(event) => setColorDraft(event.target.value)}
+                onBlur={commitColorDraft}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter") return;
+                  event.preventDefault();
+                  commitColorDraft();
+                }}
                 pattern="^#[0-9a-fA-F]{6}$"
+                aria-invalid={!HEX_COLOR_PATTERN.test(colorDraft)}
                 aria-label="Custom monochrome icon color hex value"
               />
             </span>
@@ -312,12 +342,14 @@ export function SidebarSettings({
               min={SIDEBAR_MAX_WIDTH_MIN}
               max={SIDEBAR_MAX_WIDTH_LIMIT}
               step="1"
-              value={sidebarMaxWidth}
-              onChange={(event) =>
-                update({
-                  sidebarMaxWidth: normalizeSidebarMaxWidth(event.target.value),
-                })
-              }
+              value={sidebarWidthDraft}
+              onChange={(event) => setSidebarWidthDraft(event.target.value)}
+              onBlur={commitSidebarWidthDraft}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter") return;
+                event.preventDefault();
+                commitSidebarWidthDraft();
+              }}
               aria-label="Sidebar max width in pixels"
             />
           </label>
