@@ -1,0 +1,124 @@
+import { test, expect } from "./app.fixture.ts";
+import { installBaselineState, openApp, prepareVisualPage } from "./support.ts";
+
+test.describe("@visual", () => {
+  test("student Home desktop · dark Graphite", async ({ page }) => {
+    await installBaselineState(page);
+    await openApp(page, "/");
+    await prepareVisualPage(page);
+    await expect(page).toHaveScreenshot("student-home-dark.png", {
+      fullPage: true,
+    });
+  });
+
+  test("Courses desktop · dark Graphite", async ({ page }) => {
+    await installBaselineState(page);
+    await openApp(page, "/courses");
+    await prepareVisualPage(page);
+    await expect(page).toHaveScreenshot("courses-dark.png", { fullPage: true });
+  });
+
+  test("Courses desktop · light Ocean", async ({ page }) => {
+    await installBaselineState(page, {
+      local: {
+        "veolms-theme": "light",
+        "veolms-academy-theme": "ocean",
+        "veolms-academy-theme-version": "veo-onyx-default-v2",
+      },
+    });
+    await openApp(page, "/courses");
+    await prepareVisualPage(page);
+    await expect(page).toHaveScreenshot("courses-light-ocean.png", {
+      fullPage: true,
+    });
+  });
+
+  test("creator Dashboard desktop · dark Graphite", async ({ page }) => {
+    await installBaselineState(page, { local: { "veolms-role": "creator" } });
+    await openApp(page, "/");
+    await prepareVisualPage(page);
+    await expect(page).toHaveScreenshot("creator-dashboard-dark.png", {
+      fullPage: true,
+    });
+  });
+
+  test("Settings Appearance desktop · light Graphite", async ({ page }) => {
+    await installBaselineState(page, { local: { "veolms-theme": "light" } });
+    await openApp(page, "/settings/appearance");
+    await prepareVisualPage(page);
+    await expect(page).toHaveScreenshot("settings-appearance-light.png", {
+      fullPage: true,
+    });
+  });
+
+  test("Settings Profile desktop · dark Graphite", async ({ page }) => {
+    await installBaselineState(page);
+    await openApp(page, "/settings/profile");
+    await prepareVisualPage(page);
+    await expect(page).toHaveScreenshot("settings-profile-dark.png", {
+      fullPage: true,
+    });
+  });
+
+  test("Settings Profile desktop · light Graphite", async ({ page }) => {
+    await installBaselineState(page, { local: { "veolms-theme": "light" } });
+    await openApp(page, "/settings/profile");
+    await prepareVisualPage(page);
+    await expect(page).toHaveScreenshot("settings-profile-light.png", {
+      fullPage: true,
+    });
+  });
+
+  test("Settings Profile mobile · dark Graphite", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await installBaselineState(page);
+    await openApp(page, "/settings/profile");
+    await prepareVisualPage(page);
+    await expect(page).toHaveScreenshot("settings-profile-mobile-dark.png", {
+      fullPage: true,
+    });
+  });
+
+  test("Settings Profile mobile · light Graphite", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await installBaselineState(page, { local: { "veolms-theme": "light" } });
+    await openApp(page, "/settings/profile");
+    await prepareVisualPage(page);
+    await expect(page).toHaveScreenshot("settings-profile-mobile-light.png", {
+      fullPage: true,
+    });
+  });
+
+  test("learning workspace desktop · dark Graphite", async ({ page }) => {
+    await installBaselineState(page);
+    await openApp(page, "/courses/typescript-course");
+    await prepareVisualPage(page);
+    await expect(page).toHaveScreenshot("learning-workspace-dark.png", {
+      fullPage: true,
+    });
+  });
+
+  test("Courses mobile · dark Graphite", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await installBaselineState(page);
+    await openApp(page, "/courses");
+    await prepareVisualPage(page);
+    await expect(page).toHaveScreenshot("courses-mobile-dark.png", {
+      fullPage: true,
+    });
+  });
+
+  test("learning drawer mobile · dark Graphite", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await installBaselineState(page);
+    await openApp(page, "/courses/typescript-course");
+    await page.getByRole("button", { name: "Open course lessons" }).click();
+    await expect(
+      page.getByRole("dialog", { name: "Course lessons" }),
+    ).toBeVisible();
+    await prepareVisualPage(page);
+    await expect(page).toHaveScreenshot("learning-drawer-mobile-dark.png", {
+      fullPage: true,
+    });
+  });
+});
