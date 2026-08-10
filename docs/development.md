@@ -105,7 +105,7 @@ React Router writes the deployable client-only application to `apps/web/build/cl
 
 ## Development UI deployment
 
-Every push to `development` runs `.github/workflows/deploy-development-ui.yml`. The workflow type-checks and tests the Web application, builds it, synchronises `apps/web/build/client` to S3, uploads `index.html` last with a no-cache policy, and waits for a CloudFront `/*` invalidation to finish. It can also be started manually from GitHub Actions.
+Every push to `development` runs `.github/workflows/deploy-development-ui.yml`. The workflow type-checks and tests the Web application, builds it, synchronises `apps/web/build/client` to S3 while preserving the separately managed `course-videos/` prefix, uploads `index.html` last with a no-cache policy, and waits for a CloudFront `/*` invalidation to finish. It can also be started manually from GitHub Actions.
 
 The workflow uses the GitHub `development` environment and exchanges GitHub's OIDC token for short-lived AWS credentials. Configure these GitHub Actions variables on that environment:
 
