@@ -5,23 +5,44 @@
   "scripts": {
     "build": "react-router build",
     "dev": "react-router dev",
-    "typecheck": "react-router typegen && tsc --noEmit"
+    "preview": "vite preview --outDir build/client",
+    "routes": "react-router routes",
+    "typegen": "react-router typegen",
+    "typecheck": "react-router typegen && tsc --noEmit",
+    "test:unit": "vitest run",
+    "test:e2e:install": "playwright install chromium",
+    "test:e2e": "playwright test",
+    "test:e2e:behavior": "playwright test --grep-invert @visual",
+    "test:e2e:visual": "playwright test --grep @visual",
+    "test:e2e:dist": "playwright test --config=playwright.preview.config.ts",
+    "test:e2e:update": "playwright test --grep @visual --update-snapshots=all",
+    "test:e2e:headed": "playwright test --headed",
+    "check": "pnpm typecheck && pnpm test:unit && pnpm build && pnpm test:e2e:dist && pnpm test:e2e",
+    "check:ci": "pnpm typecheck && pnpm test:unit && pnpm build && pnpm test:e2e:dist && pnpm test:e2e:behavior"
   },
   "dependencies": {
-    "@react-router/node": "^8.0.0",
+    "@fontsource-variable/manrope": "^5.3.0",
+    "@phosphor-icons/react": "^2.1.10",
+    "@radix-ui/react-select": "^2.3.7",
+    "@react-router/node": "8.3.0",
     "@veolms/config": "workspace:*",
-    "@veolms/contracts": "workspace:*",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "react-router": "^8.0.0",
-    "isbot": "^5"
+    "isbot": "^5",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-router": "8.3.0"
   },
   "devDependencies": {
-    "@react-router/dev": "^8.0.0",
-    "@tailwindcss/vite": "^4.2.2",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "tailwindcss": "^4.2.2",
-    "vite": "^8.0.3"
+    "@playwright/test": "^1.62.1",
+    "@react-router/dev": "8.3.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "@typescript/native": "npm:typescript@7.0.2",
+    "jsdom": "^30.0.1",
+    "tailwindcss": "^4.3.3",
+    "vite": "8.2.1",
+    "vitest": "^4.1.10"
   }
 }

@@ -7,10 +7,15 @@
     "rootDirs": [".", "./.react-router/types"]
   },
   "include": [
-    "app/**/*.ts",
-    "app/**/*.tsx",
+    "src/**/*.ts",
+    "src/**/*.tsx",
     ".react-router/types/**/*.ts",
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
     "react-router.config.ts",
-    "vite.config.ts"
+    "vite.config.ts",
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "playwright.preview.config.ts"
   ]
 }

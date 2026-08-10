@@ -16,9 +16,15 @@ export default defineConfig(({ mode }) => {
 
   return {
     envDir: workspaceRoot,
+    optimizeDeps: {
+      include: ["react", "react-dom/client"],
+    },
     define: {
       "import.meta.env.STATIC_BUILD_API_URL": JSON.stringify(
         config.STATIC_BUILD_API_URL,
+      ),
+      "import.meta.env.VITE_COURSE_MEDIA_BASE_URL": JSON.stringify(
+        config.VITE_COURSE_MEDIA_BASE_URL ?? "",
       ),
     },
     plugins: [tailwindcss(), reactRouter()],
