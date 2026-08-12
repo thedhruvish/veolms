@@ -78,7 +78,7 @@ export default function AcademyLayout() {
       onNavigatePage={navigateTo}
       onOpenCourse={openCourse}
       renderMain={
-        route.kind === "learning"
+        route.kind === "learning" || route.kind === "course-overview"
           ? () => (
               <Outlet context={{ navigateTo } satisfies AcademyOutletContext} />
             )
