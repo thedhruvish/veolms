@@ -74,7 +74,7 @@ describe("React Router framework route configuration", () => {
       childRoutes.find(({ id }) => id === "course-overview"),
     ).toMatchObject({
       path: "courses/:courseSlug/overview",
-      file: "routes/academy-marker.tsx",
+      file: "routes/course-overview.tsx",
       caseSensitive: true,
     });
     expect(childRoutes.find(({ id }) => id === "home-fallback")).toMatchObject({
@@ -116,6 +116,10 @@ describe("framework route descriptors", () => {
       kind: "learning",
       page: "learning",
       section: "Courses",
+    });
+    expect(getRouteDescriptor("course-overview")).toMatchObject({
+      kind: "course-overview",
+      page: "course-overview",
     });
     expect(getRouteDescriptor("missing")).toBeUndefined();
   });
@@ -220,7 +224,6 @@ describe("framework route descriptors", () => {
       "students",
       "reviews",
       "course-create",
-      "course-overview",
       "analytics",
       "orders",
       "messages",

@@ -79,7 +79,7 @@ export default [
       caseSensitive: true,
     }),
     route("logout", marker, { id: "logout", caseSensitive: true }),
-    route("courses/:courseSlug/overview", marker, {
+    route("courses/:courseSlug/overview", "routes/course-overview.tsx", {
       id: "course-overview",
       caseSensitive: true,
     }),
