@@ -8948,7 +8948,9 @@ html:has(.settings-profile__privacy-dialog[open]) {
   color: var(--text);
   background: var(--surface);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .course-wizard-back-btn:hover {
@@ -9210,7 +9212,9 @@ html:has(.settings-profile__privacy-dialog[open]) {
   color: var(--muted);
   background: transparent;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .editor-btn:hover {
@@ -9293,7 +9297,9 @@ html:has(.settings-profile__privacy-dialog[open]) {
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .course-wizard-btn-secondary:hover {
@@ -9468,7 +9474,9 @@ html:has(.settings-profile__privacy-dialog[open]) {
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .course-wizard-btn-ghost:hover {
@@ -9504,7 +9512,9 @@ html:has(.settings-profile__privacy-dialog[open]) {
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease;
   box-shadow: 0 3px 10px var(--accent-shadow);
 }
 
@@ -9658,7 +9668,9 @@ html:has(.settings-profile__privacy-dialog[open]) {
   color: var(--muted);
   background: transparent;
   cursor: pointer;
-  transition: color 0.15s ease, background 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
 }
 
 .curriculum-icon-btn:hover {
@@ -9775,7 +9787,9 @@ html:has(.settings-profile__privacy-dialog[open]) {
   overflow: hidden;
   padding: 0 16px;
   border-top: 1px solid transparent;
-  transition: padding 0.28s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.28s ease;
+  transition:
+    padding 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.28s ease;
 }
 
 .curriculum-section-body-wrapper.is-open .curriculum-section-body {
@@ -9871,7 +9885,9 @@ html:has(.settings-profile__privacy-dialog[open]) {
   padding: 0 20px;
   border-top: 1px solid transparent;
   background: rgba(0, 0, 0, 0.24);
-  transition: padding 0.28s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.28s ease;
+  transition:
+    padding 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.28s ease;
 }
 
 .curriculum-lesson-editor-wrapper.is-open .curriculum-lesson-editor {
@@ -9910,7 +9926,9 @@ html:has(.settings-profile__privacy-dialog[open]) {
   background: rgba(255, 255, 255, 0.02);
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .curriculum-type-card:hover {
@@ -10234,7 +10252,9 @@ html:has(.settings-profile__privacy-dialog[open]) {
   color: var(--muted);
   background: transparent;
   cursor: pointer;
-  transition: color 0.15s ease, background 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
 }
 
 .delete-modal-close-btn:hover {
@@ -10308,7 +10328,9 @@ html:has(.settings-profile__privacy-dialog[open]) {
   font-size: 0.84rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease;
   box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);
 }
 
@@ -10332,3 +10354,405 @@ html:has(.settings-profile__privacy-dialog[open]) {
   background: color-mix(in srgb, var(--text) 6%, transparent);
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   Access Rules Step Styles
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.access-rules-container {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.access-rules-header-row {
+  margin-bottom: 4px;
+}
+
+.access-rules-header-row h2 {
+  margin: 0 0 4px;
+  color: var(--text);
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.access-rules-header-row p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.access-rules-top-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.access-rules-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+  padding: 20px 22px 24px;
+  background: var(--surface);
+}
+
+.access-rules-card--full {
+  width: 100%;
+}
+
+.access-rules-card__header {
+  margin-bottom: 18px;
+}
+
+.access-rules-card__header h3 {
+  margin: 0 0 4px;
+  color: var(--text);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.access-rules-card__header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.83rem;
+}
+
+.access-rules-options-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Custom Radio Option Cards */
+.access-rules-radio-option {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+  user-select: none;
+}
+
+.access-rules-radio-option:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.access-rules-radio-option.is-selected {
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+
+.access-rules-radio-circle {
+  display: flex;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+  border: 1.5px solid var(--muted);
+  border-radius: 50%;
+  transition: border-color 0.15s ease;
+}
+
+.access-rules-radio-option.is-selected .access-rules-radio-circle {
+  border-color: var(--accent);
+}
+
+.access-rules-radio-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.access-rules-radio-text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.access-rules-radio-text strong {
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.access-rules-radio-text p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+/* Conditional Requirements Box */
+.access-rules-req-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 14px;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.access-rules-req-header label {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--text);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.access-rules-req-header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.access-rules-req-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.access-rules-req-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.access-rules-req-select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.access-rules-add-req-btn {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: var(--accent);
+  background: transparent;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.access-rules-add-req-btn:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/* Fixed Duration Controls */
+.access-rules-fixed-inputs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.access-rules-number-input {
+  width: 76px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 7px 12px;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.25);
+  font-size: 0.86rem;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.access-rules-number-input:focus {
+  border-color: var(--accent);
+}
+
+.access-rules-unit-select {
+  min-width: 120px;
+}
+
+/* Custom Expiration Dates Row */
+.access-rules-dates-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.access-rules-date-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.access-rules-date-group label {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.access-rules-date-input {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 7px 12px;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.25);
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 500;
+  outline: none;
+  transition: border-color 0.15s ease;
+  color-scheme: dark;
+}
+
+.access-rules-date-input:focus {
+  border-color: var(--accent);
+}
+
+.access-rules-date-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 18px;
+  color: var(--muted);
+}
+
+/* Learner Interactions Toggles List */
+.access-rules-toggles-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.access-rules-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 14px 18px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.access-rules-toggle-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.access-rules-toggle-icon {
+  display: flex;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.access-rules-toggle-info strong {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.access-rules-toggle-info p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+/* Switch Toggle Component */
+.access-rules-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  flex: 0 0 auto;
+  border: none;
+  border-radius: 12px;
+  padding: 2px;
+  background: rgba(255, 255, 255, 0.16);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.access-rules-switch.is-active {
+  background: var(--accent);
+}
+
+.access-rules-switch-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.access-rules-switch.is-active .access-rules-switch-thumb {
+  transform: translateX(20px);
+}
+
+/* Light Mode Overrides for Access Rules */
+:root[data-theme="light"] .access-rules-card {
+  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+}
+
+:root[data-theme="light"] .access-rules-radio-option {
+  border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+  background: var(--surface);
+}
+
+:root[data-theme="light"] .access-rules-radio-option:hover {
+  background: color-mix(in srgb, var(--text) 3%, transparent);
+}
+
+:root[data-theme="light"] .access-rules-radio-option.is-selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+:root[data-theme="light"] .access-rules-req-box {
+  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+  background: color-mix(in srgb, var(--canvas) 60%, var(--surface));
+}
+
+:root[data-theme="light"] .access-rules-number-input,
+:root[data-theme="light"] .access-rules-date-input {
+  border: 1px solid color-mix(in srgb, var(--text) 16%, transparent);
+  background: var(--surface);
+  color-scheme: light;
+}
+
+:root[data-theme="light"] .access-rules-toggle-row {
+  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+  background: var(--surface);
+}
+
+:root[data-theme="light"] .access-rules-switch {
+  background: color-mix(in srgb, var(--text) 22%, transparent);
+}
+
+:root[data-theme="light"] .access-rules-switch.is-active {
+  background: var(--accent);
+}
