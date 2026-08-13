@@ -1,14 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft,
   ArrowRight,
   ArrowUpRight,
   BookOpen,
+  Calendar,
   CaretDown,
+  CaretRight,
   CaretUp,
   Certificate,
+  ChartBar,
   ChatCircleText,
   Check,
+  CheckCircle,
   Clock,
   DotsSixVertical,
   DotsThreeVertical,
@@ -16,6 +20,7 @@ import {
   Eye,
   FileText,
   FloppyDisk,
+  Globe,
   Image as ImageIcon,
   Info,
   Lightning,
@@ -28,6 +33,7 @@ import {
   Plus,
   Question,
   Quotes,
+  RocketLaunch,
   Smiley,
   Sparkle,
   Tag,
@@ -35,6 +41,7 @@ import {
   TextItalic,
   Trash,
   UploadSimple,
+  UserPlus,
   Video,
   X,
 } from "@phosphor-icons/react";
@@ -73,6 +80,20 @@ export interface CourseCreatePageProps {
 
 export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   const [activeStep, setActiveStep] = useState<CourseWizardStepId>("basics");
+  const [slideDirection, setSlideDirection] = useState<"right" | "left">("right");
+
+  const [indicatorStyle, setIndicatorStyle] = useState<{ left: number; width: number }>({ left: 0, width: 0 });
+  const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
+
+  useEffect(() => {
+    const activeEl = tabRefs.current[activeStep];
+    if (activeEl) {
+      setIndicatorStyle({
+        left: activeEl.offsetLeft,
+        width: activeEl.offsetWidth,
+      });
+    }
+  }, [activeStep]);
 
   // Basics Form state
   const [courseTitle, setCourseTitle] = useState("");
@@ -214,6 +235,39 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     sellingPrice: "1999",
     originalPrice: "2999",
   });
+
+  // Publish interfaces
+  type CourseVisibility = "public" | "private" | "unlisted";
+  type ScheduleOption = "now" | "later";
+
+  interface PublishState {
+    visibility: CourseVisibility;
+    scheduleOption: ScheduleOption;
+    scheduleDate: string;
+    scheduleTime: string;
+  }
+
+  // Course Life Cycle state
+  const [isPublished, setIsPublished] = useState<boolean>(false);
+
+  // Publish Step state
+  const [publishSettings, setPublishSettings] = useState<PublishState>({
+    visibility: "public",
+    scheduleOption: "now",
+    scheduleDate: "2026-08-20",
+    scheduleTime: "10:00",
+  });
+
+  const [publishValidationError, setPublishValidationError] = useState<string | null>(null);
+
+  // Auto-hide validation error message after 3.5 seconds
+  useEffect(() => {
+    if (!publishValidationError) return;
+    const timer = setTimeout(() => {
+      setPublishValidationError(null);
+    }, 3500);
+    return () => clearTimeout(timer);
+  }, [publishValidationError]);
 
   // Extras Step state
   const [extras, setExtras] = useState<ExtrasState>({
@@ -684,6 +738,36 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     0,
   );
 
+  // Derived Checklist Validation
+  const isBasicsValid = courseTitle.trim().length > 0 && courseDescription.trim().length > 0;
+  const isCurriculumValid = totalSections > 0;
+  const isAccessRulesValid = accessRules.accessType === "everyone" || accessRules.requirements.length > 0;
+  const isPricingValid = pricing.pricingType === "free" || (parseFloat(pricing.sellingPrice.replace(/,/g, "")) > 0);
+  const isExtrasValid = true;
+
+  const isCourseReadyToPublish =
+    isBasicsValid &&
+    isCurriculumValid &&
+    isAccessRulesValid &&
+    isPricingValid &&
+    isExtrasValid;
+
+  const handleFinalPublishCourse = () => {
+    if (!isCourseReadyToPublish) {
+      if (!isBasicsValid) setPublishValidationError("Please fill out required Basic Information fields (Title and Description).");
+      else if (!isCurriculumValid) setPublishValidationError("Please add at least one Section to the Curriculum.");
+      else if (!isAccessRulesValid) setPublishValidationError("Please configure at least one prerequisite requirement or select Everyone.");
+      else if (!isPricingValid) setPublishValidationError("Please set a valid Selling Price for paid course.");
+      return;
+    }
+
+    setPublishValidationError(null);
+    setIsPublished(true);
+    if (typeof window !== "undefined") {
+      alert(isPublished ? "Course updated successfully!" : "Course successfully published!");
+    }
+  };
+
   return (
     <div className="course-wizard-layout">
       {/* Wizard Header */}
@@ -699,8 +783,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
           </button>
           <div className="course-wizard-header__title-group">
             <div className="course-wizard-header__title-row">
-              <h1>Create New Course</h1>
-              <span className="course-wizard-status-badge">Draft</span>
+              <h1>{isPublished ? "Edit Course" : "Create New Course"}</h1>
+              <span className={`course-wizard-status-badge ${isPublished ? "is-published" : ""}`}>
+                {isPublished ? "Published" : "Draft"}
+              </span>
             </div>
             <p>
               {activeStep === "curriculum"
@@ -711,24 +797,41 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     ? "Set how learners will purchase this course."
                     : activeStep === "extras"
                       ? "Add extra information and settings to enhance your course."
-                      : "Add the essential details of your course. You can always edit these later."}
+                      : activeStep === "publish"
+                        ? "Review your course and publish it when you're ready."
+                        : "Add the essential details of your course. You can always edit these later."}
             </p>
           </div>
         </div>
 
         {/* Wizard Steps Navigation */}
         <nav className="course-wizard-steps" aria-label="Course creation steps">
-          {WIZARD_STEPS.map((step) => {
+          <div
+            className="course-wizard-active-indicator"
+            style={{
+              transform: `translateX(${indicatorStyle.left}px)`,
+              width: `${indicatorStyle.width}px`,
+            }}
+          />
+          {WIZARD_STEPS.map((step, idx) => {
             const Icon = step.Icon;
             const isActive = activeStep === step.id;
             return (
               <button
                 key={step.id}
+                ref={(el) => {
+                  tabRefs.current[step.id] = el;
+                }}
                 type="button"
                 className={`course-wizard-step-tab ${isActive ? "is-active" : ""}`}
-                onClick={() => setActiveStep(step.id)}
+                onClick={() => {
+                  const currentIdx = WIZARD_STEPS.findIndex((s) => s.id === activeStep);
+                  if (idx > currentIdx) setSlideDirection("right");
+                  else if (idx < currentIdx) setSlideDirection("left");
+                  setActiveStep(step.id);
+                }}
               >
-                <Icon size={18} weight={isActive ? "bold" : "regular"} />
+                <Icon size={18} weight={isActive ? "fill" : "regular"} />
                 <span>{step.label}</span>
               </button>
             );
@@ -737,7 +840,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
       </header>
 
       {/* Scrollable Step Content Region */}
-      <div className="course-wizard-content">
+      <div className={`course-wizard-content slide-from-${slideDirection}`} key={activeStep}>
         {activeStep === "basics" ? (
           <div className="course-wizard-body">
             {/* Left Column: Form Sections */}
@@ -2313,6 +2416,342 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
               </div>
             </div>
           </div>
+        ) : activeStep === "publish" ? (
+          <div className="publish-container">
+            {/* Top 2-Column Grid: 1. Publish settings & 2. Final checklist */}
+            <div className="publish-top-grid">
+              {/* Card 1: Publish settings */}
+              <div className="publish-card">
+                <div className="publish-card__header">
+                  <h3>1. Publish settings</h3>
+                  <p>Choose when and how your course becomes visible.</p>
+                </div>
+
+                {/* Informational Course Status Display */}
+                <div className="publish-form-group">
+                  <label>Course status</label>
+                  <div className="publish-status-display">
+                    <span className={`publish-status-tag ${isPublished ? "is-published" : "is-draft"}`}>
+                      {isPublished ? "Published" : "Draft"}
+                    </span>
+                  </div>
+                  <p className="publish-status-hint">
+                    {isPublished
+                      ? "Your course is currently published and visible to students according to your settings."
+                      : "Your course is currently a draft and hasn't been published yet."}
+                  </p>
+                </div>
+
+                {/* Course visibility select */}
+                <div className="publish-form-group">
+                  <label>Course visibility</label>
+                  <ThemedSelect
+                    value={publishSettings.visibility}
+                    onValueChange={(val) =>
+                      setPublishSettings((prev) => ({
+                        ...prev,
+                        visibility: val as CourseVisibility,
+                      }))
+                    }
+                    options={[
+                      ["public", "Public — Anyone on the platform can discover and enroll in this course."],
+                      ["private", "Private — Only invited students can access this course."],
+                      ["unlisted", "Unlisted — Only users with a direct link can view this course."],
+                    ]}
+                    ariaLabel="Select course visibility"
+                    triggerClassName="course-wizard-select-trigger"
+                  />
+                </div>
+
+                {/* Publish on radio options */}
+                <div className="publish-form-group">
+                  <label>Publish on</label>
+
+                  <div className="publish-options-group">
+                    {/* Option 1: Publish now */}
+                    <div
+                      className={`access-rules-radio-option ${
+                        publishSettings.scheduleOption === "now" ? "is-selected" : ""
+                      }`}
+                      onClick={() =>
+                        setPublishSettings((prev) => ({ ...prev, scheduleOption: "now" }))
+                      }
+                    >
+                      <div className="access-rules-radio-circle">
+                        {publishSettings.scheduleOption === "now" && (
+                          <div className="access-rules-radio-dot" />
+                        )}
+                      </div>
+                      <div className="access-rules-radio-text">
+                        <strong>Publish now</strong>
+                        <p>Make this course live immediately.</p>
+                      </div>
+                    </div>
+
+                    {/* Option 2: Schedule for later */}
+                    <div
+                      className={`access-rules-radio-option ${
+                        publishSettings.scheduleOption === "later" ? "is-selected" : ""
+                      }`}
+                      onClick={() =>
+                        setPublishSettings((prev) => ({ ...prev, scheduleOption: "later" }))
+                      }
+                    >
+                      <div className="access-rules-radio-circle">
+                        {publishSettings.scheduleOption === "later" && (
+                          <div className="access-rules-radio-dot" />
+                        )}
+                      </div>
+                      <div className="access-rules-radio-text">
+                        <strong>Schedule for later</strong>
+                        <p>Choose a future date and time to publish.</p>
+
+                        {publishSettings.scheduleOption === "later" && (
+                          <div
+                            className="publish-schedule-inputs-row"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="publish-date-input-wrap">
+                              <Calendar size={16} className="publish-input-icon" />
+                              <input
+                                type="date"
+                                className="access-rules-date-input"
+                                value={publishSettings.scheduleDate}
+                                onChange={(e) =>
+                                  setPublishSettings((prev) => ({
+                                    ...prev,
+                                    scheduleDate: e.target.value,
+                                  }))
+                                }
+                              />
+                            </div>
+                            <div className="publish-date-input-wrap">
+                              <Clock size={16} className="publish-input-icon" />
+                              <input
+                                type="time"
+                                className="access-rules-date-input"
+                                value={publishSettings.scheduleTime}
+                                onChange={(e) =>
+                                  setPublishSettings((prev) => ({
+                                    ...prev,
+                                    scheduleTime: e.target.value,
+                                  }))
+                                }
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Access rules informational banner */}
+                <div className="publish-info-box">
+                  <Info size={18} weight="bold" className="publish-info-icon" />
+                  <p>
+                    Students will only see this course if they meet the access rules you have configured.
+                  </p>
+                </div>
+              </div>
+
+              {/* Card 2: Final checklist & Ready-to-publish */}
+              <div className="publish-card">
+                <div className="publish-card__header">
+                  <h3>2. Final checklist</h3>
+                  <p>Make sure everything is ready to go live.</p>
+                </div>
+
+                {/* Checklist items list */}
+                <div className="publish-checklist-list">
+                  {/* Checklist Item: Basics */}
+                  <div
+                    className="publish-checklist-row"
+                    onClick={() => setActiveStep("basics")}
+                  >
+                    <div className="publish-checklist-left">
+                      <CheckCircle
+                        size={20}
+                        weight="fill"
+                        className={isBasicsValid ? "is-valid" : "is-invalid"}
+                      />
+                      <strong>Basics</strong>
+                    </div>
+                    <div className="publish-checklist-right">
+                      <span>{isBasicsValid ? "Completed" : "Incomplete"}</span>
+                      <CaretRight size={16} />
+                    </div>
+                  </div>
+
+                  {/* Checklist Item: Curriculum */}
+                  <div
+                    className="publish-checklist-row"
+                    onClick={() => setActiveStep("curriculum")}
+                  >
+                    <div className="publish-checklist-left">
+                      <CheckCircle
+                        size={20}
+                        weight="fill"
+                        className={isCurriculumValid ? "is-valid" : "is-invalid"}
+                      />
+                      <strong>Curriculum</strong>
+                    </div>
+                    <div className="publish-checklist-right">
+                      <span>
+                        {totalSections} Sections, {totalLessons} Lessons
+                      </span>
+                      <CaretRight size={16} />
+                    </div>
+                  </div>
+
+                  {/* Checklist Item: Access Rules */}
+                  <div
+                    className="publish-checklist-row"
+                    onClick={() => setActiveStep("access-rules")}
+                  >
+                    <div className="publish-checklist-left">
+                      <CheckCircle
+                        size={20}
+                        weight="fill"
+                        className={isAccessRulesValid ? "is-valid" : "is-invalid"}
+                      />
+                      <strong>Access Rules</strong>
+                    </div>
+                    <div className="publish-checklist-right">
+                      <span>
+                        {accessRules.accessType === "everyone"
+                          ? "Everyone"
+                          : "Restricted Access"}
+                      </span>
+                      <CaretRight size={16} />
+                    </div>
+                  </div>
+
+                  {/* Checklist Item: Pricing */}
+                  <div
+                    className="publish-checklist-row"
+                    onClick={() => setActiveStep("pricing")}
+                  >
+                    <div className="publish-checklist-left">
+                      <CheckCircle
+                        size={20}
+                        weight="fill"
+                        className={isPricingValid ? "is-valid" : "is-invalid"}
+                      />
+                      <strong>Pricing</strong>
+                    </div>
+                    <div className="publish-checklist-right">
+                      <span>
+                        {pricing.pricingType === "free"
+                          ? "Free"
+                          : `₹${pricing.sellingPrice}`}
+                      </span>
+                      <CaretRight size={16} />
+                    </div>
+                  </div>
+
+                  {/* Checklist Item: Extras */}
+                  <div
+                    className="publish-checklist-row"
+                    onClick={() => setActiveStep("extras")}
+                  >
+                    <div className="publish-checklist-left">
+                      <CheckCircle
+                        size={20}
+                        weight="fill"
+                        className={isExtrasValid ? "is-valid" : "is-invalid"}
+                      />
+                      <strong>Extras</strong>
+                    </div>
+                    <div className="publish-checklist-right">
+                      <span>
+                        {extras.enableCertificate
+                          ? "Certificate Enabled"
+                          : "Disabled"}
+                      </span>
+                      <CaretRight size={16} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Ready-to-publish State Box */}
+                {isCourseReadyToPublish ? (
+                  <div className="publish-ready-box">
+                    <div className="publish-ready-icon">
+                      <BookOpen size={24} weight="fill" />
+                    </div>
+                    <div>
+                      <strong>Your course is ready to be published!</strong>
+                      <p>
+                        Once published, students can see and enroll in this course according to your settings.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="publish-unready-box">
+                    <div className="publish-unready-icon">
+                      <Info size={24} weight="bold" />
+                    </div>
+                    <div>
+                      <strong>Course needs attention</strong>
+                      <p>Please fix incomplete sections highlighted above before publishing.</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Bottom Card 3: What happens after publishing? */}
+            <div className="publish-after-card">
+              <h3>3. What happens after publishing?</h3>
+
+              <div className="publish-after-grid">
+                {/* Feature 1: Visible to students */}
+                <div className="publish-after-item">
+                  <div className="publish-after-icon">
+                    <Eye size={22} weight="bold" />
+                  </div>
+                  <div>
+                    <strong>Visible to students</strong>
+                    <p>Students will be able to discover your course on the platform.</p>
+                  </div>
+                </div>
+
+                {/* Feature 2: Enrollment starts */}
+                <div className="publish-after-item">
+                  <div className="publish-after-icon publish-after-icon--purple">
+                    <UserPlus size={22} weight="bold" />
+                  </div>
+                  <div>
+                    <strong>Enrollment starts</strong>
+                    <p>Students who meet the access rules can enroll in your course.</p>
+                  </div>
+                </div>
+
+                {/* Feature 3: Track performance */}
+                <div className="publish-after-item">
+                  <div className="publish-after-icon publish-after-icon--blue">
+                    <PlayCircle size={22} weight="fill" />
+                  </div>
+                  <div>
+                    <strong>Track performance</strong>
+                    <p>Monitor enrollments, progress, and engagement in real-time.</p>
+                  </div>
+                </div>
+
+                {/* Feature 4: Earn with every sale */}
+                <div className="publish-after-item">
+                  <div className="publish-after-icon publish-after-icon--pink">
+                    <ChartBar size={22} weight="bold" />
+                  </div>
+                  <div>
+                    <strong>Earn with every sale</strong>
+                    <p>Get paid for every successful enrollment.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="course-wizard-body">
             <section className="course-wizard-card">
@@ -2327,6 +2766,12 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
       {/* Persistent Shared Action Bar */}
       <footer className="course-wizard-footer">
+        {publishValidationError && activeStep === "publish" && (
+          <div className="publish-footer-error-banner">
+            <Info size={16} weight="bold" />
+            <span>{publishValidationError}</span>
+          </div>
+        )}
         <div className="course-wizard-footer__actions">
           <button type="button" className="course-wizard-btn-ghost">
             <Eye size={16} /> Preview
@@ -2334,8 +2779,16 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
           <button type="button" className="course-wizard-btn-draft">
             <FloppyDisk size={16} /> Save Draft
           </button>
-          <button type="button" className="course-wizard-btn-primary">
-            {activeStep === "publish" ? "Publish Course" : "Save Changes"}
+          <button
+            type="button"
+            className="course-wizard-btn-primary"
+            onClick={activeStep === "publish" ? handleFinalPublishCourse : undefined}
+          >
+            {activeStep === "publish"
+              ? isPublished
+                ? "Update Course"
+                : "Publish Course"
+              : "Save Changes"}
           </button>
         </div>
       </footer>
