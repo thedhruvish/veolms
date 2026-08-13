@@ -8,6 +8,7 @@ import {
   TextT,
 } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
+import { AppSlider } from "../AppSlider";
 import { academyThemes } from "../themes";
 import type { AcademyTheme } from "../themes";
 import {
@@ -313,9 +314,8 @@ export function SidebarSettings({
             htmlFor="sidebar-max-width-range"
           >
             <span>Drag to adjust the maximum width</span>
-            <input
+            <AppSlider
               id="sidebar-max-width-range"
-              type="range"
               min={SIDEBAR_MAX_WIDTH_MIN}
               max={SIDEBAR_MAX_WIDTH_LIMIT}
               step="1"
@@ -326,6 +326,7 @@ export function SidebarSettings({
                 })
               }
               aria-label="Sidebar max width"
+              aria-valuetext={`${sidebarMaxWidth} pixels`}
             />
             <span
               className="settings-sidebar-width__range-labels"

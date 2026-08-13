@@ -247,6 +247,14 @@ test("core player controls, shortcuts, seek state, and ambient preference remain
     name: /Lesson video player for The Beginning of a Design Journey/,
   });
   const video = player.locator("video");
+  const positionSlider = player.getByRole("slider", {
+    name: "Video position",
+  });
+  const volumeSlider = player.getByRole("slider", { name: "Volume" });
+
+  await expect(positionSlider).toHaveClass(/app-slider--player/);
+  await expect(volumeSlider).toHaveClass(/app-slider--volume/);
+  await expect(volumeSlider).toHaveCSS("--app-slider-progress", "100%");
 
   await player.getByRole("button", { name: "Play", exact: true }).click();
   await expect(

@@ -51,6 +51,15 @@ test.describe("@visual", () => {
     });
   });
 
+  test("Settings Sidebar desktop · dark Graphite", async ({ page }) => {
+    await installBaselineState(page);
+    await openApp(page, "/settings/sidebar");
+    await prepareVisualPage(page);
+    await expect(page).toHaveScreenshot("settings-sidebar-dark.png", {
+      fullPage: true,
+    });
+  });
+
   test("Settings Profile desktop · dark Graphite", async ({ page }) => {
     await installBaselineState(page);
     await openApp(page, "/settings/profile");
@@ -96,6 +105,19 @@ test.describe("@visual", () => {
     await expect(page).toHaveScreenshot("learning-workspace-dark.png", {
       fullPage: true,
     });
+  });
+
+  test("player sliders desktop · dark Graphite", async ({ page }) => {
+    await installBaselineState(page);
+    await openApp(page, "/courses/typescript-course");
+    const player = page.getByRole("region", {
+      name: /Lesson video player for The Beginning of a Design Journey/,
+    });
+    const volume = player.getByRole("slider", { name: "Volume" });
+    await volume.focus();
+    await expect(volume).toHaveCSS("width", "72px");
+    await prepareVisualPage(page);
+    await expect(player).toHaveScreenshot("player-sliders-dark.png");
   });
 
   test("Courses mobile · dark Graphite", async ({ page }) => {

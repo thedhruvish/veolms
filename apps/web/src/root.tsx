@@ -1,8 +1,11 @@
 import "@fontsource-variable/manrope";
 import type { ReactNode } from "react";
 import { Links, Meta, Outlet, Scripts } from "react-router";
+import { ReadingModeEffects } from "./reading-mode/ReadingModeEffects";
+import { getReadingModeBootstrapScript } from "./reading-mode/readingModePreferences";
 import "./styles.css";
 import "./shell-theme.css";
+import "./reading-mode.css";
 
 interface LayoutProps {
   children: ReactNode;
@@ -10,7 +13,15 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   return (
-    <html lang="en" data-theme="dark" data-palette="codex">
+    <html
+      lang="en"
+      data-theme="dark"
+      data-palette="codex"
+      data-reading-mode="false"
+      data-reading-mode-texture="false"
+      data-reading-mode-temperature="false"
+      suppressHydrationWarning
+    >
       <head>
         <meta charSet="UTF-8" />
         <meta
@@ -18,12 +29,16 @@ export function Layout({ children }: LayoutProps) {
           content="width=device-width, initial-scale=1.0, viewport-fit=cover"
         />
         <meta name="theme-color" content="#151718" />
+        <script
+          dangerouslySetInnerHTML={{ __html: getReadingModeBootstrapScript() }}
+        />
         <Meta />
         <Links />
       </head>
       <body>
         <div id="root">{children}</div>
         <Scripts />
+        <ReadingModeEffects />
       </body>
     </html>
   );

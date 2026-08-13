@@ -21,6 +21,17 @@ const renderSettings = (onChange: (next: SidebarPreferences) => void) =>
   );
 
 describe("sidebar settings draft inputs", () => {
+  it("uses the shared themed slider for sidebar width", () => {
+    renderSettings(vi.fn());
+    const slider = screen.getByRole("slider", { name: "Sidebar max width" });
+
+    expect(slider).toHaveClass("app-slider", "app-slider--accent");
+    expect(slider).toHaveAttribute("aria-valuetext", "300 pixels");
+    expect(slider.getAttribute("style")).toContain(
+      "--app-slider-progress: 26.666666666666668%",
+    );
+  });
+
   it("commits a normalized width only on blur or Enter", () => {
     const onChange = vi.fn();
     renderSettings(onChange);
