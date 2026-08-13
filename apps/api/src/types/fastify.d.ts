@@ -11,6 +11,7 @@ interface AuthenticatedUser {
   permissions: string[];
   totpEnabled: boolean;
   passkeyEnabled: boolean;
+  mfaMandatory: boolean;
 }
 
 interface ActiveSession {

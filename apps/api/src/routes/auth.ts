@@ -32,12 +32,6 @@ function logTestCredentials(message: string) {
   }
 }
 
-const TOTP_TEST_BYPASS_ENABLED = config.NODE_ENV !== "production";
-
-function isTotpBypassCode(code: string): boolean {
-  return TOTP_TEST_BYPASS_ENABLED && (code === "000000" || code === "123456");
-}
-
 import {
   generateRegistrationOptions,
   verifyRegistrationResponse,
@@ -153,6 +147,9 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
         );
         if (!userInfoRes.ok) throw new Error("Google userinfo fetch failed");
         const payload = (await userInfoRes.json()) as any;
+        if (!payload.email_verified) {
+          throw new Error("Google email address is not verified.");
+        }
         email = payload.email;
         name = payload.name || email.split("@")[0] || "Google User";
         username = email.split("@")[0] || "";
@@ -194,22 +191,24 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
         if (!res.ok) throw new Error("GitHub access token invalid");
         const payload = (await res.json()) as any;
 
-        email = payload.email;
-        if (!email) {
-          const emailRes = await fetch("https://api.github.com/user/emails", {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "User-Agent": "VeoLMS-API",
-            },
-          });
-          if (emailRes.ok) {
-            const emails = (await emailRes.json()) as any[];
-            const primaryEmailObj = emails.find((e) => e.primary) || emails[0];
-            email = primaryEmailObj?.email || "";
-          }
+        const emailRes = await fetch("https://api.github.com/user/emails", {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "User-Agent": "VeoLMS-API",
+          },
+        });
+        if (emailRes.ok) {
+          const emails = (await emailRes.json()) as any[];
+          const verifiedEmails = emails.filter((e) => e.verified);
+          const selectedEmailObj = verifiedEmails.find((e) => e.primary) || verifiedEmails[0];
+          email = selectedEmailObj?.email || "";
+        } else {
+          email = payload.email || "";
         }
 
-        email = email || `${payload.login}@github.academy.com`;
+        if (!email) {
+          throw new Error("No verified email address found on GitHub profile.");
+        }
         name = payload.name || payload.login || "GitHub User";
         username = payload.login || "";
         providerUserId = String(payload.id);
@@ -258,7 +257,7 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
       .executeTakeFirst();
     const passkeyEnabled = Number(passkeyCount?.count || 0) > 0;
 
-    const mfaRequired = isCreator || totpEnabled || passkeyEnabled;
+    const mfaRequired = !!user.mfa_mandatory || totpEnabled || passkeyEnabled;
 
     const token = generateRandomToken();
     const tokenHash = hashToken(token);
@@ -994,24 +993,17 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
         .where("oauth_accounts.provider_user_id", "=", oauthDetails.providerUserId)
         .executeTakeFirst();
 
-    if (!user) {
-      // fall back to email match, then auto-link this provider
-      user = await database.selectFrom("users").selectAll().where("email", "=", oauthDetails.email).executeTakeFirst();
       if (!user) {
-        return reply.code(400).send(httpError(400, "REGISTRATION_REQUIRED", "Please register first using your Google or GitHub account."));
+        return reply
+          .code(400)
+          .send(
+            httpError(
+              400,
+              "REGISTRATION_REQUIRED",
+              "Please register first using your Google or GitHub account.",
+            ),
+          );
       }
-      if (user) {
-        await database
-          .insertInto("oauth_accounts")
-          .values({
-            id: crypto.randomUUID(),
-            user_id: user.id,
-            provider,
-            provider_user_id: oauthDetails.providerUserId,
-          })
-          .execute();
-      }
-    }
 
       return establishSession(user, request, reply);
     },
@@ -1332,8 +1324,10 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
 
       const user = await database
         .selectFrom("users")
-        .selectAll()
-        .where("email", "=", oauthDetails.email)
+        .innerJoin("oauth_accounts", "oauth_accounts.user_id", "users.id")
+        .selectAll("users")
+        .where("oauth_accounts.provider", "=", provider)
+        .where("oauth_accounts.provider_user_id", "=", oauthDetails.providerUserId)
         .executeTakeFirst();
 
       if (!user) {
@@ -1405,60 +1399,90 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
       },
     },
     async (request, reply) => {
+      if (await isSetupAlreadyCompleted(reply)) return;
+      if (!requireValidSetupCookie(request, reply)) return;
+
       const { name, email, phoneNo } = request.body;
-
-      const userCount = await database
-        .selectFrom("users")
-        .select((eb) => eb.fn.count("id").as("count"))
-        .executeTakeFirst();
-
-      const count = Number(userCount?.count || 0);
-      if (count > 0) {
-        return reply
-          .code(403)
-          .send(
-            httpError(
-              403,
-              "CREATOR_EXISTS",
-              "LMS platform has already been initialized. Creator account exists.",
-            ),
-          );
-      }
-
       const creatorId = crypto.randomUUID();
-      const username = email.split("@")[0] || "creator";
-      
-      await database.transaction().execute(async (trx) => {
-        await trx
-          .insertInto("users")
-          .values({
-            id: creatorId,
-            email,
-            phone_no: phoneNo || null,
-            username,
-            display_name: name,
-            email_verified_at: new Date(),
-            mfa_mandatory: true,
-          })
-          .execute();
 
-        const creatorRole = await trx
-          .selectFrom("roles")
-          .select("id")
-          .where("name", "=", "creator")
-          .executeTakeFirst();
+      try {
+        await database.transaction().execute(async (trx) => {
+          const userCount = await trx
+            .selectFrom("users")
+            .select((eb) => eb.fn.count("id").as("count"))
+            .executeTakeFirst();
 
-        const roleId =
-          creatorRole?.id || "11111111-1111-4000-a000-000000000001";
+          const count = Number(userCount?.count || 0);
+          if (count > 0) {
+            const err = new Error("CREATOR_EXISTS");
+            (err as any).statusCode = 403;
+            throw err;
+          }
 
-        await trx
-          .insertInto("user_roles")
-          .values({
-            user_id: creatorId,
-            role_id: roleId,
-          })
-          .execute();
-      });
+          const baseUsername = (email.split("@")[0] || "creator")
+            .toLowerCase()
+            .replace(/[^a-z0-9_]/g, "_");
+          let username = baseUsername;
+          let isTaken = true;
+          let attempts = 0;
+          while (isTaken && attempts < 10) {
+            const existing = await trx
+              .selectFrom("users")
+              .select("id")
+              .where("username", "=", username)
+              .executeTakeFirst();
+            if (!existing) {
+              isTaken = false;
+            } else {
+              username = `${baseUsername}_${crypto.randomInt(100, 999)}`;
+              attempts++;
+            }
+          }
+
+          await trx
+            .insertInto("users")
+            .values({
+              id: creatorId,
+              email,
+              phone_no: phoneNo || null,
+              username,
+              display_name: name,
+              email_verified_at: new Date(),
+              mfa_mandatory: true,
+            })
+            .execute();
+
+          const creatorRole = await trx
+            .selectFrom("roles")
+            .select("id")
+            .where("name", "=", "creator")
+            .executeTakeFirst();
+
+          const roleId =
+            creatorRole?.id || "11111111-1111-4000-a000-000000000001";
+
+          await trx
+            .insertInto("user_roles")
+            .values({
+              user_id: creatorId,
+              role_id: roleId,
+            })
+            .execute();
+        });
+      } catch (err: any) {
+        if (err.message === "CREATOR_EXISTS") {
+          return reply
+            .code(403)
+            .send(
+              httpError(
+                403,
+                "CREATOR_EXISTS",
+                "LMS platform has already been initialized. Creator account exists.",
+              ),
+            );
+        }
+        throw err;
+      }
 
       const user = await database
         .selectFrom("users")
@@ -1686,10 +1710,7 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
         userIdentifier,
         config.RP_NAME,
       );
-      // Just testing for otp
-      logTestCredentials(
-        `TOTP SETUP secret for ${userIdentifier}: ${secret} | Bypass codes: 000000 or 123456`,
-      );
+
       return { secret, uri };
     },
   );
@@ -1728,23 +1749,16 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
         return reply.code(403).send(httpError(403, "MFA_STEP_UP_REQUIRED", "Verify an existing MFA factor before adding or replacing another."));
       }
 
-      let currentStep: number;
-      if (isTotpBypassCode(code)) {
-        // Dev-only shortcut: trust the known test code without checking it against the secret.
-        currentStep = Math.floor(Date.now() / 1000 / config.TOTP_STEP_SECONDS);
-      } else {
-        // All production traffic (and any non-bypass code in dev) goes through real verification.
-        const totpResult = verifyTotp(secret, code, {
-          backwardSteps: config.TOTP_BACKWARD_STEPS,
-          forwardSteps: config.TOTP_FORWARD_STEPS,
-        });
-        if (!totpResult || !totpResult.verified) {
-          return reply
-            .code(400)
-            .send(httpError(400, "INVALID_CODE", "Invalid verification code."));
-        }
-        currentStep = Number(totpResult.step);
+      const totpResult = verifyTotp(secret, code, {
+        backwardSteps: config.TOTP_BACKWARD_STEPS,
+        forwardSteps: config.TOTP_FORWARD_STEPS,
+      });
+      if (!totpResult || !totpResult.verified) {
+        return reply
+          .code(400)
+          .send(httpError(400, "INVALID_CODE", "Invalid verification code."));
       }
+      const currentStep = Number(totpResult.step);
 
       const secretEncrypted = encryptSecret(secret, config.MFA_ENCRYPTION_KEY);
 
@@ -1851,19 +1865,7 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
           .send(httpError(429, "TOTP_LOCKED", "Too many failed attempts. Try again later."));
       }
 
-      if (isTotpBypassCode(code)) {
-        await database
-          .updateTable("sessions")
-          .set({ mfa_verified: true })
-          .where("id", "=", request.session!.id)
-          .execute();
-        await database
-          .updateTable("user_totp_credentials")
-          .set({ failed_attempts: 0, locked_until: null })
-          .where("id", "=", totpCred.id)
-          .execute();
-        return { message: "MFA verified successfully" };
-      }
+
 
       const plaintextSecret = decryptSecret(
         totpCred.secret_encrypted,
@@ -2601,16 +2603,7 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
         .where("id", "=", existing.id)
         .execute();
 
-      const authHeader =
-        request.headers.authorization || request.cookies["veolms-session"];
-      if (authHeader) {
-        const tokenHash = hashToken(authHeader);
-        await database
-          .updateTable("sessions")
-          .set({ mfa_verified: true })
-          .where("token_hash", "=", tokenHash)
-          .execute();
-      }
+
       reply.clearCookie(SETUP_COOKIE, { path: "/" }); // burn it once setup is locked
       return { message: "Academy setup finalized successfully." };
     },
