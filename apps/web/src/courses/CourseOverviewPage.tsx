@@ -6,24 +6,17 @@ import {
   BookmarkSimple,
   CaretDown,
   CaretRight,
-  CaretUp,
   Certificate,
   CheckCircle,
   Circle,
   Clock,
-  DeviceMobile,
   FileText,
-  Heart,
-  List,
-  MonitorPlay,
   Play,
   PlayCircle,
   ShoppingBag,
   Stack,
-  Tag,
   Ticket,
   User,
-  VideoCamera,
 } from "@phosphor-icons/react";
 import { courses } from "./catalogue";
 import type { Course } from "./catalogue";
@@ -162,8 +155,7 @@ function CurriculumSection({
   const minutes = 20 + index * 7 + (index % 4) * 5;
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
-  const durationLabel =
-    hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+  const durationLabel = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
 
   return (
     <div className={`cov-section-card${isOpen ? " is-open" : ""}`}>
@@ -173,12 +165,11 @@ function CurriculumSection({
         aria-expanded={isOpen}
         onClick={onToggle}
       >
-        <span className={`cov-section__icon-circle${isOpen ? " is-open" : ""}`} aria-hidden="true">
-          {isOpen ? (
-            <CaretDown size={14} weight="bold" />
-          ) : (
-            <CaretRight size={14} weight="bold" />
-          )}
+        <span
+          className={`cov-section__icon-circle${isOpen ? " is-open" : ""}`}
+          aria-hidden="true"
+        >
+          <CaretRight size={14} weight="bold" />
         </span>
         <span className="cov-section__title">
           {index + 1}. {section.title}
@@ -187,7 +178,7 @@ function CurriculumSection({
           {lectureCount} Lectures &bull; {durationLabel}
         </span>
         <span className="cov-section__caret-end" aria-hidden="true">
-          {isOpen ? <CaretUp size={15} /> : <CaretDown size={15} />}
+          <CaretDown size={15} />
         </span>
       </button>
 
@@ -214,9 +205,16 @@ function CurriculumSection({
                     </span>
                     <span className="cov-lesson__title">{title}</span>
                     <span className="cov-lesson__duration">{duration}</span>
-                    <span className="cov-lesson__status-icon" aria-hidden="true">
+                    <span
+                      className="cov-lesson__status-icon"
+                      aria-hidden="true"
+                    >
                       {status === "done" ? (
-                        <CheckCircle size={16} weight="fill" className="is-check" />
+                        <CheckCircle
+                          size={16}
+                          weight="fill"
+                          className="is-check"
+                        />
                       ) : (
                         <Circle size={16} className="is-circle" />
                       )}
@@ -247,10 +245,25 @@ function CurriculumSection({
                               ? "Prerequisites"
                               : `Lesson ${i + 1}`}
                     </span>
-                    <span className="cov-lesson__duration">{isDoc ? "--:--" : i === 0 ? "05:24" : i === 3 ? "05:03" : "04:35"}</span>
-                    <span className="cov-lesson__status-icon" aria-hidden="true">
+                    <span className="cov-lesson__duration">
+                      {isDoc
+                        ? "--:--"
+                        : i === 0
+                          ? "05:24"
+                          : i === 3
+                            ? "05:03"
+                            : "04:35"}
+                    </span>
+                    <span
+                      className="cov-lesson__status-icon"
+                      aria-hidden="true"
+                    >
                       {isDone ? (
-                        <CheckCircle size={16} weight="fill" className="is-check" />
+                        <CheckCircle
+                          size={16}
+                          weight="fill"
+                          className="is-check"
+                        />
                       ) : (
                         <Circle size={16} className="is-circle" />
                       )}
@@ -359,17 +372,23 @@ export function CourseOverviewPage({
                 <User size={15} weight="bold" aria-hidden="true" />
                 Anurag Singh
               </span>
-              <span className="cov-hero__dot" aria-hidden="true">•</span>
+              <span className="cov-hero__dot" aria-hidden="true">
+                •
+              </span>
               <span>
                 <Stack size={15} aria-hidden="true" />
                 {course.sections} Sections
               </span>
-              <span className="cov-hero__dot" aria-hidden="true">•</span>
+              <span className="cov-hero__dot" aria-hidden="true">
+                •
+              </span>
               <span>
                 <BookOpen size={15} aria-hidden="true" />
                 {course.lectures} Lectures
               </span>
-              <span className="cov-hero__dot" aria-hidden="true">•</span>
+              <span className="cov-hero__dot" aria-hidden="true">
+                •
+              </span>
               <span>
                 <Clock size={15} aria-hidden="true" />
                 {course.duration}
@@ -378,7 +397,10 @@ export function CourseOverviewPage({
           </header>
 
           {/* About Card */}
-          <section className="cov-card cov-about-card" aria-labelledby="cov-about-heading">
+          <section
+            className="cov-card cov-about-card"
+            aria-labelledby="cov-about-heading"
+          >
             <h2 id="cov-about-heading" className="cov-card__heading">
               About this course
             </h2>
@@ -404,7 +426,10 @@ export function CourseOverviewPage({
           </section>
 
           {/* Curriculum Section */}
-          <section className="cov-curriculum-section" aria-labelledby="cov-curriculum-heading">
+          <section
+            className="cov-curriculum-section"
+            aria-labelledby="cov-curriculum-heading"
+          >
             <div className="cov-curriculum__header">
               <h2 id="cov-curriculum-heading" className="cov-curriculum__title">
                 Course curriculum
@@ -432,7 +457,10 @@ export function CourseOverviewPage({
         {/* ── Right column (Cohesive Purchase Card + Includes Card) ── */}
         <div className="cov-right-column">
           {/* Card 1: Purchase Card (Preview + Pricing + Coupon + CTA + Wishlist) */}
-          <aside className="cov-card cov-purchase-card" aria-label="Course purchase information">
+          <aside
+            className="cov-card cov-purchase-card"
+            aria-label="Course purchase information"
+          >
             {/* Preview thumbnail */}
             <div className="cov-panel__preview">
               <img
@@ -466,12 +494,20 @@ export function CourseOverviewPage({
 
             {/* Coupon */}
             <button type="button" className="cov-panel__coupon">
-              <Ticket size={18} className="cov-panel__ticket-icon" aria-hidden="true" />
+              <Ticket
+                size={22}
+                className="cov-panel__ticket-icon"
+                aria-hidden="true"
+              />
               <span>
                 <strong>Apply coupon</strong>
                 <small>Get additional discount</small>
               </span>
-              <CaretRight size={16} className="cov-panel__coupon-caret" aria-hidden="true" />
+              <CaretRight
+                size={16}
+                className="cov-panel__coupon-caret"
+                aria-hidden="true"
+              />
             </button>
 
             {/* CTA Buy Button */}
@@ -503,7 +539,10 @@ export function CourseOverviewPage({
           </aside>
 
           {/* Card 2: Includes Card */}
-          <aside className="cov-card cov-includes-card" aria-label="Course details list">
+          <aside
+            className="cov-card cov-includes-card"
+            aria-label="Course details list"
+          >
             <h3 className="cov-includes__heading">This course includes</h3>
             <ul className="cov-includes__list">
               {includes.map(({ icon: Icon, label }) => (
@@ -519,5 +558,3 @@ export function CourseOverviewPage({
     </div>
   );
 }
-
-

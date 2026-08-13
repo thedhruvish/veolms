@@ -190,7 +190,9 @@ export function Curriculum({
                 aria-expanded={isOpen}
                 className="learning-curriculum__section-toggle"
               >
-                {isOpen ? <CaretDown size={17} /> : <CaretRight size={17} />}
+                <span className={`learning-curriculum__section-arrow${isOpen ? " is-open" : ""}`} aria-hidden="true">
+                  <CaretRight size={17} />
+                </span>
                 <span className="min-w-0 flex-1 truncate">
                   Section {section.id}: {section.title}
                 </span>

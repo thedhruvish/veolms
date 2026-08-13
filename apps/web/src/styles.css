@@ -4238,7 +4238,6 @@ button.player-menu-row:focus-visible {
   width: 100%;
   height: 100%;
   max-height: 100%;
-  max-width: 1240px;
   margin: 0;
   box-sizing: border-box;
   overflow: hidden;
@@ -4254,7 +4253,7 @@ button.player-menu-row:focus-visible {
   scrollbar-width: none;
   -ms-overflow-style: none;
   padding-right: 2px;
-  padding-bottom: 40px;
+  padding-bottom: 16px;
   box-sizing: border-box;
 }
 
@@ -4368,7 +4367,7 @@ button.player-menu-row:focus-visible {
 /* ── Curriculum Section ── */
 .cov-curriculum-section {
   margin-top: 0;
-  padding-bottom: 20px;
+  padding-bottom: 0;
 }
 
 .cov-curriculum__header {
@@ -4437,8 +4436,8 @@ button.player-menu-row:focus-visible {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--text) 12%, transparent);
-  color: var(--muted);
+  background: color-mix(in srgb, var(--text) 14%, transparent);
+  color: var(--text-secondary);
   transition:
     background-color 150ms ease,
     color 150ms ease;
@@ -4447,6 +4446,35 @@ button.player-menu-row:focus-visible {
 .cov-section__icon-circle.is-open {
   background: var(--accent);
   color: var(--on-accent, #ffffff);
+}
+
+.cov-section__icon-circle svg,
+.cov-section__caret-end svg {
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cov-section-card.is-open .cov-section__icon-circle svg,
+.cov-section__icon-circle.is-open svg {
+  color: var(--on-accent, #ffffff);
+  transform: rotate(90deg);
+}
+
+.cov-section-card.is-open .cov-section__caret-end svg {
+  transform: rotate(180deg);
+}
+
+.learning-curriculum__section-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.learning-curriculum__section-arrow svg {
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.learning-curriculum__section-arrow.is-open svg {
+  transform: rotate(90deg);
 }
 
 .cov-section__title {
@@ -4497,7 +4525,7 @@ button.player-menu-row:focus-visible {
   min-height: 0;
   padding: 4px 14px 10px;
   border-top: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
-  background: color-mix(in srgb, var(--surface) 80%, #000);
+  background: color-mix(in srgb, var(--surface) 95%, var(--text));
 }
 
 .cov-lesson {
@@ -4505,15 +4533,23 @@ button.player-menu-row:focus-visible {
   align-items: center;
   gap: 12px;
   min-height: 36px;
-  padding: 5px 10px;
+  padding: 6px 10px;
   border-radius: 6px;
   color: var(--text-secondary);
   font-size: 0.85rem;
-  transition: background-color 120ms ease;
+  cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease;
 }
 
 .cov-lesson:hover {
-  background: var(--hover);
+  background: color-mix(in srgb, var(--text) 10%, transparent);
+  color: var(--text);
+}
+
+.cov-lesson:hover .cov-lesson__type-icon {
+  color: var(--accent);
 }
 
 .cov-lesson__type-icon {
@@ -4523,6 +4559,7 @@ button.player-menu-row:focus-visible {
   align-items: center;
   justify-content: center;
   color: var(--muted);
+  transition: color 140ms ease;
 }
 
 .cov-lesson__title {
@@ -4541,6 +4578,21 @@ button.player-menu-row:focus-visible {
   flex: 0 0 auto;
   width: 45px;
   text-align: right;
+}
+
+.cov-lesson__status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.cov-lesson__status-icon .is-check {
+  color: #10b981;
+}
+
+.cov-lesson__status-icon .is-circle {
+  color: var(--muted);
 }
 
 /* ── Right Column (Fixed Non-Scrolling Panel) ── */
@@ -4677,31 +4729,39 @@ button.player-menu-row:focus-visible {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 10px;
-  border: 1px dashed color-mix(in srgb, var(--text) 20%, transparent);
+  margin-bottom: 12px;
+  border: 1px dashed color-mix(in srgb, var(--accent) 40%, transparent);
   border-radius: 10px;
   padding: 8px 12px;
-  color: var(--text-secondary);
-  background: transparent;
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
   font-size: 0.82rem;
   text-align: left;
   cursor: pointer;
   transition:
-    border-color 140ms ease,
-    background-color 140ms ease;
+    border-color 180ms ease,
+    background-color 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
 }
 
 .cov-panel__coupon:hover {
   border-color: var(--accent);
-  background: var(
-    --accent-soft,
-    color-mix(in srgb, var(--accent) 10%, transparent)
-  );
+  background: color-mix(in srgb, var(--accent) 13%, var(--surface));
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 .cov-panel__ticket-icon {
+  width: 22px;
+  height: 22px;
   color: var(--accent);
   flex: 0 0 auto;
+  transition: transform 180ms ease;
+}
+
+.cov-panel__coupon:hover .cov-panel__ticket-icon {
+  transform: scale(1.12) rotate(-5deg);
 }
 
 .cov-panel__coupon > span {
@@ -4713,7 +4773,8 @@ button.player-menu-row:focus-visible {
 
 .cov-panel__coupon strong {
   color: var(--text);
-  font-size: 0.83rem;
+  font-size: 0.84rem;
+  font-weight: 650;
 }
 
 .cov-panel__coupon small {
@@ -4723,7 +4784,12 @@ button.player-menu-row:focus-visible {
 
 .cov-panel__coupon-caret {
   flex: 0 0 auto;
-  color: var(--muted);
+  color: var(--accent);
+  transition: transform 180ms ease;
+}
+
+.cov-panel__coupon:hover .cov-panel__coupon-caret {
+  transform: translateX(3px);
 }
 
 .cov-panel__buy {
@@ -4747,6 +4813,10 @@ button.player-menu-row:focus-visible {
     transform 150ms ease,
     box-shadow 150ms ease;
   margin-bottom: 8px;
+}
+
+.cov-panel__buy svg {
+  color: inherit;
 }
 
 .cov-panel__buy:hover {
