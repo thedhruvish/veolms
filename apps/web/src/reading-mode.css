@@ -67,12 +67,12 @@
 
 .settings-reading-mode__status {
   display: inline-flex;
-  min-width: 52px;
-  min-height: 36px;
+  min-width: 48px;
+  min-height: 32px;
   align-items: center;
   justify-content: center;
   border: 0;
-  border-radius: 999px;
+  border-radius: 9999px;
   padding: 0 10px;
   color: var(--muted);
   background: color-mix(in srgb, var(--surface-strong) 58%, transparent);
