@@ -39,6 +39,7 @@ import type {
 import { CourseCatalogue } from "./courses/CourseCatalogue";
 import { AcademyPaletteMenu } from "./shell/AcademyPaletteMenu";
 import { PlaceholderPage } from "./courses/PlaceholderPage";
+import { CourseCreatePage } from "./courses/CourseCreatePage";
 import { WorkspacePage } from "./workspace/WorkspacePages";
 import {
   getInitialNavigationOrder,
@@ -1763,7 +1764,7 @@ export function CoursesPage({
       )}
 
       <main
-        className={`courses-main ${renderMain ? "courses-main--learning" : page !== "courses" ? "student-surface-main" : ""}`}
+        className={`courses-main ${renderMain || page === "course-create" ? "courses-main--learning" : page !== "courses" ? "student-surface-main" : ""}`}
       >
         {renderMain ? (
           renderMain()
@@ -1819,6 +1820,8 @@ export function CoursesPage({
               setRole("student");
             }}
           />
+        ) : page === "course-create" ? (
+          <CourseCreatePage onNavigatePage={onNavigatePage} />
         ) : page === "placeholder" ? (
           <PlaceholderPage
             section={requestedSection || activeSection}
