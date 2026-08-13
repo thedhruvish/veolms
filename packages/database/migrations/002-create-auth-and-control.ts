@@ -4,7 +4,7 @@ export async function up(database: Kysely<unknown>): Promise<void> {
   // 1. Create roles table
   await database.schema
     .createTable("roles")
-    .addColumn("id", "bigserial", (column) => column.primaryKey())
+    .addColumn("id", "serial", (column) => column.primaryKey())
     .addColumn("roleName", "text", (column) => column.notNull().unique())
     .addColumn("lastPermissionUpdate", "timestamptz", (column) =>
       column.notNull().defaultTo(sql`CURRENT_TIMESTAMP`),
@@ -20,8 +20,8 @@ export async function up(database: Kysely<unknown>): Promise<void> {
   // 2. Create menus table
   await database.schema
     .createTable("menus")
-    .addColumn("id", "bigserial", (column) => column.primaryKey())
-    .addColumn("parentId", "bigint", (column) =>
+    .addColumn("id", "serial", (column) => column.primaryKey())
+    .addColumn("parentId", "integer", (column) =>
       column.references("menus.id").onDelete("cascade"),
     )
     .addColumn("label", "text", (column) => column.notNull())
@@ -41,11 +41,11 @@ export async function up(database: Kysely<unknown>): Promise<void> {
   // 3. Create permissions table
   await database.schema
     .createTable("permissions")
-    .addColumn("id", "bigserial", (column) => column.primaryKey())
-    .addColumn("roleId", "bigint", (column) =>
+    .addColumn("id", "serial", (column) => column.primaryKey())
+    .addColumn("roleId", "integer", (column) =>
       column.notNull().references("roles.id").onDelete("cascade"),
     )
-    .addColumn("menuId", "bigint", (column) =>
+    .addColumn("menuId", "integer", (column) =>
       column.notNull().references("menus.id").onDelete("cascade"),
     )
     .addColumn("canCreate", "boolean", (column) => column.notNull().defaultTo(false))
@@ -64,19 +64,19 @@ export async function up(database: Kysely<unknown>): Promise<void> {
   // 4. Create users table
   await database.schema
     .createTable("users")
-    .addColumn("id", "bigserial", (column) => column.primaryKey())
+    .addColumn("id", "serial", (column) => column.primaryKey())
     .addColumn("userName", "text", (column) => column.notNull().unique())
     .addColumn("firstName", "text", (column) => column.notNull())
     .addColumn("lastName", "text")
     .addColumn("email", "text", (column) => column.notNull().unique())
     .addColumn("password", "text", (column) => column.notNull())
-    .addColumn("roleId", "bigint", (column) =>
+    .addColumn("roleId", "integer", (column) =>
       column.notNull().references("roles.id").onDelete("restrict"),
     )
     .addColumn("dateOfBirth", "date")
     .addColumn("phone", "text")
     .addColumn("address", "text")
-    .addColumn("avatarAssetId", "bigint")
+    .addColumn("avatarAssetId", "integer")
     .addColumn("passwordResetTokenHash", "text")
     .addColumn("passwordResetExpires", "timestamptz")
     .addColumn("createdAt", "timestamptz", (column) =>
