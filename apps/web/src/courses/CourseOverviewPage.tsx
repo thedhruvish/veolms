@@ -277,6 +277,295 @@ function CurriculumSection({
   );
 }
 
+// ─── Header sub-component ───────────────────────────────────────────────────
+
+interface CourseHeaderSectionProps {
+  course: Course;
+  title: string;
+  onNavigateCourses: () => void;
+}
+
+function CourseHeaderSection({
+  course,
+  title,
+  onNavigateCourses,
+}: CourseHeaderSectionProps) {
+  return (
+    <>
+      {/* Header Top Bar: Back button + Eyebrow badge */}
+      <div className="cov-header-top">
+        <button
+          type="button"
+          className="cov-back"
+          aria-label="Back to courses"
+          onClick={onNavigateCourses}
+        >
+          <ArrowLeft size={16} weight="bold" />
+        </button>
+        <span className="cov-badge" aria-label={`Level: ${course.level}`}>
+          {course.level.toUpperCase()}
+        </span>
+      </div>
+
+      {/* Hero Header */}
+      <header className="cov-hero">
+        <h1 className="cov-hero__title">{title}</h1>
+        <div className="cov-hero__meta">
+          <span>
+            <User size={15} weight="bold" aria-hidden="true" />
+            Anurag Singh
+          </span>
+          <span className="cov-hero__dot" aria-hidden="true">
+            •
+          </span>
+          <span>
+            <Stack size={15} aria-hidden="true" />
+            {course.sections} Sections
+          </span>
+          <span className="cov-hero__dot" aria-hidden="true">
+            •
+          </span>
+          <span>
+            <BookOpen size={15} aria-hidden="true" />
+            {course.lectures} Lectures
+          </span>
+          <span className="cov-hero__dot" aria-hidden="true">
+            •
+          </span>
+          <span>
+            <Clock size={15} aria-hidden="true" />
+            {course.duration}
+          </span>
+        </div>
+      </header>
+    </>
+  );
+}
+
+// ─── Purchase Card sub-component ─────────────────────────────────────────────
+
+interface CoursePurchaseCardProps {
+  course: Course;
+  title: string;
+  thumbnail: string;
+  wishlisted: boolean;
+  onToggleWishlist: (event: MouseEvent<HTMLButtonElement>) => void;
+  onNavigatePage: NavigateTo;
+}
+
+function CoursePurchaseCard({
+  course,
+  title,
+  thumbnail,
+  wishlisted,
+  onToggleWishlist,
+  onNavigatePage,
+}: CoursePurchaseCardProps) {
+  return (
+    <aside
+      className="cov-card cov-purchase-card"
+      aria-label="Course purchase information"
+    >
+      {/* Preview thumbnail */}
+      <div className="cov-panel__preview">
+        <img
+          src={thumbnail}
+          alt={`Preview thumbnail for ${title}`}
+          className="cov-panel__thumb"
+        />
+        <button
+          type="button"
+          className="cov-panel__play"
+          aria-label={`Play preview for ${title}`}
+          onClick={() =>
+            onNavigatePage(`/courses/${encodeURIComponent(course.id)}`)
+          }
+        >
+          <span className="cov-panel__play-circle" aria-hidden="true">
+            <Play size={22} weight="fill" />
+          </span>
+        </button>
+        <span className="cov-panel__timestamp" aria-hidden="true">
+          <Play size={11} weight="fill" /> 02:15
+        </span>
+      </div>
+
+      {/* Inner Details Container Box */}
+      <div className="cov-panel__details">
+        {/* Pricing */}
+        <div className="cov-panel__pricing">
+          <span className="cov-panel__price">{PRICE}</span>
+          <span className="cov-panel__original">{ORIGINAL_PRICE}</span>
+          <span className="cov-panel__discount">{DISCOUNT}</span>
+        </div>
+
+        {/* Coupon */}
+        <button type="button" className="cov-panel__coupon">
+          <Ticket
+            size={20}
+            className="cov-panel__ticket-icon"
+            aria-hidden="true"
+          />
+          <span>
+            <strong>Apply coupon</strong>
+            <small>Get additional discount</small>
+          </span>
+          <CaretRight
+            size={15}
+            className="cov-panel__coupon-caret"
+            aria-hidden="true"
+          />
+        </button>
+
+        {/* CTA Buy Button */}
+        <button
+          type="button"
+          className="cov-panel__buy"
+          onClick={() =>
+            onNavigatePage(`/courses/${encodeURIComponent(course.id)}`)
+          }
+        >
+          <ShoppingBag size={18} weight="bold" aria-hidden="true" />
+          {course.enrolled ? "Continue Learning" : "Buy Now"}
+        </button>
+
+        {/* Wishlist Button */}
+        <button
+          type="button"
+          className={`cov-panel__wishlist${wishlisted ? " is-wishlisted" : ""}`}
+          aria-pressed={wishlisted}
+          onClick={onToggleWishlist}
+        >
+          <BookmarkSimple
+            size={17}
+            weight={wishlisted ? "fill" : "regular"}
+            aria-hidden="true"
+          />
+          {wishlisted ? "Wishlisted" : "Add to Wishlist"}
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+// ─── About Card sub-component ────────────────────────────────────────────────
+
+interface CourseAboutCardProps {
+  aboutLead: string;
+  aboutBody: string;
+  aboutExtra: string;
+  showMore: boolean;
+  onToggleShowMore: () => void;
+}
+
+function CourseAboutCard({
+  aboutLead,
+  aboutBody,
+  aboutExtra,
+  showMore,
+  onToggleShowMore,
+}: CourseAboutCardProps) {
+  return (
+    <section
+      className="cov-card cov-about-card"
+      aria-labelledby="cov-about-heading"
+    >
+      <h2 id="cov-about-heading" className="cov-card__heading">
+        About this course
+      </h2>
+      <div className="cov-about__body">
+        <p>{aboutLead}</p>
+        <p>{aboutBody}</p>
+        {showMore && <p>{aboutExtra}</p>}
+      </div>
+      <button
+        type="button"
+        className="cov-see-more"
+        aria-expanded={showMore}
+        onClick={onToggleShowMore}
+      >
+        {showMore ? "See less..." : "See more..."}{" "}
+        <CaretDown
+          size={14}
+          weight="bold"
+          className={`cov-see-more__icon${showMore ? " is-open" : ""}`}
+          aria-hidden="true"
+        />
+      </button>
+    </section>
+  );
+}
+
+// ─── Includes Card sub-component ─────────────────────────────────────────────
+
+interface CourseIncludesCardProps {
+  includes: CourseInclude[];
+}
+
+function CourseIncludesCard({ includes }: CourseIncludesCardProps) {
+  return (
+    <aside
+      className="cov-card cov-includes-card"
+      aria-label="Course details list"
+    >
+      <h3 className="cov-includes__heading">This course includes</h3>
+      <ul className="cov-includes__list">
+        {includes.map(({ icon: Icon, label }) => (
+          <li key={label}>
+            <Icon size={18} aria-hidden="true" />
+            <span>{label}</span>
+          </li>
+        ))}
+      </ul>
+    </aside>
+  );
+}
+
+// ─── Curriculum Section List sub-component ───────────────────────────────────
+
+interface CourseCurriculumSectionListProps {
+  course: Course;
+  courseSections: CourseSection[];
+  openSections: Set<number>;
+  onToggleSection: (index: number) => void;
+}
+
+function CourseCurriculumSectionList({
+  course,
+  courseSections,
+  openSections,
+  onToggleSection,
+}: CourseCurriculumSectionListProps) {
+  return (
+    <section
+      className="cov-curriculum-section"
+      aria-labelledby="cov-curriculum-heading"
+    >
+      <div className="cov-curriculum__header">
+        <h2 id="cov-curriculum-heading" className="cov-curriculum__title">
+          Course curriculum
+        </h2>
+        <p className="cov-curriculum__subtitle">
+          {course.sections} Sections &bull; {course.lectures} Lectures
+        </p>
+      </div>
+
+      <div className="cov-sections-list" role="list">
+        {courseSections.map((section, index) => (
+          <div role="listitem" key={section.id}>
+            <CurriculumSection
+              section={section}
+              index={index}
+              isOpen={openSections.has(index)}
+              onToggle={() => onToggleSection(index)}
+            />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 // ─── main page ───────────────────────────────────────────────────────────────
 
 export interface CourseOverviewPageProps {
@@ -346,214 +635,73 @@ export function CourseOverviewPage({
 
   return (
     <div className="cov-page">
-      <div className="cov-layout">
-        {/* ── Left / main column ─────────────────────────────────────── */}
-        <div className="cov-content">
-          {/* Header Top Bar: Back button + Eyebrow badge */}
-          <div className="cov-header-top">
-            <button
-              type="button"
-              className="cov-back"
-              aria-label="Back to courses"
-              onClick={onNavigateCourses}
-            >
-              <ArrowLeft size={16} weight="bold" />
-            </button>
-            <span className="cov-badge" aria-label={`Level: ${course.level}`}>
-              {course.level.toUpperCase()}
-            </span>
+      {/* ── Desktop Composition (min-width: 901px) ── */}
+      <div className="cov-desktop-flow">
+        <div className="cov-layout">
+          <div className="cov-content">
+            <CourseHeaderSection
+              course={course}
+              title={title}
+              onNavigateCourses={onNavigateCourses}
+            />
+            <CourseAboutCard
+              aboutLead={aboutLead}
+              aboutBody={aboutBody}
+              aboutExtra={aboutExtra}
+              showMore={showMore}
+              onToggleShowMore={() => setShowMore((v) => !v)}
+            />
+            <CourseCurriculumSectionList
+              course={course}
+              courseSections={courseSections}
+              openSections={openSections}
+              onToggleSection={toggleSection}
+            />
           </div>
 
-          {/* Hero Header */}
-          <header className="cov-hero">
-            <h1 className="cov-hero__title">{title}</h1>
-            <div className="cov-hero__meta">
-              <span>
-                <User size={15} weight="bold" aria-hidden="true" />
-                Anurag Singh
-              </span>
-              <span className="cov-hero__dot" aria-hidden="true">
-                •
-              </span>
-              <span>
-                <Stack size={15} aria-hidden="true" />
-                {course.sections} Sections
-              </span>
-              <span className="cov-hero__dot" aria-hidden="true">
-                •
-              </span>
-              <span>
-                <BookOpen size={15} aria-hidden="true" />
-                {course.lectures} Lectures
-              </span>
-              <span className="cov-hero__dot" aria-hidden="true">
-                •
-              </span>
-              <span>
-                <Clock size={15} aria-hidden="true" />
-                {course.duration}
-              </span>
-            </div>
-          </header>
-
-          {/* About Card */}
-          <section
-            className="cov-card cov-about-card"
-            aria-labelledby="cov-about-heading"
-          >
-            <h2 id="cov-about-heading" className="cov-card__heading">
-              About this course
-            </h2>
-            <div className="cov-about__body">
-              <p>{aboutLead}</p>
-              <p>{aboutBody}</p>
-              {showMore && <p>{aboutExtra}</p>}
-            </div>
-            <button
-              type="button"
-              className="cov-see-more"
-              aria-expanded={showMore}
-              onClick={() => setShowMore((v) => !v)}
-            >
-              {showMore ? "See less..." : "See more..."}{" "}
-              <CaretDown
-                size={14}
-                weight="bold"
-                className={`cov-see-more__icon${showMore ? " is-open" : ""}`}
-                aria-hidden="true"
-              />
-            </button>
-          </section>
-
-          {/* Curriculum Section */}
-          <section
-            className="cov-curriculum-section"
-            aria-labelledby="cov-curriculum-heading"
-          >
-            <div className="cov-curriculum__header">
-              <h2 id="cov-curriculum-heading" className="cov-curriculum__title">
-                Course curriculum
-              </h2>
-              <p className="cov-curriculum__subtitle">
-                {course.sections} Sections &bull; {course.lectures} Lectures
-              </p>
-            </div>
-
-            <div className="cov-sections-list" role="list">
-              {courseSections.map((section, index) => (
-                <div role="listitem" key={section.id}>
-                  <CurriculumSection
-                    section={section}
-                    index={index}
-                    isOpen={openSections.has(index)}
-                    onToggle={() => toggleSection(index)}
-                  />
-                </div>
-              ))}
-            </div>
-          </section>
+          <div className="cov-right-column">
+            <CoursePurchaseCard
+              course={course}
+              title={title}
+              thumbnail={thumbnail}
+              wishlisted={wishlisted}
+              onToggleWishlist={toggleWishlist}
+              onNavigatePage={onNavigatePage}
+            />
+            <CourseIncludesCard includes={includes} />
+          </div>
         </div>
+      </div>
 
-        {/* ── Right column (Cohesive Purchase Card + Includes Card) ── */}
-        <div className="cov-right-column">
-          {/* Card 1: Purchase Card (Preview + Pricing + Coupon + CTA + Wishlist) */}
-          <aside
-            className="cov-card cov-purchase-card"
-            aria-label="Course purchase information"
-          >
-            {/* Preview thumbnail */}
-            <div className="cov-panel__preview">
-              <img
-                src={thumbnail}
-                alt={`Preview thumbnail for ${title}`}
-                className="cov-panel__thumb"
-              />
-              <button
-                type="button"
-                className="cov-panel__play"
-                aria-label={`Play preview for ${title}`}
-                onClick={() =>
-                  onNavigatePage(`/courses/${encodeURIComponent(course.id)}`)
-                }
-              >
-                <span className="cov-panel__play-circle" aria-hidden="true">
-                  <Play size={22} weight="fill" />
-                </span>
-              </button>
-              <span className="cov-panel__timestamp" aria-hidden="true">
-                <Play size={11} weight="fill" /> 02:15
-              </span>
-            </div>
-
-            {/* Pricing */}
-            <div className="cov-panel__pricing">
-              <span className="cov-panel__price">{PRICE}</span>
-              <span className="cov-panel__original">{ORIGINAL_PRICE}</span>
-              <span className="cov-panel__discount">{DISCOUNT}</span>
-            </div>
-
-            {/* Coupon */}
-            <button type="button" className="cov-panel__coupon">
-              <Ticket
-                size={22}
-                className="cov-panel__ticket-icon"
-                aria-hidden="true"
-              />
-              <span>
-                <strong>Apply coupon</strong>
-                <small>Get additional discount</small>
-              </span>
-              <CaretRight
-                size={16}
-                className="cov-panel__coupon-caret"
-                aria-hidden="true"
-              />
-            </button>
-
-            {/* CTA Buy Button */}
-            <button
-              type="button"
-              className="cov-panel__buy"
-              onClick={() =>
-                onNavigatePage(`/courses/${encodeURIComponent(course.id)}`)
-              }
-            >
-              <ShoppingBag size={18} weight="bold" aria-hidden="true" />
-              {course.enrolled ? "Continue Learning" : "Buy Now"}
-            </button>
-
-            {/* Wishlist Button */}
-            <button
-              type="button"
-              className={`cov-panel__wishlist${wishlisted ? " is-wishlisted" : ""}`}
-              aria-pressed={wishlisted}
-              onClick={toggleWishlist}
-            >
-              <BookmarkSimple
-                size={17}
-                weight={wishlisted ? "fill" : "regular"}
-                aria-hidden="true"
-              />
-              {wishlisted ? "Wishlisted" : "Add to Wishlist"}
-            </button>
-          </aside>
-
-          {/* Card 2: Includes Card */}
-          <aside
-            className="cov-card cov-includes-card"
-            aria-label="Course details list"
-          >
-            <h3 className="cov-includes__heading">This course includes</h3>
-            <ul className="cov-includes__list">
-              {includes.map(({ icon: Icon, label }) => (
-                <li key={label}>
-                  <Icon size={18} aria-hidden="true" />
-                  <span>{label}</span>
-                </li>
-              ))}
-            </ul>
-          </aside>
-        </div>
+      {/* ── Mobile Composition (max-width: 900px) ── */}
+      <div className="cov-mobile-flow">
+        <CourseHeaderSection
+          course={course}
+          title={title}
+          onNavigateCourses={onNavigateCourses}
+        />
+        <CoursePurchaseCard
+          course={course}
+          title={title}
+          thumbnail={thumbnail}
+          wishlisted={wishlisted}
+          onToggleWishlist={toggleWishlist}
+          onNavigatePage={onNavigatePage}
+        />
+        <CourseAboutCard
+          aboutLead={aboutLead}
+          aboutBody={aboutBody}
+          aboutExtra={aboutExtra}
+          showMore={showMore}
+          onToggleShowMore={() => setShowMore((v) => !v)}
+        />
+        <CourseIncludesCard includes={includes} />
+        <CourseCurriculumSectionList
+          course={course}
+          courseSections={courseSections}
+          openSections={openSections}
+          onToggleSection={toggleSection}
+        />
       </div>
     </div>
   );

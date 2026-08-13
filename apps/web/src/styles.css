@@ -4180,6 +4180,15 @@ button.player-menu-row:focus-visible {
   overflow: hidden;
 }
 
+.cov-desktop-flow {
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
 /* ── Top Bar ── */
 .cov-header-top {
   display: flex;
@@ -4729,6 +4738,8 @@ button.player-menu-row:focus-visible {
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
   margin-bottom: 12px;
   border: 1px dashed color-mix(in srgb, var(--accent) 40%, transparent);
   border-radius: 10px;
@@ -5243,27 +5254,123 @@ button.player-menu-row:focus-visible {
 }
 
 /* ── Responsive ── */
+@media (min-width: 901px) {
+  .cov-mobile-flow {
+    display: none !important;
+  }
+}
+
 @media (max-width: 900px) {
+  .cov-desktop-flow {
+    display: none !important;
+  }
+
   .cov-page {
-    padding: 20px 18px 40px;
+    height: auto;
+    min-height: 100vh;
+    max-height: none;
+    padding: 16px 14px 80px;
+    overflow-y: auto;
+    box-sizing: border-box;
   }
 
-  .cov-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .cov-right-column {
-    position: static;
-    order: -1;
-    max-width: 480px;
+  .cov-mobile-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
     width: 100%;
+    max-width: 520px;
     margin: 0 auto;
+    box-sizing: border-box;
+  }
+
+  .cov-mobile-flow .cov-header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    margin-bottom: 2px;
+  }
+
+  .cov-mobile-flow .cov-back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--text) 4%, transparent);
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  .cov-mobile-flow .cov-badge {
+    border-radius: 20px;
+    padding: 8px 12px;
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    color: var(--accent);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .cov-mobile-flow .cov-hero {
+    margin-bottom: 0;
+  }
+
+  .cov-mobile-flow .cov-hero__title {
+    font-size: 1.55rem;
+    font-weight: 700;
+    margin: 4px 0 8px;
+    line-height: 1.25;
+  }
+
+  .cov-mobile-flow .cov-hero__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 12px;
+    color: var(--muted);
+    font-size: 0.82rem;
+  }
+
+  .cov-mobile-flow .cov-purchase-card {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .cov-mobile-flow .cov-panel__preview {
+    border-radius: 12px;
+    margin-bottom: 0;
+  }
+
+  .cov-mobile-flow .cov-panel__details {
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .cov-mobile-flow .cov-about-card {
+    margin-bottom: 0;
+    border-radius: 12px;
+    padding: 18px 16px;
   }
 }
 
 @media (max-width: 640px) {
   .cov-page {
-    padding: 16px 14px 40px;
+    padding: 14px 12px 76px;
+  }
+
+  .cov-mobile-flow {
+    gap: 14px;
   }
 
   .cov-hero__title {
@@ -5276,32 +5383,33 @@ button.player-menu-row:focus-visible {
   }
 
   .cov-about-card {
-    padding: 18px 16px;
-    border-radius: 11px;
+    padding: 16px 14px;
+    border-radius: 12px;
   }
 
   .cov-section__toggle {
-    padding: 10px 16px;
+    padding: 10px 14px;
     font-size: 0.86rem;
     min-height: 48px;
   }
 
   .cov-section__lessons-inner {
-    padding: 0 16px 4px;
+    padding: 0 14px 4px;
   }
 }
 
 @media (max-width: 480px) {
   .cov-page {
-    padding: 12px 10px 32px;
+    padding: 12px 10px 72px;
   }
 
-  .cov-section__meta {
-    display: none;
+  .cov-hero__title {
+    font-size: 1.35rem;
   }
 
-  .cov-panel__pricing {
-    padding: 14px 14px 10px;
+  .cov-hero__meta {
+    font-size: 0.76rem;
+    gap: 4px 8px;
   }
 
   .cov-panel__price {
