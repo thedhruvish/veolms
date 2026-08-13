@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
+  ArrowUpRight,
   BookOpen,
   CaretDown,
   CaretUp,
@@ -13,6 +14,7 @@ import {
   FileText,
   FloppyDisk,
   Image as ImageIcon,
+  Info,
   Lightning,
   ListBullets,
   ListNumbers,
@@ -163,6 +165,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     },
   ]);
 
+  // Pricing interfaces
+  type PricingType = "free" | "paid";
+
+  interface PricingState {
+    pricingType: PricingType;
+    sellingPrice: string;
+    originalPrice: string;
+  }
+
   // Access Rules Step state
   const [accessRules, setAccessRules] = useState<AccessRulesState>({
     accessType: "restricted",
@@ -175,6 +186,26 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     enableQA: true,
     enableComments: true,
   });
+
+  // Pricing Step state
+  const [pricing, setPricing] = useState<PricingState>({
+    pricingType: "paid",
+    sellingPrice: "1999",
+    originalPrice: "2999",
+  });
+
+  // Pricing Handlers
+  const handlePricingTypeChange = (type: PricingType) => {
+    setPricing((prev) => ({ ...prev, pricingType: type }));
+  };
+
+  const handleSellingPriceChange = (val: string) => {
+    setPricing((prev) => ({ ...prev, sellingPrice: val }));
+  };
+
+  const handleOriginalPriceChange = (val: string) => {
+    setPricing((prev) => ({ ...prev, originalPrice: val }));
+  };
 
   // Access Rules State Handlers
   const handleAccessTypeChange = (type: AccessType) => {
@@ -559,7 +590,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                 ? "Build your course structure by adding sections and lessons."
                 : activeStep === "access-rules"
                   ? "Control who can access this course and how long their access lasts."
-                  : "Add the essential details of your course. You can always edit these later."}
+                  : activeStep === "pricing"
+                    ? "Set how learners will purchase this course."
+                    : "Add the essential details of your course. You can always edit these later."}
             </p>
           </div>
         </div>
@@ -1723,6 +1756,172 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        ) : activeStep === "pricing" ? (
+          <div className="pricing-container">
+            {/* Top 2-Column Grid: 1. Course pricing & 2. Price details */}
+            <div className="pricing-top-grid">
+              {/* Card 1: Course pricing */}
+              <div className="pricing-card">
+                <div className="pricing-card__header">
+                  <h3>1. Course pricing</h3>
+                  <p>Choose how you want to sell this course.</p>
+                </div>
+
+                <div className="pricing-options-group">
+                  {/* Radio Option: Free */}
+                  <div
+                    className={`pricing-radio-option ${
+                      pricing.pricingType === "free" ? "is-selected" : ""
+                    }`}
+                    onClick={() => handlePricingTypeChange("free")}
+                  >
+                    <div className="pricing-radio-circle">
+                      {pricing.pricingType === "free" && (
+                        <div className="pricing-radio-dot" />
+                      )}
+                    </div>
+                    <div className="pricing-radio-text">
+                      <strong>Free</strong>
+                      <p>Anyone who can access the course can enroll for free.</p>
+                    </div>
+                  </div>
+
+                  {/* Radio Option: Paid */}
+                  <div
+                    className={`pricing-radio-option ${
+                      pricing.pricingType === "paid" ? "is-selected" : ""
+                    }`}
+                    onClick={() => handlePricingTypeChange("paid")}
+                  >
+                    <div className="pricing-radio-circle">
+                      {pricing.pricingType === "paid" && (
+                        <div className="pricing-radio-dot" />
+                      )}
+                    </div>
+                    <div className="pricing-radio-text">
+                      <strong>Paid</strong>
+                      <p>Learners must purchase the course to get access.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Price details */}
+              <div
+                className={`pricing-card ${
+                  pricing.pricingType === "free" ? "is-disabled" : ""
+                }`}
+              >
+                <div className="pricing-card__header">
+                  <h3>2. Price details</h3>
+                  <p>Set the pricing for your course.</p>
+                </div>
+
+                <div className="pricing-fields-group">
+                  {/* Selling Price Field */}
+                  <div className="course-wizard-form-group">
+                    <label htmlFor="selling-price">
+                      Selling price <span className="req-star">*</span>
+                    </label>
+                    <div className="pricing-input-prefix-wrap">
+                      <span className="pricing-currency-prefix">₹</span>
+                      <input
+                        id="selling-price"
+                        type="text"
+                        disabled={pricing.pricingType === "free"}
+                        value={pricing.sellingPrice}
+                        onChange={(e) => handleSellingPriceChange(e.target.value)}
+                        placeholder="1,999"
+                      />
+                    </div>
+                    <p className="pricing-input-hint">This is the price learners will pay.</p>
+                  </div>
+
+                  {/* Original Price Field */}
+                  <div className="course-wizard-form-group">
+                    <label htmlFor="original-price">Original price</label>
+                    <div className="pricing-input-prefix-wrap">
+                      <span className="pricing-currency-prefix">₹</span>
+                      <input
+                        id="original-price"
+                        type="text"
+                        disabled={pricing.pricingType === "free"}
+                        value={pricing.originalPrice}
+                        onChange={(e) => handleOriginalPriceChange(e.target.value)}
+                        placeholder="2,999"
+                      />
+                    </div>
+                    <p className="pricing-input-hint">Enter original price to show discount.</p>
+                  </div>
+
+                  {/* Dynamic Discount Calculation Badge */}
+                  {(() => {
+                    const sell = parseFloat(pricing.sellingPrice.replace(/,/g, ""));
+                    const orig = parseFloat(pricing.originalPrice.replace(/,/g, ""));
+                    let discountPercent = 0;
+                    let isValidDiscount = false;
+
+                    if (
+                      !isNaN(sell) &&
+                      !isNaN(orig) &&
+                      sell > 0 &&
+                      orig > sell
+                    ) {
+                      discountPercent = Math.round(((orig - sell) / orig) * 100);
+                      isValidDiscount = discountPercent > 0;
+                    }
+
+                    return (
+                      <div className="pricing-discount-row">
+                        <div
+                          className={`pricing-discount-badge ${
+                            isValidDiscount && pricing.pricingType === "paid"
+                              ? "is-active"
+                              : ""
+                          }`}
+                        >
+                          <Tag size={15} weight="bold" />
+                          <span>
+                            {isValidDiscount && pricing.pricingType === "paid"
+                              ? `${discountPercent}% OFF`
+                              : "0% OFF"}
+                          </span>
+                        </div>
+                        <span className="pricing-discount-label">
+                          Discount is calculated automatically.
+                        </span>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Card: Coupons Banner */}
+            <div className="pricing-coupons-card">
+              <div className="pricing-coupons-left">
+                <div className="pricing-coupons-icon">
+                  <Info size={20} weight="bold" />
+                </div>
+                <div>
+                  <strong>Coupons</strong>
+                  <p>Create and manage coupon codes separately from the Coupons section.</p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="pricing-coupons-btn"
+                onClick={() => {
+                  if (onNavigatePage) {
+                    onNavigatePage("settings");
+                  }
+                }}
+              >
+                Go to Coupons <ArrowUpRight size={16} weight="bold" />
+              </button>
             </div>
           </div>
         ) : (
