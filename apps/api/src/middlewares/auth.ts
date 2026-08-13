@@ -58,7 +58,7 @@ export function createAuthMiddleware(
     // Look up user
     const user = await database
       .selectFrom("users")
-      .select(["id", "username", "display_name", "email", "phone_no"])
+      .select(["id", "username", "display_name", "email", "phone_no", "mfa_mandatory"])
       .where("id", "=", session.user_id)
       .executeTakeFirst();
 
@@ -123,6 +123,7 @@ export function createAuthMiddleware(
       permissions,
       totpEnabled,
       passkeyEnabled,
+      mfaMandatory: !!user.mfa_mandatory,
     };
 
     request.session = {
@@ -168,9 +169,9 @@ export function createAuthMiddleware(
           .send(httpError(401, "UNAUTHORIZED", "Authentication required"));
       }
 
-      // 2. Enforce MFA check for creators
-      const isCreator = request.user.roles.includes("creator");
-      if (isCreator && !request.session.mfa_verified) {
+      // 2. Enforce MFA check for users who have MFA enabled or mandatory
+      const mfaRequired = request.user.mfaMandatory || request.user.totpEnabled || request.user.passkeyEnabled;
+      if (mfaRequired && !request.session.mfa_verified) {
         return reply
           .code(403)
           .send(

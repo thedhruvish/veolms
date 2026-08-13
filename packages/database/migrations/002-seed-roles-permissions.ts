@@ -23,5 +23,10 @@ export async function up(database: Kysely<any>): Promise<void> {
 }
 
 export async function down(database: Kysely<any>): Promise<void> {
-  await database.deleteFrom("roles").execute();
+  const creatorRoleId = "11111111-1111-4000-a000-000000000001";
+  const studentRoleId = "22222222-2222-4000-a000-000000000002";
+  await database
+    .deleteFrom("roles")
+    .where("id", "in", [creatorRoleId, studentRoleId])
+    .execute();
 }
