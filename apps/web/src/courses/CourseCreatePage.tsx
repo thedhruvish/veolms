@@ -2,8 +2,13 @@ import { useState } from "react";
 import {
   ArrowLeft,
   BookOpen,
+  CaretDown,
+  CaretUp,
   Check,
+  DotsSixVertical,
+  DotsThreeVertical,
   Eye,
+  FileText,
   FloppyDisk,
   Image as ImageIcon,
   Lightning,
@@ -11,17 +16,25 @@ import {
   ListNumbers,
   LockKey,
   Paperclip,
+  PencilSimple,
   PlayCircle,
+  Plus,
   Quotes,
   Smiley,
   Sparkle,
   Tag,
   TextB,
   TextItalic,
+  Trash,
+  UploadSimple,
+  Video,
+  X,
 } from "@phosphor-icons/react";
 import type { ComponentType } from "react";
 import { ThemedSelect } from "../ThemedSelect";
 import type { NavigateTo } from "../routing/navigation";
+
+import { ConfirmDeleteModal } from "../ConfirmDeleteModal";
 
 export type CourseWizardStepId =
   | "basics"
@@ -87,6 +100,323 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     }
   };
 
+  // Curriculum Data interfaces
+  interface LessonResourceItem {
+    id: string;
+    name: string;
+    type: "PDF" | "TXT" | "DOC";
+    size: string;
+  }
+
+  interface CurriculumLessonItem {
+    id: string;
+    title: string;
+    description: string;
+    contentType: "video" | "document";
+    isExpanded: boolean;
+    resources: LessonResourceItem[];
+  }
+
+  interface CurriculumSectionItem {
+    id: string;
+    title: string;
+    isExpanded: boolean;
+    isEditingTitle?: boolean;
+    lessons: CurriculumLessonItem[];
+  }
+
+  // Curriculum Step state
+  const [sections, setSections] = useState<CurriculumSectionItem[]>([
+    {
+      id: "section-1",
+      title: "Introduction to the Course",
+      isExpanded: true,
+      lessons: [],
+    },
+  ]);
+
+  // Drag and Drop state for Sections & Lessons
+  const [draggedSectionIndex, setDraggedSectionIndex] = useState<number | null>(null);
+  const [draggedLessonState, setDraggedLessonState] = useState<{
+    sectionId: string;
+    lessonIndex: number;
+  } | null>(null);
+
+  // Reusable Delete Confirmation Modal state
+  const [deleteModalState, setDeleteModalState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
+
+  // Section actions
+  const handleAddSection = () => {
+    const newId = `section-${Date.now()}`;
+    setSections((prev) => [
+      ...prev,
+      {
+        id: newId,
+        title: `Section ${prev.length + 1}`,
+        isExpanded: true,
+        isEditingTitle: true,
+        lessons: [],
+      },
+    ]);
+  };
+
+  const handleToggleSectionExpand = (sectionId: string) => {
+    setSections((prev) =>
+      prev.map((s) => (s.id === sectionId ? { ...s, isExpanded: !s.isExpanded } : s))
+    );
+  };
+
+  const handleStartEditSectionTitle = (sectionId: string) => {
+    setSections((prev) =>
+      prev.map((s) => (s.id === sectionId ? { ...s, isEditingTitle: true } : s))
+    );
+  };
+
+  const handleSaveSectionTitle = (sectionId: string, newTitle: string) => {
+    setSections((prev) =>
+      prev.map((s) =>
+        s.id === sectionId
+          ? { ...s, title: newTitle.trim() || s.title, isEditingTitle: false }
+          : s
+      )
+    );
+  };
+
+  const handleDeleteSection = (sectionId: string) => {
+    const sec = sections.find((s) => s.id === sectionId);
+    if (!sec) return;
+    setDeleteModalState({
+      isOpen: true,
+      title: `Delete "${sec.title}"?`,
+      message: `Are you sure you want to delete "${sec.title}" and its ${sec.lessons.length} lessons? This action cannot be undone.`,
+      onConfirm: () => {
+        setSections((prev) => prev.filter((s) => s.id !== sectionId));
+      },
+    });
+  };
+
+  // Section Drag and Drop handlers
+  const handleSectionDragStart = (index: number) => {
+    setDraggedSectionIndex(index);
+  };
+
+  const handleSectionDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedSectionIndex === null || draggedSectionIndex === index) return;
+    setSections((prev) => {
+      const copy = [...prev];
+      const [moved] = copy.splice(draggedSectionIndex, 1);
+      if (moved) {
+        copy.splice(index, 0, moved);
+      }
+      return copy;
+    });
+    setDraggedSectionIndex(index);
+  };
+
+  const handleSectionDragEnd = () => {
+    setDraggedSectionIndex(null);
+  };
+
+  // Lesson actions
+  const handleAddLesson = (sectionId: string) => {
+    const newLessonId = `lesson-${Date.now()}`;
+    setSections((prev) =>
+      prev.map((sec) => {
+        if (sec.id !== sectionId) return sec;
+        return {
+          ...sec,
+          lessons: [
+            ...sec.lessons.map((l) => ({ ...l, isExpanded: false })),
+            {
+              id: newLessonId,
+              title: `New Lesson ${sec.lessons.length + 1}`,
+              description: "",
+              contentType: "video" as const,
+              isExpanded: true,
+              resources: [],
+            },
+          ],
+        };
+      })
+    );
+  };
+
+  const handleToggleLessonExpand = (sectionId: string, lessonId: string) => {
+    setSections((prev) =>
+      prev.map((sec) => {
+        if (sec.id !== sectionId) return sec;
+        return {
+          ...sec,
+          lessons: sec.lessons.map((l) =>
+            l.id === lessonId ? { ...l, isExpanded: !l.isExpanded } : l
+          ),
+        };
+      })
+    );
+  };
+
+  const handleDeleteLesson = (sectionId: string, lessonId: string) => {
+    const sec = sections.find((s) => s.id === sectionId);
+    const les = sec?.lessons.find((l) => l.id === lessonId);
+    if (!les) return;
+
+    setDeleteModalState({
+      isOpen: true,
+      title: `Delete "${les.title}"?`,
+      message: `Are you sure you want to delete lesson "${les.title}"? This action cannot be undone.`,
+      onConfirm: () => {
+        setSections((prev) =>
+          prev.map((s) => {
+            if (s.id !== sectionId) return s;
+            return {
+              ...s,
+              lessons: s.lessons.filter((l) => l.id !== lessonId),
+            };
+          })
+        );
+      },
+    });
+  };
+
+  const handleUpdateLesson = (
+    sectionId: string,
+    lessonId: string,
+    updates: Partial<CurriculumLessonItem>
+  ) => {
+    setSections((prev) =>
+      prev.map((sec) => {
+        if (sec.id !== sectionId) return sec;
+        return {
+          ...sec,
+          lessons: sec.lessons.map((l) =>
+            l.id === lessonId ? { ...l, ...updates } : l
+          ),
+        };
+      })
+    );
+  };
+
+  const handleSaveLesson = (sectionId: string, lessonId: string) => {
+    setSections((prev) =>
+      prev.map((sec) => {
+        if (sec.id !== sectionId) return sec;
+        return {
+          ...sec,
+          lessons: sec.lessons.map((l) =>
+            l.id === lessonId ? { ...l, isExpanded: false } : l
+          ),
+        };
+      })
+    );
+  };
+
+  const handleAddLessonResource = (sectionId: string, lessonId: string) => {
+    const newResId = `res-${Date.now()}`;
+    const sampleFiles = [
+      { name: "Lesson_Notes.pdf", type: "PDF" as const, size: "1.8 MB" },
+      { name: "Source_Code.txt", type: "TXT" as const, size: "850 B" },
+      { name: "Reference_Doc.pdf", type: "PDF" as const, size: "3.1 MB" },
+    ];
+    const chosen = sampleFiles[Math.floor(Math.random() * sampleFiles.length)]!;
+    setSections((prev) =>
+      prev.map((sec) => {
+        if (sec.id !== sectionId) return sec;
+        return {
+          ...sec,
+          lessons: sec.lessons.map((l) => {
+            if (l.id !== lessonId) return l;
+            return {
+              ...l,
+              resources: [...l.resources, { id: newResId, ...chosen }],
+            };
+          }),
+        };
+      })
+    );
+  };
+
+  const handleRemoveLessonResource = (
+    sectionId: string,
+    lessonId: string,
+    resourceId: string
+  ) => {
+    setSections((prev) =>
+      prev.map((sec) => {
+        if (sec.id !== sectionId) return sec;
+        return {
+          ...sec,
+          lessons: sec.lessons.map((l) => {
+            if (l.id !== lessonId) return l;
+            return {
+              ...l,
+              resources: l.resources.filter((r) => r.id !== resourceId),
+            };
+          }),
+        };
+      })
+    );
+  };
+
+  // Lesson Drag and Drop handlers
+  const handleLessonDragStart = (sectionId: string, lessonIndex: number) => {
+    setDraggedLessonState({ sectionId, lessonIndex });
+  };
+
+  const handleLessonDragOver = (
+    e: React.DragEvent,
+    targetSectionId: string,
+    targetLessonIndex: number
+  ) => {
+    e.preventDefault();
+    if (!draggedLessonState) return;
+    if (
+      draggedLessonState.sectionId === targetSectionId &&
+      draggedLessonState.lessonIndex === targetLessonIndex
+    ) {
+      return;
+    }
+
+    setSections((prev) => {
+      const copy = structuredClone(prev);
+      const sourceSec = copy.find((s) => s.id === draggedLessonState.sectionId);
+      const targetSec = copy.find((s) => s.id === targetSectionId);
+      if (!sourceSec || !targetSec) return prev;
+
+      const [movedLesson] = sourceSec.lessons.splice(
+        draggedLessonState.lessonIndex,
+        1
+      );
+      if (movedLesson) {
+        targetSec.lessons.splice(targetLessonIndex, 0, movedLesson);
+      }
+      return copy;
+    });
+
+    setDraggedLessonState({
+      sectionId: targetSectionId,
+      lessonIndex: targetLessonIndex,
+    });
+  };
+
+  const handleLessonDragEnd = () => {
+    setDraggedLessonState(null);
+  };
+
+  // Computed total stats
+  const totalSections = sections.length;
+  const totalLessons = sections.reduce((acc, sec) => acc + sec.lessons.length, 0);
+
   return (
     <div className="course-wizard-layout">
       {/* Wizard Header */}
@@ -106,8 +436,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
               <span className="course-wizard-status-badge">Draft</span>
             </div>
             <p>
-              Add the essential details of your course. You can always edit
-              these later.
+              {activeStep === "curriculum"
+                ? "Build your course structure by adding sections and lessons."
+                : "Add the essential details of your course. You can always edit these later."}
             </p>
           </div>
         </div>
@@ -383,10 +714,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                   <div className="course-preview-meta">
                     <span>
-                      <BookOpen size={15} /> 0 Sections
+                      <BookOpen size={15} /> {totalSections} Sections
                     </span>
                     <span>
-                      <BookOpen size={15} /> 0 Lessons
+                      <BookOpen size={15} /> {totalLessons} Lessons
                     </span>
                     <span>0h 0m</span>
                   </div>
@@ -402,6 +733,544 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                 </div>
               </section>
             </div>
+          </div>
+        ) : activeStep === "curriculum" ? (
+          <div className="curriculum-container">
+            {/* Header row */}
+            <div className="curriculum-header-row">
+              <div className="curriculum-title-area">
+                <h2>Course Curriculum</h2>
+                <p>
+                  Organize your course into sections and lessons. You can reorder
+                  them anytime.
+                </p>
+              </div>
+              <div className="curriculum-header-actions">
+                <button
+                  type="button"
+                  className="curriculum-add-section-btn"
+                  onClick={handleAddSection}
+                >
+                  <Plus size={16} weight="bold" /> Add Section
+                </button>
+              </div>
+            </div>
+
+            {/* Sections list */}
+            {sections.map((sec, secIndex) => (
+              <div
+                key={sec.id}
+                className="curriculum-section-card"
+                draggable
+                onDragStart={() => handleSectionDragStart(secIndex)}
+                onDragOver={(e) => handleSectionDragOver(e, secIndex)}
+                onDragEnd={handleSectionDragEnd}
+              >
+                {/* Section Header */}
+                <div
+                  className="curriculum-section-header"
+                  onClick={() => handleToggleSectionExpand(sec.id)}
+                  style={{ cursor: "pointer" }}
+                  title="Click to toggle section"
+                >
+                  <div className="curriculum-section-header__left">
+                    <span
+                      className="curriculum-drag-handle"
+                      title="Drag to reorder section"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <DotsSixVertical size={18} />
+                    </span>
+                    <div className="curriculum-section-title-wrap">
+                      <span className="curriculum-section-tag">
+                        Section {secIndex + 1}
+                      </span>
+                      {sec.isEditingTitle ? (
+                        <input
+                          type="text"
+                          className="curriculum-section-edit-input"
+                          defaultValue={sec.title}
+                          autoFocus
+                          onClick={(e) => e.stopPropagation()}
+                          onBlur={(e) =>
+                            handleSaveSectionTitle(sec.id, e.target.value)
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleSaveSectionTitle(
+                                sec.id,
+                                (e.target as HTMLInputElement).value
+                              );
+                            }
+                          }}
+                        />
+                      ) : (
+                        <span
+                          className="curriculum-section-title"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStartEditSectionTitle(sec.id);
+                          }}
+                          title="Click to edit section title"
+                        >
+                          {sec.title}
+                        </span>
+                      )}
+                      <span className="curriculum-section-count">
+                        {sec.lessons.length} Lessons
+                      </span>
+                    </div>
+                  </div>
+                  <div className="curriculum-section-header__right">
+                    <button
+                      type="button"
+                      className="curriculum-icon-btn"
+                      aria-label="Edit section title"
+                      title="Edit section title"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStartEditSectionTitle(sec.id);
+                      }}
+                    >
+                      <PencilSimple size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className="curriculum-icon-btn curriculum-icon-btn--danger"
+                      aria-label="Delete section"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteSection(sec.id);
+                      }}
+                    >
+                      <Trash size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className={`curriculum-icon-btn curriculum-caret-btn ${
+                        sec.isExpanded ? "is-expanded" : ""
+                      }`}
+                      aria-label={sec.isExpanded ? "Collapse section" : "Expand section"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleSectionExpand(sec.id);
+                      }}
+                    >
+                      <CaretDown size={16} weight="bold" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Section Body with CSS expand transition */}
+                <div
+                  className={`curriculum-section-body-wrapper ${
+                    sec.isExpanded ? "is-open" : ""
+                  }`}
+                >
+                  <div className="curriculum-section-body">
+                    <div className="curriculum-lessons-list">
+                      {sec.lessons.map((les, lesIndex) => (
+                        <div
+                          key={les.id}
+                          className="curriculum-lesson-row"
+                          draggable
+                          onDragStart={() =>
+                            handleLessonDragStart(sec.id, lesIndex)
+                          }
+                          onDragOver={(e) =>
+                            handleLessonDragOver(e, sec.id, lesIndex)
+                          }
+                          onDragEnd={handleLessonDragEnd}
+                        >
+                          {/* Lesson Header */}
+                          <div
+                            className="curriculum-lesson-header"
+                            onClick={() => handleToggleLessonExpand(sec.id, les.id)}
+                            style={{ cursor: "pointer" }}
+                            title="Click to toggle lesson editor"
+                          >
+                            <div className="curriculum-lesson-header__left">
+                              <span
+                                className="curriculum-drag-handle"
+                                title="Drag to reorder lesson"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <DotsSixVertical size={18} />
+                              </span>
+                              <span className="curriculum-lesson-num">
+                                {lesIndex + 1}
+                              </span>
+                              <span className="curriculum-lesson-title">
+                                {les.title}
+                              </span>
+                            </div>
+                            <div className="curriculum-lesson-header__right">
+                              {les.contentType === "video" ? (
+                                <span className="curriculum-type-badge">
+                                  <PlayCircle size={14} weight="fill" /> Video
+                                </span>
+                              ) : (
+                                <span className="curriculum-type-badge curriculum-type-badge--doc">
+                                  <FileText size={14} weight="fill" /> Document / PDF
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                className="curriculum-icon-btn curriculum-icon-btn--danger"
+                                aria-label="Delete lesson"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteLesson(sec.id, les.id);
+                                }}
+                              >
+                                <Trash size={16} />
+                              </button>
+                              <button
+                                type="button"
+                                className={`curriculum-icon-btn curriculum-caret-btn ${
+                                  les.isExpanded ? "is-expanded" : ""
+                                }`}
+                                aria-label={
+                                  les.isExpanded
+                                    ? "Collapse lesson editor"
+                                    : "Expand lesson editor"
+                                }
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleLessonExpand(sec.id, les.id);
+                                }}
+                              >
+                                <CaretDown size={16} weight="bold" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Expanded Lesson Editor with CSS transition */}
+                          <div
+                            className={`curriculum-lesson-editor-wrapper ${
+                              les.isExpanded ? "is-open" : ""
+                            }`}
+                          >
+                            <div className="curriculum-lesson-editor">
+                              <div className="curriculum-editor-grid">
+                                {/* Left column */}
+                                <div className="curriculum-editor-left">
+                                  {/* Lesson Title */}
+                                  <div className="course-wizard-form-group">
+                                    <label htmlFor={`les-title-${les.id}`}>
+                                      Lesson Title <span className="req-star">*</span>
+                                    </label>
+                                    <div className="course-wizard-input-wrap">
+                                      <input
+                                        id={`les-title-${les.id}`}
+                                        type="text"
+                                        maxLength={120}
+                                        value={les.title}
+                                        onChange={(e) =>
+                                          handleUpdateLesson(sec.id, les.id, {
+                                            title: e.target.value,
+                                          })
+                                        }
+                                        placeholder="e.g. Introduction to React Hooks"
+                                      />
+                                      <span className="course-wizard-char-count">
+                                        {les.title.length} / 120
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Lesson Description Rich Editor Mock */}
+                                  <div className="course-wizard-form-group">
+                                    <label id={`les-desc-label-${les.id}`}>
+                                      Lesson Description
+                                    </label>
+                                    <div className="course-wizard-editor">
+                                      <div className="course-wizard-editor__toolbar">
+                                        <div className="course-wizard-editor__select">
+                                          <select aria-label="Text format">
+                                            <option value="normal">Normal</option>
+                                            <option value="h1">Heading 1</option>
+                                            <option value="h2">Heading 2</option>
+                                          </select>
+                                        </div>
+                                        <div className="course-wizard-editor__divider" />
+                                        <button
+                                          type="button"
+                                          title="Bold"
+                                          className="editor-btn"
+                                          aria-label="Bold"
+                                        >
+                                          <TextB size={16} weight="bold" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          title="Italic"
+                                          className="editor-btn"
+                                          aria-label="Italic"
+                                        >
+                                          <TextItalic size={16} weight="bold" />
+                                        </button>
+                                        <div className="course-wizard-editor__divider" />
+                                        <button
+                                          type="button"
+                                          title="Bullet List"
+                                          className="editor-btn"
+                                          aria-label="Bullet List"
+                                        >
+                                          <ListBullets size={16} />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          title="Numbered List"
+                                          className="editor-btn"
+                                          aria-label="Numbered List"
+                                        >
+                                          <ListNumbers size={16} />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          title="Checklist"
+                                          className="editor-btn"
+                                          aria-label="Checklist"
+                                        >
+                                          <Check size={16} weight="bold" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          title="Quote"
+                                          className="editor-btn"
+                                          aria-label="Quote"
+                                        >
+                                          <Quotes size={16} />
+                                        </button>
+                                      </div>
+                                      <textarea
+                                        className="course-wizard-editor__textarea"
+                                        rows={5}
+                                        maxLength={1500}
+                                        value={les.description}
+                                        onChange={(e) =>
+                                          handleUpdateLesson(sec.id, les.id, {
+                                            description: e.target.value,
+                                          })
+                                        }
+                                        placeholder="Add a detailed description of what students will learn in this lesson..."
+                                      />
+                                      <div className="course-wizard-editor__footer">
+                                        <span className="course-wizard-char-count">
+                                          {les.description.length} / 1500
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Right column */}
+                                <div className="curriculum-editor-right">
+                                  {/* Content Type Selector */}
+                                  <div className="course-wizard-form-group">
+                                    <label>
+                                      Content Type <span className="req-star">*</span>
+                                    </label>
+                                    <div className="curriculum-type-grid">
+                                      <div
+                                        className={`curriculum-type-card ${
+                                          les.contentType === "video"
+                                            ? "is-selected"
+                                            : ""
+                                        }`}
+                                        onClick={() =>
+                                          handleUpdateLesson(sec.id, les.id, {
+                                            contentType: "video",
+                                          })
+                                        }
+                                      >
+                                        <div className="curriculum-type-card__radio">
+                                          {les.contentType === "video" && (
+                                            <div className="curriculum-type-card__radio-inner" />
+                                          )}
+                                        </div>
+                                        <div className="curriculum-type-card__icon">
+                                          <Video size={18} weight="fill" />
+                                        </div>
+                                        <div className="curriculum-type-card__info">
+                                          <span className="curriculum-type-card__title">
+                                            Video
+                                          </span>
+                                          <span className="curriculum-type-card__desc">
+                                            Upload or select a video
+                                          </span>
+                                        </div>
+                                      </div>
+
+                                      <div
+                                        className={`curriculum-type-card ${
+                                          les.contentType === "document"
+                                            ? "is-selected"
+                                            : ""
+                                        }`}
+                                        onClick={() =>
+                                          handleUpdateLesson(sec.id, les.id, {
+                                            contentType: "document",
+                                          })
+                                        }
+                                      >
+                                        <div className="curriculum-type-card__radio">
+                                          {les.contentType === "document" && (
+                                            <div className="curriculum-type-card__radio-inner" />
+                                          )}
+                                        </div>
+                                        <div className="curriculum-type-card__icon">
+                                          <FileText size={18} weight="fill" />
+                                        </div>
+                                        <div className="curriculum-type-card__info">
+                                          <span className="curriculum-type-card__title">
+                                            Document / PDF
+                                          </span>
+                                          <span className="curriculum-type-card__desc">
+                                            Upload PDF or document
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Content Source Controls (Video or Document) */}
+                                  <div className="course-wizard-form-group">
+                                    <label>
+                                      {les.contentType === "video"
+                                        ? "Video Source"
+                                        : "Document / PDF Source"}{" "}
+                                      <span className="req-star">*</span>
+                                    </label>
+                                    <div className="curriculum-source-actions">
+                                      <button
+                                        type="button"
+                                        className="curriculum-upload-btn-primary"
+                                      >
+                                        <UploadSimple size={16} weight="bold" /> Upload
+                                        New
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="curriculum-upload-btn-secondary"
+                                      >
+                                        {les.contentType === "video" ? (
+                                          <PlayCircle size={16} />
+                                        ) : (
+                                          <FileText size={16} />
+                                        )}{" "}
+                                        Select from Media
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {/* Lesson Resources Table */}
+                                  <div className="course-wizard-form-group">
+                                    <div className="curriculum-resources-header">
+                                      <label>Lesson Resources</label>
+                                      <div className="curriculum-source-actions">
+                                        <button
+                                          type="button"
+                                          className="curriculum-upload-btn-primary"
+                                          onClick={() =>
+                                            handleAddLessonResource(sec.id, les.id)
+                                          }
+                                        >
+                                          <UploadSimple size={16} weight="bold" /> Upload
+                                          New
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="curriculum-upload-btn-secondary"
+                                          onClick={() =>
+                                            handleAddLessonResource(sec.id, les.id)
+                                          }
+                                        >
+                                          <PlayCircle size={16} /> Select from Media
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    {les.resources.length > 0 ? (
+                                      <table className="curriculum-resources-table">
+                                        <thead>
+                                          <tr>
+                                            <th>File Name</th>
+                                            <th>Type</th>
+                                            <th>Size</th>
+                                            <th>Actions</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {les.resources.map((res) => (
+                                            <tr key={res.id}>
+                                              <td>
+                                                <div className="curriculum-file-cell">
+                                                  <FileText size={16} weight="fill" />
+                                                  <span>{res.name}</span>
+                                                </div>
+                                              </td>
+                                              <td>{res.type}</td>
+                                              <td>{res.size}</td>
+                                              <td>
+                                                <button
+                                                  type="button"
+                                                  className="curriculum-icon-btn curriculum-icon-btn--danger"
+                                                  onClick={() =>
+                                                    handleRemoveLessonResource(
+                                                      sec.id,
+                                                      les.id,
+                                                      res.id
+                                                    )
+                                                  }
+                                                  aria-label="Remove resource"
+                                                >
+                                                  <X size={14} />
+                                                </button>
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    ) : (
+                                      <p className="media-sub">
+                                        No resources added to this lesson yet.
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  <div className="curriculum-editor-save-row">
+                                    <button
+                                      type="button"
+                                      className="curriculum-save-lesson-btn"
+                                      onClick={() => handleSaveLesson(sec.id, les.id)}
+                                    >
+                                      Save Lesson
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Add Lesson Action */}
+                    <div className="curriculum-add-lesson-row">
+                      <button
+                        type="button"
+                        className="curriculum-add-lesson-btn"
+                        onClick={() => handleAddLesson(sec.id)}
+                      >
+                        <Plus size={16} weight="bold" /> Add Lesson
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="course-wizard-body">
@@ -431,6 +1300,14 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
           </button>
         </div>
       </footer>
+      {/* Reusable Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={deleteModalState.isOpen}
+        title={deleteModalState.title}
+        message={deleteModalState.message}
+        onConfirm={deleteModalState.onConfirm}
+        onClose={() => setDeleteModalState((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

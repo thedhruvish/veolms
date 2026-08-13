@@ -8890,6 +8890,7 @@ html:has(.settings-profile__privacy-dialog[open]) {
   flex-direction: column;
   padding: 0;
   color: var(--text);
+  background: color-mix(in srgb, var(--surface) 18%, var(--canvas));
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -8908,7 +8909,7 @@ html:has(.settings-profile__privacy-dialog[open]) {
 .course-wizard-content {
   flex: 1 1 auto;
   min-height: 0;
-  padding: 0 clamp(16px, 2.5vw, 32px) 73px;
+  padding: 0 clamp(16px, 2.5vw, 32px) 24px;
   overflow-y: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -8929,6 +8930,7 @@ html:has(.settings-profile__privacy-dialog[open]) {
 
 .course-wizard-header__title-group {
   margin-left: 54px;
+  margin-right: 320px;
 }
 
 .course-wizard-back-btn {
@@ -9419,25 +9421,27 @@ html:has(.settings-profile__privacy-dialog[open]) {
   line-height: 1.5;
 }
 
-/* Glassmorphic Action Bar inside Wizard Container */
+/* Top Right Corner Action Bar inside Wizard Header */
 .course-wizard-footer {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
+  top: clamp(16px, 2.2vw, 24px);
+  right: clamp(16px, 2.5vw, 32px);
   z-index: 30;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 0 0 18px 18px;
-  padding: 10px clamp(16px, 2.5vw, 24px);
-  background: color-mix(in srgb, var(--surface) 40%, transparent);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 -4px 14px rgba(0, 0, 0, 0.12);
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.course-wizard-footer::before {
+  display: none;
 }
 
 @media (max-width: 820px) {
@@ -9583,6 +9587,748 @@ html:has(.settings-profile__privacy-dialog[open]) {
 :root[data-theme="light"] .course-wizard-status-badge {
   border: 1px solid color-mix(in srgb, var(--text) 20%, transparent);
   color: var(--text);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Course Creation Wizard — Curriculum Step Styles
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.curriculum-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.curriculum-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.curriculum-title-area h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.curriculum-title-area p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.curriculum-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.curriculum-add-section-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  border-radius: 9px;
+  padding: 8px 16px;
+  color: var(--on-accent, #ffffff);
+  background: var(--accent);
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.curriculum-add-section-btn:hover {
+  background: var(--accent-hover, var(--accent));
+}
+
+.curriculum-icon-btn {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.curriculum-icon-btn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.curriculum-icon-btn--danger:hover {
+  color: #ff5252;
+  background: rgba(255, 82, 82, 0.1);
+}
+
+.curriculum-caret-btn svg {
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.curriculum-caret-btn.is-expanded svg {
+  transform: rotate(180deg);
+}
+
+/* Section Card */
+.curriculum-section-card {
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+  background: var(--surface);
+  overflow: hidden;
+  transition: border-color 0.15s ease;
+}
+
+.curriculum-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: rgba(255, 255, 255, 0.02);
+  user-select: none;
+}
+
+.curriculum-section-header__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.curriculum-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  cursor: grab;
+  opacity: 0.6;
+  transition: opacity 0.15s ease;
+}
+
+.curriculum-drag-handle:hover {
+  opacity: 1;
+}
+
+.curriculum-section-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.curriculum-section-edit-input {
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 3px 8px;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.3);
+  font-size: 0.9rem;
+  font-weight: 600;
+  outline: none;
+}
+
+.curriculum-section-tag {
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.curriculum-section-title {
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.curriculum-section-count {
+  margin-left: 4px;
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.curriculum-section-header__right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Section Body & Lesson List */
+.curriculum-section-body-wrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.curriculum-section-body-wrapper.is-open {
+  grid-template-rows: 1fr;
+}
+
+.curriculum-section-body {
+  min-height: 0;
+  overflow: hidden;
+  padding: 0 16px;
+  border-top: 1px solid transparent;
+  transition: padding 0.28s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.28s ease;
+}
+
+.curriculum-section-body-wrapper.is-open .curriculum-section-body {
+  padding: 12px 16px 16px;
+  border-top-color: rgba(255, 255, 255, 0.05);
+}
+
+.curriculum-lessons-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Lesson Row */
+.curriculum-lesson-row {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+
+.curriculum-lesson-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+}
+
+.curriculum-lesson-header__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.curriculum-lesson-num {
+  display: inline-flex;
+  min-width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.curriculum-lesson-title {
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.curriculum-lesson-header__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.curriculum-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 6px;
+  padding: 3px 8px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.curriculum-type-badge--doc {
+  border-color: rgba(168, 85, 247, 0.35);
+  color: #c084fc;
+  background: rgba(168, 85, 247, 0.12);
+}
+
+/* Expanded Lesson Editor Inside Lesson Card */
+.curriculum-lesson-editor-wrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.curriculum-lesson-editor-wrapper.is-open {
+  grid-template-rows: 1fr;
+}
+
+.curriculum-lesson-editor {
+  min-height: 0;
+  overflow: hidden;
+  padding: 0 20px;
+  border-top: 1px solid transparent;
+  background: rgba(0, 0, 0, 0.24);
+  transition: padding 0.28s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.28s ease;
+}
+
+.curriculum-lesson-editor-wrapper.is-open .curriculum-lesson-editor {
+  padding: 16px 20px 20px;
+  border-top-color: rgba(255, 255, 255, 0.06);
+}
+
+.curriculum-editor-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 24px;
+}
+
+.curriculum-editor-left,
+.curriculum-editor-right {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Content Type Cards Grid */
+.curriculum-type-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.curriculum-type-card {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.02);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.curriculum-type-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.curriculum-type-card.is-selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.curriculum-type-card__radio {
+  display: flex;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+  border: 1.5px solid var(--muted);
+  border-radius: 50%;
+}
+
+.curriculum-type-card.is-selected .curriculum-type-card__radio {
+  border-color: var(--accent);
+}
+
+.curriculum-type-card__radio-inner {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.curriculum-type-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  margin-top: 1px;
+}
+
+.curriculum-type-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.curriculum-type-card__title {
+  color: var(--text);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.curriculum-type-card__desc {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+/* Upload Buttons Row */
+.curriculum-source-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.curriculum-upload-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: #ffffff;
+  background: #6366f1;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.curriculum-upload-btn-primary:hover {
+  background: #4f46e5;
+}
+
+.curriculum-upload-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.curriculum-upload-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Resources Table */
+.curriculum-resources-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.curriculum-resources-header label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.curriculum-resources-table {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.curriculum-resources-table th {
+  padding: 8px 14px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 0.74rem;
+  font-weight: 600;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.curriculum-resources-table td {
+  padding: 10px 14px;
+  color: var(--text);
+  font-size: 0.8rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.curriculum-resources-table tr:last-child td {
+  border-bottom: none;
+}
+
+.curriculum-file-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.curriculum-file-cell svg {
+  color: #ef4444;
+}
+
+.curriculum-file-cell--txt svg {
+  color: var(--accent);
+}
+
+.curriculum-editor-save-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.curriculum-save-lesson-btn {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.curriculum-save-lesson-btn:hover {
+  text-decoration: underline;
+}
+
+.curriculum-add-lesson-row {
+  margin-top: 14px;
+}
+
+.curriculum-add-lesson-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.curriculum-add-lesson-btn:hover {
+  color: var(--text);
+}
+
+/* Light mode overrides for Curriculum Step */
+:root[data-theme="light"] .curriculum-section-card {
+  border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+}
+
+:root[data-theme="light"] .curriculum-section-header {
+  background: color-mix(in srgb, var(--text) 3%, transparent);
+}
+
+:root[data-theme="light"] .curriculum-lesson-row {
+  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+  background: var(--surface);
+}
+
+:root[data-theme="light"] .curriculum-lesson-editor {
+  border-top: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+  background: color-mix(in srgb, var(--canvas) 50%, var(--surface));
+}
+
+:root[data-theme="light"] .curriculum-type-card {
+  border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
+  background: var(--surface);
+}
+
+:root[data-theme="light"] .curriculum-resources-table {
+  border: 1px solid color-mix(in srgb, var(--text) 16%, transparent);
+}
+
+:root[data-theme="light"] .curriculum-resources-table th {
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+}
+
+:root[data-theme="light"] .curriculum-resources-table td {
+  border-bottom: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+}
+
+:root[data-theme="light"] .curriculum-icon-btn {
+  border-color: color-mix(in srgb, var(--text) 14%, transparent);
+  color: var(--text-secondary);
+}
+
+:root[data-theme="light"] .curriculum-upload-btn-secondary {
+  border: 1px solid color-mix(in srgb, var(--text) 16%, transparent);
+  color: var(--text);
+  background: var(--surface);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Reusable Delete Confirmation Modal Styles
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.delete-modal-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.65);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  animation: deleteModalFadeIn 0.15s ease-out;
+}
+
+@keyframes deleteModalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.delete-modal-card {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 24px;
+  background: var(--surface);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  animation: deleteModalPopIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes deleteModalPopIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.delete-modal-close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.delete-modal-close-btn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.delete-modal-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.delete-modal-icon {
+  display: flex;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 12px;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.delete-modal-header h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.delete-modal-header p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.delete-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.delete-modal-btn-cancel {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9px;
+  padding: 8px 16px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.delete-modal-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.delete-modal-btn-confirm {
+  border: none;
+  border-radius: 9px;
+  padding: 8px 18px;
+  color: #ffffff;
+  background: #ef4444;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);
+}
+
+.delete-modal-btn-confirm:hover {
+  background: #dc2626;
+  box-shadow: 0 6px 18px rgba(239, 68, 68, 0.45);
+}
+
+:root[data-theme="light"] .delete-modal-card {
+  border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+}
+
+:root[data-theme="light"] .delete-modal-btn-cancel {
+  border: 1px solid color-mix(in srgb, var(--text) 16%, transparent);
+  color: var(--text);
+  background: var(--surface);
+}
+
+:root[data-theme="light"] .delete-modal-btn-cancel:hover {
   background: color-mix(in srgb, var(--text) 6%, transparent);
 }
 
