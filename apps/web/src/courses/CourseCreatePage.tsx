@@ -1,9 +1,11 @@
 import { useState } from "react";
 import {
   ArrowLeft,
+  ArrowRight,
   BookOpen,
   CaretDown,
   CaretUp,
+  ChatCircleText,
   Check,
   DotsSixVertical,
   DotsThreeVertical,
@@ -19,6 +21,7 @@ import {
   PencilSimple,
   PlayCircle,
   Plus,
+  Question,
   Quotes,
   Smiley,
   Sparkle,
@@ -37,12 +40,7 @@ import type { NavigateTo } from "../routing/navigation";
 import { ConfirmDeleteModal } from "../ConfirmDeleteModal";
 
 export type CourseWizardStepId =
-  | "basics"
-  | "curriculum"
-  | "access-rules"
-  | "pricing"
-  | "extras"
-  | "publish";
+  "basics" | "curriculum" | "access-rules" | "pricing" | "extras" | "publish";
 
 type WizardStepIcon = ComponentType<{
   size?: number;
@@ -125,6 +123,36 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     lessons: CurriculumLessonItem[];
   }
 
+  // Access Rules interfaces
+  type AccessType = "everyone" | "restricted";
+  type AccessDurationMode = "lifetime" | "fixed" | "custom";
+  type DurationUnit = "Days" | "Weeks" | "Months" | "Years";
+
+  interface AccessRequirement {
+    id: string;
+    courseId: string;
+  }
+
+  interface AccessRulesState {
+    accessType: AccessType;
+    requirements: AccessRequirement[];
+    durationMode: AccessDurationMode;
+    fixedDurationValue: number;
+    fixedDurationUnit: DurationUnit;
+    customStartDate: string;
+    customEndDate: string;
+    enableQA: boolean;
+    enableComments: boolean;
+  }
+
+  // Available prerequisite courses for dropdown
+  const PREREQUISITE_COURSE_OPTIONS = [
+    { value: "node-fundamentals", label: "Node.js Fundamentals" },
+    { value: "js-basics", label: "JavaScript Basics & ES6+" },
+    { value: "react-core", label: "React Core Architecture" },
+    { value: "css-mastery", label: "Modern CSS & Responsive Web Design" },
+  ];
+
   // Curriculum Step state
   const [sections, setSections] = useState<CurriculumSectionItem[]>([
     {
@@ -135,8 +163,92 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     },
   ]);
 
+  // Access Rules Step state
+  const [accessRules, setAccessRules] = useState<AccessRulesState>({
+    accessType: "restricted",
+    requirements: [{ id: "req-1", courseId: "node-fundamentals" }],
+    durationMode: "lifetime",
+    fixedDurationValue: 30,
+    fixedDurationUnit: "Days",
+    customStartDate: "2026-08-12",
+    customEndDate: "2026-09-12",
+    enableQA: true,
+    enableComments: true,
+  });
+
+  // Access Rules State Handlers
+  const handleAccessTypeChange = (type: AccessType) => {
+    setAccessRules((prev) => ({ ...prev, accessType: type }));
+  };
+
+  const handleAddRequirement = () => {
+    setAccessRules((prev) => ({
+      ...prev,
+      requirements: [
+        ...prev.requirements,
+        {
+          id: `req-${Date.now()}`,
+          courseId:
+            PREREQUISITE_COURSE_OPTIONS[0]?.value || "node-fundamentals",
+        },
+      ],
+    }));
+  };
+
+  const handleRemoveRequirement = (id: string) => {
+    setAccessRules((prev) => ({
+      ...prev,
+      requirements: prev.requirements.filter((r) => r.id !== id),
+    }));
+  };
+
+  const handleRequirementCourseChange = (id: string, courseId: string) => {
+    setAccessRules((prev) => ({
+      ...prev,
+      requirements: prev.requirements.map((r) =>
+        r.id === id ? { ...r, courseId } : r,
+      ),
+    }));
+  };
+
+  const handleDurationModeChange = (mode: AccessDurationMode) => {
+    setAccessRules((prev) => ({ ...prev, durationMode: mode }));
+  };
+
+  const handleFixedDurationValueChange = (val: number) => {
+    setAccessRules((prev) => ({
+      ...prev,
+      fixedDurationValue: Math.max(1, val || 1),
+    }));
+  };
+
+  const handleFixedDurationUnitChange = (unit: DurationUnit) => {
+    setAccessRules((prev) => ({ ...prev, fixedDurationUnit: unit }));
+  };
+
+  const handleCustomStartDateChange = (date: string) => {
+    setAccessRules((prev) => ({ ...prev, customStartDate: date }));
+  };
+
+  const handleCustomEndDateChange = (date: string) => {
+    setAccessRules((prev) => ({ ...prev, customEndDate: date }));
+  };
+
+  const handleToggleQA = () => {
+    setAccessRules((prev) => ({ ...prev, enableQA: !prev.enableQA }));
+  };
+
+  const handleToggleComments = () => {
+    setAccessRules((prev) => ({
+      ...prev,
+      enableComments: !prev.enableComments,
+    }));
+  };
+
   // Drag and Drop state for Sections & Lessons
-  const [draggedSectionIndex, setDraggedSectionIndex] = useState<number | null>(null);
+  const [draggedSectionIndex, setDraggedSectionIndex] = useState<number | null>(
+    null,
+  );
   const [draggedLessonState, setDraggedLessonState] = useState<{
     sectionId: string;
     lessonIndex: number;
@@ -172,13 +284,17 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
   const handleToggleSectionExpand = (sectionId: string) => {
     setSections((prev) =>
-      prev.map((s) => (s.id === sectionId ? { ...s, isExpanded: !s.isExpanded } : s))
+      prev.map((s) =>
+        s.id === sectionId ? { ...s, isExpanded: !s.isExpanded } : s,
+      ),
     );
   };
 
   const handleStartEditSectionTitle = (sectionId: string) => {
     setSections((prev) =>
-      prev.map((s) => (s.id === sectionId ? { ...s, isEditingTitle: true } : s))
+      prev.map((s) =>
+        s.id === sectionId ? { ...s, isEditingTitle: true } : s,
+      ),
     );
   };
 
@@ -187,8 +303,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
       prev.map((s) =>
         s.id === sectionId
           ? { ...s, title: newTitle.trim() || s.title, isEditingTitle: false }
-          : s
-      )
+          : s,
+      ),
     );
   };
 
@@ -248,7 +364,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
             },
           ],
         };
-      })
+      }),
     );
   };
 
@@ -259,10 +375,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
         return {
           ...sec,
           lessons: sec.lessons.map((l) =>
-            l.id === lessonId ? { ...l, isExpanded: !l.isExpanded } : l
+            l.id === lessonId ? { ...l, isExpanded: !l.isExpanded } : l,
           ),
         };
-      })
+      }),
     );
   };
 
@@ -283,7 +399,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
               ...s,
               lessons: s.lessons.filter((l) => l.id !== lessonId),
             };
-          })
+          }),
         );
       },
     });
@@ -292,7 +408,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   const handleUpdateLesson = (
     sectionId: string,
     lessonId: string,
-    updates: Partial<CurriculumLessonItem>
+    updates: Partial<CurriculumLessonItem>,
   ) => {
     setSections((prev) =>
       prev.map((sec) => {
@@ -300,10 +416,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
         return {
           ...sec,
           lessons: sec.lessons.map((l) =>
-            l.id === lessonId ? { ...l, ...updates } : l
+            l.id === lessonId ? { ...l, ...updates } : l,
           ),
         };
-      })
+      }),
     );
   };
 
@@ -314,10 +430,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
         return {
           ...sec,
           lessons: sec.lessons.map((l) =>
-            l.id === lessonId ? { ...l, isExpanded: false } : l
+            l.id === lessonId ? { ...l, isExpanded: false } : l,
           ),
         };
-      })
+      }),
     );
   };
 
@@ -342,14 +458,14 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
             };
           }),
         };
-      })
+      }),
     );
   };
 
   const handleRemoveLessonResource = (
     sectionId: string,
     lessonId: string,
-    resourceId: string
+    resourceId: string,
   ) => {
     setSections((prev) =>
       prev.map((sec) => {
@@ -364,7 +480,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
             };
           }),
         };
-      })
+      }),
     );
   };
 
@@ -376,7 +492,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   const handleLessonDragOver = (
     e: React.DragEvent,
     targetSectionId: string,
-    targetLessonIndex: number
+    targetLessonIndex: number,
   ) => {
     e.preventDefault();
     if (!draggedLessonState) return;
@@ -395,7 +511,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
       const [movedLesson] = sourceSec.lessons.splice(
         draggedLessonState.lessonIndex,
-        1
+        1,
       );
       if (movedLesson) {
         targetSec.lessons.splice(targetLessonIndex, 0, movedLesson);
@@ -415,7 +531,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
   // Computed total stats
   const totalSections = sections.length;
-  const totalLessons = sections.reduce((acc, sec) => acc + sec.lessons.length, 0);
+  const totalLessons = sections.reduce(
+    (acc, sec) => acc + sec.lessons.length,
+    0,
+  );
 
   return (
     <div className="course-wizard-layout">
@@ -438,7 +557,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
             <p>
               {activeStep === "curriculum"
                 ? "Build your course structure by adding sections and lessons."
-                : "Add the essential details of your course. You can always edit these later."}
+                : activeStep === "access-rules"
+                  ? "Control who can access this course and how long their access lasts."
+                  : "Add the essential details of your course. You can always edit these later."}
             </p>
           </div>
         </div>
@@ -741,8 +862,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
               <div className="curriculum-title-area">
                 <h2>Course Curriculum</h2>
                 <p>
-                  Organize your course into sections and lessons. You can reorder
-                  them anytime.
+                  Organize your course into sections and lessons. You can
+                  reorder them anytime.
                 </p>
               </div>
               <div className="curriculum-header-actions">
@@ -799,7 +920,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                             if (e.key === "Enter") {
                               handleSaveSectionTitle(
                                 sec.id,
-                                (e.target as HTMLInputElement).value
+                                (e.target as HTMLInputElement).value,
                               );
                             }
                           }}
@@ -850,7 +971,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       className={`curriculum-icon-btn curriculum-caret-btn ${
                         sec.isExpanded ? "is-expanded" : ""
                       }`}
-                      aria-label={sec.isExpanded ? "Collapse section" : "Expand section"}
+                      aria-label={
+                        sec.isExpanded ? "Collapse section" : "Expand section"
+                      }
                       onClick={(e) => {
                         e.stopPropagation();
                         handleToggleSectionExpand(sec.id);
@@ -885,7 +1008,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                           {/* Lesson Header */}
                           <div
                             className="curriculum-lesson-header"
-                            onClick={() => handleToggleLessonExpand(sec.id, les.id)}
+                            onClick={() =>
+                              handleToggleLessonExpand(sec.id, les.id)
+                            }
                             style={{ cursor: "pointer" }}
                             title="Click to toggle lesson editor"
                           >
@@ -911,7 +1036,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                 </span>
                               ) : (
                                 <span className="curriculum-type-badge curriculum-type-badge--doc">
-                                  <FileText size={14} weight="fill" /> Document / PDF
+                                  <FileText size={14} weight="fill" /> Document
+                                  / PDF
                                 </span>
                               )}
                               <button
@@ -958,7 +1084,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                   {/* Lesson Title */}
                                   <div className="course-wizard-form-group">
                                     <label htmlFor={`les-title-${les.id}`}>
-                                      Lesson Title <span className="req-star">*</span>
+                                      Lesson Title{" "}
+                                      <span className="req-star">*</span>
                                     </label>
                                     <div className="course-wizard-input-wrap">
                                       <input
@@ -988,9 +1115,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                       <div className="course-wizard-editor__toolbar">
                                         <div className="course-wizard-editor__select">
                                           <select aria-label="Text format">
-                                            <option value="normal">Normal</option>
-                                            <option value="h1">Heading 1</option>
-                                            <option value="h2">Heading 2</option>
+                                            <option value="normal">
+                                              Normal
+                                            </option>
+                                            <option value="h1">
+                                              Heading 1
+                                            </option>
+                                            <option value="h2">
+                                              Heading 2
+                                            </option>
                                           </select>
                                         </div>
                                         <div className="course-wizard-editor__divider" />
@@ -1070,7 +1203,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                   {/* Content Type Selector */}
                                   <div className="course-wizard-form-group">
                                     <label>
-                                      Content Type <span className="req-star">*</span>
+                                      Content Type{" "}
+                                      <span className="req-star">*</span>
                                     </label>
                                     <div className="curriculum-type-grid">
                                       <div
@@ -1148,8 +1282,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                         type="button"
                                         className="curriculum-upload-btn-primary"
                                       >
-                                        <UploadSimple size={16} weight="bold" /> Upload
-                                        New
+                                        <UploadSimple size={16} weight="bold" />{" "}
+                                        Upload New
                                       </button>
                                       <button
                                         type="button"
@@ -1174,20 +1308,30 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                           type="button"
                                           className="curriculum-upload-btn-primary"
                                           onClick={() =>
-                                            handleAddLessonResource(sec.id, les.id)
+                                            handleAddLessonResource(
+                                              sec.id,
+                                              les.id,
+                                            )
                                           }
                                         >
-                                          <UploadSimple size={16} weight="bold" /> Upload
-                                          New
+                                          <UploadSimple
+                                            size={16}
+                                            weight="bold"
+                                          />{" "}
+                                          Upload New
                                         </button>
                                         <button
                                           type="button"
                                           className="curriculum-upload-btn-secondary"
                                           onClick={() =>
-                                            handleAddLessonResource(sec.id, les.id)
+                                            handleAddLessonResource(
+                                              sec.id,
+                                              les.id,
+                                            )
                                           }
                                         >
-                                          <PlayCircle size={16} /> Select from Media
+                                          <PlayCircle size={16} /> Select from
+                                          Media
                                         </button>
                                       </div>
                                     </div>
@@ -1207,7 +1351,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                             <tr key={res.id}>
                                               <td>
                                                 <div className="curriculum-file-cell">
-                                                  <FileText size={16} weight="fill" />
+                                                  <FileText
+                                                    size={16}
+                                                    weight="fill"
+                                                  />
                                                   <span>{res.name}</span>
                                                 </div>
                                               </td>
@@ -1221,7 +1368,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                                     handleRemoveLessonResource(
                                                       sec.id,
                                                       les.id,
-                                                      res.id
+                                                      res.id,
                                                     )
                                                   }
                                                   aria-label="Remove resource"
@@ -1244,7 +1391,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                     <button
                                       type="button"
                                       className="curriculum-save-lesson-btn"
-                                      onClick={() => handleSaveLesson(sec.id, les.id)}
+                                      onClick={() =>
+                                        handleSaveLesson(sec.id, les.id)
+                                      }
                                     >
                                       Save Lesson
                                     </button>
@@ -1272,13 +1421,315 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
               </div>
             ))}
           </div>
+        ) : activeStep === "access-rules" ? (
+          <div className="access-rules-container">
+            {/* Top Grid: 1. Who can access & 2. Access duration */}
+            <div className="access-rules-top-grid">
+              {/* Card 1: Who can access this course? */}
+              <div className="access-rules-card">
+                <div className="access-rules-card__header">
+                  <h3>1. Who can access this course?</h3>
+                  <p>Choose who is allowed to access this course.</p>
+                </div>
+
+                <div className="access-rules-options-group">
+                  {/* Radio option: Everyone */}
+                  <label
+                    className={`access-rules-radio-option ${
+                      accessRules.accessType === "everyone" ? "is-selected" : ""
+                    }`}
+                    onClick={() => handleAccessTypeChange("everyone")}
+                  >
+                    <div className="access-rules-radio-circle">
+                      {accessRules.accessType === "everyone" && (
+                        <div className="access-rules-radio-dot" />
+                      )}
+                    </div>
+                    <div className="access-rules-radio-text">
+                      <strong>Everyone</strong>
+                      <p>
+                        Anyone with access to the platform can access this
+                        course.
+                      </p>
+                    </div>
+                  </label>
+
+                  {/* Radio option: Restricted access */}
+                  <label
+                    className={`access-rules-radio-option ${
+                      accessRules.accessType === "restricted"
+                        ? "is-selected"
+                        : ""
+                    }`}
+                    onClick={() => handleAccessTypeChange("restricted")}
+                  >
+                    <div className="access-rules-radio-circle">
+                      {accessRules.accessType === "restricted" && (
+                        <div className="access-rules-radio-dot" />
+                      )}
+                    </div>
+                    <div className="access-rules-radio-text">
+                      <strong>Restricted access</strong>
+                      <p>
+                        Only users who meet the selected requirements can access
+                        this course.
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Conditional Requirements Box */}
+                {accessRules.accessType === "restricted" && (
+                  <div className="access-rules-req-box">
+                    <div className="access-rules-req-header">
+                      <label>Access requirement</label>
+                      <p>Users must have access to:</p>
+                    </div>
+
+                    <div className="access-rules-req-list">
+                      {accessRules.requirements.map((req) => (
+                        <div key={req.id} className="access-rules-req-row">
+                          <ThemedSelect
+                            value={req.courseId}
+                            onValueChange={(val) =>
+                              handleRequirementCourseChange(req.id, val)
+                            }
+                            options={PREREQUISITE_COURSE_OPTIONS.map((c) => [
+                              c.value,
+                              c.label,
+                            ])}
+                            ariaLabel="Select prerequisite course requirement"
+                            triggerClassName="course-wizard-select-trigger access-rules-req-select"
+                          />
+                          {accessRules.requirements.length > 1 && (
+                            <button
+                              type="button"
+                              className="curriculum-icon-btn curriculum-icon-btn--danger"
+                              aria-label="Remove requirement"
+                              title="Remove requirement"
+                              onClick={() => handleRemoveRequirement(req.id)}
+                            >
+                              <Trash size={16} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      className="access-rules-add-req-btn"
+                      onClick={handleAddRequirement}
+                    >
+                      <Plus size={15} weight="bold" /> Add another requirement
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Card 2: Access duration */}
+              <div className="access-rules-card">
+                <div className="access-rules-card__header">
+                  <h3>2. Access duration</h3>
+                  <p>Set how long learners can access this course.</p>
+                </div>
+
+                <div className="access-rules-options-group">
+                  {/* Option 1: Lifetime access */}
+                  <div
+                    className={`access-rules-radio-option ${
+                      accessRules.durationMode === "lifetime"
+                        ? "is-selected"
+                        : ""
+                    }`}
+                    onClick={() => handleDurationModeChange("lifetime")}
+                  >
+                    <div className="access-rules-radio-circle">
+                      {accessRules.durationMode === "lifetime" && (
+                        <div className="access-rules-radio-dot" />
+                      )}
+                    </div>
+                    <div className="access-rules-radio-text">
+                      <strong>Lifetime access</strong>
+                      <p>Learners can access this course forever.</p>
+                    </div>
+                  </div>
+
+                  {/* Option 2: Fixed duration */}
+                  <div
+                    className={`access-rules-radio-option ${
+                      accessRules.durationMode === "fixed" ? "is-selected" : ""
+                    }`}
+                    onClick={() => handleDurationModeChange("fixed")}
+                  >
+                    <div className="access-rules-radio-circle">
+                      {accessRules.durationMode === "fixed" && (
+                        <div className="access-rules-radio-dot" />
+                      )}
+                    </div>
+                    <div className="access-rules-radio-text">
+                      <strong>Fixed duration</strong>
+                      <p>
+                        Set a duration for how long learners can access this
+                        course.
+                      </p>
+
+                      {accessRules.durationMode === "fixed" && (
+                        <div
+                          className="access-rules-fixed-inputs"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            type="number"
+                            className="access-rules-number-input"
+                            min={1}
+                            value={accessRules.fixedDurationValue}
+                            onChange={(e) =>
+                              handleFixedDurationValueChange(
+                                parseInt(e.target.value, 10),
+                              )
+                            }
+                          />
+                          <ThemedSelect
+                            value={accessRules.fixedDurationUnit}
+                            onValueChange={(val) =>
+                              handleFixedDurationUnitChange(val as DurationUnit)
+                            }
+                            options={[
+                              ["Days", "Days"],
+                              ["Weeks", "Weeks"],
+                              ["Months", "Months"],
+                              ["Years", "Years"],
+                            ]}
+                            ariaLabel="Select duration unit"
+                            triggerClassName="course-wizard-select-trigger access-rules-unit-select"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Option 3: Custom expiration */}
+                  <div
+                    className={`access-rules-radio-option ${
+                      accessRules.durationMode === "custom" ? "is-selected" : ""
+                    }`}
+                    onClick={() => handleDurationModeChange("custom")}
+                  >
+                    <div className="access-rules-radio-circle">
+                      {accessRules.durationMode === "custom" && (
+                        <div className="access-rules-radio-dot" />
+                      )}
+                    </div>
+                    <div className="access-rules-radio-text">
+                      <strong>Custom expiration</strong>
+                      <p>Set a specific start and end date for access.</p>
+
+                      {accessRules.durationMode === "custom" && (
+                        <div
+                          className="access-rules-dates-row"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="access-rules-date-group">
+                            <label>Start date</label>
+                            <input
+                              type="date"
+                              className="access-rules-date-input"
+                              value={accessRules.customStartDate}
+                              onChange={(e) =>
+                                handleCustomStartDateChange(e.target.value)
+                              }
+                            />
+                          </div>
+
+                          <div className="access-rules-date-arrow">
+                            <ArrowRight size={18} />
+                          </div>
+
+                          <div className="access-rules-date-group">
+                            <label>End date</label>
+                            <input
+                              type="date"
+                              className="access-rules-date-input"
+                              value={accessRules.customEndDate}
+                              onChange={(e) =>
+                                handleCustomEndDateChange(e.target.value)
+                              }
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Card: 3. Learner interactions */}
+            <div className="access-rules-card access-rules-card--full">
+              <div className="access-rules-card__header">
+                <h3>3. Learner interactions</h3>
+                <p>Manage how learners can interact within this course.</p>
+              </div>
+
+              <div className="access-rules-toggles-list">
+                {/* Toggle 1: Q&A */}
+                <div className="access-rules-toggle-row">
+                  <div className="access-rules-toggle-info">
+                    <div className="access-rules-toggle-icon">
+                      <Question size={20} weight="bold" />
+                    </div>
+                    <div>
+                      <strong>Q&A</strong>
+                      <p>Allow learners to ask questions about lessons.</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className={`access-rules-switch ${
+                      accessRules.enableQA ? "is-active" : ""
+                    }`}
+                    onClick={handleToggleQA}
+                    role="switch"
+                    aria-checked={accessRules.enableQA}
+                    aria-label="Toggle Q&A"
+                  >
+                    <div className="access-rules-switch-thumb" />
+                  </button>
+                </div>
+
+                {/* Toggle 2: Comments */}
+                <div className="access-rules-toggle-row">
+                  <div className="access-rules-toggle-info">
+                    <div className="access-rules-toggle-icon">
+                      <ChatCircleText size={20} weight="fill" />
+                    </div>
+                    <div>
+                      <strong>Comments</strong>
+                      <p>Allow learners to comment on course content.</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className={`access-rules-switch ${
+                      accessRules.enableComments ? "is-active" : ""
+                    }`}
+                    onClick={handleToggleComments}
+                    role="switch"
+                    aria-checked={accessRules.enableComments}
+                    aria-label="Toggle Comments"
+                  >
+                    <div className="access-rules-switch-thumb" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="course-wizard-body">
             <section className="course-wizard-card">
               <div className="course-wizard-card__header">
-                <h2>
-                  {WIZARD_STEPS.find((s) => s.id === activeStep)?.label}
-                </h2>
+                <h2>{WIZARD_STEPS.find((s) => s.id === activeStep)?.label}</h2>
                 <p>This section will allow configuring course {activeStep}.</p>
               </div>
             </section>
@@ -1306,7 +1757,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
         title={deleteModalState.title}
         message={deleteModalState.message}
         onConfirm={deleteModalState.onConfirm}
-        onClose={() => setDeleteModalState((prev) => ({ ...prev, isOpen: false }))}
+        onClose={() =>
+          setDeleteModalState((prev) => ({ ...prev, isOpen: false }))
+        }
       />
     </div>
   );
