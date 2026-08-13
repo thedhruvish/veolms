@@ -6,10 +6,13 @@ import {
   BookOpen,
   CaretDown,
   CaretUp,
+  Certificate,
   ChatCircleText,
   Check,
+  Clock,
   DotsSixVertical,
   DotsThreeVertical,
+  Export,
   Eye,
   FileText,
   FloppyDisk,
@@ -187,12 +190,126 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     enableComments: true,
   });
 
+  // Extras interfaces
+  interface ExtrasInclusionItem {
+    id: string;
+    text: string;
+  }
+
+  type CertificateIssuanceType = "completion" | "percentage" | "custom";
+
+  interface ExtrasState {
+    inclusions: ExtrasInclusionItem[];
+    enableCertificate: boolean;
+    certificateTemplate: string;
+    issuanceType: CertificateIssuanceType;
+    minCompletionPercentage: number;
+    customRuleText: string;
+    autoEmailCertificate: boolean;
+  }
+
   // Pricing Step state
   const [pricing, setPricing] = useState<PricingState>({
     pricingType: "paid",
     sellingPrice: "1999",
     originalPrice: "2999",
   });
+
+  // Extras Step state
+  const [extras, setExtras] = useState<ExtrasState>({
+    inclusions: [
+      { id: "inc-1", text: "Downloadable resources" },
+      { id: "inc-2", text: "Certificate of completion" },
+      { id: "inc-3", text: "Lifetime access" },
+      { id: "inc-4", text: "Lifetime updates" },
+    ],
+    enableCertificate: true,
+    certificateTemplate: "purple-certificate",
+    issuanceType: "percentage",
+    minCompletionPercentage: 95,
+    customRuleText: "Complete all quizzes with > 80% score",
+    autoEmailCertificate: true,
+  });
+
+  // Extras Inclusions Handlers
+  const [draggedInclusionIndex, setDraggedInclusionIndex] = useState<number | null>(null);
+
+  const handleAddInclusion = () => {
+    setExtras((prev) => ({
+      ...prev,
+      inclusions: [
+        ...prev.inclusions,
+        { id: `inc-${Date.now()}`, text: `New Inclusion ${prev.inclusions.length + 1}` },
+      ],
+    }));
+  };
+
+  const handleUpdateInclusionText = (id: string, text: string) => {
+    setExtras((prev) => ({
+      ...prev,
+      inclusions: prev.inclusions.map((item) =>
+        item.id === id ? { ...item, text } : item
+      ),
+    }));
+  };
+
+  const handleDeleteInclusion = (id: string) => {
+    setExtras((prev) => ({
+      ...prev,
+      inclusions: prev.inclusions.filter((item) => item.id !== id),
+    }));
+  };
+
+  const handleInclusionDragStart = (index: number) => {
+    setDraggedInclusionIndex(index);
+  };
+
+  const handleInclusionDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedInclusionIndex === null || draggedInclusionIndex === index) return;
+    setExtras((prev) => {
+      const copy = [...prev.inclusions];
+      const [moved] = copy.splice(draggedInclusionIndex, 1);
+      if (moved) {
+        copy.splice(index, 0, moved);
+      }
+      return { ...prev, inclusions: copy };
+    });
+    setDraggedInclusionIndex(index);
+  };
+
+  const handleInclusionDragEnd = () => {
+    setDraggedInclusionIndex(null);
+  };
+
+  // Certificate Handlers
+  const handleToggleCertificate = () => {
+    setExtras((prev) => ({ ...prev, enableCertificate: !prev.enableCertificate }));
+  };
+
+  const handleCertificateTemplateChange = (template: string) => {
+    setExtras((prev) => ({ ...prev, certificateTemplate: template }));
+  };
+
+  const handleIssuanceTypeChange = (type: CertificateIssuanceType) => {
+    setExtras((prev) => ({ ...prev, issuanceType: type }));
+  };
+
+  const handleMinPercentageChange = (val: number) => {
+    const clamped = Math.min(100, Math.max(1, isNaN(val) ? 1 : val));
+    setExtras((prev) => ({ ...prev, minCompletionPercentage: clamped }));
+  };
+
+  const handleCustomRuleTextChange = (text: string) => {
+    setExtras((prev) => ({ ...prev, customRuleText: text }));
+  };
+
+  const handleToggleAutoEmailCertificate = () => {
+    setExtras((prev) => ({
+      ...prev,
+      autoEmailCertificate: !prev.autoEmailCertificate,
+    }));
+  };
 
   // Pricing Handlers
   const handlePricingTypeChange = (type: PricingType) => {
@@ -592,7 +709,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   ? "Control who can access this course and how long their access lasts."
                   : activeStep === "pricing"
                     ? "Set how learners will purchase this course."
-                    : "Add the essential details of your course. You can always edit these later."}
+                    : activeStep === "extras"
+                      ? "Add extra information and settings to enhance your course."
+                      : "Add the essential details of your course. You can always edit these later."}
             </p>
           </div>
         </div>
@@ -1922,6 +2041,276 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
               >
                 Go to Coupons <ArrowUpRight size={16} weight="bold" />
               </button>
+            </div>
+          </div>
+        ) : activeStep === "extras" ? (
+          <div className="extras-container">
+            {/* Top 2-Column Grid: 1. Certificates & 2. This course includes */}
+            <div className="extras-top-grid">
+              {/* Card 1: Certificates */}
+              <div className="extras-card">
+                <div className="extras-card__header">
+                  <h3>1. Certificates</h3>
+                  <p>Configure how certificates will be issued for this course.</p>
+                </div>
+
+                {/* Enable Certificate Toggle Row */}
+                <div className="extras-cert-toggle-row">
+                  <div>
+                    <strong>Enable certificate</strong>
+                    <p>Issue certificates to learners on course completion.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className={`access-rules-switch ${
+                      extras.enableCertificate ? "is-active" : ""
+                    }`}
+                    onClick={handleToggleCertificate}
+                    role="switch"
+                    aria-checked={extras.enableCertificate}
+                    aria-label="Toggle certificate"
+                  >
+                    <div className="access-rules-switch-thumb" />
+                  </button>
+                </div>
+
+                {/* Certificate Configuration Controls */}
+                <div
+                  className={`extras-cert-controls ${
+                    !extras.enableCertificate ? "is-disabled" : ""
+                  }`}
+                >
+                  {/* Template Selector */}
+                  <div className="course-wizard-form-group">
+                    <label>Certificate template</label>
+                    <p className="extras-control-sub">Choose a layout for your certificate.</p>
+                    <ThemedSelect
+                      value={extras.certificateTemplate}
+                      onValueChange={handleCertificateTemplateChange}
+                      options={[
+                        ["purple-certificate", "Modern Purple Certificate"],
+                        ["blue-certificate", "Classic Blue Certificate"],
+                        ["dark-certificate", "Minimal Dark Certificate"],
+                      ]}
+                      ariaLabel="Select certificate template"
+                      triggerClassName="course-wizard-select-trigger"
+                    />
+                  </div>
+
+                  {/* Certificate Issuance Options */}
+                  <div className="course-wizard-form-group">
+                    <label>Certificate issuance</label>
+                    <p className="extras-control-sub">Choose when the certificate should be issued.</p>
+
+                    <div className="extras-issuance-options">
+                      {/* Option 1: On course completion */}
+                      <div
+                        className={`access-rules-radio-option ${
+                          extras.issuanceType === "completion" ? "is-selected" : ""
+                        }`}
+                        onClick={() => handleIssuanceTypeChange("completion")}
+                      >
+                        <div className="access-rules-radio-circle">
+                          {extras.issuanceType === "completion" && (
+                            <div className="access-rules-radio-dot" />
+                          )}
+                        </div>
+                        <div className="access-rules-radio-text">
+                          <strong>On course completion</strong>
+                          <p>Issue certificate when the learner completes all lessons.</p>
+                        </div>
+                      </div>
+
+                      {/* Option 2: Minimum completion percentage */}
+                      <div
+                        className={`access-rules-radio-option ${
+                          extras.issuanceType === "percentage" ? "is-selected" : ""
+                        }`}
+                        onClick={() => handleIssuanceTypeChange("percentage")}
+                      >
+                        <div className="access-rules-radio-circle">
+                          {extras.issuanceType === "percentage" && (
+                            <div className="access-rules-radio-dot" />
+                          )}
+                        </div>
+                        <div className="access-rules-radio-text">
+                          <div className="extras-percentage-header">
+                            <strong>Minimum completion percentage</strong>
+                            {extras.issuanceType === "percentage" && (
+                              <div
+                                className="extras-percentage-input-wrap"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <input
+                                  type="number"
+                                  className="access-rules-number-input"
+                                  min={1}
+                                  max={100}
+                                  value={extras.minCompletionPercentage}
+                                  onChange={(e) =>
+                                    handleMinPercentageChange(
+                                      parseInt(e.target.value, 10)
+                                    )
+                                  }
+                                />
+                                <span className="extras-percent-symbol">%</span>
+                              </div>
+                            )}
+                          </div>
+                          <p>Issue certificate when learner reaches the selected percentage.</p>
+                        </div>
+                      </div>
+
+                      {/* Option 3: Custom rule */}
+                      <div
+                        className={`access-rules-radio-option ${
+                          extras.issuanceType === "custom" ? "is-selected" : ""
+                        }`}
+                        onClick={() => handleIssuanceTypeChange("custom")}
+                      >
+                        <div className="access-rules-radio-circle">
+                          {extras.issuanceType === "custom" && (
+                            <div className="access-rules-radio-dot" />
+                          )}
+                        </div>
+                        <div className="access-rules-radio-text">
+                          <strong>Custom rule</strong>
+                          <p>Define your own custom rule for certificate issuance.</p>
+
+                          {extras.issuanceType === "custom" && (
+                            <div
+                              className="extras-custom-rule-input-wrap"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <input
+                                type="text"
+                                className="extras-custom-rule-input"
+                                value={extras.customRuleText}
+                                onChange={(e) =>
+                                  handleCustomRuleTextChange(e.target.value)
+                                }
+                                placeholder="e.g. Complete all quizzes with > 80% score"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Delivery Toggle Row */}
+                  <div className="extras-delivery-toggle-row">
+                    <div>
+                      <strong>Delivery</strong>
+                      <p>Automatically email the certificate to learners.</p>
+                    </div>
+                    <button
+                      type="button"
+                      className={`access-rules-switch ${
+                        extras.autoEmailCertificate ? "is-active" : ""
+                      }`}
+                      onClick={handleToggleAutoEmailCertificate}
+                      role="switch"
+                      aria-checked={extras.autoEmailCertificate}
+                      aria-label="Toggle certificate delivery"
+                    >
+                      <div className="access-rules-switch-thumb" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: This course includes */}
+              <div className="extras-card">
+                <div className="extras-card__header">
+                  <h3>2. This course includes</h3>
+                  <p>These details are calculated from your curriculum.</p>
+                </div>
+
+                {/* Derived Live Stats Summary Grid */}
+                <div className="extras-stats-grid">
+                  <div className="extras-stat-box">
+                    <div className="extras-stat-icon">
+                      <BookOpen size={20} weight="fill" />
+                    </div>
+                    <div className="extras-stat-info">
+                      <strong>{totalSections}</strong>
+                      <span>Sections</span>
+                    </div>
+                  </div>
+
+                  <div className="extras-stat-box">
+                    <div className="extras-stat-icon extras-stat-icon--purple">
+                      <PlayCircle size={20} weight="fill" />
+                    </div>
+                    <div className="extras-stat-info">
+                      <strong>{totalLessons}</strong>
+                      <span>Lessons</span>
+                    </div>
+                  </div>
+
+                  <div className="extras-stat-box">
+                    <div className="extras-stat-icon extras-stat-icon--blue">
+                      <Clock size={20} weight="bold" />
+                    </div>
+                    <div className="extras-stat-info">
+                      <strong>9h 24m</strong>
+                      <span>Content length</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional Inclusions Section */}
+                <div className="extras-inclusions-section">
+                  <div className="extras-inclusions-header">
+                    <h4>Additional inclusions</h4>
+                    <p>Add any additional benefits your learners will get with this course.</p>
+                  </div>
+
+                  <div className="extras-inclusions-list">
+                    {extras.inclusions.map((item, incIndex) => (
+                      <div
+                        key={item.id}
+                        className="extras-inclusion-row"
+                        draggable
+                        onDragStart={() => handleInclusionDragStart(incIndex)}
+                        onDragOver={(e) => handleInclusionDragOver(e, incIndex)}
+                        onDragEnd={handleInclusionDragEnd}
+                      >
+                        <span className="curriculum-drag-handle" title="Drag to reorder inclusion">
+                          <DotsSixVertical size={18} />
+                        </span>
+                        <input
+                          type="text"
+                          className="extras-inclusion-input"
+                          value={item.text}
+                          onChange={(e) =>
+                            handleUpdateInclusionText(item.id, e.target.value)
+                          }
+                          placeholder="e.g. Downloadable resources"
+                        />
+                        <button
+                          type="button"
+                          className="curriculum-icon-btn curriculum-icon-btn--danger"
+                          aria-label="Remove inclusion"
+                          title="Remove inclusion"
+                          onClick={() => handleDeleteInclusion(item.id)}
+                        >
+                          <Trash size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    className="extras-add-inclusion-btn"
+                    onClick={handleAddInclusion}
+                  >
+                    <Plus size={15} weight="bold" /> Add inclusion
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         ) : (
