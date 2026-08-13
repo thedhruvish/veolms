@@ -24,6 +24,7 @@ import {
   SettingsToggle,
 } from "./SettingsControls";
 import { MiniSurface } from "./SettingsPreviews";
+import { ReadingModeSettings } from "./ReadingModeSettings";
 import { readStored, readStoredBoolean } from "./settingsPreferences";
 
 export type DisplayMode = "light" | "dark" | "device";
@@ -180,6 +181,8 @@ export function AppearanceSettings({
           ))}
         </RadioGroup>
       </section>
+
+      <ReadingModeSettings />
 
       <section className="settings-section settings-theme-rotation">
         <h2>Theme rotation</h2>

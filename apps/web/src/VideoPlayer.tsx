@@ -20,6 +20,7 @@ import {
   SpeakerHigh,
   SpeakerSlash,
 } from "@phosphor-icons/react";
+import { AppSlider } from "./AppSlider";
 import type { CourseVideo } from "./learning/courseContent";
 
 const playbackSpeeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
@@ -594,21 +595,15 @@ export function VideoPlayer({
           className={`player-chrome ${controlsAreVisible ? "player-chrome--visible" : ""}`}
         >
           <div className="absolute inset-x-3 bottom-3 z-20 text-white sm:inset-x-4">
-            <label className="relative block h-3" aria-label="Video position">
-              <span className="pointer-events-none absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 overflow-hidden rounded-full bg-white/25">
-                <span
-                  className="block h-full rounded-full bg-[var(--accent)]"
-                  style={{
-                    width: `${Number.isFinite(progress) ? progress : 0}%`,
-                  }}
-                />
-              </span>
-              <input
-                type="range"
+            <label className="relative block h-5" aria-label="Video position">
+              <AppSlider
                 min="0"
                 max="100"
                 step="0.1"
                 value={Number.isFinite(progress) ? progress : 0}
+                variant="player"
+                aria-label="Video position"
+                aria-valuetext={`${formatMediaTime(currentTime)} of ${formatMediaTime(duration)}`}
                 onInput={(event) =>
                   seekToProgress(Number(event.currentTarget.value))
                 }
@@ -650,14 +645,15 @@ export function VideoPlayer({
                     <SpeakerHigh size={25} />
                   )}
                 </button>
-                <input
+                <AppSlider
                   data-player-control
                   aria-label="Volume"
-                  type="range"
                   min="0"
                   max="1"
                   step="0.05"
                   value={muted ? 0 : volume}
+                  variant="volume"
+                  aria-valuetext={`${Math.round((muted ? 0 : volume) * 100)}%`}
                   onInput={(event) =>
                     changeVolume(Number(event.currentTarget.value))
                   }

@@ -4210,13 +4210,6 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   font-weight: 650;
 }
 
-.settings-sidebar-width__range input[type="range"] {
-  width: 100%;
-  height: 22px;
-  accent-color: var(--accent);
-  cursor: auto;
-}
-
 .settings-sidebar-width__range-labels {
   display: flex;
   justify-content: space-between;
@@ -4240,8 +4233,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   font-weight: 700;
 }
 
-.settings-sidebar-width__number input:focus-visible,
-.settings-sidebar-width__range input[type="range"]:focus-visible {
+.settings-sidebar-width__number input:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
