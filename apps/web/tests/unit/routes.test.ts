@@ -223,7 +223,6 @@ describe("framework route descriptors", () => {
     for (const routeId of [
       "students",
       "reviews",
-      "course-create",
       "analytics",
       "orders",
       "messages",
@@ -235,5 +234,10 @@ describe("framework route descriptors", () => {
         page: "placeholder",
       });
     }
+
+    expect(getRouteDescriptor("course-create")).toMatchObject({
+      kind: "shell",
+      page: "course-create",
+    });
   });
 });

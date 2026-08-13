@@ -3,7 +3,13 @@ import { getCourseTitle } from "../learning/courseMetadata";
 const productName = "ProCodrr";
 
 export type ShellPage =
-  "home" | "my-learning" | "courses" | "placeholder" | "settings" | "workspace";
+  | "home"
+  | "my-learning"
+  | "courses"
+  | "placeholder"
+  | "settings"
+  | "workspace"
+  | "course-create";
 
 export interface ShellRouteDescriptor {
   kind: "shell";
@@ -80,7 +86,7 @@ export const routeDescriptors = {
   },
   "course-create": {
     kind: "shell",
-    page: "placeholder",
+    page: "course-create",
     section: "Create Course",
     title: "Create Course",
     description: "Create and publish a new ProCodrr course.",
