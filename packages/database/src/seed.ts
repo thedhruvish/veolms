@@ -40,6 +40,20 @@ const config = loadServerConfig(process.env);
 const database = createDatabase(config.DATABASE_URL);
 
 try {
+  //seed permissions
+  const permissions = [
+    { id: crypto.randomUUID(), name: "courses:create" },
+    { id: crypto.randomUUID(), name: "courses:edit" },
+    { id: crypto.randomUUID(), name: "courses:publish" },
+  ];
+  await database.insertInto("permissions").values(permissions).execute();
+
+  const creatorRoleId = "11111111-1111-4000-a000-000000000001";
+  await database
+    .insertInto("role_permissions")
+    .values(permissions.map((p) => ({ role_id: creatorRoleId, permission_id: p.id })))
+    .execute();
+
   for (const course of courses) {
     await database
       .insertInto("courses")

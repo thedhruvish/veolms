@@ -2,6 +2,14 @@ import type { Generated } from "kysely";
 
 export type CourseStatus = "draft" | "published" | "archived";
 
+export type OtpIdentifierType = "email" | "phone";
+
+export type OtpPurpose =
+  | "login"
+  | "registration"
+  | "email_verification"
+  | "phone_verification";
+
 export interface CourseTable {
   id: string;
   slug: string;
@@ -13,6 +21,144 @@ export interface CourseTable {
   updated_at: Generated<Date>;
 }
 
+export interface AcademyTable {
+  id: string;
+  name: string;
+  logo_url: string | null;
+  custom_domain: string | null;
+  setup_completed: Generated<boolean>;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export interface UserTable {
+  id: string;
+  email: string | null;
+  phone_no: string | null;
+  username: string;
+  display_name: string;
+  email_verified_at: Date | null;
+  mfa_mandatory: Generated<boolean>;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export interface OtpCodeTable {
+  id: string;
+  identifier: string;
+  identifier_type: OtpIdentifierType;
+  purpose: OtpPurpose;
+  code_hash: string;
+  attempts: Generated<number>;
+  expires_at: Date;
+  consumed_at: Date | null;
+  created_at: Generated<Date>;
+}
+
+export interface UserTotpCredentialTable {
+  id: string;
+  user_id: string;
+  secret_encrypted: string;
+  enabled: Generated<boolean>;
+  last_used_step: string | null;
+  failed_attempts: Generated<number>;
+  locked_until: Date | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export interface MfaBackupCodeTable {
+  id: string;
+  user_id: string;
+  code_hash: string;
+  used_at: Date | null;
+  created_at: Generated<Date>;
+}
+
+export interface WebauthnChallengeTable {
+  id: string;
+  user_id: string | null;
+  challenge: string;
+  type: string;
+  expires_at: Date;
+  consumed_at: Date | null;
+  created_at: Generated<Date>;
+}
+
+export interface PasskeyTable {
+  id: string;
+  user_id: string;
+  credential_id: string;
+  public_key: string;
+  counter: Generated<number>;
+  transports: string | null;
+  created_at: Generated<Date>;
+}
+
+export interface RoleTable {
+  id: string;
+  name: string;
+  description: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export interface PermissionTable {
+  id: string;
+  name: string;
+  description: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export interface UserRoleTable {
+  user_id: string;
+  role_id: string;
+  created_at: Generated<Date>;
+}
+
+export interface RolePermissionTable {
+  role_id: string;
+  permission_id: string;
+  created_at: Generated<Date>;
+}
+
+export interface SessionTable {
+  id: string;
+  user_id: string;
+  token_hash: string;
+  ip_address: string | null;
+  user_agent: string | null;
+  mfa_verified: boolean;
+  revoked_at: Date | null;
+  expires_at: Date;
+  last_used_at: Generated<Date>;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export interface OauthAccountTable {
+  id: string;
+  user_id: string;
+  provider: string;
+  provider_user_id: string;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
 export interface Database {
+  academy: AcademyTable;
   courses: CourseTable;
+  users: UserTable;
+  roles: RoleTable;
+  permissions: PermissionTable;
+  user_roles: UserRoleTable;
+  role_permissions: RolePermissionTable;
+  sessions: SessionTable;
+  oauth_accounts: OauthAccountTable;
+  otp_codes: OtpCodeTable;
+  passkeys: PasskeyTable;
+  user_totp_credentials: UserTotpCredentialTable;
+  mfa_backup_codes: MfaBackupCodeTable;
+  webauthn_challenges: WebauthnChallengeTable;
 }
