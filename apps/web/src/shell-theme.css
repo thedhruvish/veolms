@@ -10756,3 +10756,289 @@ html:has(.settings-profile__privacy-dialog[open]) {
 :root[data-theme="light"] .access-rules-switch.is-active {
   background: var(--accent);
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Pricing Step Styles
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.pricing-container {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.pricing-top-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.pricing-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+  padding: 20px 22px 24px;
+  background: var(--surface);
+  transition: opacity 0.2s ease;
+}
+
+.pricing-card.is-disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.pricing-card__header {
+  margin-bottom: 18px;
+}
+
+.pricing-card__header h3 {
+  margin: 0 0 4px;
+  color: var(--text);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.pricing-card__header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.83rem;
+}
+
+.pricing-options-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pricing-radio-option {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  user-select: none;
+}
+
+.pricing-radio-option:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.pricing-radio-option.is-selected {
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+
+.pricing-radio-circle {
+  display: flex;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+  border: 1.5px solid var(--muted);
+  border-radius: 50%;
+  transition: border-color 0.15s ease;
+}
+
+.pricing-radio-option.is-selected .pricing-radio-circle {
+  border-color: var(--accent);
+}
+
+.pricing-radio-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.pricing-radio-text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pricing-radio-text strong {
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.pricing-radio-text p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.pricing-fields-group {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.pricing-input-prefix-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.pricing-currency-prefix {
+  position: absolute;
+  left: 14px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.pricing-input-prefix-wrap input {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 10px 14px 10px 32px;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.22);
+  font-size: 0.9rem;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.pricing-input-prefix-wrap input:focus {
+  border-color: var(--accent);
+}
+
+.pricing-input-hint {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+/* Discount Calculation Row */
+.pricing-discount-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 2px;
+}
+
+.pricing-discount-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 6px 12px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.82rem;
+  font-weight: 700;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.pricing-discount-badge.is-active {
+  border-color: rgba(34, 197, 94, 0.4);
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.12);
+}
+
+.pricing-discount-label {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+/* Coupons Banner Card */
+.pricing-coupons-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 16px 22px;
+  background: var(--surface);
+}
+
+.pricing-coupons-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.pricing-coupons-icon {
+  display: flex;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.pricing-coupons-left strong {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 650;
+}
+
+.pricing-coupons-left p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.pricing-coupons-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  border-radius: 9px;
+  padding: 9px 18px;
+  color: #ffffff;
+  background: #6366f1;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.pricing-coupons-btn:hover {
+  background: #4f46e5;
+}
+
+/* Light Mode Overrides for Pricing */
+:root[data-theme="light"] .pricing-card,
+:root[data-theme="light"] .pricing-coupons-card {
+  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+}
+
+:root[data-theme="light"] .pricing-radio-option {
+  border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+  background: var(--surface);
+}
+
+:root[data-theme="light"] .pricing-radio-option:hover {
+  background: color-mix(in srgb, var(--text) 3%, transparent);
+}
+
+:root[data-theme="light"] .pricing-radio-option.is-selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+:root[data-theme="light"] .pricing-input-prefix-wrap input {
+  border: 1px solid color-mix(in srgb, var(--text) 16%, transparent);
+  background: var(--surface);
+}
