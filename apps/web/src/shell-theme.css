@@ -11042,3 +11042,353 @@ html:has(.settings-profile__privacy-dialog[open]) {
   border: 1px solid color-mix(in srgb, var(--text) 16%, transparent);
   background: var(--surface);
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Extras Step Styles
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.extras-container {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.extras-top-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.extras-card {
+  display: flex;
+  flex-direction: column;
+  height: fit-content;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+  padding: 20px 22px 24px;
+  background: var(--surface);
+}
+
+.extras-card__header {
+  margin-bottom: 18px;
+}
+
+.extras-card__header h3 {
+  margin: 0 0 4px;
+  color: var(--text);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.extras-card__header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.83rem;
+}
+
+/* Summary Stats Boxes Grid */
+.extras-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.extras-stat-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 14px 12px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.extras-stat-icon {
+  display: flex;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  color: #6366f1;
+  background: rgba(99, 102, 241, 0.14);
+}
+
+.extras-stat-icon--purple {
+  color: #a855f7;
+  background: rgba(168, 85, 247, 0.14);
+}
+
+.extras-stat-icon--blue {
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.14);
+}
+
+.extras-stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.extras-stat-info strong {
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+.extras-stat-info span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 500;
+}
+
+/* Additional Inclusions Section */
+.extras-inclusions-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.extras-inclusions-header h4 {
+  margin: 0 0 2px;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.extras-inclusions-header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.extras-inclusions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.extras-inclusion-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.extras-inclusion-input {
+  flex: 1 1 auto;
+  border: none;
+  color: var(--text);
+  background: transparent;
+  font-size: 0.86rem;
+  font-weight: 500;
+  outline: none;
+}
+
+.extras-add-inclusion-btn {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 9px;
+  padding: 10px 16px;
+  width: 100%;
+  justify-content: center;
+  color: var(--accent);
+  background: rgba(255, 255, 255, 0.015);
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.extras-add-inclusion-btn:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+/* Certificate Settings */
+.extras-cert-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 14px 18px;
+  background: rgba(255, 255, 255, 0.02);
+  margin-bottom: 18px;
+}
+
+.extras-cert-toggle-row strong {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.extras-cert-toggle-row p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.extras-cert-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  transition: opacity 0.2s ease;
+}
+
+.extras-cert-controls.is-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.extras-control-sub {
+  margin: 2px 0 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.extras-issuance-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.extras-percentage-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.extras-percentage-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.extras-percent-symbol {
+  color: var(--text);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.extras-custom-rule-input-wrap {
+  margin-top: 8px;
+  width: 100%;
+}
+
+.extras-custom-rule-input {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 7px 12px;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.25);
+  font-size: 0.84rem;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.extras-custom-rule-input:focus {
+  border-color: var(--accent);
+}
+
+.extras-delivery-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 14px;
+}
+
+.extras-delivery-toggle-row strong {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+
+.extras-delivery-toggle-row p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.extras-manual-gen-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 14px;
+}
+
+.extras-manual-gen-group strong {
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+
+.extras-manual-gen-group p {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.extras-gen-btn {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.extras-gen-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Light Mode Overrides for Extras */
+:root[data-theme="light"] .extras-card {
+  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+}
+
+:root[data-theme="light"] .extras-stat-box {
+  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+  background: color-mix(in srgb, var(--canvas) 50%, var(--surface));
+}
+
+:root[data-theme="light"] .extras-inclusion-row {
+  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+  background: var(--surface);
+}
+
+:root[data-theme="light"] .extras-cert-toggle-row {
+  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+  background: var(--surface);
+}
+
+:root[data-theme="light"] .extras-custom-rule-input {
+  border: 1px solid color-mix(in srgb, var(--text) 16%, transparent);
+  background: var(--surface);
+}
