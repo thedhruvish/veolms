@@ -80,10 +80,42 @@ export interface CourseCreatePageProps {
 
 export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   const [activeStep, setActiveStep] = useState<CourseWizardStepId>("basics");
-  const [slideDirection, setSlideDirection] = useState<"right" | "left">("right");
+  const [slideDirection, setSlideDirection] = useState<"right" | "left">(
+    "right",
+  );
 
-  const [indicatorStyle, setIndicatorStyle] = useState<{ left: number; width: number }>({ left: 0, width: 0 });
+  const [indicatorStyle, setIndicatorStyle] = useState<{
+    left: number;
+    width: number;
+  }>({ left: 0, width: 0 });
   const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
+  const stepsNavRef = useRef<HTMLElement | null>(null);
+  const [isNavMouseDown, setIsNavMouseDown] = useState(false);
+  const [navStartX, setNavStartX] = useState(0);
+  const [navScrollLeft, setNavScrollLeft] = useState(0);
+
+  const handleNavMouseDown = (e: React.MouseEvent) => {
+    if (!stepsNavRef.current) return;
+    setIsNavMouseDown(true);
+    setNavStartX(e.pageX - stepsNavRef.current.offsetLeft);
+    setNavScrollLeft(stepsNavRef.current.scrollLeft);
+  };
+
+  const handleNavMouseLeave = () => {
+    setIsNavMouseDown(false);
+  };
+
+  const handleNavMouseUp = () => {
+    setIsNavMouseDown(false);
+  };
+
+  const handleNavMouseMove = (e: React.MouseEvent) => {
+    if (!isNavMouseDown || !stepsNavRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - stepsNavRef.current.offsetLeft;
+    const walk = (x - navStartX) * 1.5;
+    stepsNavRef.current.scrollLeft = navScrollLeft - walk;
+  };
 
   useEffect(() => {
     const activeEl = tabRefs.current[activeStep];
@@ -92,6 +124,19 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
         left: activeEl.offsetLeft,
         width: activeEl.offsetWidth,
       });
+      // Automatically scroll active tab into view on mobile/narrow screens
+      if (stepsNavRef.current && activeEl) {
+        const nav = stepsNavRef.current;
+        const navWidth = nav.offsetWidth;
+        const elLeft = activeEl.offsetLeft;
+        const elWidth = activeEl.offsetWidth;
+        if (elLeft < nav.scrollLeft || elLeft + elWidth > nav.scrollLeft + navWidth) {
+          nav.scrollTo({
+            left: elLeft - navWidth / 2 + elWidth / 2,
+            behavior: "smooth",
+          });
+        }
+      }
     }
   }, [activeStep]);
 
@@ -258,7 +303,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     scheduleTime: "10:00",
   });
 
-  const [publishValidationError, setPublishValidationError] = useState<string | null>(null);
+  const [publishValidationError, setPublishValidationError] = useState<
+    string | null
+  >(null);
 
   // Auto-hide validation error message after 3.5 seconds
   useEffect(() => {
@@ -286,14 +333,19 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   });
 
   // Extras Inclusions Handlers
-  const [draggedInclusionIndex, setDraggedInclusionIndex] = useState<number | null>(null);
+  const [draggedInclusionIndex, setDraggedInclusionIndex] = useState<
+    number | null
+  >(null);
 
   const handleAddInclusion = () => {
     setExtras((prev) => ({
       ...prev,
       inclusions: [
         ...prev.inclusions,
-        { id: `inc-${Date.now()}`, text: `New Inclusion ${prev.inclusions.length + 1}` },
+        {
+          id: `inc-${Date.now()}`,
+          text: `New Inclusion ${prev.inclusions.length + 1}`,
+        },
       ],
     }));
   };
@@ -302,7 +354,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     setExtras((prev) => ({
       ...prev,
       inclusions: prev.inclusions.map((item) =>
-        item.id === id ? { ...item, text } : item
+        item.id === id ? { ...item, text } : item,
       ),
     }));
   };
@@ -320,7 +372,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
   const handleInclusionDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
-    if (draggedInclusionIndex === null || draggedInclusionIndex === index) return;
+    if (draggedInclusionIndex === null || draggedInclusionIndex === index)
+      return;
     setExtras((prev) => {
       const copy = [...prev.inclusions];
       const [moved] = copy.splice(draggedInclusionIndex, 1);
@@ -338,7 +391,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
   // Certificate Handlers
   const handleToggleCertificate = () => {
-    setExtras((prev) => ({ ...prev, enableCertificate: !prev.enableCertificate }));
+    setExtras((prev) => ({
+      ...prev,
+      enableCertificate: !prev.enableCertificate,
+    }));
   };
 
   const handleCertificateTemplateChange = (template: string) => {
@@ -739,10 +795,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   );
 
   // Derived Checklist Validation
-  const isBasicsValid = courseTitle.trim().length > 0 && courseDescription.trim().length > 0;
+  const isBasicsValid =
+    courseTitle.trim().length > 0 && courseDescription.trim().length > 0;
   const isCurriculumValid = totalSections > 0;
-  const isAccessRulesValid = accessRules.accessType === "everyone" || accessRules.requirements.length > 0;
-  const isPricingValid = pricing.pricingType === "free" || (parseFloat(pricing.sellingPrice.replace(/,/g, "")) > 0);
+  const isAccessRulesValid =
+    accessRules.accessType === "everyone" ||
+    accessRules.requirements.length > 0;
+  const isPricingValid =
+    pricing.pricingType === "free" ||
+    parseFloat(pricing.sellingPrice.replace(/,/g, "")) > 0;
   const isExtrasValid = true;
 
   const isCourseReadyToPublish =
@@ -754,17 +815,33 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
   const handleFinalPublishCourse = () => {
     if (!isCourseReadyToPublish) {
-      if (!isBasicsValid) setPublishValidationError("Please fill out required Basic Information fields (Title and Description).");
-      else if (!isCurriculumValid) setPublishValidationError("Please add at least one Section to the Curriculum.");
-      else if (!isAccessRulesValid) setPublishValidationError("Please configure at least one prerequisite requirement or select Everyone.");
-      else if (!isPricingValid) setPublishValidationError("Please set a valid Selling Price for paid course.");
+      if (!isBasicsValid)
+        setPublishValidationError(
+          "Please fill out required Basic Information fields (Title and Description).",
+        );
+      else if (!isCurriculumValid)
+        setPublishValidationError(
+          "Please add at least one Section to the Curriculum.",
+        );
+      else if (!isAccessRulesValid)
+        setPublishValidationError(
+          "Please configure at least one prerequisite requirement or select Everyone.",
+        );
+      else if (!isPricingValid)
+        setPublishValidationError(
+          "Please set a valid Selling Price for paid course.",
+        );
       return;
     }
 
     setPublishValidationError(null);
     setIsPublished(true);
     if (typeof window !== "undefined") {
-      alert(isPublished ? "Course updated successfully!" : "Course successfully published!");
+      alert(
+        isPublished
+          ? "Course updated successfully!"
+          : "Course successfully published!",
+      );
     }
   };
 
@@ -784,7 +861,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
           <div className="course-wizard-header__title-group">
             <div className="course-wizard-header__title-row">
               <h1>{isPublished ? "Edit Course" : "Create New Course"}</h1>
-              <span className={`course-wizard-status-badge ${isPublished ? "is-published" : ""}`}>
+              <span
+                className={`course-wizard-status-badge ${isPublished ? "is-published" : ""}`}
+              >
                 {isPublished ? "Published" : "Draft"}
               </span>
             </div>
@@ -805,7 +884,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
         </div>
 
         {/* Wizard Steps Navigation */}
-        <nav className="course-wizard-steps" aria-label="Course creation steps">
+        <nav
+          ref={stepsNavRef}
+          className="course-wizard-steps"
+          aria-label="Course creation steps"
+          onMouseDown={handleNavMouseDown}
+          onMouseLeave={handleNavMouseLeave}
+          onMouseUp={handleNavMouseUp}
+          onMouseMove={handleNavMouseMove}
+        >
           <div
             className="course-wizard-active-indicator"
             style={{
@@ -825,7 +912,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                 type="button"
                 className={`course-wizard-step-tab ${isActive ? "is-active" : ""}`}
                 onClick={() => {
-                  const currentIdx = WIZARD_STEPS.findIndex((s) => s.id === activeStep);
+                  const currentIdx = WIZARD_STEPS.findIndex(
+                    (s) => s.id === activeStep,
+                  );
                   if (idx > currentIdx) setSlideDirection("right");
                   else if (idx < currentIdx) setSlideDirection("left");
                   setActiveStep(step.id);
@@ -840,7 +929,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
       </header>
 
       {/* Scrollable Step Content Region */}
-      <div className={`course-wizard-content slide-from-${slideDirection}`} key={activeStep}>
+      <div
+        className={`course-wizard-content slide-from-${slideDirection}`}
+        key={activeStep}
+      >
         {activeStep === "basics" ? (
           <div className="course-wizard-body">
             {/* Left Column: Form Sections */}
@@ -2006,7 +2098,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     </div>
                     <div className="pricing-radio-text">
                       <strong>Free</strong>
-                      <p>Anyone who can access the course can enroll for free.</p>
+                      <p>
+                        Anyone who can access the course can enroll for free.
+                      </p>
                     </div>
                   </div>
 
@@ -2054,11 +2148,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                         type="text"
                         disabled={pricing.pricingType === "free"}
                         value={pricing.sellingPrice}
-                        onChange={(e) => handleSellingPriceChange(e.target.value)}
+                        onChange={(e) =>
+                          handleSellingPriceChange(e.target.value)
+                        }
                         placeholder="1,999"
                       />
                     </div>
-                    <p className="pricing-input-hint">This is the price learners will pay.</p>
+                    <p className="pricing-input-hint">
+                      This is the price learners will pay.
+                    </p>
                   </div>
 
                   {/* Original Price Field */}
@@ -2071,17 +2169,25 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                         type="text"
                         disabled={pricing.pricingType === "free"}
                         value={pricing.originalPrice}
-                        onChange={(e) => handleOriginalPriceChange(e.target.value)}
+                        onChange={(e) =>
+                          handleOriginalPriceChange(e.target.value)
+                        }
                         placeholder="2,999"
                       />
                     </div>
-                    <p className="pricing-input-hint">Enter original price to show discount.</p>
+                    <p className="pricing-input-hint">
+                      Enter original price to show discount.
+                    </p>
                   </div>
 
                   {/* Dynamic Discount Calculation Badge */}
                   {(() => {
-                    const sell = parseFloat(pricing.sellingPrice.replace(/,/g, ""));
-                    const orig = parseFloat(pricing.originalPrice.replace(/,/g, ""));
+                    const sell = parseFloat(
+                      pricing.sellingPrice.replace(/,/g, ""),
+                    );
+                    const orig = parseFloat(
+                      pricing.originalPrice.replace(/,/g, ""),
+                    );
                     let discountPercent = 0;
                     let isValidDiscount = false;
 
@@ -2091,7 +2197,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       sell > 0 &&
                       orig > sell
                     ) {
-                      discountPercent = Math.round(((orig - sell) / orig) * 100);
+                      discountPercent = Math.round(
+                        ((orig - sell) / orig) * 100,
+                      );
                       isValidDiscount = discountPercent > 0;
                     }
 
@@ -2129,7 +2237,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                 </div>
                 <div>
                   <strong>Coupons</strong>
-                  <p>Create and manage coupon codes separately from the Coupons section.</p>
+                  <p>
+                    Create and manage coupon codes separately from the Coupons
+                    section.
+                  </p>
                 </div>
               </div>
 
@@ -2154,7 +2265,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
               <div className="extras-card">
                 <div className="extras-card__header">
                   <h3>1. Certificates</h3>
-                  <p>Configure how certificates will be issued for this course.</p>
+                  <p>
+                    Configure how certificates will be issued for this course.
+                  </p>
                 </div>
 
                 {/* Enable Certificate Toggle Row */}
@@ -2186,7 +2299,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   {/* Template Selector */}
                   <div className="course-wizard-form-group">
                     <label>Certificate template</label>
-                    <p className="extras-control-sub">Choose a layout for your certificate.</p>
+                    <p className="extras-control-sub">
+                      Choose a layout for your certificate.
+                    </p>
                     <ThemedSelect
                       value={extras.certificateTemplate}
                       onValueChange={handleCertificateTemplateChange}
@@ -2203,13 +2318,17 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   {/* Certificate Issuance Options */}
                   <div className="course-wizard-form-group">
                     <label>Certificate issuance</label>
-                    <p className="extras-control-sub">Choose when the certificate should be issued.</p>
+                    <p className="extras-control-sub">
+                      Choose when the certificate should be issued.
+                    </p>
 
                     <div className="extras-issuance-options">
                       {/* Option 1: On course completion */}
                       <div
                         className={`access-rules-radio-option ${
-                          extras.issuanceType === "completion" ? "is-selected" : ""
+                          extras.issuanceType === "completion"
+                            ? "is-selected"
+                            : ""
                         }`}
                         onClick={() => handleIssuanceTypeChange("completion")}
                       >
@@ -2220,14 +2339,19 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                         </div>
                         <div className="access-rules-radio-text">
                           <strong>On course completion</strong>
-                          <p>Issue certificate when the learner completes all lessons.</p>
+                          <p>
+                            Issue certificate when the learner completes all
+                            lessons.
+                          </p>
                         </div>
                       </div>
 
                       {/* Option 2: Minimum completion percentage */}
                       <div
                         className={`access-rules-radio-option ${
-                          extras.issuanceType === "percentage" ? "is-selected" : ""
+                          extras.issuanceType === "percentage"
+                            ? "is-selected"
+                            : ""
                         }`}
                         onClick={() => handleIssuanceTypeChange("percentage")}
                       >
@@ -2252,7 +2376,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                   value={extras.minCompletionPercentage}
                                   onChange={(e) =>
                                     handleMinPercentageChange(
-                                      parseInt(e.target.value, 10)
+                                      parseInt(e.target.value, 10),
                                     )
                                   }
                                 />
@@ -2260,7 +2384,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                               </div>
                             )}
                           </div>
-                          <p>Issue certificate when learner reaches the selected percentage.</p>
+                          <p>
+                            Issue certificate when learner reaches the selected
+                            percentage.
+                          </p>
                         </div>
                       </div>
 
@@ -2278,7 +2405,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                         </div>
                         <div className="access-rules-radio-text">
                           <strong>Custom rule</strong>
-                          <p>Define your own custom rule for certificate issuance.</p>
+                          <p>
+                            Define your own custom rule for certificate
+                            issuance.
+                          </p>
 
                           {extras.issuanceType === "custom" && (
                             <div
@@ -2367,7 +2497,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                 <div className="extras-inclusions-section">
                   <div className="extras-inclusions-header">
                     <h4>Additional inclusions</h4>
-                    <p>Add any additional benefits your learners will get with this course.</p>
+                    <p>
+                      Add any additional benefits your learners will get with
+                      this course.
+                    </p>
                   </div>
 
                   <div className="extras-inclusions-list">
@@ -2380,7 +2513,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                         onDragOver={(e) => handleInclusionDragOver(e, incIndex)}
                         onDragEnd={handleInclusionDragEnd}
                       >
-                        <span className="curriculum-drag-handle" title="Drag to reorder inclusion">
+                        <span
+                          className="curriculum-drag-handle"
+                          title="Drag to reorder inclusion"
+                        >
                           <DotsSixVertical size={18} />
                         </span>
                         <input
@@ -2431,7 +2567,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                 <div className="publish-form-group">
                   <label>Course status</label>
                   <div className="publish-status-display">
-                    <span className={`publish-status-tag ${isPublished ? "is-published" : "is-draft"}`}>
+                    <span
+                      className={`publish-status-tag ${isPublished ? "is-published" : "is-draft"}`}
+                    >
                       {isPublished ? "Published" : "Draft"}
                     </span>
                   </div>
@@ -2454,9 +2592,18 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       }))
                     }
                     options={[
-                      ["public", "Public — Anyone on the platform can discover and enroll in this course."],
-                      ["private", "Private — Only invited students can access this course."],
-                      ["unlisted", "Unlisted — Only users with a direct link can view this course."],
+                      [
+                        "public",
+                        "Public — Anyone on the platform can discover and enroll in this course.",
+                      ],
+                      [
+                        "private",
+                        "Private — Only invited students can access this course.",
+                      ],
+                      [
+                        "unlisted",
+                        "Unlisted — Only users with a direct link can view this course.",
+                      ],
                     ]}
                     ariaLabel="Select course visibility"
                     triggerClassName="course-wizard-select-trigger"
@@ -2471,10 +2618,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     {/* Option 1: Publish now */}
                     <div
                       className={`access-rules-radio-option ${
-                        publishSettings.scheduleOption === "now" ? "is-selected" : ""
+                        publishSettings.scheduleOption === "now"
+                          ? "is-selected"
+                          : ""
                       }`}
                       onClick={() =>
-                        setPublishSettings((prev) => ({ ...prev, scheduleOption: "now" }))
+                        setPublishSettings((prev) => ({
+                          ...prev,
+                          scheduleOption: "now",
+                        }))
                       }
                     >
                       <div className="access-rules-radio-circle">
@@ -2491,10 +2643,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     {/* Option 2: Schedule for later */}
                     <div
                       className={`access-rules-radio-option ${
-                        publishSettings.scheduleOption === "later" ? "is-selected" : ""
+                        publishSettings.scheduleOption === "later"
+                          ? "is-selected"
+                          : ""
                       }`}
                       onClick={() =>
-                        setPublishSettings((prev) => ({ ...prev, scheduleOption: "later" }))
+                        setPublishSettings((prev) => ({
+                          ...prev,
+                          scheduleOption: "later",
+                        }))
                       }
                     >
                       <div className="access-rules-radio-circle">
@@ -2512,7 +2669,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                             onClick={(e) => e.stopPropagation()}
                           >
                             <div className="publish-date-input-wrap">
-                              <Calendar size={16} className="publish-input-icon" />
+                              <Calendar
+                                size={16}
+                                className="publish-input-icon"
+                              />
                               <input
                                 type="date"
                                 className="access-rules-date-input"
@@ -2550,7 +2710,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                 <div className="publish-info-box">
                   <Info size={18} weight="bold" className="publish-info-icon" />
                   <p>
-                    Students will only see this course if they meet the access rules you have configured.
+                    Students will only see this course if they meet the access
+                    rules you have configured.
                   </p>
                 </div>
               </div>
@@ -2592,7 +2753,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       <CheckCircle
                         size={20}
                         weight="fill"
-                        className={isCurriculumValid ? "is-valid" : "is-invalid"}
+                        className={
+                          isCurriculumValid ? "is-valid" : "is-invalid"
+                        }
                       />
                       <strong>Curriculum</strong>
                     </div>
@@ -2613,7 +2776,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       <CheckCircle
                         size={20}
                         weight="fill"
-                        className={isAccessRulesValid ? "is-valid" : "is-invalid"}
+                        className={
+                          isAccessRulesValid ? "is-valid" : "is-invalid"
+                        }
                       />
                       <strong>Access Rules</strong>
                     </div>
@@ -2683,7 +2848,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     <div>
                       <strong>Your course is ready to be published!</strong>
                       <p>
-                        Once published, students can see and enroll in this course according to your settings.
+                        Once published, students can see and enroll in this
+                        course according to your settings.
                       </p>
                     </div>
                   </div>
@@ -2694,7 +2860,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     </div>
                     <div>
                       <strong>Course needs attention</strong>
-                      <p>Please fix incomplete sections highlighted above before publishing.</p>
+                      <p>
+                        Please fix incomplete sections highlighted above before
+                        publishing.
+                      </p>
                     </div>
                   </div>
                 )}
@@ -2713,7 +2882,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   </div>
                   <div>
                     <strong>Visible to students</strong>
-                    <p>Students will be able to discover your course on the platform.</p>
+                    <p>
+                      Students will be able to discover your course on the
+                      platform.
+                    </p>
                   </div>
                 </div>
 
@@ -2724,7 +2896,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   </div>
                   <div>
                     <strong>Enrollment starts</strong>
-                    <p>Students who meet the access rules can enroll in your course.</p>
+                    <p>
+                      Students who meet the access rules can enroll in your
+                      course.
+                    </p>
                   </div>
                 </div>
 
@@ -2735,7 +2910,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   </div>
                   <div>
                     <strong>Track performance</strong>
-                    <p>Monitor enrollments, progress, and engagement in real-time.</p>
+                    <p>
+                      Monitor enrollments, progress, and engagement in
+                      real-time.
+                    </p>
                   </div>
                 </div>
 
@@ -2782,7 +2960,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
           <button
             type="button"
             className="course-wizard-btn-primary"
-            onClick={activeStep === "publish" ? handleFinalPublishCourse : undefined}
+            onClick={
+              activeStep === "publish" ? handleFinalPublishCourse : undefined
+            }
           >
             {activeStep === "publish"
               ? isPublished

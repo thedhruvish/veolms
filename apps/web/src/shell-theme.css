@@ -9090,7 +9090,10 @@ html:has(.settings-profile__privacy-dialog[open]) {
   border-radius: 2px;
   background: var(--accent);
   box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 60%, transparent);
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  transition:
+    transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Grid Layout */
@@ -9969,7 +9972,7 @@ html:has(.settings-profile__privacy-dialog[open]) {
 .curriculum-type-card {
   position: relative;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
@@ -9998,7 +10001,7 @@ html:has(.settings-profile__privacy-dialog[open]) {
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  margin-top: 2px;
+  margin-top: 0;
   border: 1.5px solid var(--muted);
   border-radius: 50%;
 }
@@ -10032,6 +10035,7 @@ html:has(.settings-profile__privacy-dialog[open]) {
   color: var(--text);
   font-size: 0.86rem;
   font-weight: 700;
+  line-height: 18px;
 }
 
 .curriculum-type-card__desc {
@@ -10480,7 +10484,7 @@ html:has(.settings-profile__privacy-dialog[open]) {
 .access-rules-radio-option {
   position: relative;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 14px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
@@ -10509,7 +10513,7 @@ html:has(.settings-profile__privacy-dialog[open]) {
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  margin-top: 2px;
+  margin-top: 0;
   border: 1.5px solid var(--muted);
   border-radius: 50%;
   transition: border-color 0.15s ease;
@@ -10537,6 +10541,7 @@ html:has(.settings-profile__privacy-dialog[open]) {
   color: var(--text);
   font-size: 0.9rem;
   font-weight: 650;
+  line-height: 18px;
 }
 
 .access-rules-radio-text p {
@@ -10866,14 +10871,16 @@ html:has(.settings-profile__privacy-dialog[open]) {
 .pricing-radio-option {
   position: relative;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 14px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   padding: 14px 16px;
   background: rgba(255, 255, 255, 0.02);
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
   user-select: none;
 }
 
@@ -10893,7 +10900,7 @@ html:has(.settings-profile__privacy-dialog[open]) {
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  margin-top: 2px;
+  margin-top: 0;
   border: 1.5px solid var(--muted);
   border-radius: 50%;
   transition: border-color 0.15s ease;
@@ -10921,6 +10928,7 @@ html:has(.settings-profile__privacy-dialog[open]) {
   color: var(--text);
   font-size: 0.9rem;
   font-weight: 650;
+  line-height: 18px;
 }
 
 .pricing-radio-text p {
@@ -10994,7 +11002,10 @@ html:has(.settings-profile__privacy-dialog[open]) {
   background: rgba(255, 255, 255, 0.04);
   font-size: 0.82rem;
   font-weight: 700;
-  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .pricing-discount-badge.is-active {
@@ -11259,7 +11270,9 @@ html:has(.settings-profile__privacy-dialog[open]) {
   font-size: 0.84rem;
   font-weight: 600;
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .extras-add-inclusion-btn:hover {
@@ -11612,7 +11625,9 @@ html:has(.settings-profile__privacy-dialog[open]) {
   padding: 12px 16px;
   background: rgba(255, 255, 255, 0.02);
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .publish-checklist-row:hover {
@@ -11850,4 +11865,416 @@ html:has(.settings-profile__privacy-dialog[open]) {
 :root[data-theme="light"] .publish-after-item {
   border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
   background: color-mix(in srgb, var(--canvas) 50%, var(--surface));
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Course Creation Wizard — Mobile Responsive Layout (max-width: 768px)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .course-wizard-header {
+    padding: 16px 16px 0 !important;
+    margin-bottom: 8px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .course-wizard-content {
+    padding: 0 16px 12px !important;
+  }
+
+  .course-wizard-layout {
+    padding-bottom: 0 !important;
+  }
+
+  /* Header rearrange: Back button on top left, Title + Draft badge next to it, Description below */
+  .course-wizard-header__main {
+    position: relative !important;
+    display: block !important;
+    margin-bottom: 12px !important;
+  }
+
+  .course-wizard-header__title-group {
+    margin-left: 48px !important;
+    margin-right: 0 !important;
+    padding-top: 0 !important;
+    width: calc(100% - 48px) !important;
+  }
+
+  .course-wizard-header__title-row {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex-wrap: nowrap !important;
+  }
+
+  .course-wizard-header__title-group h1 {
+    font-size: 1.35rem !important;
+    font-weight: 700 !important;
+    line-height: 1.25 !important;
+  }
+
+  /* Action buttons (Preview, Save Draft, Save Changes) sit naturally below the last content card without an empty gap */
+  .course-wizard-footer {
+    position: static !important;
+    top: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: auto !important;
+    z-index: auto !important;
+    padding: 12px 16px calc(50px + env(safe-area-inset-bottom)) 16px !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .course-wizard-footer__actions {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  .course-wizard-btn-ghost,
+  .course-wizard-btn-draft,
+  .course-wizard-btn-primary {
+    flex: 1 1 0px !important;
+    height: 36px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 8px !important;
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Wizard tabs — single horizontal row, horizontally scrollable with hidden scrollbar */
+  .course-wizard-steps {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-x !important;
+    overscroll-behavior-x: contain !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    padding-top: 4px !important;
+    padding-bottom: 8px !important;
+    margin-bottom: 14px !important;
+    box-sizing: border-box !important;
+  }
+
+  .course-wizard-steps::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  .course-wizard-step-tab {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex: 0 0 auto !important;
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    padding: 10px 16px !important;
+    font-size: 0.82rem !important;
+  }
+
+  /* Single-column main layout */
+  .course-wizard-body {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 18px !important;
+  }
+
+  /* All multi-column grids stack vertically on mobile */
+  .course-wizard-form-row,
+  .course-wizard-media-grid,
+  .curriculum-editor-grid,
+  .curriculum-type-grid,
+  .access-rules-top-grid,
+  .pricing-top-grid,
+  .extras-top-grid,
+  .publish-top-grid,
+  .publish-after-grid,
+  .publish-schedule-grid,
+  .extras-issuance-options {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 14px !important;
+  }
+
+  .course-wizard-card,
+  .course-wizard-preview-card,
+  .access-rules-card,
+  .pricing-card,
+  .extras-card,
+  .publish-card {
+    padding: 16px !important;
+  }
+
+  .access-rules-dates-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  .access-rules-date-arrow {
+    transform: rotate(90deg) !important;
+    align-self: center !important;
+    margin-top: 0 !important;
+  }
+
+  /* Curriculum step mobile layout refinements */
+  .curriculum-header-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  .curriculum-add-section-btn {
+    white-space: nowrap !important;
+    align-self: flex-start !important;
+  }
+
+  .curriculum-section-header {
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+    padding: 12px 14px !important;
+  }
+
+  .curriculum-section-header__left {
+    flex: 1 1 100% !important;
+    min-width: 0 !important;
+    gap: 8px !important;
+  }
+
+  .curriculum-section-title-wrap {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+
+  .curriculum-section-tag {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+
+  .curriculum-section-title {
+    word-break: break-word !important;
+    min-width: 0 !important;
+  }
+
+  .curriculum-section-header__right {
+    width: 100% !important;
+    justify-content: space-between !important;
+    padding-top: 8px !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+  }
+
+  .curriculum-lesson-header {
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+    padding: 10px 12px !important;
+  }
+
+  .curriculum-lesson-header__left {
+    flex: 1 1 100% !important;
+    min-width: 0 !important;
+    gap: 8px !important;
+  }
+
+  .curriculum-lesson-title {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    word-break: break-word !important;
+  }
+
+  .curriculum-lesson-header__right {
+    width: 100% !important;
+    justify-content: space-between !important;
+    padding-top: 8px !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+  }
+
+  .curriculum-editor-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 16px !important;
+  }
+
+  .curriculum-lesson-editor {
+    padding: 0 !important;
+    border-top-color: transparent !important;
+  }
+
+  .curriculum-lesson-editor-wrapper.is-open .curriculum-lesson-editor {
+    padding: 14px 12px 16px !important;
+    border-top-color: rgba(255, 255, 255, 0.06) !important;
+  }
+
+  .curriculum-resources-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .curriculum-source-actions {
+    width: 100% !important;
+    display: flex !important;
+    gap: 8px !important;
+  }
+
+  .curriculum-upload-btn-primary,
+  .curriculum-upload-btn-secondary {
+    flex: 1 1 0px !important;
+    height: 36px !important;
+    padding: 0 10px !important;
+    font-size: 0.78rem !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+    box-sizing: border-box !important;
+  }
+
+  .curriculum-resources-table {
+    display: block !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    border-radius: 8px !important;
+  }
+
+  .curriculum-resources-table::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  .curriculum-resources-table th,
+  .curriculum-resources-table td {
+    padding: 8px 10px !important;
+    font-size: 0.76rem !important;
+    white-space: nowrap !important;
+  }
+
+  /* Coupons Banner Card Mobile Layout */
+  .pricing-coupons-card {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 14px !important;
+    padding: 16px !important;
+  }
+
+  .pricing-coupons-left {
+    align-items: flex-start !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  .pricing-coupons-icon {
+    flex-shrink: 0 !important;
+  }
+
+  .pricing-coupons-btn {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 10px 16px !important;
+    font-size: 0.84rem !important;
+    white-space: nowrap !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Extras Step Mobile Layout Refinements */
+  .extras-stats-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .extras-stat-box {
+    padding: 12px 14px !important;
+    gap: 14px !important;
+  }
+
+  .extras-stat-icon {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  .extras-stat-info strong {
+    font-size: 1.05rem !important;
+  }
+
+  .extras-stat-info span {
+    font-size: 0.8rem !important;
+    white-space: nowrap !important;
+  }
+
+  /* Publish Step Visibility Dropdown Refinements */
+  .course-wizard-select-trigger,
+  .publish-form-group .themed-select__trigger {
+    padding: 12px 16px !important;
+    min-height: 48px !important;
+    border-radius: 12px !important;
+    font-size: 0.88rem !important;
+    line-height: 1.4 !important;
+    text-align: left !important;
+    box-sizing: border-box !important;
+  }
+
+  .publish-form-group {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    margin-bottom: 16px !important;
+  }
+
+  /* Position publish error banner cleanly at top of screen on mobile view */
+  .publish-footer-error-banner {
+    position: fixed !important;
+    top: calc(14px + env(safe-area-inset-top)) !important;
+    left: 16px !important;
+    right: 16px !important;
+    z-index: 100 !important;
+    width: auto !important;
+    margin: 0 !important;
+    padding: 12px 16px !important;
+    background: color-mix(in srgb, #1a0f12 92%, var(--surface)) !important;
+    border: 1px solid rgba(248, 113, 113, 0.45) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(239, 68, 68, 0.2) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    backdrop-filter: blur(16px) !important;
+    font-size: 0.82rem !important;
+    line-height: 1.35 !important;
+    animation: bannerSlideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+}
+
+@keyframes bannerSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
