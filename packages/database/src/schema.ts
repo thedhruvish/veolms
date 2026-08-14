@@ -1,14 +1,8 @@
 import type { Generated } from "kysely";
 
 export type CourseStatus = "draft" | "published" | "archived";
-
 export type OtpIdentifierType = "email" | "phone";
-
-export type OtpPurpose =
-  | "login"
-  | "registration"
-  | "email_verification"
-  | "phone_verification";
+export type OtpPurpose = "login" | "registration" | "email_verification" | "phone_verification";
 
 export interface CourseTable {
   id: string;
@@ -43,15 +37,88 @@ export interface UserTable {
   updated_at: Generated<Date>;
 }
 
+export interface RoleTable {
+  id: string;
+  name: string;
+  description: string | null;
+  last_permission_update: Generated<Date>;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export interface UserRoleTable {
+  user_id: string;
+  role_id: string;
+  created_at: Generated<Date>;
+}
+
+export interface MenuTable {
+  id: string;
+  parent_id: string | null;
+  label: string;
+  route_link: string;
+  icon: string | null;
+  expanded: Generated<boolean>;
+  check_list: string | null;
+  is_both: Generated<boolean>;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export interface PermissionTable {
+  id: string;
+  role_id: string;
+  menu_id: string;
+  can_create: Generated<boolean>;
+  can_read: Generated<boolean>;
+  can_update: Generated<boolean>;
+  can_delete: Generated<boolean>;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export interface SessionTable {
+  id: string;
+  user_id: string;
+  token_hash: string;
+  ip_address: string | null;
+  user_agent: string | null;
+  mfa_verified: Generated<boolean>;
+  revoked_at: Date | null;
+  expires_at: Date;
+  last_used_at: Generated<Date>;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export interface OauthAccountTable {
+  id: string;
+  user_id: string;
+  provider: string;
+  provider_user_id: string;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
 export interface OtpCodeTable {
   id: string;
   identifier: string;
-  identifier_type: OtpIdentifierType;
-  purpose: OtpPurpose;
+  identifier_type: OtpIdentifierType | string;
+  purpose: OtpPurpose | string;
   code_hash: string;
   attempts: Generated<number>;
   expires_at: Date;
   consumed_at: Date | null;
+  created_at: Generated<Date>;
+}
+
+export interface PasskeyTable {
+  id: string;
+  user_id: string;
+  credential_id: string;
+  public_key: string;
+  counter: Generated<number>;
+  transports: string | null;
   created_at: Generated<Date>;
 }
 
@@ -85,75 +152,14 @@ export interface WebauthnChallengeTable {
   created_at: Generated<Date>;
 }
 
-export interface PasskeyTable {
-  id: string;
-  user_id: string;
-  credential_id: string;
-  public_key: string;
-  counter: Generated<number>;
-  transports: string | null;
-  created_at: Generated<Date>;
-}
-
-export interface RoleTable {
-  id: string;
-  name: string;
-  description: string | null;
-  created_at: Generated<Date>;
-  updated_at: Generated<Date>;
-}
-
-export interface PermissionTable {
-  id: string;
-  name: string;
-  description: string | null;
-  created_at: Generated<Date>;
-  updated_at: Generated<Date>;
-}
-
-export interface UserRoleTable {
-  user_id: string;
-  role_id: string;
-  created_at: Generated<Date>;
-}
-
-export interface RolePermissionTable {
-  role_id: string;
-  permission_id: string;
-  created_at: Generated<Date>;
-}
-
-export interface SessionTable {
-  id: string;
-  user_id: string;
-  token_hash: string;
-  ip_address: string | null;
-  user_agent: string | null;
-  mfa_verified: boolean;
-  revoked_at: Date | null;
-  expires_at: Date;
-  last_used_at: Generated<Date>;
-  created_at: Generated<Date>;
-  updated_at: Generated<Date>;
-}
-
-export interface OauthAccountTable {
-  id: string;
-  user_id: string;
-  provider: string;
-  provider_user_id: string;
-  created_at: Generated<Date>;
-  updated_at: Generated<Date>;
-}
-
 export interface Database {
-  academy: AcademyTable;
   courses: CourseTable;
+  academy: AcademyTable;
   users: UserTable;
   roles: RoleTable;
-  permissions: PermissionTable;
   user_roles: UserRoleTable;
-  role_permissions: RolePermissionTable;
+  menus: MenuTable;
+  permissions: PermissionTable;
   sessions: SessionTable;
   oauth_accounts: OauthAccountTable;
   otp_codes: OtpCodeTable;
@@ -161,55 +167,4 @@ export interface Database {
   user_totp_credentials: UserTotpCredentialTable;
   mfa_backup_codes: MfaBackupCodeTable;
   webauthn_challenges: WebauthnChallengeTable;
-}
-
-export interface RoleTable {
-  id: Generated<number>;
-  roleName: string;
-  lastPermissionUpdate: Generated<Date>;
-  createdAt: Generated<Date>;
-  updatedAt: Generated<Date>;
-}
-
-export interface MenuTable {
-  id: Generated<number>;
-  parentId: number | null;
-  label: string;
-  routeLink: string;
-  icon: string | null;
-  expanded: Generated<boolean>;
-  checkList: string | null;
-  isBoth: Generated<boolean>;
-  createdAt: Generated<Date>;
-  updatedAt: Generated<Date>;
-}
-
-export interface PermissionTable {
-  id: Generated<number>;
-  roleId: number;
-  menuId: number;
-  canCreate: Generated<boolean>;
-  canRead: Generated<boolean>;
-  canUpdate: Generated<boolean>;
-  canDelete: Generated<boolean>;
-  createdAt: Generated<Date>;
-  updatedAt: Generated<Date>;
-}
-
-export interface UserTable {
-  id: Generated<number>;
-  userName: string;
-  firstName: string;
-  lastName: string | null;
-  email: string;
-  password: string;
-  roleId: number;
-  dateOfBirth: string | null;
-  phone: string | null;
-  address: string | null;
-  avatarAssetId: number | null;
-  passwordResetTokenHash: string | null;
-  passwordResetExpires: Date | null;
-  createdAt: Generated<Date>;
-  updatedAt: Generated<Date>;
 }
