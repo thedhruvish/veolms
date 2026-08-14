@@ -84,24 +84,38 @@ export function createAuthMiddleware(
 
     const roles = userRoles.map((r) => r.name);
 
-    // Resolve permissions
-    const rolePermissions = await database
+    // Resolve permissions from the new RBAC schema (menus + boolean flags)
+    const permissionsRows = await database
       .selectFrom("user_roles")
       .innerJoin(
-        "role_permissions",
-        "role_permissions.role_id",
+        "permissions",
+        "permissions.role_id",
         "user_roles.role_id",
       )
       .innerJoin(
-        "permissions",
-        "permissions.id",
-        "role_permissions.permission_id",
+        "menus",
+        "menus.id",
+        "permissions.menu_id",
       )
-      .select("permissions.name")
+      .select([
+        "menus.route_link",
+        "permissions.can_create",
+        "permissions.can_read",
+        "permissions.can_update",
+        "permissions.can_delete"
+      ])
       .where("user_roles.user_id", "=", user.id)
       .execute();
 
-    const permissions = Array.from(new Set(rolePermissions.map((p) => p.name)));
+    const permsSet = new Set<string>();
+    for (const row of permissionsRows) {
+      const baseRoute = row.route_link.replace(/^\//, '') || "home";
+      if (row.can_create) permsSet.add(`${baseRoute}:create`);
+      if (row.can_read) permsSet.add(`${baseRoute}:read`);
+      if (row.can_update) permsSet.add(`${baseRoute}:update`);
+      if (row.can_delete) permsSet.add(`${baseRoute}:delete`);
+    }
+    const permissions = Array.from(permsSet);
 
     // Query passkeys count
     const passkeyCount = await database
