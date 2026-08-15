@@ -10864,6 +10864,188 @@ html:has(.settings-profile__privacy-dialog[open]) {
   }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   Course Overview Full Preview Modal (.course-overview-preview-modal-*)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.course-overview-preview-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.82);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  animation: deleteModalFadeIn 0.2s ease-out;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .course-overview-preview-modal-overlay {
+    padding: 0;
+  }
+}
+
+.course-overview-preview-modal-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 1380px;
+  height: 100%;
+  max-height: 94vh;
+  margin: auto;
+  border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--surface) 24%, var(--canvas));
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  animation: deleteModalPopIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (max-width: 640px) {
+  .course-overview-preview-modal-card {
+    max-height: 100vh;
+    height: 100vh;
+    border-radius: 0;
+    border: none;
+  }
+}
+
+.course-overview-preview-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+.course-overview-preview-modal-header__title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.course-overview-preview-modal-header__title-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.course-overview-preview-modal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--accent-border, color-mix(in srgb, var(--accent) 35%, transparent));
+  background: var(--accent-soft, color-mix(in srgb, var(--accent) 15%, transparent));
+  color: var(--accent-ink, var(--accent));
+  font-size: 0.7rem;
+  font-weight: 650;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.course-overview-preview-modal-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.course-overview-preview-modal-close-btn:hover {
+  border-color: color-mix(in srgb, var(--text) 24%, transparent);
+  background: var(--hover);
+  color: var(--text);
+}
+
+.course-overview-preview-modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0;
+}
+
+/* Ensure cov-page inside the modal fits gracefully without double outer bounds */
+.course-overview-preview-modal-body .cov-page {
+  height: auto;
+  max-height: none;
+  min-height: 100%;
+  border-radius: 0;
+  background: transparent;
+}
+
+@media (max-width: 640px) {
+  .course-overview-preview-modal-body .cov-page {
+    padding: 16px 14px 40px;
+  }
+}
+
+.course-overview-preview-modal-body .cov-desktop-flow {
+  height: auto;
+  max-height: none;
+  overflow: visible;
+}
+
+.course-overview-preview-modal-body .cov-layout {
+  height: auto;
+  max-height: none;
+}
+
+.course-overview-preview-modal-body .cov-content {
+  overflow-y: visible;
+  padding-right: 8px;
+}
+
+.course-overview-preview-modal-body .cov-right-column {
+  position: sticky;
+  top: 0;
+  height: fit-content;
+}
+
+@media (max-width: 640px) {
+  .course-overview-preview-modal-header {
+    padding: 10px 14px;
+  }
+
+  .course-overview-preview-modal-header__title {
+    gap: 6px;
+  }
+
+  .course-overview-preview-modal-header__title-text {
+    font-size: 0.85rem;
+  }
+
+  .course-overview-preview-modal-badge {
+    font-size: 0.66rem;
+    padding: 2px 7px;
+  }
+}
+
 .delete-modal-close-btn {
   position: absolute;
   top: 16px;

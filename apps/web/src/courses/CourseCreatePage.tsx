@@ -38,6 +38,7 @@ import {
   RocketLaunch,
   Smiley,
   Sparkle,
+  Stack,
   Tag,
   TextB,
   TextItalic,
@@ -52,6 +53,10 @@ import { ThemedSelect } from "../ThemedSelect";
 import type { NavigateTo } from "../routing/navigation";
 
 import { ConfirmDeleteModal } from "../ConfirmDeleteModal";
+import { CourseOverviewPage } from "./CourseOverviewPage";
+import type { CourseInclude, CourseOverviewPricingProps } from "./CourseOverviewPage";
+import type { Course, CourseLevel, CourseCategory } from "./catalogue";
+import type { CourseSection, Lesson } from "../learning/courseContent";
 
 export type CourseWizardStepId =
   "basics" | "curriculum" | "access-rules" | "pricing" | "extras" | "publish";
@@ -305,6 +310,21 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     scheduleDate: "2026-08-20",
     scheduleTime: "10:00",
   });
+
+  // Course Overview Live Full Preview Modal State
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isPreviewModalOpen) {
+        setIsPreviewModalOpen(false);
+      }
+    };
+    if (isPreviewModalOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isPreviewModalOpen]);
 
   const [publishValidationError, setPublishValidationError] = useState<
     string | null
@@ -809,6 +829,101 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     (acc, sec) => acc + sec.lessons.length,
     0,
   );
+
+  // Approximate course duration based on curriculum lessons
+  const computedDuration =
+    totalLessons === 0
+      ? "0h 0m"
+      : totalLessons < 10
+        ? `${Math.floor(totalLessons * 12 / 60)}h ${(totalLessons * 12) % 60}m`
+        : `${Math.floor(totalLessons * 9 / 60)}h ${(totalLessons * 9) % 60}m`;
+
+  // Student-facing Preview Object Adapter
+  const previewCourse: Course = {
+    id: "preview-course",
+    title: courseTitle.trim() || "Course Title",
+    description: courseDescription.trim() || "This is a short description of your course.",
+    level: (difficultyLevel || "Beginner") as CourseLevel,
+    category: (category || "Development") as CourseCategory,
+    sections: Math.max(1, totalSections),
+    lectures: Math.max(1, totalLessons),
+    progress: null,
+    enrolled: false,
+    duration: computedDuration,
+    students: 0,
+    thumbnail: "/assets/instructor-poster.jpg",
+  };
+
+  const previewSections: CourseSection[] =
+    sections.length > 0
+      ? sections.map((sec, secIdx) => ({
+          id: secIdx + 1,
+          title: sec.title.trim() || `Section ${secIdx + 1}`,
+          progress: `0/${sec.lessons.length}`,
+          lessons:
+            sec.lessons.length > 0
+              ? sec.lessons.map((les, lesIdx) => [
+                  lesIdx + 1,
+                  les.title.trim() || `Lesson ${lesIdx + 1}`,
+                  "05:00",
+                  "todo",
+                ])
+              : [
+                  [
+                    1,
+                    `Introduction to ${sec.title.trim() || `Section ${secIdx + 1}`}`,
+                    "05:00",
+                    "todo",
+                  ],
+                ],
+        }))
+      : [
+          {
+            id: 1,
+            title: "Introduction",
+            progress: "0/1",
+            lessons: [[1, "Course Overview", "05:00", "todo"]],
+          },
+        ];
+
+  const previewIncludes: CourseInclude[] = [
+    { icon: Stack, label: `${Math.max(1, totalSections)} Sections` },
+    { icon: BookOpen, label: `${Math.max(1, totalLessons)} Lectures` },
+    { icon: Clock, label: `${computedDuration} On-demand content` },
+    ...(extras.enableCertificate
+      ? [{ icon: Certificate, label: "Certificate of completion" }]
+      : []),
+    ...extras.inclusions
+      .filter((inc) => inc.text.trim().length > 0)
+      .map((inc) => ({
+        icon: CheckCircle,
+        label: inc.text.trim(),
+      })),
+  ];
+
+  const previewPricing: CourseOverviewPricingProps =
+    pricing.pricingType === "free"
+      ? { price: "Free" }
+      : {
+          price: pricing.sellingPrice.trim()
+            ? `₹${pricing.sellingPrice.trim()}`
+            : "₹1,999",
+          originalPrice: pricing.originalPrice.trim()
+            ? `₹${pricing.originalPrice.trim()}`
+            : undefined,
+          discount:
+            pricing.originalPrice.trim() &&
+            pricing.sellingPrice.trim() &&
+            parseFloat(pricing.originalPrice.replace(/,/g, "")) >
+              parseFloat(pricing.sellingPrice.replace(/,/g, ""))
+              ? `${Math.round(
+                  ((parseFloat(pricing.originalPrice.replace(/,/g, "")) -
+                    parseFloat(pricing.sellingPrice.replace(/,/g, ""))) /
+                    parseFloat(pricing.originalPrice.replace(/,/g, ""))) *
+                    100,
+                )}% OFF`
+              : undefined,
+        };
 
   // Derived Checklist Validation
   const isBasicsValid =
@@ -2831,7 +2946,11 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
           </div>
         )}
         <div className="course-wizard-footer__actions">
-          <button type="button" className="course-wizard-btn-ghost">
+          <button
+            type="button"
+            className="course-wizard-btn-ghost"
+            onClick={() => setIsPreviewModalOpen(true)}
+          >
             <Eye size={16} /> Preview
           </button>
           <button type="button" className="course-wizard-btn-draft">
@@ -2862,6 +2981,59 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
           setDeleteModalState((prev) => ({ ...prev, isOpen: false }))
         }
       />
+
+      {/* Realistic Student-Facing Course Overview Full Preview Modal */}
+      {isPreviewModalOpen &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="course-overview-preview-modal-overlay"
+            onClick={() => setIsPreviewModalOpen(false)}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Course Overview Preview"
+          >
+            <div
+              className="course-overview-preview-modal-card"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Top Bar */}
+              <div className="course-overview-preview-modal-header">
+                <div className="course-overview-preview-modal-header__title">
+                  <div className="course-overview-preview-modal-header__title-text">
+                    <Eye size={18} weight="bold" />
+                    <span>Student Course Overview Preview</span>
+                  </div>
+                  <span className="course-overview-preview-modal-badge">
+                    Live Preview (Read-Only)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="course-overview-preview-modal-close-btn"
+                  onClick={() => setIsPreviewModalOpen(false)}
+                  aria-label="Close Preview"
+                >
+                  <X size={18} weight="bold" />
+                </button>
+              </div>
+
+              {/* Modal Body: Render authentic CourseOverviewPage */}
+              <div className="course-overview-preview-modal-body">
+                <CourseOverviewPage
+                  customCourse={previewCourse}
+                  customDescription={courseDescription}
+                  customSections={previewSections}
+                  customIncludes={previewIncludes}
+                  customPricing={previewPricing}
+                  isReadOnlyPreview={true}
+                  onNavigateCourses={() => setIsPreviewModalOpen(false)}
+                />
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
