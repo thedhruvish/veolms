@@ -404,10 +404,10 @@ export function RichTextEditor({
   const updateLinkPopoverPos = () => {
     if (!linkBtnRef.current) return;
     const rect = linkBtnRef.current.getBoundingClientRect();
-    const popoverWidth = 310;
+    const popoverWidth = Math.min(310, window.innerWidth - 24);
     const popoverHeight = 110;
     const margin = 8;
-    const screenPadding = 16;
+    const screenPadding = 12;
     const minTopSpace = 260;
     let left = rect.right - popoverWidth;
     left = Math.max(screenPadding, Math.min(left, window.innerWidth - popoverWidth - screenPadding));
@@ -483,10 +483,10 @@ export function RichTextEditor({
   const updateEmojiPickerPos = () => {
     if (!emojiBtnRef.current) return;
     const rect = emojiBtnRef.current.getBoundingClientRect();
-    const pickerWidth = 320;
+    const pickerWidth = Math.min(320, window.innerWidth - 24);
     const pickerHeight = 360;
     const margin = 8;
-    const screenPadding = 16;
+    const screenPadding = 12;
     let left = rect.right - pickerWidth;
     left = Math.max(screenPadding, Math.min(left, window.innerWidth - pickerWidth - screenPadding));
     const top =
