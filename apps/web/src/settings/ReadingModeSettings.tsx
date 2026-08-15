@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import {
   ArrowCounterClockwise,
-  BookOpenText,
+  Eye,
   Grains,
   ThermometerSimple,
 } from "@phosphor-icons/react";
 import { AppSlider } from "../AppSlider";
+import { ThemedSelect } from "../ThemedSelect";
 import {
   getReadingModeVisuals,
   persistReadingModePreferences,
@@ -15,7 +16,16 @@ import {
   readReadingModePreferences,
 } from "../reading-mode/readingModePreferences";
 import type { ReadingModePreferences } from "../reading-mode/readingModePreferences";
-import { SettingRow, SettingsToggle } from "./SettingsControls";
+import {
+  getReadingModeTemperatureLabel,
+  READING_MODE_COLOR_LABELS,
+  READING_MODE_COLOR_OPTIONS,
+} from "../reading-mode/readingModeUi";
+import {
+  clickContainedSettingsToggle,
+  SettingRow,
+  SettingsToggle,
+} from "./SettingsControls";
 
 type ReadingModePreviewStyle = CSSProperties & {
   "--reading-mode-preview-texture-opacity": string;
@@ -31,11 +41,6 @@ interface ReadingModeRangeProps {
   onChange: (value: number) => void;
 }
 
-const getTemperatureLabel = (value: number): string => {
-  if (value === 50) return "Neutral";
-  return value < 50 ? `${50 - value}% cooler` : `${value - 50}% warmer`;
-};
-
 function ReadingModeRange({
   id,
   label,
@@ -44,7 +49,9 @@ function ReadingModeRange({
   onChange,
 }: ReadingModeRangeProps) {
   const valueText =
-    kind === "temperature" ? getTemperatureLabel(value) : `${value}% texture`;
+    kind === "temperature"
+      ? getReadingModeTemperatureLabel(value)
+      : `${value}% texture`;
 
   return (
     <div className={`settings-reading-mode__range is-${kind}`}>
@@ -106,9 +113,10 @@ function ReadingModePreview({
       </div>
       <div
         className="settings-reading-mode__preview"
+        data-reading-mode-colors={preferences.colors}
         style={style}
         role="img"
-        aria-label={`Reading mode preview: ${getTemperatureLabel(preferences.colorTemperature)}, ${preferences.texture}% texture`}
+        aria-label={`Reading mode preview: ${getReadingModeTemperatureLabel(preferences.colorTemperature)}, ${preferences.texture}% texture, ${READING_MODE_COLOR_LABELS[preferences.colors]}`}
       >
         <div
           className="settings-reading-mode__preview-scene"
@@ -179,29 +187,28 @@ export function ReadingModeSettings() {
 
   return (
     <section className="settings-section settings-reading-mode">
-      <div className="settings-reading-mode__heading">
+      <div
+        className="settings-reading-mode__heading"
+        onClick={clickContainedSettingsToggle}
+      >
         <div>
           <h2>Reading mode</h2>
           <p>Shift the display tone and add a fixed, paper-like grain.</p>
         </div>
-        <button
-          type="button"
-          className={`settings-reading-mode__status ${preferences.enabled ? "is-enabled" : ""}`}
-          aria-label={`Turn reading mode ${preferences.enabled ? "off" : "on"}`}
-          aria-pressed={preferences.enabled}
-          onClick={() => updatePreferences({ enabled: !preferences.enabled })}
-        >
-          {preferences.enabled ? "On" : "Off"}
-        </button>
+        <SettingsToggle
+          checked={preferences.enabled}
+          label={`Turn reading mode ${preferences.enabled ? "off" : "on"}`}
+          onChange={(enabled) => updatePreferences({ enabled })}
+        />
       </div>
 
       <ReadingModePreview preferences={preferences} />
 
       <div className="settings-row-list settings-reading-mode__controls">
         <SettingRow
-          icon={BookOpenText}
+          icon={Eye}
           label="Reading mode"
-          note="Apply your selected temperature and texture across the application"
+          note="Apply your selected temperature, texture, and colors across the application"
         >
           <SettingsToggle
             checked={preferences.enabled}
@@ -239,6 +246,19 @@ export function ReadingModeSettings() {
             onChange={(texture) => updatePreferences({ texture })}
           />
         </SettingRow>
+      </div>
+
+      <div className="settings-reading-mode__colors-row">
+        <label htmlFor="reading-mode-colors">Colors</label>
+        <ThemedSelect
+          id="reading-mode-colors"
+          value={preferences.colors}
+          options={READING_MODE_COLOR_OPTIONS}
+          ariaLabel="Reading mode colors"
+          triggerClassName="settings-reading-mode__colors-select"
+          contentClassName="settings-reading-mode__colors-menu"
+          onValueChange={(colors) => updatePreferences({ colors })}
+        />
       </div>
 
       <button

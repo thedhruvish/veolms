@@ -40,7 +40,7 @@ test.describe("@visual reading mode", () => {
             }),
           },
         });
-        await openApp(page, "/courses");
+        await openApp(page, "/explore-courses");
         await prepareVisualPage(page);
         await expect(page).toHaveScreenshot(
           `reading-mode-${state.id}-${viewport}.png`,
@@ -82,8 +82,12 @@ test.describe("@visual reading mode", () => {
         }),
       },
     });
-    await openApp(page, "/courses");
+    await openApp(page, "/explore-courses");
     await prepareVisualPage(page);
+    await expect(page.locator(".reading-mode-effects__texture")).toHaveCSS(
+      "mix-blend-mode",
+      "multiply",
+    );
     await expect(page).toHaveScreenshot(
       "reading-mode-texture-100-light-desktop.png",
     );
@@ -104,8 +108,10 @@ test.describe("@visual reading mode high density", () => {
           }),
         },
       });
-      await openApp(page, "/courses");
+      await openApp(page, "/explore-courses");
       await prepareVisualPage(page);
+      const textureLayer = page.locator(".reading-mode-effects__texture");
+      await expect(textureLayer).toHaveCSS("background-size", "512px 512px");
       if (texture > 0) {
         await expect
           .poll(() =>
@@ -124,4 +130,41 @@ test.describe("@visual reading mode high density", () => {
       );
     });
   }
+});
+
+test.describe("reading mode extra-high density", () => {
+  test.use({ deviceScaleFactor: 3 });
+
+  test("@visual retains visible grain scale on a DPR3 mobile display", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await installBaselineState(page, {
+      local: {
+        [READING_MODE_STORAGE_KEY]: JSON.stringify({
+          enabled: true,
+          colorTemperature: 50,
+          texture: 100,
+        }),
+      },
+    });
+    await openApp(page, "/explore-courses");
+    await prepareVisualPage(page);
+    await expect(page.locator(".reading-mode-effects__texture")).toHaveCSS(
+      "background-size",
+      "768px 768px",
+    );
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          performance
+            .getEntriesByType("resource")
+            .some((entry) => entry.name.endsWith("reading-mode-grain@3x.png")),
+        ),
+      )
+      .toBe(true);
+    await expect(page).toHaveScreenshot(
+      "reading-mode-texture-100-mobile-dpr3.png",
+    );
+  });
 });

@@ -11,6 +11,11 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { handleRovingTabKeyDown } from "../accessibility/rovingTabFocus";
 import { CommentCard } from "./CommentCard";
 import type { Comment } from "./CommentCard";
+import {
+  isStoredBoolean,
+  isStoredString,
+  useSessionStorageState,
+} from "./useSessionStorageState";
 
 const initialComments: Comment[] = [
   {
@@ -61,10 +66,10 @@ const initialComments: Comment[] = [
 ];
 
 const tabs = [
-  ["Comments", ChatCenteredDots],
-  ["Notes", Notepad],
-  ["Resources", Toolbox],
-  ["Q&A", Question],
+  ["Comments", ChatCenteredDots, "blue"],
+  ["Notes", Notepad, "cyan"],
+  ["Resources", Toolbox, "orange"],
+  ["Q&A", Question, "violet"],
 ] as const;
 
 type Tab = (typeof tabs)[number][0];
@@ -91,14 +96,53 @@ const supplementalContent: Record<
   },
 };
 
-export function Discussion() {
+interface DiscussionProps {
+  persistenceKey: string;
+}
+
+const isStoredComments = (value: unknown): value is Comment[] =>
+  Array.isArray(value) &&
+  value.every(
+    (comment) =>
+      Boolean(comment) &&
+      typeof comment === "object" &&
+      typeof (comment as Comment).id === "number" &&
+      typeof (comment as Comment).name === "string" &&
+      typeof (comment as Comment).time === "string" &&
+      typeof (comment as Comment).avatar === "string" &&
+      typeof (comment as Comment).text === "string" &&
+      typeof (comment as Comment).likes === "number",
+  );
+
+export function Discussion({ persistenceKey }: DiscussionProps) {
+  const storageBase = `veolms-learning-${persistenceKey}-discussion`;
   const [activeTab, setActiveTab] = useState<Tab>("Comments");
-  const [search, setSearch] = useState("");
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [search, setSearch] = useSessionStorageState(
+    `${storageBase}-search`,
+    "",
+    isStoredString,
+  );
+  const [searchOpen, setSearchOpen] = useSessionStorageState(
+    `${storageBase}-search-open`,
+    false,
+    isStoredBoolean,
+  );
   const [searchFocused, setSearchFocused] = useState(false);
   const composerSearchInputRef = useRef<HTMLInputElement>(null);
-  const [draft, setDraft] = useState("");
-  const [comments, setComments] = useState(initialComments);
+  const [draft, setDraft] = useSessionStorageState(
+    `${storageBase}-comment-draft`,
+    "",
+    isStoredString,
+  );
+  const [postedComments, setPostedComments] = useSessionStorageState<Comment[]>(
+    `${storageBase}-posted-comments`,
+    [],
+    isStoredComments,
+  );
+  const [comments, setComments] = useState(() => [
+    ...postedComments,
+    ...initialComments,
+  ]);
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
@@ -125,17 +169,16 @@ export function Discussion() {
       setNotice("Write a comment before sending.");
       return;
     }
-    setComments((current) => [
-      {
-        id: Date.now(),
-        name: "Sofia Chen",
-        time: "Just now",
-        avatar: "/assets/sofia-avatar.jpg",
-        text,
-        likes: 0,
-      },
-      ...current,
-    ]);
+    const comment: Comment = {
+      id: Date.now(),
+      name: "Sofia Chen",
+      time: "Just now",
+      avatar: "/assets/sofia-avatar.jpg",
+      text,
+      likes: 0,
+    };
+    setPostedComments((current) => [comment, ...current]);
+    setComments((current) => [comment, ...current]);
     setDraft("");
     setNotice("Comment posted.");
   };
@@ -154,15 +197,16 @@ export function Discussion() {
     <section className="learning-discussion">
       <div className="flex flex-col gap-3 border-b border-[var(--border)] md:flex-row md:items-end md:justify-between">
         <div
-          className="scrollbar-none flex min-w-0 gap-1 overflow-x-auto"
+          className="page-tabs scrollbar-none flex min-w-0 gap-1 overflow-x-auto"
           role="tablist"
           aria-label="Lesson tools"
         >
-          {tabs.map(([label, Icon]) => (
+          {tabs.map(([label, Icon, tone]) => (
             <button
               type="button"
               role="tab"
               aria-selected={activeTab === label}
+              data-page-tab-tone={tone}
               tabIndex={activeTab === label ? 0 : -1}
               key={label}
               onClick={() => {
@@ -172,7 +216,7 @@ export function Discussion() {
                 setSearchFocused(false);
               }}
               onKeyDown={handleRovingTabKeyDown}
-              className={`relative inline-flex h-12 shrink-0 items-center gap-2 px-3 text-[15px] transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--accent)] ${activeTab === label ? "font-semibold text-[var(--accent)] after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-[var(--accent)]" : "text-[var(--muted)] hover:text-[var(--text)]"}`}
+              className={`lesson-tool-tab relative inline-flex h-12 shrink-0 items-center gap-2 px-3 text-[15px] transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--accent)] ${activeTab === label ? "is-active font-semibold" : "text-[var(--muted)] hover:text-[var(--text)]"}`}
             >
               <Icon
                 size={20}

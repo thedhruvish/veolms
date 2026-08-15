@@ -11,6 +11,33 @@ export interface AppSliderProps extends Omit<
 
 type AppSliderStyle = CSSProperties & {
   "--app-slider-progress": string;
+  "--app-slider-thumb-accent"?: string;
+};
+
+const TEMPERATURE_COLOR_STOPS = [
+  { at: 0, color: [128, 191, 255] },
+  { at: 50, color: [220, 234, 240] },
+  { at: 100, color: [242, 173, 101] },
+] as const;
+
+const getTemperatureThumbColor = (progress: number): string => {
+  const [lowerStop, upperStop] =
+    progress <= 50
+      ? [TEMPERATURE_COLOR_STOPS[0], TEMPERATURE_COLOR_STOPS[1]]
+      : [TEMPERATURE_COLOR_STOPS[1], TEMPERATURE_COLOR_STOPS[2]];
+  const stopProgress =
+    (progress - lowerStop.at) / (upperStop.at - lowerStop.at);
+  const [lowerRed, lowerGreen, lowerBlue] = lowerStop.color;
+  const [upperRed, upperGreen, upperBlue] = upperStop.color;
+  const interpolateChannel = (lower: number, upper: number) =>
+    Math.round(lower + (upper - lower) * stopProgress);
+  const color = [
+    interpolateChannel(lowerRed, upperRed),
+    interpolateChannel(lowerGreen, upperGreen),
+    interpolateChannel(lowerBlue, upperBlue),
+  ];
+
+  return `rgb(${color.join(" ")})`;
 };
 
 const toFiniteNumber = (
@@ -44,6 +71,9 @@ export function AppSlider({
   const sliderStyle = {
     ...style,
     "--app-slider-progress": `${progress}%`,
+    ...(variant === "temperature"
+      ? { "--app-slider-thumb-accent": getTemperatureThumbColor(progress) }
+      : {}),
   } as AppSliderStyle;
 
   return (

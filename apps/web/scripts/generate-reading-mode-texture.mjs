@@ -54,66 +54,27 @@ function blurWrapped(source, radius, size) {
   return output;
 }
 
-function generateBasePixels() {
-  const random = mulberry32(SEED);
+function generatePixels(size, seed) {
+  const random = mulberry32(seed);
   const fine = Float64Array.from(
-    { length: BASE_SIZE * BASE_SIZE },
+    { length: size * size },
     () => random() * 2 - 1,
   );
-  const medium = blurWrapped(fine, 1, BASE_SIZE);
-  const broad = blurWrapped(fine, 5, BASE_SIZE);
+  const micro = blurWrapped(fine, 1, size);
   const combined = Float64Array.from(
     fine,
-    (value, index) => value * 0.74 + medium[index] * 0.78 + broad[index] * 1.3,
+    (value, index) => value * 1.08 + micro[index] * 0.12,
   );
   const mean =
     combined.reduce((sum, value) => sum + value, 0) / combined.length;
   const pixels = Uint8Array.from(combined, (value) =>
-    Math.round(Math.min(181, Math.max(75, 128 + (value - mean) * 45))),
+    Math.round(Math.min(186, Math.max(70, 128 + (value - mean) * 49))),
   );
   const averageLuminance =
     pixels.reduce((sum, value) => sum + value, 0) / pixels.length;
   if (Math.abs(averageLuminance - 128) > 0.5) {
     throw new Error(`Texture luminance drifted to ${averageLuminance}`);
   }
-  return { pixels, averageLuminance };
-}
-
-function generateHighDensityPixels(basePixels, scale) {
-  const size = BASE_SIZE * scale;
-  const pixels = new Uint8Array(size * size);
-  const random = mulberry32(SEED ^ (scale * 0x9e3779b9));
-  const samplesPerBlock = scale * scale;
-
-  for (let baseY = 0; baseY < BASE_SIZE; baseY += 1) {
-    for (let baseX = 0; baseX < BASE_SIZE; baseX += 1) {
-      const baseValue = basePixels[baseY * BASE_SIZE + baseX];
-      const noise = Array.from(
-        { length: samplesPerBlock },
-        () => random() * 2 - 1,
-      );
-      const noiseMean =
-        noise.reduce((sum, value) => sum + value, 0) / samplesPerBlock;
-      const block = noise.map((value) =>
-        Math.round(baseValue + (value - noiseMean) * 5),
-      );
-      const correction =
-        baseValue * samplesPerBlock -
-        block.reduce((sum, value) => sum + value, 0);
-      block[0] += correction;
-
-      for (let sampleY = 0; sampleY < scale; sampleY += 1) {
-        for (let sampleX = 0; sampleX < scale; sampleX += 1) {
-          const outputX = baseX * scale + sampleX;
-          const outputY = baseY * scale + sampleY;
-          pixels[outputY * size + outputX] = block[sampleY * scale + sampleX];
-        }
-      }
-    }
-  }
-
-  const averageLuminance =
-    pixels.reduce((sum, value) => sum + value, 0) / pixels.length;
   return { pixels, averageLuminance };
 }
 
@@ -165,13 +126,12 @@ function createPng(size, pixels) {
 }
 
 mkdirSync(OUTPUT_DIRECTORY, { recursive: true });
-const baseTexture = generateBasePixels();
 for (const { scale, suffix } of VARIANTS) {
   const size = BASE_SIZE * scale;
-  const { pixels, averageLuminance } =
-    scale === 1
-      ? baseTexture
-      : generateHighDensityPixels(baseTexture.pixels, scale);
+  const { pixels, averageLuminance } = generatePixels(
+    size,
+    SEED ^ (scale * 0x9e3779b9),
+  );
   const png = createPng(size, pixels);
   const outputPath = resolve(
     OUTPUT_DIRECTORY,

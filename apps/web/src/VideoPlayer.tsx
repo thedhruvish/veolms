@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type {
-  KeyboardEvent as ReactKeyboardEvent,
-  PointerEvent as ReactPointerEvent,
-} from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import {
   CaretLeft,
   CaretRight,
@@ -21,11 +18,19 @@ import {
   SpeakerSlash,
 } from "@phosphor-icons/react";
 import { AppSlider } from "./AppSlider";
+import { isEditingShortcutTarget } from "./keyboardShortcuts";
 import type { CourseVideo } from "./learning/courseContent";
 
 const playbackSpeeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const RESUME_PERSIST_INTERVAL_MS = 5_000;
 const AMBIENT_FRAME_INTERVAL_MS = 480;
+const PLAYER_MUTED_STORAGE_KEY = "veolms-player-muted";
+
+const getInitialMuted = () => {
+  if (typeof window === "undefined") return false;
+  const savedPreference = window.localStorage.getItem(PLAYER_MUTED_STORAGE_KEY);
+  return savedPreference === "true" || savedPreference === "on";
+};
 
 const getAmbientDefault = () => {
   if (typeof window === "undefined") return false;
@@ -92,9 +97,10 @@ export function VideoPlayer({
   const hudTimerRef = useRef<number | undefined>(undefined);
   const lastResumePersistedAtRef = useRef<number | null>(null);
   const lastKnownPlaybackTimeRef = useRef(0);
+  const shortcutHandlerRef = useRef<(event: KeyboardEvent) => void>(() => {});
 
   const [playing, setPlaying] = useState(false);
-  const [muted, setMuted] = useState(false);
+  const [muted, setMuted] = useState(getInitialMuted);
   const [volume, setVolume] = useState(1);
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
@@ -326,6 +332,24 @@ export function VideoPlayer({
   }, [volume]);
 
   useEffect(() => {
+    if (videoRef.current) videoRef.current.muted = muted;
+    try {
+      window.localStorage.setItem(PLAYER_MUTED_STORAGE_KEY, String(muted));
+    } catch {
+      // Playback controls should remain available when browser storage is unavailable.
+    }
+  }, [muted]);
+
+  useEffect(() => {
+    const syncMutedPreference = (event: StorageEvent) => {
+      if (event.key !== PLAYER_MUTED_STORAGE_KEY) return;
+      setMuted(event.newValue === "true" || event.newValue === "on");
+    };
+    window.addEventListener("storage", syncMutedPreference);
+    return () => window.removeEventListener("storage", syncMutedPreference);
+  }, []);
+
+  useEffect(() => {
     localStorage.setItem("veolms-player-ambient", ambient ? "on" : "off");
   }, [ambient]);
 
@@ -399,17 +423,42 @@ export function VideoPlayer({
 
   const controlsAreVisible = controlsVisible || !playing || settingsOpen;
 
-  const handlePlayerKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
+  const handlePlayerKeyDown = (event: KeyboardEvent) => {
     if (
-      event.currentTarget !== event.target ||
-      event.ctrlKey ||
-      event.metaKey ||
-      event.altKey ||
-      settingsOpen
+      event.defaultPrevented ||
+      event.isComposing ||
+      isEditingShortcutTarget(event.target)
     )
       return;
 
+    const isPercentageSeekShortcut =
+      event.altKey &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.shiftKey &&
+      /^Digit[0-9]$/.test(event.code);
+    if (isPercentageSeekShortcut) {
+      event.preventDefault();
+      seekToProgress(Number(event.code.slice(-1)) * 10);
+      return;
+    }
+
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+
     const key = event.key.toLowerCase();
+    const focusedControl =
+      event.target instanceof Element
+        ? event.target.closest('[role="slider"], [role="separator"]')
+        : null;
+    if (
+      focusedControl &&
+      (event.code === "ArrowLeft" ||
+        event.code === "ArrowRight" ||
+        event.code === "Home" ||
+        event.code === "End")
+    )
+      return;
+
     const speedDown =
       event.shiftKey &&
       (event.code === "Comma" ||
@@ -462,11 +511,17 @@ export function VideoPlayer({
     } else if (event.code === "End") {
       event.preventDefault();
       seekToProgress(100);
-    } else if (!event.shiftKey && /^Digit[0-9]$/.test(event.code)) {
-      event.preventDefault();
-      seekToProgress(Number(event.code.slice(-1)) * 10);
     }
   };
+  shortcutHandlerRef.current = handlePlayerKeyDown;
+
+  useEffect(() => {
+    const handlePageKeyDown = (event: KeyboardEvent) => {
+      shortcutHandlerRef.current(event);
+    };
+    window.addEventListener("keydown", handlePageKeyDown, true);
+    return () => window.removeEventListener("keydown", handlePageKeyDown, true);
+  }, []);
 
   return (
     <div
@@ -484,7 +539,6 @@ export function VideoPlayer({
         aria-label={`Lesson video player for ${lessonTitle}`}
         tabIndex={0}
         onPointerDownCapture={handleFramePointerDown}
-        onKeyDown={handlePlayerKeyDown}
         onMouseMove={scheduleControlsHide}
         onMouseLeave={() =>
           playing && !settingsOpen && setControlsVisible(false)

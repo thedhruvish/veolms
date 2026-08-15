@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Links, Meta, Outlet, Scripts } from "react-router";
 import { ReadingModeEffects } from "./reading-mode/ReadingModeEffects";
 import { getReadingModeBootstrapScript } from "./reading-mode/readingModePreferences";
+import { getSurfaceDepthBootstrapScript } from "./settings/settingsPreferences";
 import "./styles.css";
 import "./shell-theme.css";
 import "./reading-mode.css";
@@ -20,6 +21,10 @@ export function Layout({ children }: LayoutProps) {
       data-reading-mode="false"
       data-reading-mode-texture="false"
       data-reading-mode-temperature="false"
+      data-reading-mode-colors="full"
+      data-page-tab-colors="follow-sidebar"
+      data-elevated-surfaces="true"
+      data-sidebar-menu-elevation="false"
       suppressHydrationWarning
     >
       <head>
@@ -31,6 +36,9 @@ export function Layout({ children }: LayoutProps) {
         <meta name="theme-color" content="#151718" />
         <script
           dangerouslySetInnerHTML={{ __html: getReadingModeBootstrapScript() }}
+        />
+        <script
+          dangerouslySetInnerHTML={{ __html: getSurfaceDepthBootstrapScript() }}
         />
         <Meta />
         <Links />

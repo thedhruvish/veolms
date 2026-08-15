@@ -70,7 +70,7 @@ describe("video playback consent", () => {
     expect(play).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps shortcuts on the focusable player region and out of child controls", () => {
+  it("keeps shortcuts active on player controls without stealing range navigation", () => {
     const play = vi
       .spyOn(HTMLMediaElement.prototype, "play")
       .mockResolvedValue(undefined);
@@ -95,7 +95,22 @@ describe("video playback consent", () => {
       key: " ",
       code: "Space",
     });
-    expect(play).toHaveBeenCalledTimes(1);
+    expect(play).toHaveBeenCalledTimes(2);
+
+    fireEvent.keyDown(screen.getByRole("slider", { name: "Volume" }), {
+      key: " ",
+      code: "Space",
+    });
+    expect(play).toHaveBeenCalledTimes(2);
+
+    const separator = document.createElement("div");
+    separator.setAttribute("role", "separator");
+    separator.tabIndex = 0;
+    document.body.append(separator);
+    const video = document.querySelector("video")!;
+    fireEvent.keyDown(separator, { key: "End", code: "End" });
+    expect(video.currentTime).toBe(0);
+    separator.remove();
   });
 
   it("returns focus to the player before hiding the central play control", () => {

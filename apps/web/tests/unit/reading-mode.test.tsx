@@ -13,6 +13,7 @@ import { ReadingModeSettings } from "../../src/settings/ReadingModeSettings.tsx"
 
 beforeEach(() => {
   delete document.documentElement.dataset.readingMode;
+  delete document.documentElement.dataset.readingModeColors;
   document.documentElement.removeAttribute("style");
 });
 
@@ -28,7 +29,24 @@ describe("reading mode preferences", () => {
         colorTemperature: 140,
         texture: -12,
       }),
-    ).toEqual({ enabled: false, colorTemperature: 100, texture: 0 });
+    ).toEqual({
+      enabled: false,
+      colorTemperature: 100,
+      texture: 0,
+      colors: "full",
+    });
+  });
+
+  it("accepts each color treatment and falls back to full colors", () => {
+    expect(normalizeReadingModePreferences({ colors: "light" }).colors).toBe(
+      "light",
+    );
+    expect(
+      normalizeReadingModePreferences({ colors: "black-and-white" }).colors,
+    ).toBe("black-and-white");
+    expect(
+      normalizeReadingModePreferences({ colors: "unsupported" }).colors,
+    ).toBe("full");
   });
 
   it("uses the nonlinear texture curve and a truly neutral midpoint", () => {
@@ -47,7 +65,7 @@ describe("reading mode preferences", () => {
     expect(medium.textureStrength).toBeCloseTo(Math.pow(0.75, 1.3), 6);
     expect(medium.textureOpacityDark).toBeCloseTo(0.15136, 4);
     expect(maximum.textureOpacityDark).toBe(0.22);
-    expect(maximum.textureOpacityLight).toBe(0.14);
+    expect(maximum.textureOpacityLight).toBe(0.1);
     expect(maximum.temperatureOpacity).toBe(0.3);
   });
 
@@ -56,6 +74,7 @@ describe("reading mode preferences", () => {
       enabled: true,
       colorTemperature: 80,
       texture: 75,
+      colors: "black-and-white",
     });
 
     expect(
@@ -64,6 +83,10 @@ describe("reading mode preferences", () => {
     expect(document.documentElement).toHaveAttribute(
       "data-reading-mode",
       "true",
+    );
+    expect(document.documentElement).toHaveAttribute(
+      "data-reading-mode-colors",
+      "black-and-white",
     );
     expect(
       document.documentElement.style.getPropertyValue(
@@ -89,8 +112,11 @@ describe("reading mode settings", () => {
       name: "Color temperature",
     });
     const texture = screen.getByRole("slider", { name: "Texture" });
+    const colors = screen.getByRole("combobox", {
+      name: "Reading mode colors",
+    });
     const restore = screen.getByRole("button", { name: "Restore defaults" });
-    const quickToggle = screen.getByRole("button", {
+    const quickToggle = screen.getByRole("switch", {
       name: "Turn reading mode on",
     });
     const previewGuidance = screen.getByText(
@@ -100,13 +126,14 @@ describe("reading mode settings", () => {
     expect(toggle).toHaveAttribute("aria-checked", "false");
     expect(temperature).toHaveValue("50");
     expect(texture).toHaveValue("90");
+    expect(colors).toHaveTextContent("Full colors");
     expect(restore).toBeDisabled();
     expect(previewGuidance).toBeVisible();
-    expect(quickToggle).toHaveAttribute("aria-pressed", "false");
+    expect(quickToggle).toHaveAttribute("aria-checked", "false");
 
     fireEvent.click(quickToggle);
     expect(toggle).toHaveAttribute("aria-checked", "true");
-    expect(quickToggle).toHaveAttribute("aria-pressed", "true");
+    expect(quickToggle).toHaveAttribute("aria-checked", "true");
     expect(quickToggle).toHaveAccessibleName("Turn reading mode off");
 
     fireEvent.click(quickToggle);
@@ -129,7 +156,7 @@ describe("reading mode settings", () => {
       "true",
     );
     expect(previewGuidance).toBeVisible();
-    expect(quickToggle).toHaveAttribute("aria-pressed", "true");
+    expect(quickToggle).toHaveAttribute("aria-checked", "true");
 
     fireEvent.click(toggle);
     expect(texture).toHaveValue("75");

@@ -20,10 +20,13 @@ import {
 import type { CourseRole } from "../courses/catalogue";
 import { handleRovingTabKeyDown } from "../accessibility/rovingTabFocus";
 import type { NavigateTo } from "../routing/navigation";
+import {
+  normalizeDiscussionTab,
+  rememberDiscussionTab,
+} from "../routing/tabSessionState";
+import type { DiscussionTab } from "../routing/tabSessionState";
 import { ThemedSelect } from "../ThemedSelect";
 
-type DiscussionTab =
-  "q-and-a" | "comments" | "mentions" | "following" | "saved";
 type DiscussionStatus = "answered" | "mentioned" | "solved" | "open";
 
 interface DiscussionThread {
@@ -39,6 +42,8 @@ interface DiscussionThread {
   tabs: DiscussionTab[];
 }
 
+type PageTabTone = "blue" | "green" | "gold" | "rose" | "violet";
+
 export interface DiscussionsWorkspaceProps {
   role: CourseRole;
   tab?: string;
@@ -50,12 +55,23 @@ const tabs: readonly {
   id: DiscussionTab;
   label: string;
   Icon: typeof Question;
+  tone: PageTabTone;
 }[] = [
-  { id: "q-and-a", label: "Q&A", Icon: Question },
-  { id: "comments", label: "Comments", Icon: ChatTeardropText },
-  { id: "mentions", label: "Mentions", Icon: At },
-  { id: "following", label: "Following", Icon: ChatCircleDots },
-  { id: "saved", label: "Saved", Icon: BookmarkSimple },
+  { id: "q-and-a", label: "Q&A", Icon: Question, tone: "violet" },
+  {
+    id: "comments",
+    label: "Comments",
+    Icon: ChatTeardropText,
+    tone: "blue",
+  },
+  { id: "mentions", label: "Mentions", Icon: At, tone: "rose" },
+  {
+    id: "following",
+    label: "Following",
+    Icon: ChatCircleDots,
+    tone: "green",
+  },
+  { id: "saved", label: "Saved", Icon: BookmarkSimple, tone: "gold" },
 ];
 
 const initialThreads: readonly DiscussionThread[] = [
@@ -215,11 +231,11 @@ export function DiscussionsWorkspace({
   onNavigatePage,
   setNotice,
 }: DiscussionsWorkspaceProps) {
-  const activeTab: DiscussionTab = tabs.some((item) => item.id === tab)
-    ? (tab as DiscussionTab)
-    : "q-and-a";
-  const navigateTab = (id: DiscussionTab) =>
+  const activeTab = normalizeDiscussionTab(tab);
+  const navigateTab = (id: DiscussionTab) => {
+    rememberDiscussionTab(id);
     onNavigatePage(`/discussions/${id}`, { preserveScroll: true });
+  };
   const tablistRef = useRef<HTMLElement>(null);
   const [query, setQuery] = useState("");
   const [course, setCourse] = useState("all");
@@ -230,6 +246,10 @@ export function DiscussionsWorkspace({
   );
   const [threads, setThreads] =
     useState<readonly DiscussionThread[]>(initialThreads);
+
+  useEffect(() => {
+    rememberDiscussionTab(activeTab);
+  }, [activeTab]);
 
   useEffect(() => {
     const tablist = tablistRef.current;
@@ -316,11 +336,11 @@ export function DiscussionsWorkspace({
 
       <nav
         ref={tablistRef}
-        className="discussion-hub__tabs"
+        className="discussion-hub__tabs page-tabs"
         aria-label="Discussion views"
         role="tablist"
       >
-        {tabs.map(({ id, label, Icon }) => (
+        {tabs.map(({ id, label, Icon, tone }) => (
           <button
             type="button"
             key={id}
@@ -328,6 +348,7 @@ export function DiscussionsWorkspace({
             role="tab"
             aria-selected={activeTab === id}
             aria-controls="discussion-panel"
+            data-page-tab-tone={tone}
             tabIndex={activeTab === id ? 0 : -1}
             className={activeTab === id ? "is-active" : ""}
             onClick={() => navigateTab(id)}
@@ -603,7 +624,10 @@ export function DiscussionsWorkspace({
                 </div>
                 <ArrowRight size={18} />
               </button>
-              <button type="button" onClick={() => onNavigatePage("/courses")}>
+              <button
+                type="button"
+                onClick={() => onNavigatePage("/explore-courses")}
+              >
                 <span>
                   <BookmarkSimple size={19} weight="duotone" />
                 </span>

@@ -36,6 +36,10 @@ export function ReadingModeEffects() {
         className="reading-mode-effects reading-mode-effects__temperature"
         aria-hidden="true"
       />
+      <div
+        className="reading-mode-effects reading-mode-effects__colors"
+        aria-hidden="true"
+      />
     </>
   );
 }
