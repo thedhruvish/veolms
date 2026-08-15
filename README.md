@@ -78,4 +78,4 @@ pnpm build:web
 
 The build reads course paths and content from `STATIC_BUILD_API_URL` and writes CDN-ready files to `apps/web/build/client`. There is no production frontend runtime server.
 
-See [architecture](docs/architecture.md) and [development](docs/development.md) for the current boundaries and local workflow.
+See [architecture](docs/architecture.md), [development](docs/development.md), and [contributing](docs/contribution/README.md) for architecture boundaries, local workflows, and contribution guidelines. Full documentation index is available at [docs](docs/README.md).
