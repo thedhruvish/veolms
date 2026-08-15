@@ -1,4 +1,6 @@
 import { AuthBrandMark } from "../auth/AuthBrandPanel";
+import { IdentifierForm } from "../auth/IdentifierForm";
+import { SocialLoginActions } from "../auth/SocialLoginActions";
 import { getAuthRouteMeta, productName } from "../routing/routeDescriptors";
 
 export function meta() {
@@ -12,26 +14,25 @@ export function meta() {
   );
 }
 
+// Sending the one-time code lands with the integration change; validation is all
+// this screen does today.
+function requestCode() {}
+
 export default function LoginRoute() {
   return (
-    <>
-      <section aria-labelledby="auth-card-heading" className="auth-card">
-        <AuthBrandMark />
-        <h1 className="auth-card__heading" id="auth-card-heading">
-          Welcome to {productName}
-        </h1>
-        <p className="auth-card__subheading">
-          Log in or create an account to continue.
-        </p>
+    <section aria-labelledby="auth-card-heading" className="auth-card">
+      <AuthBrandMark />
+      <h1 className="auth-card__heading" id="auth-card-heading">
+        Welcome to {productName}
+      </h1>
+      <p className="auth-card__subheading">
+        Log in or create an account to continue.
+      </p>
 
-        {/* The identifier form mounts here. */}
-        <div className="auth-card__form-slot" />
-      </section>
-
-      <footer className="auth-page__footer">
-        <p>&copy; 2026 {productName}. All rights reserved.</p>
-        <p>Learn. Build. Grow.</p>
-      </footer>
-    </>
+      <div className="auth-card__form-slot">
+        <IdentifierForm onSubmit={requestCode} status="idle" />
+        <SocialLoginActions />
+      </div>
+    </section>
   );
 }
