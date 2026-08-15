@@ -19,6 +19,7 @@ describe("keyboard shortcut helpers", () => {
     expect(
       getNumberShortcutIndex({
         key: "3",
+        code: "Digit3",
         ctrlKey: false,
         metaKey: false,
         shiftKey: false,
@@ -27,6 +28,7 @@ describe("keyboard shortcut helpers", () => {
     expect(
       getNumberShortcutIndex({
         key: "3",
+        code: "Digit3",
         ctrlKey: true,
         metaKey: false,
         shiftKey: false,
@@ -35,11 +37,21 @@ describe("keyboard shortcut helpers", () => {
     expect(
       getNumberShortcutIndex({
         key: "0",
+        code: "Digit0",
         ctrlKey: false,
         metaKey: false,
         shiftKey: false,
       }),
     ).toBeNull();
+    expect(
+      getNumberShortcutIndex({
+        key: "£",
+        code: "Digit3",
+        ctrlKey: false,
+        metaKey: false,
+        shiftKey: false,
+      }),
+    ).toBe(2);
   });
 
   it("recognizes Apple platforms for Command shortcut labels", () => {
@@ -71,6 +83,29 @@ describe("keyboard shortcut helpers", () => {
     expect(readShortcutPlatformPreference()).toBe("mac");
     expect(preferenceChanged).toHaveBeenCalledTimes(1);
 
+    window.removeEventListener(
+      SHORTCUT_PLATFORM_PREFERENCE_EVENT,
+      preferenceChanged,
+    );
+  });
+
+  it("keeps shortcut preferences usable when browser storage is blocked", () => {
+    const preferenceChanged = vi.fn();
+    window.addEventListener(
+      SHORTCUT_PLATFORM_PREFERENCE_EVENT,
+      preferenceChanged,
+    );
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new DOMException("Blocked", "SecurityError");
+    });
+    expect(readShortcutPlatformPreference()).toBe("system");
+    vi.restoreAllMocks();
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("Blocked", "SecurityError");
+    });
+
+    expect(() => persistShortcutPlatformPreference("mac")).not.toThrow();
+    expect(preferenceChanged).toHaveBeenCalledTimes(1);
     window.removeEventListener(
       SHORTCUT_PLATFORM_PREFERENCE_EVENT,
       preferenceChanged,

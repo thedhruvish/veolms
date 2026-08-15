@@ -38,4 +38,17 @@ describe("AppSlider", () => {
       "--app-slider-thumb-accent: rgb(242 173 101)",
     );
   });
+
+  it("uses an empty fill when the range is degenerate or malformed", () => {
+    const { rerender } = render(
+      <AppSlider aria-label="Degenerate" min={10} max={10} value={10} />,
+    );
+    const slider = screen.getByRole("slider", { name: "Degenerate" });
+    expect(slider.getAttribute("style")).toContain("--app-slider-progress: 0%");
+
+    rerender(
+      <AppSlider aria-label="Degenerate" min="bad" max="bad" value="bad" />,
+    );
+    expect(slider.getAttribute("style")).toContain("--app-slider-progress: 0%");
+  });
 });

@@ -11,6 +11,7 @@ import { ThemedSelect } from "../ThemedSelect";
 import {
   getReadingModeVisuals,
   persistReadingModePreferences,
+  READING_MODE_CHANGE_EVENT,
   READING_MODE_DEFAULTS,
   READING_MODE_STORAGE_KEY,
   readReadingModePreferences,
@@ -158,13 +159,20 @@ export function ReadingModeSettings() {
   const [preferences, setPreferences] = useState(readReadingModePreferences);
 
   useEffect(() => {
+    const syncPreferences = () => {
+      setPreferences(readReadingModePreferences());
+    };
     const handleStorage = (event: StorageEvent) => {
       if (event.key === READING_MODE_STORAGE_KEY || event.key === null) {
-        setPreferences(readReadingModePreferences());
+        syncPreferences();
       }
     };
     window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
+    window.addEventListener(READING_MODE_CHANGE_EVENT, syncPreferences);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener(READING_MODE_CHANGE_EVENT, syncPreferences);
+    };
   }, []);
 
   const updatePreferences = (updates: Partial<ReadingModePreferences>) => {

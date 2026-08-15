@@ -143,6 +143,11 @@ test.describe("@visual", () => {
     const player = page.getByRole("region", {
       name: /Lesson video player for The Beginning of a Design Journey/,
     });
+    await player.locator("video").evaluate((element: HTMLVideoElement) => {
+      element.pause();
+      element.currentTime = 0;
+      element.dispatchEvent(new Event("timeupdate"));
+    });
     const volume = player.getByRole("slider", { name: "Volume" });
     await volume.focus();
     await expect(volume).toHaveCSS("width", "72px");

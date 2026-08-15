@@ -35,6 +35,7 @@ test("lesson choice, curriculum width, and player preferences persist", async ({
   const resize = page.getByRole("separator", {
     name: "Resize course curriculum",
   });
+  await expect(resize).toHaveAttribute("aria-valuenow", "400");
   await resize.press("End");
   await expect(resize).toHaveAttribute("aria-valuenow", "560");
   await expectStoredValue(page, "veolms-curriculum-width", "560");
@@ -145,6 +146,8 @@ test("curriculum keeps its minimum panel width while the collapse drag clips it 
       };
     });
 
+  await rail.press("Home");
+  await rail.press("ArrowLeft");
   const railBox = await rail.boundingBox();
   expect(railBox).not.toBeNull();
   const startX = railBox!.x + railBox!.width / 2;
@@ -444,7 +447,10 @@ test("course content panel slides symmetrically when opened and closed", async (
     });
     return animations.length;
   });
-  await expect(rail).toHaveAttribute("aria-valuenow", String(expandedWidth));
+  await expect(rail).toHaveAttribute(
+    "aria-valuenow",
+    String(Math.round(expandedWidth)),
+  );
   expect(openingAnimations).toBe(1);
   const openingWidth = await columnWidth();
   expect(openingWidth).toBeGreaterThan(0);
@@ -776,11 +782,8 @@ test("player shortcuts work page-wide outside editors and mute persists across l
     name: /Lesson video player for The Beginning of a Design Journey/,
   });
   const video = player.locator("video");
-  const lessonHeading = page.getByRole("button", {
-    name: "Open course lessons",
-  });
 
-  await lessonHeading.focus();
+  await page.locator("body").focus();
   await page.keyboard.press("Space");
   await expect
     .poll(() =>
@@ -880,7 +883,7 @@ test("player shortcuts work page-wide outside editors and mute persists across l
       reloadedVideo.evaluate((element) => (element as HTMLVideoElement).muted),
     )
     .toBe(true);
-  await page.getByRole("button", { name: "Open course lessons" }).focus();
+  await page.locator("body").focus();
   await page.keyboard.press("m");
   await expectStoredValue(page, "veolms-player-muted", "false");
   await page.reload();

@@ -47,6 +47,7 @@ export function Curriculum({
     false,
     isStoredBoolean,
   );
+  const activeLessonSearch = searchOpen ? lessonSearch : "";
   const lessonSearchInputRef = useRef<HTMLInputElement>(null);
   const activeLessonRef = useRef<HTMLButtonElement>(null);
   const handledFocusRequestRef = useRef(0);
@@ -186,14 +187,16 @@ export function Curriculum({
       <div className="learning-curriculum__lesson-list">
         {sections.map((section) => {
           const matchingLessons = section.lessons.filter((lesson) =>
-            lesson[1].toLowerCase().includes(lessonSearch.toLowerCase()),
+            lesson[1].toLowerCase().includes(activeLessonSearch.toLowerCase()),
           );
           const isOpen =
             expanded.includes(section.id) ||
-            Boolean(lessonSearch && matchingLessons.length > 0);
+            Boolean(activeLessonSearch && matchingLessons.length > 0);
           if (
-            lessonSearch &&
-            !section.title.toLowerCase().includes(lessonSearch.toLowerCase()) &&
+            activeLessonSearch &&
+            !section.title
+              .toLowerCase()
+              .includes(activeLessonSearch.toLowerCase()) &&
             matchingLessons.length === 0
           )
             return null;

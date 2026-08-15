@@ -1356,7 +1356,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   --resume-indicator-top: 2px;
 }
 
-.courses-nav button[data-navigation-label="Courses"] {
+.courses-nav button[data-navigation-label="Explore Courses"] {
   --resume-indicator-top: 4.5px;
   --resume-indicator-left: 0.5px;
 }

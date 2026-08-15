@@ -336,8 +336,11 @@ export const getEffectiveRouteId = (
 ): string => {
   const normalizedPath = normalizeNavigationPath(pathname);
 
-  if (routeId === "learning") {
-    const match = /^\/learn\/([^/]+)(?:\/([^/]+))?$/.exec(normalizedPath);
+  if (routeId === "learning" || routeId === "legacy-learning") {
+    const routePrefix = routeId === "learning" ? "learn" : "courses";
+    const match = new RegExp(`^/${routePrefix}/([^/]+)(?:/([^/]+))?$`).exec(
+      normalizedPath,
+    );
     const encodedSlug = match?.[1];
     if (!encodedSlug) return "home-fallback";
     try {

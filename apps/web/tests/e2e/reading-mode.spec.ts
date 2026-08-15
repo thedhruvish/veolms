@@ -125,8 +125,8 @@ test("reading mode persists, stays interactive, and covers viewport UI", async (
     "background-image",
     /reading-mode-grain\.png/,
   );
-  expect(
-    await effects.evaluate((element) => {
+  const [effectBounds, viewport] = await Promise.all([
+    effects.evaluate((element) => {
       const bounds = element.getBoundingClientRect();
       return {
         top: bounds.top,
@@ -135,7 +135,9 @@ test("reading mode persists, stays interactive, and covers viewport UI", async (
         height: bounds.height,
       };
     }),
-  ).toEqual({ top: 0, left: 0, width: 1440, height: 1000 });
+    page.evaluate(() => ({ width: innerWidth, height: innerHeight })),
+  ]);
+  expect(effectBounds).toEqual({ top: 0, left: 0, ...viewport });
 
   await page.setViewportSize({ width: 390, height: 844 });
   const mobileControlSizes = await Promise.all(

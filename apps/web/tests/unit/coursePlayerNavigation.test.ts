@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   clearRememberedCoursePlayerDestination,
   discardPendingCourseCommentDraft,
@@ -12,10 +12,16 @@ import {
   getPendingCourseCommentDraft,
   getRememberedCoursePlayerDestination,
   getResumableCoursePlayerNavigationPath,
+  getStoredCourseLessonId,
   getCoursePlayerSection,
   postPendingCourseCommentDraft,
   rememberCoursePlayerDestination,
 } from "../../src/learning/coursePlayerNavigation";
+
+beforeEach(() => {
+  localStorage.clear();
+  sessionStorage.clear();
+});
 
 describe("course player navigation", () => {
   it("preserves My Courses as the launch origin", () => {
@@ -63,8 +69,6 @@ describe("course player navigation", () => {
   });
 
   it("keeps only the latest learning session and moves its source indicator", () => {
-    localStorage.clear();
-
     expect(
       rememberCoursePlayerDestination("course one", "explore-courses"),
     ).toBe(
@@ -99,6 +103,15 @@ describe("course player navigation", () => {
     );
     clearRememberedCoursePlayerDestination("my-courses");
     expect(getActiveCoursePlayerSession()).toBeNull();
+  });
+
+  it("restores a stored lesson slug without coercing it to a number", () => {
+    localStorage.setItem(
+      "veolms-last-lesson-typescript-course",
+      "the-design-mindset",
+    );
+
+    expect(getStoredCourseLessonId("typescript-course")).toBe(3);
   });
 
   it("discards invalid singleton sessions and legacy destinations", () => {

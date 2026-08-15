@@ -23,6 +23,7 @@ import { Discussion } from "./Discussion";
 
 const CURRICULUM_COLLAPSED_WIDTH = 0;
 const CURRICULUM_MIN_WIDTH = 300;
+const CURRICULUM_DEFAULT_WIDTH = 400;
 const CURRICULUM_MAX_WIDTH = 560;
 const CURRICULUM_SNAP_WIDTH = CURRICULUM_MIN_WIDTH / 2;
 
@@ -66,9 +67,13 @@ export function LearningWorkspace({
   onNavigateBack,
 }: LearningWorkspaceProps) {
   const lessonStorageKey = `veolms-last-lesson-${encodeURIComponent(courseSlug || "default")}`;
-  const [theme] = useState(
-    () => localStorage.getItem("veolms-theme") || "dark",
-  );
+  const [theme] = useState(() => {
+    try {
+      return localStorage.getItem("veolms-theme") || "dark";
+    } catch {
+      return "dark";
+    }
+  });
   const shortcutPlatform = useShortcutPlatform();
   const [academyTheme] = useState(getInitialAcademyTheme);
   const [selectedLesson, setSelectedLesson] = useState(lessonId);
@@ -79,10 +84,16 @@ export function LearningWorkspace({
   const [lessonDrawer, setLessonDrawer] = useState(false);
   const [curriculumFocusRequest, setCurriculumFocusRequest] = useState(0);
   const [curriculumWidth, setCurriculumWidth] = useState(() => {
-    const saved = Number(localStorage.getItem("veolms-curriculum-width"));
-    return Number.isFinite(saved)
-      ? Math.min(CURRICULUM_MAX_WIDTH, Math.max(CURRICULUM_MIN_WIDTH, saved))
-      : 400;
+    try {
+      const storedWidth = localStorage.getItem("veolms-curriculum-width");
+      if (storedWidth === null) return CURRICULUM_DEFAULT_WIDTH;
+      const saved = Number(storedWidth);
+      return Number.isFinite(saved)
+        ? Math.min(CURRICULUM_MAX_WIDTH, Math.max(CURRICULUM_MIN_WIDTH, saved))
+        : CURRICULUM_DEFAULT_WIDTH;
+    } catch {
+      return CURRICULUM_DEFAULT_WIDTH;
+    }
   });
   const [curriculumCollapsed, setCurriculumCollapsed] = useState(false);
   const [curriculumResizing, setCurriculumResizing] = useState(false);
@@ -197,10 +208,14 @@ export function LearningWorkspace({
       Math.max(CURRICULUM_MIN_WIDTH, value),
     );
     setCurriculumWidth(nextWidth);
-    localStorage.setItem(
-      "veolms-curriculum-width",
-      String(Math.round(nextWidth)),
-    );
+    try {
+      localStorage.setItem(
+        "veolms-curriculum-width",
+        String(Math.round(nextWidth)),
+      );
+    } catch {
+      // Resizing remains available when browser storage is unavailable.
+    }
   }, []);
 
   const startCurriculumResize = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -360,7 +375,7 @@ export function LearningWorkspace({
     } else if (event.key === "End") {
       event.preventDefault();
       setCurriculumCollapsed(false);
-      commitCurriculumWidth(560);
+      commitCurriculumWidth(CURRICULUM_MAX_WIDTH);
     }
   };
 
@@ -392,13 +407,21 @@ export function LearningWorkspace({
   }, [academyTheme]);
 
   useEffect(() => {
-    localStorage.setItem(lessonStorageKey, String(selectedLesson));
-    localStorage.setItem("veolms-last-lesson", String(selectedLesson));
+    try {
+      localStorage.setItem(lessonStorageKey, String(selectedLesson));
+      localStorage.setItem("veolms-last-lesson", String(selectedLesson));
+    } catch {
+      // Lesson selection remains usable when browser storage is unavailable.
+    }
   }, [lessonStorageKey, selectedLesson]);
 
   useEffect(() => {
-    sessionStorage.removeItem("veolms-course-autostart");
-    localStorage.removeItem("veolms-player-autoplay");
+    try {
+      sessionStorage.removeItem("veolms-course-autostart");
+      localStorage.removeItem("veolms-player-autoplay");
+    } catch {
+      // Retired preferences are cleaned up on a best-effort basis.
+    }
   }, []);
 
   useEffect(() => {
