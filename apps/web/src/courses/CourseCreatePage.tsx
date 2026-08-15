@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
+import { RichTextEditor, RenderMarkdown } from "./RichTextEditor";
 import {
   ArrowLeft,
   ArrowRight,
@@ -143,6 +145,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   // Basics Form state
   const [courseTitle, setCourseTitle] = useState("");
   const [courseDescription, setCourseDescription] = useState("");
+
   const [category, setCategory] = useState("");
   const [difficultyLevel, setDifficultyLevel] = useState("");
 
@@ -336,6 +339,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   const [draggedInclusionIndex, setDraggedInclusionIndex] = useState<
     number | null
   >(null);
+  const [dragEnabledInclusionId, setDragEnabledInclusionId] = useState<
+    string | null
+  >(null);
 
   const handleAddInclusion = () => {
     setExtras((prev) => ({
@@ -387,6 +393,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
   const handleInclusionDragEnd = () => {
     setDraggedInclusionIndex(null);
+    setDragEnabledInclusionId(null);
   };
 
   // Certificate Handlers
@@ -507,10 +514,17 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   const [draggedSectionIndex, setDraggedSectionIndex] = useState<number | null>(
     null,
   );
+  const [dragEnabledSectionId, setDragEnabledSectionId] = useState<
+    string | null
+  >(null);
+
   const [draggedLessonState, setDraggedLessonState] = useState<{
     sectionId: string;
     lessonIndex: number;
   } | null>(null);
+  const [dragEnabledLessonId, setDragEnabledLessonId] = useState<
+    string | null
+  >(null);
 
   // Reusable Delete Confirmation Modal state
   const [deleteModalState, setDeleteModalState] = useState<{
@@ -600,6 +614,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
   const handleSectionDragEnd = () => {
     setDraggedSectionIndex(null);
+    setDragEnabledSectionId(null);
   };
 
   // Lesson actions
@@ -785,6 +800,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
   const handleLessonDragEnd = () => {
     setDraggedLessonState(null);
+    setDragEnabledLessonId(null);
   };
 
   // Computed total stats
@@ -967,105 +983,13 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   <label htmlFor="course-description">
                     Course Description <span className="req-star">*</span>
                   </label>
-                  <div className="course-wizard-editor">
-                    <div className="course-wizard-editor__toolbar">
-                      <div className="course-wizard-editor__select">
-                        <select aria-label="Text format">
-                          <option value="normal">Normal</option>
-                          <option value="h1">Heading 1</option>
-                          <option value="h2">Heading 2</option>
-                        </select>
-                      </div>
-                      <div className="course-wizard-editor__divider" />
-                      <button
-                        type="button"
-                        title="Bold"
-                        className="editor-btn"
-                        aria-label="Bold"
-                      >
-                        <TextB size={16} weight="bold" />
-                      </button>
-                      <button
-                        type="button"
-                        title="Italic"
-                        className="editor-btn"
-                        aria-label="Italic"
-                      >
-                        <TextItalic size={16} weight="bold" />
-                      </button>
-                      <div className="course-wizard-editor__divider" />
-                      <button
-                        type="button"
-                        title="Bullet List"
-                        className="editor-btn"
-                        aria-label="Bullet List"
-                      >
-                        <ListBullets size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        title="Numbered List"
-                        className="editor-btn"
-                        aria-label="Numbered List"
-                      >
-                        <ListNumbers size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        title="Checklist"
-                        className="editor-btn"
-                        aria-label="Checklist"
-                      >
-                        <Check size={16} weight="bold" />
-                      </button>
-                      <button
-                        type="button"
-                        title="Quote"
-                        className="editor-btn"
-                        aria-label="Quote"
-                      >
-                        <Quotes size={16} />
-                      </button>
-                      <div className="course-wizard-editor__divider" />
-                      <button
-                        type="button"
-                        title="Add Link"
-                        className="editor-btn"
-                        aria-label="Add Link"
-                      >
-                        <Paperclip size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        title="Attachment"
-                        className="editor-btn"
-                        aria-label="Attachment"
-                      >
-                        <ImageIcon size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        title="Emoji"
-                        className="editor-btn"
-                        aria-label="Emoji"
-                      >
-                        <Smiley size={16} />
-                      </button>
-                    </div>
-                    <textarea
-                      id="course-description"
-                      rows={5}
-                      maxLength={1500}
-                      placeholder="Describe what your course is about, what students will learn, and who this course is for..."
-                      value={courseDescription}
-                      onChange={(e) => setCourseDescription(e.target.value)}
-                    />
-                    <div className="course-wizard-editor__footer">
-                      <span className="course-wizard-char-count">
-                        {courseDescription.length} / 1500
-                      </span>
-                    </div>
-                  </div>
+                  <RichTextEditor
+                    id="course-description"
+                    value={courseDescription}
+                    onChange={setCourseDescription}
+                    placeholder="Describe what your course is about, what students will learn, and who this course is for..."
+                    maxLength={1500}
+                  />
                 </div>
 
                 <div className="course-wizard-form-row">
@@ -1192,11 +1116,13 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                   <div className="course-preview-about">
                     <h4>About this course</h4>
-                    <p>
-                      {courseDescription.trim()
-                        ? courseDescription
-                        : "This is a short description of your course. It will appear here on the course card."}
-                    </p>
+                    {courseDescription.trim() ? (
+                      <RenderMarkdown content={courseDescription} />
+                    ) : (
+                      <p>
+                        This is a short description of your course. It will appear here on the course card.
+                      </p>
+                    )}
                   </div>
                 </div>
               </section>
@@ -1229,7 +1155,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
               <div
                 key={sec.id}
                 className="curriculum-section-card"
-                draggable
+                draggable={dragEnabledSectionId === sec.id}
                 onDragStart={() => handleSectionDragStart(secIndex)}
                 onDragOver={(e) => handleSectionDragOver(e, secIndex)}
                 onDragEnd={handleSectionDragEnd}
@@ -1245,6 +1171,14 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     <span
                       className="curriculum-drag-handle"
                       title="Drag to reorder section"
+                      onMouseEnter={() => setDragEnabledSectionId(sec.id)}
+                      onMouseLeave={() => {
+                        if (draggedSectionIndex === null) setDragEnabledSectionId(null);
+                      }}
+                      onMouseDown={() => setDragEnabledSectionId(sec.id)}
+                      onMouseUp={() => {
+                        if (draggedSectionIndex === null) setDragEnabledSectionId(null);
+                      }}
                       onClick={(e) => e.stopPropagation()}
                     >
                       <DotsSixVertical size={18} />
@@ -1343,7 +1277,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                         <div
                           key={les.id}
                           className="curriculum-lesson-row"
-                          draggable
+                          draggable={dragEnabledLessonId === les.id}
                           onDragStart={() =>
                             handleLessonDragStart(sec.id, lesIndex)
                           }
@@ -1365,6 +1299,14 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                               <span
                                 className="curriculum-drag-handle"
                                 title="Drag to reorder lesson"
+                                onMouseEnter={() => setDragEnabledLessonId(les.id)}
+                                onMouseLeave={() => {
+                                  if (!draggedLessonState) setDragEnabledLessonId(null);
+                                }}
+                                onMouseDown={() => setDragEnabledLessonId(les.id)}
+                                onMouseUp={() => {
+                                  if (!draggedLessonState) setDragEnabledLessonId(null);
+                                }}
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <DotsSixVertical size={18} />
@@ -1423,6 +1365,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                             className={`curriculum-lesson-editor-wrapper ${
                               les.isExpanded ? "is-open" : ""
                             }`}
+                            draggable={false}
+                            onMouseDown={(e) => e.stopPropagation()}
                           >
                             <div className="curriculum-lesson-editor">
                               <div className="curriculum-editor-grid">
@@ -1453,95 +1397,21 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                     </div>
                                   </div>
 
-                                  {/* Lesson Description Rich Editor Mock */}
+                                  {/* Lesson Description Rich Editor */}
                                   <div className="course-wizard-form-group">
                                     <label id={`les-desc-label-${les.id}`}>
                                       Lesson Description
                                     </label>
-                                    <div className="course-wizard-editor">
-                                      <div className="course-wizard-editor__toolbar">
-                                        <div className="course-wizard-editor__select">
-                                          <select aria-label="Text format">
-                                            <option value="normal">
-                                              Normal
-                                            </option>
-                                            <option value="h1">
-                                              Heading 1
-                                            </option>
-                                            <option value="h2">
-                                              Heading 2
-                                            </option>
-                                          </select>
-                                        </div>
-                                        <div className="course-wizard-editor__divider" />
-                                        <button
-                                          type="button"
-                                          title="Bold"
-                                          className="editor-btn"
-                                          aria-label="Bold"
-                                        >
-                                          <TextB size={16} weight="bold" />
-                                        </button>
-                                        <button
-                                          type="button"
-                                          title="Italic"
-                                          className="editor-btn"
-                                          aria-label="Italic"
-                                        >
-                                          <TextItalic size={16} weight="bold" />
-                                        </button>
-                                        <div className="course-wizard-editor__divider" />
-                                        <button
-                                          type="button"
-                                          title="Bullet List"
-                                          className="editor-btn"
-                                          aria-label="Bullet List"
-                                        >
-                                          <ListBullets size={16} />
-                                        </button>
-                                        <button
-                                          type="button"
-                                          title="Numbered List"
-                                          className="editor-btn"
-                                          aria-label="Numbered List"
-                                        >
-                                          <ListNumbers size={16} />
-                                        </button>
-                                        <button
-                                          type="button"
-                                          title="Checklist"
-                                          className="editor-btn"
-                                          aria-label="Checklist"
-                                        >
-                                          <Check size={16} weight="bold" />
-                                        </button>
-                                        <button
-                                          type="button"
-                                          title="Quote"
-                                          className="editor-btn"
-                                          aria-label="Quote"
-                                        >
-                                          <Quotes size={16} />
-                                        </button>
-                                      </div>
-                                      <textarea
-                                        className="course-wizard-editor__textarea"
-                                        rows={5}
-                                        maxLength={1500}
-                                        value={les.description}
-                                        onChange={(e) =>
-                                          handleUpdateLesson(sec.id, les.id, {
-                                            description: e.target.value,
-                                          })
-                                        }
-                                        placeholder="Add a detailed description of what students will learn in this lesson..."
-                                      />
-                                      <div className="course-wizard-editor__footer">
-                                        <span className="course-wizard-char-count">
-                                          {les.description.length} / 1500
-                                        </span>
-                                      </div>
-                                    </div>
+                                    <RichTextEditor
+                                      value={les.description}
+                                      onChange={(val) =>
+                                        handleUpdateLesson(sec.id, les.id, {
+                                          description: val,
+                                        })
+                                      }
+                                      placeholder="Add a detailed description of what students will learn in this lesson..."
+                                      maxLength={1500}
+                                    />
                                   </div>
                                 </div>
 
@@ -2508,7 +2378,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       <div
                         key={item.id}
                         className="extras-inclusion-row"
-                        draggable
+                        draggable={dragEnabledInclusionId === item.id}
                         onDragStart={() => handleInclusionDragStart(incIndex)}
                         onDragOver={(e) => handleInclusionDragOver(e, incIndex)}
                         onDragEnd={handleInclusionDragEnd}
@@ -2516,6 +2386,16 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                         <span
                           className="curriculum-drag-handle"
                           title="Drag to reorder inclusion"
+                          onMouseEnter={() => setDragEnabledInclusionId(item.id)}
+                          onMouseLeave={() => {
+                            if (draggedInclusionIndex === null)
+                              setDragEnabledInclusionId(null);
+                          }}
+                          onMouseDown={() => setDragEnabledInclusionId(item.id)}
+                          onMouseUp={() => {
+                            if (draggedInclusionIndex === null)
+                              setDragEnabledInclusionId(null);
+                          }}
                         >
                           <DotsSixVertical size={18} />
                         </span>
