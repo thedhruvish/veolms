@@ -9176,6 +9176,11 @@ html:has(.settings-profile__privacy-dialog[open]) {
   line-height: 1.4;
 }
 
+.auth-form__error-title {
+  display: block;
+  font-weight: 700;
+}
+
 .auth-form__mobile-row {
   display: flex;
   align-items: stretch;
@@ -9375,6 +9380,167 @@ html:has(.settings-profile__privacy-dialog[open]) {
   min-width: 0;
 }
 
+.auth-otp {
+  display: grid;
+  grid-template-columns: repeat(6, var(--auth-h-field));
+  justify-content: start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.auth-otp__slot {
+  min-width: 0;
+}
+
+.auth-otp__label {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.auth-otp__digit {
+  width: var(--auth-h-field);
+  height: var(--auth-h-field);
+  padding: 0;
+  border: 1px solid var(--auth-line);
+  border-radius: var(--auth-radius);
+  color: var(--text);
+  caret-color: var(--accent);
+  background: var(--surface);
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease;
+}
+
+.auth-otp__digit:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 65%, transparent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+.auth-otp__digit[aria-invalid="true"] {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 9%, var(--surface));
+}
+
+.auth-otp__digit:disabled {
+  border-color: color-mix(in srgb, var(--text) 8%, transparent);
+  color: var(--muted);
+  background: color-mix(in srgb, var(--surface) 62%, transparent);
+  cursor: not-allowed;
+}
+
+.auth-otp-form {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+}
+
+.auth-otp-form__destination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  min-width: 0;
+  margin-top: 5px;
+}
+
+.auth-otp-form__destination-label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.auth-otp-form__mask {
+  min-width: 0;
+  margin: 0;
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.auth-otp-form__change {
+  justify-self: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  color: var(--accent);
+  background: transparent;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: color 140ms ease;
+}
+
+.auth-otp-form__change:hover {
+  color: var(--accent-hover);
+}
+
+.auth-otp-form__resend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.auth-otp-form__resend-prompt {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.auth-otp-form__resend-button {
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  color: var(--accent);
+  background: transparent;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: color 140ms ease;
+}
+
+.auth-otp-form__resend-button:hover:not(:disabled) {
+  color: var(--accent-hover);
+}
+
+.auth-otp-form__resend-button:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+/* The countdown itself sits on the button, which would make a live region speak
+   every second. This region carries only the two state changes worth hearing. */
+.auth-otp-form__status {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 @media (min-width: 1024px) {
   .auth-page {
     --auth-pad-y: clamp(30px, 2.6vw, 38px);
@@ -9424,6 +9590,14 @@ html:has(.settings-profile__privacy-dialog[open]) {
     pointer-events: none;
     content: "";
   }
+
+  .auth-otp-form__destination-label {
+    font-size: 0.86rem;
+  }
+
+  .auth-otp-form__mask {
+    font-size: 1.05rem;
+  }
 }
 
 @media (max-width: 380px) {
@@ -9433,5 +9607,17 @@ html:has(.settings-profile__privacy-dialog[open]) {
 
   .auth-social__button {
     font-size: 0.8rem;
+  }
+
+  .auth-otp {
+    gap: 6px;
+  }
+
+  .auth-otp-form__destination {
+    gap: 2px;
+  }
+
+  .auth-otp-form__mask {
+    font-size: 0.88rem;
   }
 }
