@@ -9,6 +9,7 @@ import {
 } from "@phosphor-icons/react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { handleRovingTabKeyDown } from "../accessibility/rovingTabFocus";
+import { SwipeableTabPanel } from "../navigation/SwipeableTabPanel";
 import { CommentCard } from "./CommentCard";
 import type { Comment } from "./CommentCard";
 import {
@@ -74,6 +75,9 @@ const tabs = [
 
 type Tab = (typeof tabs)[number][0];
 type SupplementalTab = Exclude<Tab, "Comments">;
+const tabIds = tabs.map(([label]) => label);
+const getTabId = (tab: Tab) =>
+  `lesson-tool-tab-${tab.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 
 const supplementalContent: Record<
   SupplementalTab,
@@ -128,6 +132,7 @@ export function Discussion({ persistenceKey }: DiscussionProps) {
     isStoredBoolean,
   );
   const [searchFocused, setSearchFocused] = useState(false);
+  const tabListRef = useRef<HTMLDivElement>(null);
   const composerSearchInputRef = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useSessionStorageState(
     `${storageBase}-comment-draft`,
@@ -193,10 +198,18 @@ export function Discussion({ persistenceKey }: DiscussionProps) {
     );
   };
 
+  const navigateTab = (tab: Tab) => {
+    setActiveTab(tab);
+    setSearch("");
+    setSearchOpen(false);
+    setSearchFocused(false);
+  };
+
   return (
     <section className="learning-discussion">
       <div className="flex flex-col gap-3 border-b border-[var(--border)] md:flex-row md:items-end md:justify-between">
         <div
+          ref={tabListRef}
           className="page-tabs scrollbar-none flex min-w-0 gap-1 overflow-x-auto"
           role="tablist"
           aria-label="Lesson tools"
@@ -204,17 +217,15 @@ export function Discussion({ persistenceKey }: DiscussionProps) {
           {tabs.map(([label, Icon, tone]) => (
             <button
               type="button"
+              id={getTabId(label)}
               role="tab"
               aria-selected={activeTab === label}
+              aria-controls="learning-discussion-tab-panel"
               data-page-tab-tone={tone}
+              data-swipe-tab-id={label}
               tabIndex={activeTab === label ? 0 : -1}
               key={label}
-              onClick={() => {
-                setActiveTab(label);
-                setSearch("");
-                setSearchOpen(false);
-                setSearchFocused(false);
-              }}
+              onClick={() => navigateTab(label)}
               onKeyDown={handleRovingTabKeyDown}
               className={`lesson-tool-tab relative inline-flex h-12 shrink-0 items-center gap-2 px-3 text-[15px] transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--accent)] ${activeTab === label ? "is-active font-semibold" : "text-[var(--muted)] hover:text-[var(--text)]"}`}
             >
@@ -225,6 +236,7 @@ export function Discussion({ persistenceKey }: DiscussionProps) {
               {label}
             </button>
           ))}
+          <span className="page-tabs__indicator" aria-hidden="true" />
         </div>
         <label
           className="learning-discussion__search relative mb-2 block shrink-0"
@@ -252,121 +264,141 @@ export function Discussion({ persistenceKey }: DiscussionProps) {
         </label>
       </div>
 
-      {activeTab === "Comments" ? (
-        <>
-          <div
-            className={`learning-comment-composer ${searchOpen ? "is-search-open" : ""}`}
-          >
-            <img
-              src="/assets/sofia-avatar.jpg"
-              alt=""
-              className="learning-comment-composer__avatar"
-            />
-            <label className="learning-comment-composer__comment min-w-0 flex-1">
-              <span className="sr-only">Add a comment</span>
-              <input
-                value={draft}
-                onChange={(event) => {
-                  setDraft(event.target.value);
-                  setNotice("");
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") addComment();
-                }}
-                placeholder="Add a comment..."
-                className="learning-comment-composer__input h-11 w-full bg-transparent px-1 outline-none placeholder:text-[var(--muted)]"
-              />
-            </label>
-            <button
-              type="button"
-              onClick={addComment}
-              aria-label="Post comment"
-              className="learning-comment-composer__send"
-            >
-              <PaperPlaneTilt size={22} weight="fill" />
-            </button>
-            <button
-              type="button"
-              aria-label={
-                searchOpen ? "Close comment search" : "Search comments"
-              }
-              aria-pressed={searchOpen}
-              onClick={() => {
-                setSearchOpen((open) => {
-                  const nextOpen = !open;
-                  setSearchFocused(nextOpen);
-                  return nextOpen;
-                });
-              }}
-              className="learning-comment-composer__search-toggle"
-            >
-              {searchOpen ? <X size={18} /> : <MagnifyingGlass size={20} />}
-            </button>
-            <label
-              className="learning-comment-composer__search"
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setSearchFocused(false)}
-            >
-              <MagnifyingGlass size={18} aria-hidden="true" />
-              <span className="sr-only">Search {activeTab.toLowerCase()}</span>
-              <input
-                ref={composerSearchInputRef}
-                type="search"
-                tabIndex={searchOpen ? 0 : -1}
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder={
-                  searchFocused
-                    ? (activeTab as Tab) === "Q&A"
-                      ? "Search Q&A"
-                      : `Search ${activeTab.toLowerCase()}`
-                    : "Search"
-                }
-              />
-            </label>
-          </div>
-          {notice && (
-            <p
-              role="status"
-              className={`mt-2 text-xs ${notice.includes("posted") ? "text-[var(--success)]" : "text-[var(--danger)]"}`}
-            >
-              {notice}
-            </p>
-          )}
-
-          <div className="mt-3 space-y-2.5">
-            {visibleComments.map((comment) => (
-              <CommentCard key={comment.id} comment={comment} onLike={onLike} />
-            ))}
-            {visibleComments.length === 0 && (
-              <div className="rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--surface)] px-5 py-10 text-center">
-                <p className="font-semibold">No comments match that search</p>
-                <p className="mt-1 text-sm text-[var(--muted)]">
-                  Try a name, topic, or phrase from the discussion.
-                </p>
+      <SwipeableTabPanel
+        tabs={tabIds}
+        activeTab={activeTab}
+        onTabChange={navigateTab}
+        tabListRef={tabListRef}
+        id="learning-discussion-tab-panel"
+        labelledBy={getTabId(activeTab)}
+        className="learning-discussion__tab-panel"
+      >
+        {(panelTab) =>
+          panelTab === "Comments" ? (
+            <>
+              <div
+                className={`learning-comment-composer ${searchOpen ? "is-search-open" : ""}`}
+              >
+                <img
+                  src="/assets/sofia-avatar.jpg"
+                  alt=""
+                  className="learning-comment-composer__avatar"
+                />
+                <label className="learning-comment-composer__comment min-w-0 flex-1">
+                  <span className="sr-only">Add a comment</span>
+                  <input
+                    value={draft}
+                    onChange={(event) => {
+                      setDraft(event.target.value);
+                      setNotice("");
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") addComment();
+                    }}
+                    placeholder="Add a comment..."
+                    className="learning-comment-composer__input h-11 w-full bg-transparent px-1 outline-none placeholder:text-[var(--muted)]"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={addComment}
+                  aria-label="Post comment"
+                  className="learning-comment-composer__send"
+                >
+                  <PaperPlaneTilt size={22} weight="fill" />
+                </button>
+                <button
+                  type="button"
+                  aria-label={
+                    searchOpen ? "Close comment search" : "Search comments"
+                  }
+                  aria-pressed={searchOpen}
+                  onClick={() => {
+                    setSearchOpen((open) => {
+                      const nextOpen = !open;
+                      setSearchFocused(nextOpen);
+                      return nextOpen;
+                    });
+                  }}
+                  className="learning-comment-composer__search-toggle"
+                >
+                  {searchOpen ? <X size={18} /> : <MagnifyingGlass size={20} />}
+                </button>
+                <label
+                  className="learning-comment-composer__search"
+                  onFocus={() => setSearchFocused(true)}
+                  onBlur={() => setSearchFocused(false)}
+                >
+                  <MagnifyingGlass size={18} aria-hidden="true" />
+                  <span className="sr-only">
+                    Search {activeTab.toLowerCase()}
+                  </span>
+                  <input
+                    ref={composerSearchInputRef}
+                    type="search"
+                    tabIndex={searchOpen ? 0 : -1}
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder={
+                      searchFocused
+                        ? (activeTab as Tab) === "Q&A"
+                          ? "Search Q&A"
+                          : `Search ${activeTab.toLowerCase()}`
+                        : "Search"
+                    }
+                  />
+                </label>
               </div>
-            )}
-          </div>
-        </>
-      ) : (
-        <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-6 py-12 text-center">
-          <h3 className="text-base font-semibold">
-            {supplementalContent[activeTab].title}
-          </h3>
-          <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-[var(--muted)]">
-            {supplementalContent[activeTab].body}
-          </p>
-          <button
-            type="button"
-            onClick={() =>
-              setNotice(`${supplementalContent[activeTab].action} selected.`)
-            }
-            className="mt-5 rounded-[9px] bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-[var(--on-accent)] transition hover:bg-[var(--accent-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
-          >
-            {supplementalContent[activeTab].action}
-          </button>
-        </div>
-      )}
+              {notice && (
+                <p
+                  role="status"
+                  className={`mt-2 text-xs ${notice.includes("posted") ? "text-[var(--success)]" : "text-[var(--danger)]"}`}
+                >
+                  {notice}
+                </p>
+              )}
+
+              <div className="mt-3 space-y-2.5">
+                {visibleComments.map((comment) => (
+                  <CommentCard
+                    key={comment.id}
+                    comment={comment}
+                    onLike={onLike}
+                  />
+                ))}
+                {visibleComments.length === 0 && (
+                  <div className="rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--surface)] px-5 py-10 text-center">
+                    <p className="font-semibold">
+                      No comments match that search
+                    </p>
+                    <p className="mt-1 text-sm text-[var(--muted)]">
+                      Try a name, topic, or phrase from the discussion.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-6 py-12 text-center">
+              <h3 className="text-base font-semibold">
+                {supplementalContent[panelTab].title}
+              </h3>
+              <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-[var(--muted)]">
+                {supplementalContent[panelTab].body}
+              </p>
+              <button
+                type="button"
+                onClick={() =>
+                  setNotice(`${supplementalContent[panelTab].action} selected.`)
+                }
+                className="mt-5 rounded-[9px] bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-[var(--on-accent)] transition hover:bg-[var(--accent-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+              >
+                {supplementalContent[panelTab].action}
+              </button>
+            </div>
+          )
+        }
+      </SwipeableTabPanel>
     </section>
   );
 }
