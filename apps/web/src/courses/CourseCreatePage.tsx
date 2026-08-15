@@ -15,6 +15,7 @@ import {
   ChatCircleText,
   Check,
   CheckCircle,
+  CircleNotch,
   Clock,
   DotsSixVertical,
   DotsThreeVertical,
@@ -313,6 +314,19 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
   // Course Overview Live Full Preview Modal State
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState<boolean>(false);
+
+  // Footer Action Loading States
+  const [actionLoading, setActionLoading] = useState<
+    "preview" | "draft" | "save" | "publish" | null
+  >(null);
+
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timer = setTimeout(() => setToastMessage(null), 3000);
+    return () => clearTimeout(timer);
+  }, [toastMessage]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -944,7 +958,35 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     isPricingValid &&
     isExtrasValid;
 
+  const handlePreviewAction = () => {
+    if (actionLoading) return;
+    setActionLoading("preview");
+    setTimeout(() => {
+      setActionLoading(null);
+      setIsPreviewModalOpen(true);
+    }, 450);
+  };
+
+  const handleSaveDraftAction = () => {
+    if (actionLoading) return;
+    setActionLoading("draft");
+    setTimeout(() => {
+      setActionLoading(null);
+      setToastMessage("Draft saved successfully!");
+    }, 700);
+  };
+
+  const handleSaveChangesAction = () => {
+    if (actionLoading) return;
+    setActionLoading("save");
+    setTimeout(() => {
+      setActionLoading(null);
+      setToastMessage("All changes saved successfully!");
+    }, 650);
+  };
+
   const handleFinalPublishCourse = () => {
+    if (actionLoading) return;
     if (!isCourseReadyToPublish) {
       if (!isBasicsValid)
         setPublishValidationError(
@@ -966,14 +1008,16 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     }
 
     setPublishValidationError(null);
-    setIsPublished(true);
-    if (typeof window !== "undefined") {
-      alert(
+    setActionLoading("publish");
+    setTimeout(() => {
+      setActionLoading(null);
+      setIsPublished(true);
+      setToastMessage(
         isPublished
-          ? "Course updated successfully!"
-          : "Course successfully published!",
+          ? "Course updated and published successfully!"
+          : "Course published successfully!",
       );
-    }
+    }, 850);
   };
 
   return (
@@ -2946,31 +2990,97 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
           </div>
         )}
         <div className="course-wizard-footer__actions">
+          {/* Preview Button */}
           <button
             type="button"
             className="course-wizard-btn-ghost"
-            onClick={() => setIsPreviewModalOpen(true)}
+            onClick={handlePreviewAction}
+            disabled={actionLoading !== null}
           >
-            <Eye size={16} /> Preview
+            {actionLoading === "preview" ? (
+              <>
+                <CircleNotch size={16} className="course-wizard-spinner" />
+                <span>Opening...</span>
+              </>
+            ) : (
+              <>
+                <Eye size={16} />
+                <span>Preview</span>
+              </>
+            )}
           </button>
-          <button type="button" className="course-wizard-btn-draft">
-            <FloppyDisk size={16} /> Save Draft
+
+          {/* Save Draft Button */}
+          <button
+            type="button"
+            className="course-wizard-btn-draft"
+            onClick={handleSaveDraftAction}
+            disabled={actionLoading !== null}
+          >
+            {actionLoading === "draft" ? (
+              <>
+                <CircleNotch size={16} className="course-wizard-spinner" />
+                <span>Saving Draft...</span>
+              </>
+            ) : (
+              <>
+                <FloppyDisk size={16} />
+                <span>Save Draft</span>
+              </>
+            )}
           </button>
+
+          {/* Save Changes / Publish Course Primary Button */}
           <button
             type="button"
             className="course-wizard-btn-primary"
+            disabled={actionLoading !== null}
             onClick={
-              activeStep === "publish" ? handleFinalPublishCourse : undefined
+              activeStep === "publish"
+                ? handleFinalPublishCourse
+                : handleSaveChangesAction
             }
           >
-            {activeStep === "publish"
-              ? isPublished
-                ? "Update Course"
-                : "Publish Course"
-              : "Save Changes"}
+            {actionLoading === "publish" ? (
+              <>
+                <CircleNotch size={16} className="course-wizard-spinner" />
+                <span>{isPublished ? "Updating..." : "Publishing..."}</span>
+              </>
+            ) : actionLoading === "save" ? (
+              <>
+                <CircleNotch size={16} className="course-wizard-spinner" />
+                <span>Saving Changes...</span>
+              </>
+            ) : (
+              <>
+                {activeStep === "publish" ? (
+                  isPublished ? (
+                    <>
+                      <CheckCircle size={16} />
+                      <span>Update Course</span>
+                    </>
+                  ) : (
+                    <>
+                      <RocketLaunch size={16} />
+                      <span>Publish Course</span>
+                    </>
+                  )
+                ) : (
+                  <span>Save Changes</span>
+                )}
+              </>
+            )}
           </button>
         </div>
       </footer>
+
+      {/* Floating Action Feedback Toast */}
+      {toastMessage && (
+        <div className="course-wizard-toast" role="status" aria-live="polite">
+          <CheckCircle size={18} weight="fill" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
       {/* Reusable Delete Confirmation Modal */}
       <ConfirmDeleteModal
         isOpen={deleteModalState.isOpen}
