@@ -24,6 +24,7 @@ import { sections } from "../learning/courseContent";
 import type { CourseSection } from "../learning/courseContent";
 import { getCourseTitle, getCourseThumbnail } from "../learning/courseMetadata";
 import type { NavigateTo } from "../routing/navigation";
+import { RenderMarkdown } from "./RichTextEditor";
 
 // ─── per-course curriculum adapter ──────────────────────────────────────────
 
@@ -118,13 +119,19 @@ function getCourseSections(courseSlug: string | undefined): CourseSection[] {
 
 // ─── static per-overview pricing / includes data ────────────────────────────
 
-const PRICE = "₹1,999";
-const ORIGINAL_PRICE = "₹2,999";
-const DISCOUNT = "33% OFF";
+const DEFAULT_PRICE = "₹1,999";
+const DEFAULT_ORIGINAL_PRICE = "₹2,999";
+const DEFAULT_DISCOUNT = "33% OFF";
 
-interface CourseInclude {
+export interface CourseInclude {
   icon: typeof BookOpen;
   label: string;
+}
+
+export interface CourseOverviewPricingProps {
+  price?: string;
+  originalPrice?: string;
+  discount?: string;
 }
 
 function buildIncludes(course: Course): CourseInclude[] {
@@ -282,26 +289,30 @@ function CurriculumSection({
 interface CourseHeaderSectionProps {
   course: Course;
   title: string;
-  onNavigateCourses: () => void;
+  onNavigateCourses?: () => void;
+  isReadOnlyPreview?: boolean;
 }
 
 function CourseHeaderSection({
   course,
   title,
   onNavigateCourses,
+  isReadOnlyPreview,
 }: CourseHeaderSectionProps) {
   return (
     <>
       {/* Header Top Bar: Back button + Eyebrow badge */}
       <div className="cov-header-top">
-        <button
-          type="button"
-          className="cov-back"
-          aria-label="Back to courses"
-          onClick={onNavigateCourses}
-        >
-          <ArrowLeft size={16} weight="bold" />
-        </button>
+        {onNavigateCourses && (
+          <button
+            type="button"
+            className="cov-back"
+            aria-label="Back to courses"
+            onClick={onNavigateCourses}
+          >
+            <ArrowLeft size={16} weight="bold" />
+          </button>
+        )}
         <span className="cov-badge" aria-label={`Level: ${course.level}`}>
           {course.level.toUpperCase()}
         </span>
@@ -313,7 +324,7 @@ function CourseHeaderSection({
         <div className="cov-hero__meta">
           <span>
             <User size={15} weight="bold" aria-hidden="true" />
-            Anurag Singh
+            Instructor
           </span>
           <span className="cov-hero__dot" aria-hidden="true">
             •
@@ -349,8 +360,10 @@ interface CoursePurchaseCardProps {
   title: string;
   thumbnail: string;
   wishlisted: boolean;
-  onToggleWishlist: (event: MouseEvent<HTMLButtonElement>) => void;
-  onNavigatePage: NavigateTo;
+  onToggleWishlist?: (event: MouseEvent<HTMLButtonElement>) => void;
+  onNavigatePage?: NavigateTo;
+  pricing?: CourseOverviewPricingProps;
+  isReadOnlyPreview?: boolean;
 }
 
 function CoursePurchaseCard({
@@ -360,7 +373,13 @@ function CoursePurchaseCard({
   wishlisted,
   onToggleWishlist,
   onNavigatePage,
+  pricing,
+  isReadOnlyPreview,
 }: CoursePurchaseCardProps) {
+  const price = pricing?.price ?? DEFAULT_PRICE;
+  const originalPrice = pricing?.originalPrice ?? (pricing?.price ? undefined : DEFAULT_ORIGINAL_PRICE);
+  const discount = pricing?.discount ?? (pricing?.price ? undefined : DEFAULT_DISCOUNT);
+
   return (
     <aside
       className="cov-card cov-purchase-card"
@@ -377,9 +396,11 @@ function CoursePurchaseCard({
           type="button"
           className="cov-panel__play"
           aria-label={`Play preview for ${title}`}
-          onClick={() =>
-            onNavigatePage(`/courses/${encodeURIComponent(course.id)}`)
-          }
+          onClick={() => {
+            if (!isReadOnlyPreview && onNavigatePage) {
+              onNavigatePage(`/courses/${encodeURIComponent(course.id)}`);
+            }
+          }}
         >
           <span className="cov-panel__play-circle" aria-hidden="true">
             <Play size={22} weight="fill" />
@@ -394,13 +415,17 @@ function CoursePurchaseCard({
       <div className="cov-panel__details">
         {/* Pricing */}
         <div className="cov-panel__pricing">
-          <span className="cov-panel__price">{PRICE}</span>
-          <span className="cov-panel__original">{ORIGINAL_PRICE}</span>
-          <span className="cov-panel__discount">{DISCOUNT}</span>
+          <span className="cov-panel__price">{price}</span>
+          {originalPrice && (
+            <span className="cov-panel__original">{originalPrice}</span>
+          )}
+          {discount && (
+            <span className="cov-panel__discount">{discount}</span>
+          )}
         </div>
 
         {/* Coupon */}
-        <button type="button" className="cov-panel__coupon">
+        <button type="button" className="cov-panel__coupon" disabled={isReadOnlyPreview}>
           <Ticket
             size={20}
             className="cov-panel__ticket-icon"
@@ -421,12 +446,15 @@ function CoursePurchaseCard({
         <button
           type="button"
           className="cov-panel__buy"
-          onClick={() =>
-            onNavigatePage(`/courses/${encodeURIComponent(course.id)}`)
-          }
+          disabled={isReadOnlyPreview}
+          onClick={() => {
+            if (!isReadOnlyPreview && onNavigatePage) {
+              onNavigatePage(`/courses/${encodeURIComponent(course.id)}`);
+            }
+          }}
         >
           <ShoppingBag size={18} weight="bold" aria-hidden="true" />
-          {course.enrolled ? "Continue Learning" : "Buy Now"}
+          {price.toLowerCase() === "free" ? "Enroll for Free" : course.enrolled ? "Continue Learning" : "Buy Now"}
         </button>
 
         {/* Wishlist Button */}
@@ -434,6 +462,7 @@ function CoursePurchaseCard({
           type="button"
           className={`cov-panel__wishlist${wishlisted ? " is-wishlisted" : ""}`}
           aria-pressed={wishlisted}
+          disabled={isReadOnlyPreview}
           onClick={onToggleWishlist}
         >
           <BookmarkSimple
@@ -451,14 +480,16 @@ function CoursePurchaseCard({
 // ─── About Card sub-component ────────────────────────────────────────────────
 
 interface CourseAboutCardProps {
-  aboutLead: string;
-  aboutBody: string;
-  aboutExtra: string;
+  description?: string;
+  aboutLead?: string;
+  aboutBody?: string;
+  aboutExtra?: string;
   showMore: boolean;
   onToggleShowMore: () => void;
 }
 
 function CourseAboutCard({
+  description,
   aboutLead,
   aboutBody,
   aboutExtra,
@@ -474,24 +505,34 @@ function CourseAboutCard({
         About this course
       </h2>
       <div className="cov-about__body">
-        <p>{aboutLead}</p>
-        <p>{aboutBody}</p>
-        {showMore && <p>{aboutExtra}</p>}
+        {description ? (
+          <div className="course-preview-markdown-content">
+            <RenderMarkdown content={description} />
+          </div>
+        ) : (
+          <>
+            {aboutLead && <p>{aboutLead}</p>}
+            {aboutBody && <p>{aboutBody}</p>}
+            {showMore && aboutExtra && <p>{aboutExtra}</p>}
+          </>
+        )}
       </div>
-      <button
-        type="button"
-        className="cov-see-more"
-        aria-expanded={showMore}
-        onClick={onToggleShowMore}
-      >
-        {showMore ? "See less..." : "See more..."}{" "}
-        <CaretDown
-          size={14}
-          weight="bold"
-          className={`cov-see-more__icon${showMore ? " is-open" : ""}`}
-          aria-hidden="true"
-        />
-      </button>
+      {!description && (
+        <button
+          type="button"
+          className="cov-see-more"
+          aria-expanded={showMore}
+          onClick={onToggleShowMore}
+        >
+          {showMore ? "See less..." : "See more..."}{" "}
+          <CaretDown
+            size={14}
+            weight="bold"
+            className={`cov-see-more__icon${showMore ? " is-open" : ""}`}
+            aria-hidden="true"
+          />
+        </button>
+      )}
     </section>
   );
 }
@@ -569,21 +610,38 @@ function CourseCurriculumSectionList({
 // ─── main page ───────────────────────────────────────────────────────────────
 
 export interface CourseOverviewPageProps {
-  courseSlug: string | undefined;
-  onNavigateCourses: () => void;
-  onNavigatePage: NavigateTo;
+  courseSlug?: string | undefined;
+  onNavigateCourses?: () => void;
+  onNavigatePage?: NavigateTo;
+  // Custom overview data override for Course Wizard Preview
+  customCourse?: Course;
+  customDescription?: string;
+  customSections?: CourseSection[];
+  customIncludes?: CourseInclude[];
+  customPricing?: CourseOverviewPricingProps;
+  isReadOnlyPreview?: boolean;
 }
 
 export function CourseOverviewPage({
   courseSlug,
   onNavigateCourses,
   onNavigatePage,
+  customCourse,
+  customDescription,
+  customSections,
+  customIncludes,
+  customPricing,
+  isReadOnlyPreview = false,
 }: CourseOverviewPageProps) {
-  const course = courses.find((c) => c.id === courseSlug) ?? courses[0]!;
-  const title = getCourseTitle(courseSlug);
-  const thumbnail = getCourseThumbnail(courseSlug);
-  const courseSections = getCourseSections(courseSlug);
-  const includes = buildIncludes(course);
+  const course =
+    customCourse ??
+    courses.find((c) => c.id === courseSlug) ??
+    courses[0]!;
+
+  const title = customCourse?.title ?? getCourseTitle(courseSlug);
+  const thumbnail = customCourse?.thumbnail ?? getCourseThumbnail(courseSlug);
+  const courseSections = customSections ?? getCourseSections(courseSlug);
+  const includes = customIncludes ?? buildIncludes(course);
 
   const [openSections, setOpenSections] = useState<Set<number>>(
     () => new Set([0]),
@@ -611,6 +669,7 @@ export function CourseOverviewPage({
 
   const toggleWishlist = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
+    if (isReadOnlyPreview) return;
     setWishlisted((prev) => {
       const next = !prev;
       try {
@@ -643,8 +702,10 @@ export function CourseOverviewPage({
               course={course}
               title={title}
               onNavigateCourses={onNavigateCourses}
+              isReadOnlyPreview={isReadOnlyPreview}
             />
             <CourseAboutCard
+              description={customDescription}
               aboutLead={aboutLead}
               aboutBody={aboutBody}
               aboutExtra={aboutExtra}
@@ -667,6 +728,8 @@ export function CourseOverviewPage({
               wishlisted={wishlisted}
               onToggleWishlist={toggleWishlist}
               onNavigatePage={onNavigatePage}
+              pricing={customPricing}
+              isReadOnlyPreview={isReadOnlyPreview}
             />
             <CourseIncludesCard includes={includes} />
           </div>
@@ -679,6 +742,7 @@ export function CourseOverviewPage({
           course={course}
           title={title}
           onNavigateCourses={onNavigateCourses}
+          isReadOnlyPreview={isReadOnlyPreview}
         />
         <CoursePurchaseCard
           course={course}
@@ -687,8 +751,11 @@ export function CourseOverviewPage({
           wishlisted={wishlisted}
           onToggleWishlist={toggleWishlist}
           onNavigatePage={onNavigatePage}
+          pricing={customPricing}
+          isReadOnlyPreview={isReadOnlyPreview}
         />
         <CourseAboutCard
+          description={customDescription}
           aboutLead={aboutLead}
           aboutBody={aboutBody}
           aboutExtra={aboutExtra}
