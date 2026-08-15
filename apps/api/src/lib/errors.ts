@@ -1,8 +1,6 @@
 import { STATUS_CODES } from "node:http";
-
 import { z } from "zod";
-
-import { jsonResponse } from "./responses.ts";
+import { errorJsonResponse } from "./responses.ts";
 
 const validationIssueSchema = z.strictObject({
   path: z.string().meta({
@@ -12,17 +10,18 @@ const validationIssueSchema = z.strictObject({
 });
 
 export const errorResponseSchema = z.strictObject({
-  statusCode: z
-    .number()
-    .int()
-    .meta({ description: "HTTP status code, repeated in the body." }),
-  code: z.string().meta({ description: "Stable machine-readable error code." }),
-  error: z.string().meta({ description: "HTTP status phrase." }),
-  message: z.string().meta({ description: "Human-readable explanation." }),
-  issues: z
-    .array(validationIssueSchema)
-    .optional()
-    .meta({ description: "Only present when request validation failed." }),
+  success: z.literal(false),
+  statusCode: z.number().int(),
+  error: z.strictObject({
+    code: z
+      .string()
+      .meta({ description: "Stable machine-readable error code." }),
+    message: z.string().meta({ description: "Human-readable explanation." }),
+    issues: z
+      .array(validationIssueSchema)
+      .optional()
+      .meta({ description: "Only present when request validation failed." }),
+  }),
 });
 
 z.globalRegistry.add(errorResponseSchema, {
@@ -31,12 +30,10 @@ z.globalRegistry.add(errorResponseSchema, {
 });
 
 export type ErrorResponse = z.output<typeof errorResponseSchema>;
-
 export type ValidationIssue = z.output<typeof validationIssueSchema>;
 
-/** Declares a failure response pointing at the shared `ErrorResponse`. */
 export function errorResponse(description: string) {
-  return jsonResponse(description, errorResponseSchema);
+  return errorJsonResponse(description, errorResponseSchema);
 }
 
 export function httpError(
@@ -46,10 +43,12 @@ export function httpError(
   issues?: ValidationIssue[],
 ): ErrorResponse {
   return {
+    success: false,
     statusCode,
-    code,
-    error: STATUS_CODES[statusCode] ?? "Error",
-    message,
-    ...(issues ? { issues } : {}),
+    error: {
+      code,
+      message,
+      ...(issues ? { issues } : {}),
+    },
   };
 }

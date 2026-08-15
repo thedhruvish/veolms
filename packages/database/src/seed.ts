@@ -40,6 +40,7 @@ const config = loadServerConfig(process.env);
 const database = createDatabase(config.DATABASE_URL);
 
 try {
+
   for (const course of courses) {
     await database
       .insertInto("courses")
