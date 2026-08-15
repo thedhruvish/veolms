@@ -9491,6 +9491,78 @@ html:has(.settings-profile__privacy-dialog[open]) {
   color: var(--accent-hover);
 }
 
+.auth-account-form {
+  display: grid;
+  justify-items: start;
+  width: 100%;
+  min-width: 0;
+}
+
+.auth-account-form__verified {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: var(--auth-gap-block) 0 0;
+  padding: 8px 13px;
+  border: 1px solid var(--auth-line);
+  border-radius: var(--auth-radius);
+  color: var(--text);
+  background: var(--surface);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.auth-account-form__verified > svg {
+  flex: 0 0 auto;
+  color: var(--success);
+}
+
+.auth-account-form__verified-mask {
+  min-width: 0;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  overflow-wrap: anywhere;
+}
+
+.auth-account-form__verified-state {
+  color: var(--success);
+  font-weight: 600;
+}
+
+.auth-account-form__label {
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.auth-account-form__legal {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.auth-account-form__legal-action {
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  color: var(--accent);
+  background: transparent;
+  font: inherit;
+  font-size: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 140ms ease;
+}
+
+.auth-account-form__legal-action:hover {
+  color: var(--accent-hover);
+}
+
 .auth-otp-form__resend {
   display: flex;
   flex-wrap: wrap;
@@ -9539,6 +9611,133 @@ html:has(.settings-profile__privacy-dialog[open]) {
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+.auth-two-factor {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+}
+
+.auth-two-factor__passkey {
+  display: grid;
+  gap: var(--auth-gap-form);
+  min-width: 0;
+}
+
+.auth-two-factor__panel {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--auth-line);
+  border-radius: var(--auth-radius);
+  background: var(--surface);
+}
+
+.auth-two-factor__panel-body {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 16px 16px 18px;
+}
+
+.auth-two-factor__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-self: end;
+  gap: 5px;
+  margin: 0;
+  padding: 3px 9px;
+  border-radius: 999px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  font-size: 0.68rem;
+  font-weight: 650;
+}
+
+.auth-two-factor__intro {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+}
+
+/* The badge sits in the copy column's first row, so centring the mark on the
+   column would ride high of the title and body it belongs beside. */
+.auth-two-factor__mark {
+  display: inline-flex;
+  width: 76px;
+  height: 76px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 19px;
+  transform: translateY(13px);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.auth-two-factor__copy {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.auth-two-factor__title {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.auth-two-factor__body {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.auth-two-factor__refresh {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
+.auth-two-factor__badge > svg,
+.auth-two-factor__refresh > svg {
+  flex: 0 0 auto;
+}
+
+/* The primary action carries a leading glyph that the shared submit grid has no
+   cell for, so the centred label cell holds both. */
+.auth-two-factor .auth-form__submit-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.auth-two-factor__alternate {
+  justify-self: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  color: var(--accent);
+  background: transparent;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: color 140ms ease;
+}
+
+.auth-two-factor__alternate:hover {
+  color: var(--accent-hover);
 }
 
 @media (min-width: 1024px) {
@@ -9619,5 +9818,20 @@ html:has(.settings-profile__privacy-dialog[open]) {
 
   .auth-otp-form__mask {
     font-size: 0.88rem;
+  }
+
+  .auth-account-form__verified {
+    gap: 6px;
+    padding: 7px 10px;
+    font-size: 0.8rem;
+  }
+
+  .auth-two-factor__panel-body {
+    padding: 12px;
+  }
+
+  .auth-two-factor__mark {
+    width: 44px;
+    height: 44px;
   }
 }
