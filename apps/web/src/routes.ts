@@ -89,4 +89,12 @@ export default [
     }),
     route("*", marker, { id: "home-fallback", caseSensitive: true }),
   ]),
+
+  layout("routes/auth-layout.tsx", { id: "auth-layout" }, [
+    route("login", "routes/login.tsx", { id: "login", caseSensitive: true }),
+    route("register", "routes/register.tsx", {
+      id: "register",
+      caseSensitive: true,
+    }),
+  ]),
 ] satisfies RouteConfig;
