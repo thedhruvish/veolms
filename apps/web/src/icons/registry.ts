@@ -1,21 +1,35 @@
 import {
   ArrowRight,
+  CheckIcon,
+  ClockIcon,
   DeviceMobile,
   EnvelopeSimple,
+  FingerprintIcon,
+  LockIcon,
   Moon,
   Palette,
   Shapes,
+  ShieldCheckIcon,
+  StarIcon,
   Sun,
+  UserCircleIcon,
   WarningCircle,
 } from "@phosphor-icons/react";
 import {
   ArrowRight as ArrowRightGlyph,
+  Check,
   CircleAlert,
+  CircleUserRound,
+  Clock,
+  FingerprintPattern,
+  Lock,
   Mail,
   Moon as MoonGlyph,
   Palette as PaletteGlyph,
   Shapes as ShapesGlyph,
+  ShieldCheck,
   Smartphone,
+  Star,
   Sun as SunGlyph,
 } from "lucide-react";
 import type { ComponentType } from "react";
@@ -50,6 +64,13 @@ export const iconRegistry = {
   lightMode: { lucide: SunGlyph, phosphor: Sun },
   darkMode: { lucide: MoonGlyph, phosphor: Moon },
   iconPack: { lucide: ShapesGlyph, phosphor: Shapes },
+  verified: { lucide: Check, phosphor: CheckIcon },
+  person: { lucide: CircleUserRound, phosphor: UserCircleIcon },
+  passkey: { lucide: FingerprintPattern, phosphor: FingerprintIcon },
+  authenticator: { lucide: Lock, phosphor: LockIcon },
+  recommended: { lucide: Star, phosphor: StarIcon },
+  shield: { lucide: ShieldCheck, phosphor: ShieldCheckIcon },
+  refreshTimer: { lucide: Clock, phosphor: ClockIcon },
 } as const satisfies Record<string, Record<IconPack, IconGlyph>>;
 
 export type IconName = keyof typeof iconRegistry;

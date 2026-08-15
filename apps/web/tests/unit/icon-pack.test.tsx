@@ -38,13 +38,20 @@ describe("icon registry", () => {
   it("names the glyphs the auth screens ask for", () => {
     expect(Object.keys(iconRegistry).sort()).toEqual([
       "arrowRight",
+      "authenticator",
       "darkMode",
       "email",
       "iconPack",
       "lightMode",
       "mobile",
       "palette",
+      "passkey",
+      "person",
+      "recommended",
+      "refreshTimer",
+      "shield",
       "validationError",
+      "verified",
     ]);
   });
 });
