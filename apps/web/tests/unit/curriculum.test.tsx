@@ -58,6 +58,15 @@ describe("Curriculum", () => {
     ).toBeInTheDocument();
 
     fireEvent.click(
+      screen.getByRole("button", { name: "Close lesson search" }),
+    );
+    expect(
+      screen.getByRole("button", { name: /Section 1: Introduction/ }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Search lessons" }));
+
+    fireEvent.click(
       screen.getByRole("button", { name: /10\.\s*Usability Testing\s*11:39/ }),
     );
     expect(onSelectLesson).toHaveBeenCalledWith(10);

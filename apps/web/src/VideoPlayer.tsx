@@ -25,19 +25,33 @@ const playbackSpeeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const RESUME_PERSIST_INTERVAL_MS = 5_000;
 const AMBIENT_FRAME_INTERVAL_MS = 480;
 const PLAYER_MUTED_STORAGE_KEY = "veolms-player-muted";
+const PLAYER_INTERACTIVE_SHORTCUT_SELECTOR =
+  "button, a[href], input, textarea, select, [role='button'], [role='tab'], [role='option'], [role='radio'], [role='checkbox'], [role='listbox'], [tabindex]:not([tabindex='-1'])";
 
 const getInitialMuted = () => {
   if (typeof window === "undefined") return false;
-  const savedPreference = window.localStorage.getItem(PLAYER_MUTED_STORAGE_KEY);
-  return savedPreference === "true" || savedPreference === "on";
+  try {
+    const savedPreference = window.localStorage.getItem(
+      PLAYER_MUTED_STORAGE_KEY,
+    );
+    return savedPreference === "true" || savedPreference === "on";
+  } catch {
+    return false;
+  }
 };
 
 const getAmbientDefault = () => {
   if (typeof window === "undefined") return false;
 
-  const savedPreference = window.localStorage.getItem("veolms-player-ambient");
-  if (savedPreference === "on") return true;
-  if (savedPreference === "off") return false;
+  try {
+    const savedPreference = window.localStorage.getItem(
+      "veolms-player-ambient",
+    );
+    if (savedPreference === "on") return true;
+    if (savedPreference === "off") return false;
+  } catch {
+    // Fall through to a device-sensitive default.
+  }
 
   const constrainedDevice = window.matchMedia?.(
     "(prefers-reduced-motion: reduce), (pointer: coarse)",
@@ -350,7 +364,11 @@ export function VideoPlayer({
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("veolms-player-ambient", ambient ? "on" : "off");
+    try {
+      localStorage.setItem("veolms-player-ambient", ambient ? "on" : "off");
+    } catch {
+      // Ambient mode remains available when browser storage is unavailable.
+    }
   }, [ambient]);
 
   useEffect(
@@ -428,6 +446,16 @@ export function VideoPlayer({
       event.defaultPrevented ||
       event.isComposing ||
       isEditingShortcutTarget(event.target)
+    )
+      return;
+
+    const focusedInteractiveControl =
+      event.target instanceof Element
+        ? event.target.closest(PLAYER_INTERACTIVE_SHORTCUT_SELECTOR)
+        : null;
+    if (
+      focusedInteractiveControl &&
+      focusedInteractiveControl !== frameRef.current
     )
       return;
 
@@ -564,9 +592,14 @@ export function VideoPlayer({
           muted={muted}
           onLoadedMetadata={(event) => {
             setDuration(event.currentTarget.duration);
-            const savedTime = Number(
-              localStorage.getItem(`veolms-watch-${media.fileName}`),
-            );
+            let savedTime = 0;
+            try {
+              savedTime = Number(
+                localStorage.getItem(`veolms-watch-${media.fileName}`),
+              );
+            } catch {
+              // Resume from the beginning when browser storage is unavailable.
+            }
             event.currentTarget.currentTime =
               Number.isFinite(savedTime) && savedTime > 0
                 ? Math.min(

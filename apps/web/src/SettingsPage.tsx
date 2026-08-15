@@ -128,7 +128,12 @@ export function SettingsPage({
 
   useEffect(() => {
     const exitSettings = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.key !== "Escape") return;
+      if (
+        event.defaultPrevented ||
+        event.key !== "Escape" ||
+        isEditingShortcutTarget(event.target)
+      )
+        return;
 
       const transientSurfaceIsOpen = Array.from(
         document.querySelectorAll<HTMLElement>(

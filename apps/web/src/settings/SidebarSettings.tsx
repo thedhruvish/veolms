@@ -267,6 +267,7 @@ export function SidebarSettings({
     item: SidebarDockItem,
   ) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
+    event.currentTarget.focus({ preventScroll: true });
     event.preventDefault();
     event.currentTarget.setPointerCapture?.(event.pointerId);
     dockDragRef.current = {

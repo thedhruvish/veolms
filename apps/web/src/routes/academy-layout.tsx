@@ -78,12 +78,15 @@ export default function AcademyLayout() {
   const [pendingCourseOpen, setPendingCourseOpen] =
     useState<PendingCourseOpen | null>(null);
   const currentLocationPath = `${location.pathname}${location.search}`;
-  locationPathRef.current = currentLocationPath;
-  if (!isSettingsPath(currentLocationPath)) {
-    settingsReturnLocationRef.current.path = currentLocationPath;
-  }
   const route = getMatchedRouteDescriptor(matches, location.pathname);
   const coursePlayerOrigin = getCoursePlayerOrigin(location.search);
+
+  useLayoutEffect(() => {
+    locationPathRef.current = currentLocationPath;
+    if (!isSettingsPath(currentLocationPath)) {
+      settingsReturnLocationRef.current.path = currentLocationPath;
+    }
+  }, [currentLocationPath]);
 
   useEffect(() => {
     const pathname = normalizeNavigationPath(location.pathname);
@@ -144,7 +147,9 @@ export default function AcademyLayout() {
     [navigate],
   );
   const navigateToRef = useRef(navigateTo);
-  navigateToRef.current = navigateTo;
+  useLayoutEffect(() => {
+    navigateToRef.current = navigateTo;
+  }, [navigateTo]);
   const exitSettings = useCallback(() => {
     const destination = settingsReturnLocationRef.current;
     preservedScrollPositionRef.current = {

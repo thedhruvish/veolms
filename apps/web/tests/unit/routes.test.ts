@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import frameworkRoutes from "../../src/routes.ts";
 import {
   destinationPaths,
@@ -11,7 +11,11 @@ import {
   routeDescriptors,
 } from "../../src/routing/routeDescriptors.ts";
 import {
+  DISCUSSIONS_DEFAULT_TAB,
   DISCUSSIONS_TAB_SESSION_KEY,
+  readDiscussionTab,
+  readSettingsTab,
+  SETTINGS_DEFAULT_TAB,
   SETTINGS_TAB_SESSION_KEY,
 } from "../../src/routing/tabSessionState.ts";
 
@@ -106,6 +110,17 @@ describe("React Router framework route configuration", () => {
   });
 });
 
+describe("session tab routing", () => {
+  it("falls back to each first tab when session storage reads are blocked", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new DOMException("Blocked", "SecurityError");
+    });
+
+    expect(readSettingsTab()).toBe(SETTINGS_DEFAULT_TAB);
+    expect(readDiscussionTab()).toBe(DISCUSSIONS_DEFAULT_TAB);
+  });
+});
+
 describe("framework route descriptors", () => {
   it("normalizes same-route comparisons without changing leading path syntax", () => {
     expect(normalizeNavigationPath("/explore-courses///")).toBe(
@@ -188,6 +203,18 @@ describe("framework route descriptors", () => {
     expect(getEffectiveRouteId("learning", "/learn/%E0%A4%A")).toBe(
       "home-fallback",
     );
+    expect(
+      getEffectiveRouteId(
+        "legacy-learning",
+        "/courses/typescript-course/the-design-mindset",
+      ),
+    ).toBe("legacy-learning");
+    expect(
+      getEffectiveRouteId(
+        "legacy-learning",
+        "/courses/typescript-course/%E0%A4%A",
+      ),
+    ).toBe("home-fallback");
     expect(
       getEffectiveRouteId(
         "course-overview",

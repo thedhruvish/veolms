@@ -185,6 +185,7 @@ test("settings and discussion tabs resume within one tab and reset in a new tab"
     .toBe("appearance");
 
   await page.getByRole("button", { name: "Home", exact: true }).click();
+  await expect(page).toHaveURL(/\/$/);
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(page).toHaveURL(/\/settings\/appearance$/);
   await expect(settingsPanel).toHaveAttribute(

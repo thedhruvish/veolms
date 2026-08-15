@@ -35,7 +35,14 @@ export const READING_MODE_COOL_COLOR = "#a8d3ff";
 export const READING_MODE_WARM_COLOR = "#ffc372";
 
 const normalizePercent = (value: unknown, fallback: number): number => {
-  const numericValue = Number(value);
+  let numericValue: number;
+  if (typeof value === "number") {
+    numericValue = value;
+  } else if (typeof value === "string" && value.trim()) {
+    numericValue = Number(value);
+  } else {
+    return fallback;
+  }
   if (!Number.isFinite(numericValue)) return fallback;
   return Math.min(100, Math.max(0, Math.round(numericValue)));
 };
@@ -148,10 +155,14 @@ export function persistReadingModePreferences(
   const normalized = applyReadingModePreferences(preferences);
   if (typeof window === "undefined") return normalized;
 
-  window.localStorage.setItem(
-    READING_MODE_STORAGE_KEY,
-    JSON.stringify(normalized),
-  );
+  try {
+    window.localStorage.setItem(
+      READING_MODE_STORAGE_KEY,
+      JSON.stringify(normalized),
+    );
+  } catch {
+    // Applying the preference should still work in storage-restricted contexts.
+  }
   window.dispatchEvent(new CustomEvent(READING_MODE_CHANGE_EVENT));
   return normalized;
 }
@@ -162,5 +173,5 @@ export function getReadingModeBootstrapScript(): string {
   const coolColor = JSON.stringify(READING_MODE_COOL_COLOR);
   const warmColor = JSON.stringify(READING_MODE_WARM_COLOR);
 
-  return `(()=>{const r=document.documentElement,d=${defaults},c=(v,f)=>{v=Number(v);return Number.isFinite(v)?Math.min(100,Math.max(0,Math.round(v))):f},m=v=>v==="light"||v==="black-and-white"?v:"full";let p=d;try{const s=localStorage.getItem(${storageKey}),v=s?JSON.parse(s):d;p=v&&typeof v==="object"?{enabled:typeof v.enabled==="boolean"?v.enabled:d.enabled,colorTemperature:c(v.colorTemperature,d.colorTemperature),texture:c(v.texture,d.texture),colors:m(v.colors)}:d}catch{}const t=Math.pow(p.texture/100,${READING_MODE_TEXTURE_EXPONENT}),w=p.colorTemperature>=50,x=Math.pow(Math.abs(p.colorTemperature-50)/50,${READING_MODE_TEMPERATURE_EXPONENT});r.dataset.readingMode=String(p.enabled);r.dataset.readingModeTexture=String(p.enabled&&p.texture>0);r.dataset.readingModeTemperature=String(p.enabled&&p.colorTemperature!==50);r.dataset.readingModeColors=p.colors;r.style.setProperty("--reading-mode-texture-opacity-dark",p.enabled?(t*${READING_MODE_TEXTURE_DARK_MAX_OPACITY}).toFixed(5):"0");r.style.setProperty("--reading-mode-texture-opacity-light",p.enabled?(t*${READING_MODE_TEXTURE_LIGHT_MAX_OPACITY}).toFixed(5):"0");r.style.setProperty("--reading-mode-temperature-color",w?${warmColor}:${coolColor});r.style.setProperty("--reading-mode-temperature-opacity",p.enabled?(x*(w?${READING_MODE_WARM_MAX_OPACITY}:${READING_MODE_COOL_MAX_OPACITY})).toFixed(5):"0")})();`;
+  return `(()=>{const r=document.documentElement,d=${defaults},c=(v,f)=>{if(typeof v==="string"){if(!v.trim())return f;v=Number(v)}else if(typeof v!=="number")return f;return Number.isFinite(v)?Math.min(100,Math.max(0,Math.round(v))):f},m=v=>v==="light"||v==="black-and-white"?v:"full";let p=d;try{const s=localStorage.getItem(${storageKey}),v=s?JSON.parse(s):d;p=v&&typeof v==="object"?{enabled:typeof v.enabled==="boolean"?v.enabled:d.enabled,colorTemperature:c(v.colorTemperature,d.colorTemperature),texture:c(v.texture,d.texture),colors:m(v.colors)}:d}catch{}const t=Math.pow(p.texture/100,${READING_MODE_TEXTURE_EXPONENT}),w=p.colorTemperature>=50,x=Math.pow(Math.abs(p.colorTemperature-50)/50,${READING_MODE_TEMPERATURE_EXPONENT});r.dataset.readingMode=String(p.enabled);r.dataset.readingModeTexture=String(p.enabled&&p.texture>0);r.dataset.readingModeTemperature=String(p.enabled&&p.colorTemperature!==50);r.dataset.readingModeColors=p.colors;r.style.setProperty("--reading-mode-texture-opacity-dark",p.enabled?(t*${READING_MODE_TEXTURE_DARK_MAX_OPACITY}).toFixed(5):"0");r.style.setProperty("--reading-mode-texture-opacity-light",p.enabled?(t*${READING_MODE_TEXTURE_LIGHT_MAX_OPACITY}).toFixed(5):"0");r.style.setProperty("--reading-mode-temperature-color",w?${warmColor}:${coolColor});r.style.setProperty("--reading-mode-temperature-opacity",p.enabled?(x*(w?${READING_MODE_WARM_MAX_OPACITY}:${READING_MODE_COOL_MAX_OPACITY})).toFixed(5):"0")})();`;
 }

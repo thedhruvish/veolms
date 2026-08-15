@@ -1,7 +1,8 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   applyReadingModePreferences,
+  getReadingModeBootstrapScript,
   getReadingModeVisuals,
   normalizeReadingModePreferences,
   persistReadingModePreferences,
@@ -35,6 +36,55 @@ describe("reading mode preferences", () => {
       texture: 0,
       colors: "full",
     });
+    expect(
+      normalizeReadingModePreferences({
+        colorTemperature: "",
+        texture: null,
+      }),
+    ).toMatchObject({ colorTemperature: 50, texture: 90 });
+    expect(
+      normalizeReadingModePreferences({
+        colorTemperature: "25",
+        texture: "75",
+      }),
+    ).toMatchObject({ colorTemperature: 25, texture: 75 });
+  });
+
+  it("keeps bootstrap normalization in parity with runtime preferences", () => {
+    localStorage.setItem(
+      READING_MODE_STORAGE_KEY,
+      JSON.stringify({
+        enabled: true,
+        colorTemperature: "",
+        texture: null,
+        colors: "light",
+      }),
+    );
+
+    window.eval(getReadingModeBootstrapScript());
+
+    expect(document.documentElement).toHaveAttribute(
+      "data-reading-mode",
+      "true",
+    );
+    expect(document.documentElement).toHaveAttribute(
+      "data-reading-mode-colors",
+      "light",
+    );
+    expect(
+      document.documentElement.style.getPropertyValue(
+        "--reading-mode-temperature-opacity",
+      ),
+    ).toBe("0.00000");
+    expect(
+      document.documentElement.style.getPropertyValue(
+        "--reading-mode-texture-opacity-dark",
+      ),
+    ).toBe(
+      getReadingModeVisuals(READING_MODE_DEFAULTS).textureOpacityDark.toFixed(
+        5,
+      ),
+    );
   });
 
   it("accepts each color treatment and falls back to full colors", () => {
@@ -101,9 +151,53 @@ describe("reading mode preferences", () => {
       ),
     ).toBe("0");
   });
+
+  it("applies and announces changes when local storage is blocked", () => {
+    const changed = vi.fn();
+    window.addEventListener("veolms:reading-mode-change", changed);
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("Blocked", "SecurityError");
+    });
+
+    expect(() =>
+      persistReadingModePreferences({
+        enabled: true,
+        colorTemperature: 65,
+        texture: 80,
+        colors: "full",
+      }),
+    ).not.toThrow();
+    expect(document.documentElement).toHaveAttribute(
+      "data-reading-mode",
+      "true",
+    );
+    expect(changed).toHaveBeenCalledTimes(1);
+    window.removeEventListener("veolms:reading-mode-change", changed);
+  });
 });
 
 describe("reading mode settings", () => {
+  it("synchronizes quick-setting changes made in the same tab", () => {
+    render(<ReadingModeSettings />);
+
+    act(() => {
+      persistReadingModePreferences({
+        enabled: true,
+        colorTemperature: 30,
+        texture: 45,
+        colors: "light",
+      });
+    });
+
+    expect(
+      screen.getByRole("slider", { name: "Color temperature" }),
+    ).toHaveValue("30");
+    expect(screen.getByRole("slider", { name: "Texture" })).toHaveValue("45");
+    expect(
+      screen.getByRole("combobox", { name: "Reading mode colors" }),
+    ).toHaveTextContent("Light colors");
+  });
+
   it("preserves configured values while disabled and restores only the sliders", () => {
     render(<ReadingModeSettings />);
 

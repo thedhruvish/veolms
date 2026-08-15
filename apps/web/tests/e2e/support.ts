@@ -71,7 +71,11 @@ export async function getApplicationScrollTop(page: Page) {
 
 export async function setApplicationScrollTop(page: Page, top: number) {
   await page.evaluate(
-    (scrollTop) => window.scrollTo({ top: scrollTop, behavior: "auto" }),
+    (scrollTop) =>
+      window.scrollTo({
+        top: scrollTop,
+        behavior: "instant" as ScrollBehavior,
+      }),
     top,
   );
 }

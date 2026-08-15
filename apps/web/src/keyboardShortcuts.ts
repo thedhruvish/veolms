@@ -1,20 +1,21 @@
 export const isEditingShortcutTarget = (target: EventTarget | null): boolean =>
-  target instanceof HTMLElement &&
-  (target.matches(
-    "input, textarea, select, [role='textbox'], [contenteditable='true']",
-  ) ||
-    Boolean(
-      target.closest(
-        "input, textarea, select, [role='textbox'], [contenteditable='true']",
-      ),
-    ));
+  target instanceof Element &&
+  Boolean(
+    target.closest(
+      "input, textarea, select, [role='textbox'], [contenteditable]:not([contenteditable='false'])",
+    ),
+  );
 
 export const getNumberShortcutIndex = (
-  event: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "shiftKey">,
+  event: Pick<
+    KeyboardEvent,
+    "key" | "code" | "ctrlKey" | "metaKey" | "shiftKey"
+  >,
 ): number | null => {
   if (event.ctrlKey || event.metaKey || event.shiftKey) return null;
-  if (!/^[1-9]$/.test(event.key)) return null;
-  return Number(event.key) - 1;
+  const digit = /^Digit([1-9])$/.exec(event.code)?.[1] ?? event.key;
+  if (!/^[1-9]$/.test(digit)) return null;
+  return Number(digit) - 1;
 };
 
 export const isApplePlatform = (platform: string): boolean =>
@@ -40,9 +41,13 @@ export const readShortcutPlatformPreference =
   (): ShortcutPlatformPreference => {
     if (typeof window === "undefined")
       return SHORTCUT_PLATFORM_PREFERENCE_DEFAULT;
-    return normalizeShortcutPlatformPreference(
-      window.localStorage.getItem(SHORTCUT_PLATFORM_PREFERENCE_KEY),
-    );
+    try {
+      return normalizeShortcutPlatformPreference(
+        window.localStorage.getItem(SHORTCUT_PLATFORM_PREFERENCE_KEY),
+      );
+    } catch {
+      return SHORTCUT_PLATFORM_PREFERENCE_DEFAULT;
+    }
   };
 
 const readNavigatorPlatform = (): string => {
@@ -72,10 +77,14 @@ export const persistShortcutPlatformPreference = (
 ): ShortcutPlatformPreference => {
   const normalizedPreference = normalizeShortcutPlatformPreference(preference);
   if (typeof window === "undefined") return normalizedPreference;
-  window.localStorage.setItem(
-    SHORTCUT_PLATFORM_PREFERENCE_KEY,
-    normalizedPreference,
-  );
+  try {
+    window.localStorage.setItem(
+      SHORTCUT_PLATFORM_PREFERENCE_KEY,
+      normalizedPreference,
+    );
+  } catch {
+    // The preference event still updates the current tab when storage is blocked.
+  }
   window.dispatchEvent(
     new CustomEvent(SHORTCUT_PLATFORM_PREFERENCE_EVENT, {
       detail: normalizedPreference,

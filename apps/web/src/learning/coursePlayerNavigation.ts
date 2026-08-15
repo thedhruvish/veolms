@@ -56,6 +56,18 @@ const COURSE_PLAYER_BACK_LABELS: Record<CoursePlayerOrigin, string> = {
   wishlist: "Return to Wishlist",
 };
 
+const COURSE_PLAYER_ORIGINS_BY_PATH: Readonly<
+  Record<string, CoursePlayerOrigin>
+> = {
+  "/": "home",
+  "/home": "home",
+  "/my-courses": "my-courses",
+  "/my-learning": "my-courses",
+  "/explore-courses": "explore-courses",
+  "/courses": "explore-courses",
+  "/wishlist": "wishlist",
+};
+
 const isCoursePlayerOrigin = (value: unknown): value is CoursePlayerOrigin =>
   value === "home" ||
   value === "explore-courses" ||
@@ -79,8 +91,21 @@ const getLegacyCoursePlayerOrigin = (
   return null;
 };
 
-const getBrowserStorage = (): CoursePlayerStorage | null =>
-  typeof window === "undefined" ? null : window.localStorage;
+const getBrowserStorage = (): CoursePlayerStorage | null => {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+};
+
+const getCoursePlayerOriginForPath = (
+  pathname: string,
+): CoursePlayerOrigin | null => {
+  const normalizedPathname = pathname.replace(/\/+$/, "") || "/";
+  return COURSE_PLAYER_ORIGINS_BY_PATH[normalizedPathname] ?? null;
+};
 
 const notifyCoursePlayerSessionChange = () => {
   if (typeof window === "undefined") return;
@@ -170,21 +195,7 @@ export function getCoursePlayerOrigin(search: string): CoursePlayerOrigin {
 export function getCoursePlayerOriginFromPathname(
   pathname: string,
 ): CoursePlayerOrigin {
-  const normalizedPathname = pathname.replace(/\/+$/, "") || "/";
-  if (normalizedPathname === "/" || normalizedPathname === "/home")
-    return "home";
-  if (
-    normalizedPathname === "/my-courses" ||
-    normalizedPathname === "/my-learning"
-  )
-    return "my-courses";
-  if (
-    normalizedPathname === "/explore-courses" ||
-    normalizedPathname === "/courses"
-  )
-    return "explore-courses";
-  if (normalizedPathname === "/wishlist") return "wishlist";
-  return DEFAULT_COURSE_PLAYER_ORIGIN;
+  return getCoursePlayerOriginForPath(pathname) ?? DEFAULT_COURSE_PLAYER_ORIGIN;
 }
 
 export function getCoursePlayerPath(
@@ -202,11 +213,10 @@ export function getStoredCourseLessonId(
 ): number {
   try {
     const courseKey = encodeURIComponent(courseId);
-    const savedLesson = Number(
+    const savedLesson =
       storage?.getItem(`veolms-last-lesson-${courseKey}`) ??
-        storage?.getItem("veolms-last-lesson") ??
-        1,
-    );
+      storage?.getItem("veolms-last-lesson") ??
+      1;
     return resolveLessonIdentifier(savedLesson) ?? 1;
   } catch {
     return 1;
@@ -217,14 +227,13 @@ export function getActiveCoursePlayerSession(
   storage: CoursePlayerStorage | null = getBrowserStorage(),
 ): CoursePlayerSession | null {
   try {
-    const session = parseCoursePlayerSession(
-      storage?.getItem(COURSE_PLAYER_SESSION_STORAGE_KEY),
-    );
+    const storedSession = storage?.getItem(COURSE_PLAYER_SESSION_STORAGE_KEY);
+    const session = parseCoursePlayerSession(storedSession);
     if (session) {
-      storage?.setItem(
-        COURSE_PLAYER_SESSION_STORAGE_KEY,
-        JSON.stringify(session),
-      );
+      const canonicalSession = JSON.stringify(session);
+      if (storedSession !== canonicalSession) {
+        storage?.setItem(COURSE_PLAYER_SESSION_STORAGE_KEY, canonicalSession);
+      }
       return session;
     }
     storage?.removeItem(COURSE_PLAYER_SESSION_STORAGE_KEY);
@@ -289,17 +298,7 @@ export function getResumableCoursePlayerNavigationPath(
   path: string,
   storage: CoursePlayerStorage | null = getBrowserStorage(),
 ): string {
-  const normalizedPath = path.replace(/\/+$/, "") || "/";
-  const origin =
-    normalizedPath === "/" || normalizedPath === "/home"
-      ? "home"
-      : normalizedPath === "/my-courses" || normalizedPath === "/my-learning"
-        ? "my-courses"
-        : normalizedPath === "/explore-courses" || normalizedPath === "/courses"
-          ? "explore-courses"
-          : normalizedPath === "/wishlist"
-            ? "wishlist"
-            : null;
+  const origin = getCoursePlayerOriginForPath(path);
   return origin
     ? getRememberedCoursePlayerDestination(origin, storage) || path
     : path;

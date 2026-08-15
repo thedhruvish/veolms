@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ELEVATED_SURFACES_KEY,
+  getSurfaceDepthBootstrapScript,
   LEARNING_PREFERENCE_DEFAULTS,
   LEARNING_PREFERENCES_KEY,
   normalizePageTabColors,
@@ -27,6 +28,22 @@ describe("surface depth preference", () => {
 });
 
 describe("page tab color preferences", () => {
+  it("hydrates tab and sidebar color modes before React mounts", () => {
+    localStorage.setItem(PAGE_TAB_COLORS_KEY, "multicolor");
+    localStorage.setItem(
+      "veolms-sidebar-preferences",
+      JSON.stringify({ iconStyle: "multicolor", elevateMenus: true }),
+    );
+
+    window.eval(getSurfaceDepthBootstrapScript());
+
+    expect(document.documentElement.dataset.pageTabColors).toBe("multicolor");
+    expect(document.documentElement.dataset.sidebarIconStyle).toBe(
+      "multicolor",
+    );
+    expect(document.documentElement.dataset.sidebarMenuElevation).toBe("true");
+  });
+
   it("defaults missing and unsupported values to following the sidebar", () => {
     expect(readPageTabColors()).toBe(PAGE_TAB_COLORS_DEFAULT);
     expect(normalizePageTabColors("unsupported")).toBe("follow-sidebar");

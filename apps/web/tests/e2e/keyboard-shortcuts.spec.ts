@@ -1,13 +1,12 @@
 import { expect, test } from "./app.fixture.ts";
 import { installBaselineState, openApp } from "./support.ts";
 
-test.beforeEach(async ({ page }) => {
-  await installBaselineState(page);
-});
-
 test("sidebar shortcut hints and positional navigation stay in sync", async ({
   page,
 }) => {
+  await installBaselineState(page, {
+    local: { "veolms-shortcut-platform": "windows" },
+  });
   await openApp(page, "/explore-courses");
 
   const sidebar = page.getByRole("complementary", {
@@ -123,6 +122,7 @@ test("sidebar shortcut hints and positional navigation stay in sync", async ({
 });
 
 test("Apple platforms receive Command shortcut labels", async ({ page }) => {
+  await installBaselineState(page);
   await page.addInitScript(() => {
     Object.defineProperty(window.navigator, "platform", {
       configurable: true,
@@ -158,11 +158,25 @@ test("Apple platforms receive Command shortcut labels", async ({ page }) => {
   const settingsTooltip = page.locator(".sidebar-nav-tooltip");
   await expect(settingsTooltip).toBeVisible();
   await expect(settingsTooltip.locator("kbd")).toHaveText(["⌘", ","]);
+
+  await openApp(page, "/settings/profile");
+  await page.evaluate(() => {
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "£",
+        code: "Digit3",
+        altKey: true,
+        bubbles: true,
+      }),
+    );
+  });
+  await expect(page).toHaveURL(/\/settings\/sidebar$/);
 });
 
 test("shortcut key style overrides system labels across the application", async ({
   page,
 }) => {
+  await installBaselineState(page);
   await openApp(page, "/settings/appearance");
 
   const shortcutStyle = page.getByRole("radiogroup", {

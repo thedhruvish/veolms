@@ -53,13 +53,23 @@ export const normalizeDiscussionTab = (value: unknown): DiscussionTab =>
     : DISCUSSIONS_DEFAULT_TAB;
 
 export const readSettingsTab = (): SettingsTab => {
-  const storage = getSessionStorage();
-  return normalizeSettingsTab(storage?.getItem(SETTINGS_TAB_SESSION_KEY));
+  try {
+    return normalizeSettingsTab(
+      getSessionStorage()?.getItem(SETTINGS_TAB_SESSION_KEY),
+    );
+  } catch {
+    return SETTINGS_DEFAULT_TAB;
+  }
 };
 
 export const readDiscussionTab = (): DiscussionTab => {
-  const storage = getSessionStorage();
-  return normalizeDiscussionTab(storage?.getItem(DISCUSSIONS_TAB_SESSION_KEY));
+  try {
+    return normalizeDiscussionTab(
+      getSessionStorage()?.getItem(DISCUSSIONS_TAB_SESSION_KEY),
+    );
+  } catch {
+    return DISCUSSIONS_DEFAULT_TAB;
+  }
 };
 
 export const rememberSettingsTab = (tab: SettingsTab) => {

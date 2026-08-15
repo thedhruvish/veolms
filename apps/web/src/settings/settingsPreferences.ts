@@ -161,8 +161,12 @@ export const normalizeSidebarMaxWidth = (
 
 export const readStored = (key: string, fallback: string): string => {
   if (typeof window === "undefined") return fallback;
-  const value = window.localStorage.getItem(key);
-  return value === null ? fallback : value;
+  try {
+    const value = window.localStorage.getItem(key);
+    return value === null ? fallback : value;
+  } catch {
+    return fallback;
+  }
 };
 
 export const readStoredBoolean = (key: string, fallback: boolean): boolean =>
@@ -174,7 +178,13 @@ export const readElevatedSurfaces = (): boolean =>
 export const getSurfaceDepthBootstrapScript = (): string =>
   `(()=>{const root=document.documentElement;try{root.dataset.elevatedSurfaces=localStorage.getItem(${JSON.stringify(
     ELEVATED_SURFACES_KEY,
-  )})==="false"?"false":"true"}catch{}try{const sidebar=JSON.parse(localStorage.getItem("veolms-sidebar-preferences")||"{}");root.dataset.sidebarMenuElevation=String(sidebar.elevateMenus===true||(sidebar.elevateMenus===undefined&&sidebar.alwaysElevateMenus===true))}catch{}})();`;
+  )})==="false"?"false":"true"}catch{}try{const pageTabs=localStorage.getItem(${JSON.stringify(
+    PAGE_TAB_COLORS_KEY,
+  )});root.dataset.pageTabColors=pageTabs==="multicolor"||pageTabs==="monochrome"||pageTabs==="follow-sidebar"?pageTabs:${JSON.stringify(
+    PAGE_TAB_COLORS_DEFAULT,
+  )}}catch{root.dataset.pageTabColors=${JSON.stringify(
+    PAGE_TAB_COLORS_DEFAULT,
+  )}}try{const sidebar=JSON.parse(localStorage.getItem("veolms-sidebar-preferences")||"{}");root.dataset.sidebarMenuElevation=String(sidebar.elevateMenus===true||(sidebar.elevateMenus===undefined&&sidebar.alwaysElevateMenus===true));root.dataset.sidebarIconStyle=sidebar.iconStyle==="multicolor"?"multicolor":"monochrome"}catch{root.dataset.sidebarIconStyle="monochrome"}})();`;
 
 export const readPageTabColors = (): PageTabColors =>
   normalizePageTabColors(
