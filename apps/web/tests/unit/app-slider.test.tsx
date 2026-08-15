@@ -34,5 +34,8 @@ describe("AppSlider", () => {
     expect(slider.getAttribute("style")).toContain(
       "--app-slider-progress: 100%",
     );
+    expect(slider.getAttribute("style")).toContain(
+      "--app-slider-thumb-accent: rgb(242 173 101)",
+    );
   });
 });

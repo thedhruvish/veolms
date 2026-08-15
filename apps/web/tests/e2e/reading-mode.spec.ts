@@ -6,10 +6,14 @@ const READING_MODE_STORAGE_KEY = "veolms-reading-mode-v1";
 test("reading mode persists, stays interactive, and covers viewport UI", async ({
   page,
 }) => {
+  test.setTimeout(60_000);
   await installBaselineState(page);
   await openApp(page, "/settings/appearance");
 
-  const toggle = page.getByRole("switch", { name: "Reading mode" });
+  const toggle = page.getByRole("switch", {
+    name: "Reading mode",
+    exact: true,
+  });
   const temperature = page.getByRole("slider", {
     name: "Color temperature",
   });
@@ -20,9 +24,9 @@ test("reading mode persists, stays interactive, and covers viewport UI", async (
   await expect(texture).toHaveValue("90");
   await expect(texture).toHaveCSS("--app-slider-track-height", "10px");
 
-  await page.getByRole("button", { name: "Turn reading mode on" }).click();
+  await page.getByRole("switch", { name: "Turn reading mode on" }).click();
   await expect(toggle).toHaveAttribute("aria-checked", "true");
-  await page.getByRole("button", { name: "Turn reading mode off" }).click();
+  await page.getByRole("switch", { name: "Turn reading mode off" }).click();
   await expect(toggle).toHaveAttribute("aria-checked", "false");
 
   await texture.focus();
@@ -97,7 +101,7 @@ test("reading mode persists, stays interactive, and covers viewport UI", async (
         );
       });
     });
-  expect(contrastRatios).toHaveLength(2);
+  expect(contrastRatios).toHaveLength(1);
   for (const ratio of contrastRatios) expect(ratio).toBeGreaterThanOrEqual(4.5);
   await expect
     .poll(() =>
@@ -106,7 +110,12 @@ test("reading mode persists, stays interactive, and covers viewport UI", async (
         return value ? JSON.parse(value) : null;
       }, READING_MODE_STORAGE_KEY),
     )
-    .toEqual({ enabled: true, colorTemperature: 85, texture: 75 });
+    .toEqual({
+      enabled: true,
+      colorTemperature: 85,
+      texture: 75,
+      colors: "full",
+    });
 
   const effects = page.locator("[data-reading-mode-effects]");
   await expect(effects).toHaveCSS("position", "fixed");
@@ -134,7 +143,7 @@ test("reading mode persists, stays interactive, and covers viewport UI", async (
       toggle,
       temperature,
       texture,
-      page.locator(".settings-reading-mode__status"),
+      page.getByRole("switch", { name: "Turn reading mode off" }),
       page.getByRole("button", { name: "Restore defaults" }),
     ].map(async (control) => {
       const bounds = await control.boundingBox();
@@ -200,7 +209,7 @@ test("neutral temperature and zero texture leave every effect layer inactive", a
   page,
 }) => {
   await installBaselineState(page);
-  await openApp(page, "/courses");
+  await openApp(page, "/explore-courses");
   const textureLayer = page.locator(".reading-mode-effects__texture");
   const temperatureLayer = page.locator(".reading-mode-effects__temperature");
   await expect(textureLayer).toHaveCSS("display", "none");

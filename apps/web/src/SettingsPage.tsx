@@ -7,7 +7,7 @@ import {
   SidebarSimple,
   UserCircle,
 } from "@phosphor-icons/react";
-import type { ComponentType } from "react";
+import { useEffect, type ComponentType } from "react";
 import { handleRovingTabKeyDown } from "./accessibility/rovingTabFocus";
 import { AccountSettings } from "./settings/AccountSettings";
 import { AppearanceSettings } from "./settings/AppearanceSettings";
@@ -22,19 +22,22 @@ import type {
 import { SidebarSettings } from "./settings/SidebarSettings";
 import { SecuritySettings } from "./settings/SecuritySettings";
 import type {
+  PageTabColors,
   SidebarMode,
   SidebarPreferences,
 } from "./settings/settingsPreferences";
 import type { NavigateTo } from "./routing/navigation";
+import {
+  normalizeSettingsTab,
+  rememberSettingsTab,
+} from "./routing/tabSessionState";
+import type { SettingsTab } from "./routing/tabSessionState";
+import {
+  getNumberShortcutIndex,
+  isEditingShortcutTarget,
+} from "./keyboardShortcuts";
 
-export type SettingsTab =
-  | "profile"
-  | "appearance"
-  | "sidebar"
-  | "learning"
-  | "notifications"
-  | "security"
-  | "account";
+export type { SettingsTab } from "./routing/tabSessionState";
 
 type SettingsTabIcon = ComponentType<{
   size?: number;
@@ -45,27 +48,51 @@ interface SettingsTabDefinition {
   id: SettingsTab;
   label: string;
   Icon: SettingsTabIcon;
+  tone: "blue" | "cyan" | "gold" | "green" | "orange" | "rose" | "violet";
 }
 
 const SETTINGS_TABS: readonly SettingsTabDefinition[] = [
-  { id: "profile", label: "Profile", Icon: UserCircle },
-  { id: "appearance", label: "Appearance", Icon: Palette },
-  { id: "sidebar", label: "Sidebar", Icon: SidebarSimple },
-  { id: "learning", label: "Learning", Icon: GraduationCap },
-  { id: "notifications", label: "Notifications", Icon: Bell },
-  { id: "security", label: "Privacy & Security", Icon: ShieldCheck },
-  { id: "account", label: "Account", Icon: GearSix },
+  { id: "profile", label: "Profile", Icon: UserCircle, tone: "blue" },
+  {
+    id: "appearance",
+    label: "Appearance",
+    Icon: Palette,
+    tone: "orange",
+  },
+  { id: "sidebar", label: "Sidebar", Icon: SidebarSimple, tone: "violet" },
+  {
+    id: "learning",
+    label: "Learning",
+    Icon: GraduationCap,
+    tone: "green",
+  },
+  {
+    id: "notifications",
+    label: "Notifications",
+    Icon: Bell,
+    tone: "gold",
+  },
+  {
+    id: "security",
+    label: "Privacy & Security",
+    Icon: ShieldCheck,
+    tone: "cyan",
+  },
+  { id: "account", label: "Account", Icon: GearSix, tone: "rose" },
 ];
 
 export interface SettingsPageProps {
   tab?: string;
   role?: ProfileRole;
   onNavigatePage?: NavigateTo;
+  onExitSettings?: () => void;
   onProfileSaved?: (profile: ProfilePreferences) => void;
   theme: DisplayMode;
   onThemeChange: (theme: DisplayMode) => void;
   academyTheme: string;
   onAcademyThemeChange: (themeId: string) => void;
+  pageTabColors: PageTabColors;
+  onPageTabColorsChange: (colors: PageTabColors) => void;
   sidebarPreferences?: SidebarPreferences;
   onSidebarPreferencesChange: (preferences: SidebarPreferences) => void;
   sidebarMode: SidebarMode;
@@ -73,24 +100,83 @@ export interface SettingsPageProps {
 }
 
 export function SettingsPage({
-  tab = "appearance",
+  tab = "profile",
   role = "student",
   onNavigatePage,
+  onExitSettings,
   onProfileSaved,
   theme,
   onThemeChange,
   academyTheme,
   onAcademyThemeChange,
+  pageTabColors,
+  onPageTabColorsChange,
   sidebarPreferences,
   onSidebarPreferencesChange,
   sidebarMode,
   onSidebarModeChange,
 }: SettingsPageProps) {
-  const activeTab: SettingsTab = SETTINGS_TABS.some((item) => item.id === tab)
-    ? (tab as SettingsTab)
-    : "appearance";
-  const navigateTab = (id: SettingsTab) =>
+  const activeTab = normalizeSettingsTab(tab);
+  const navigateTab = (id: SettingsTab) => {
+    rememberSettingsTab(id);
     onNavigatePage?.(`/settings/${id}`, { preserveScroll: true });
+  };
+
+  useEffect(() => {
+    rememberSettingsTab(activeTab);
+  }, [activeTab]);
+
+  useEffect(() => {
+    const exitSettings = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.key !== "Escape") return;
+
+      const transientSurfaceIsOpen = Array.from(
+        document.querySelectorAll<HTMLElement>(
+          '[role="dialog"], [role="menu"], [role="listbox"]',
+        ),
+      ).some((element) => {
+        const style = getComputedStyle(element);
+        return (
+          element.getClientRects().length > 0 &&
+          style.display !== "none" &&
+          style.visibility !== "hidden"
+        );
+      });
+      if (transientSurfaceIsOpen) return;
+
+      event.preventDefault();
+      onExitSettings?.();
+    };
+
+    document.addEventListener("keydown", exitSettings);
+    return () => document.removeEventListener("keydown", exitSettings);
+  }, [onExitSettings]);
+
+  useEffect(() => {
+    const navigateSettingsTab = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        !event.altKey ||
+        isEditingShortcutTarget(event.target)
+      )
+        return;
+      const index = getNumberShortcutIndex(event);
+      const destination = index === null ? undefined : SETTINGS_TABS[index];
+      if (!destination) return;
+      event.preventDefault();
+      onNavigatePage?.(`/settings/${destination.id}`, { preserveScroll: true });
+      window.setTimeout(
+        () =>
+          document
+            .getElementById(`settings-tab-${destination.id}`)
+            ?.focus({ preventScroll: true }),
+        0,
+      );
+    };
+
+    document.addEventListener("keydown", navigateSettingsTab);
+    return () => document.removeEventListener("keydown", navigateSettingsTab);
+  }, [onNavigatePage]);
 
   return (
     <div className="settings-page" aria-labelledby="settings-page-title">
@@ -105,11 +191,11 @@ export function SettingsPage({
       </header>
 
       <nav
-        className="settings-tabs"
+        className="settings-tabs page-tabs"
         aria-label="Settings sections"
         role="tablist"
       >
-        {SETTINGS_TABS.map(({ id, label, Icon }) => (
+        {SETTINGS_TABS.map(({ id, label, Icon, tone }, index) => (
           <button
             type="button"
             key={id}
@@ -117,6 +203,8 @@ export function SettingsPage({
             role="tab"
             aria-selected={activeTab === id}
             aria-controls="settings-tab-panel"
+            aria-keyshortcuts={`Alt+${index + 1}`}
+            data-page-tab-tone={tone}
             tabIndex={activeTab === id ? 0 : -1}
             className={activeTab === id ? "is-active" : ""}
             onClick={() => navigateTab(id)}
@@ -155,6 +243,8 @@ export function SettingsPage({
             onThemeChange={onThemeChange}
             academyTheme={academyTheme}
             onAcademyThemeChange={onAcademyThemeChange}
+            pageTabColors={pageTabColors}
+            onPageTabColorsChange={onPageTabColorsChange}
           />
         )}
         {activeTab === "sidebar" && (

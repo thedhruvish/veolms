@@ -1,7 +1,10 @@
+export type ReadingModeColors = "full" | "light" | "black-and-white";
+
 export interface ReadingModePreferences {
   enabled: boolean;
   colorTemperature: number;
   texture: number;
+  colors: ReadingModeColors;
 }
 
 export interface ReadingModeVisuals {
@@ -19,11 +22,12 @@ export const READING_MODE_DEFAULTS: Readonly<ReadingModePreferences> = {
   enabled: false,
   colorTemperature: 50,
   texture: 90,
+  colors: "full",
 };
 
 export const READING_MODE_TEXTURE_EXPONENT = 1.3;
 export const READING_MODE_TEXTURE_DARK_MAX_OPACITY = 0.22;
-export const READING_MODE_TEXTURE_LIGHT_MAX_OPACITY = 0.14;
+export const READING_MODE_TEXTURE_LIGHT_MAX_OPACITY = 0.1;
 export const READING_MODE_TEMPERATURE_EXPONENT = 1.18;
 export const READING_MODE_COOL_MAX_OPACITY = 0.28;
 export const READING_MODE_WARM_MAX_OPACITY = 0.3;
@@ -35,6 +39,9 @@ const normalizePercent = (value: unknown, fallback: number): number => {
   if (!Number.isFinite(numericValue)) return fallback;
   return Math.min(100, Math.max(0, Math.round(numericValue)));
 };
+
+const normalizeColors = (value: unknown): ReadingModeColors =>
+  value === "light" || value === "black-and-white" ? value : "full";
 
 export function normalizeReadingModePreferences(
   value: unknown,
@@ -54,6 +61,7 @@ export function normalizeReadingModePreferences(
       READING_MODE_DEFAULTS.colorTemperature,
     ),
     texture: normalizePercent(candidate.texture, READING_MODE_DEFAULTS.texture),
+    colors: normalizeColors(candidate.colors),
   };
 }
 
@@ -114,6 +122,7 @@ export function applyReadingModePreferences(
   root.dataset.readingModeTemperature = String(
     normalized.enabled && normalized.colorTemperature !== 50,
   );
+  root.dataset.readingModeColors = normalized.colors;
   root.style.setProperty(
     "--reading-mode-texture-opacity-dark",
     normalized.enabled ? visuals.textureOpacityDark.toFixed(5) : "0",
@@ -153,5 +162,5 @@ export function getReadingModeBootstrapScript(): string {
   const coolColor = JSON.stringify(READING_MODE_COOL_COLOR);
   const warmColor = JSON.stringify(READING_MODE_WARM_COLOR);
 
-  return `(()=>{const r=document.documentElement,d=${defaults},c=(v,f)=>{v=Number(v);return Number.isFinite(v)?Math.min(100,Math.max(0,Math.round(v))):f};let p=d;try{const s=localStorage.getItem(${storageKey}),v=s?JSON.parse(s):d;p=v&&typeof v==="object"?{enabled:typeof v.enabled==="boolean"?v.enabled:d.enabled,colorTemperature:c(v.colorTemperature,d.colorTemperature),texture:c(v.texture,d.texture)}:d}catch{}const t=Math.pow(p.texture/100,${READING_MODE_TEXTURE_EXPONENT}),w=p.colorTemperature>=50,x=Math.pow(Math.abs(p.colorTemperature-50)/50,${READING_MODE_TEMPERATURE_EXPONENT});r.dataset.readingMode=String(p.enabled);r.dataset.readingModeTexture=String(p.enabled&&p.texture>0);r.dataset.readingModeTemperature=String(p.enabled&&p.colorTemperature!==50);r.style.setProperty("--reading-mode-texture-opacity-dark",p.enabled?(t*${READING_MODE_TEXTURE_DARK_MAX_OPACITY}).toFixed(5):"0");r.style.setProperty("--reading-mode-texture-opacity-light",p.enabled?(t*${READING_MODE_TEXTURE_LIGHT_MAX_OPACITY}).toFixed(5):"0");r.style.setProperty("--reading-mode-temperature-color",w?${warmColor}:${coolColor});r.style.setProperty("--reading-mode-temperature-opacity",p.enabled?(x*(w?${READING_MODE_WARM_MAX_OPACITY}:${READING_MODE_COOL_MAX_OPACITY})).toFixed(5):"0")})();`;
+  return `(()=>{const r=document.documentElement,d=${defaults},c=(v,f)=>{v=Number(v);return Number.isFinite(v)?Math.min(100,Math.max(0,Math.round(v))):f},m=v=>v==="light"||v==="black-and-white"?v:"full";let p=d;try{const s=localStorage.getItem(${storageKey}),v=s?JSON.parse(s):d;p=v&&typeof v==="object"?{enabled:typeof v.enabled==="boolean"?v.enabled:d.enabled,colorTemperature:c(v.colorTemperature,d.colorTemperature),texture:c(v.texture,d.texture),colors:m(v.colors)}:d}catch{}const t=Math.pow(p.texture/100,${READING_MODE_TEXTURE_EXPONENT}),w=p.colorTemperature>=50,x=Math.pow(Math.abs(p.colorTemperature-50)/50,${READING_MODE_TEMPERATURE_EXPONENT});r.dataset.readingMode=String(p.enabled);r.dataset.readingModeTexture=String(p.enabled&&p.texture>0);r.dataset.readingModeTemperature=String(p.enabled&&p.colorTemperature!==50);r.dataset.readingModeColors=p.colors;r.style.setProperty("--reading-mode-texture-opacity-dark",p.enabled?(t*${READING_MODE_TEXTURE_DARK_MAX_OPACITY}).toFixed(5):"0");r.style.setProperty("--reading-mode-texture-opacity-light",p.enabled?(t*${READING_MODE_TEXTURE_LIGHT_MAX_OPACITY}).toFixed(5):"0");r.style.setProperty("--reading-mode-temperature-color",w?${warmColor}:${coolColor});r.style.setProperty("--reading-mode-temperature-opacity",p.enabled?(x*(w?${READING_MODE_WARM_MAX_OPACITY}:${READING_MODE_COOL_MAX_OPACITY})).toFixed(5):"0")})();`;
 }
