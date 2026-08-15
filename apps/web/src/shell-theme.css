@@ -9098,6 +9098,8 @@ html:has(.settings-profile__privacy-dialog[open]) {
 
 /* Grid Layout */
 .course-wizard-body {
+  position: relative;
+  z-index: 10;
   display: grid;
   grid-template-columns: minmax(0, 1.8fr) minmax(300px, 1fr);
   gap: 24px;
@@ -9118,6 +9120,8 @@ html:has(.settings-profile__privacy-dialog[open]) {
 
 /* Card Sections */
 .course-wizard-card {
+  position: relative;
+  z-index: 10;
   border-radius: 14px;
   padding: 24px;
   background: var(--surface);
@@ -9221,7 +9225,7 @@ html:has(.settings-profile__privacy-dialog[open]) {
   position: relative;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 10px;
-  overflow: hidden;
+  overflow: visible;
   background: rgba(0, 0, 0, 0.2);
 }
 
@@ -9236,16 +9240,47 @@ html:has(.settings-profile__privacy-dialog[open]) {
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   padding: 8px 12px;
   background: rgba(255, 255, 255, 0.02);
+  border-radius: 9px 9px 0 0;
+}
+
+.course-wizard-editor__select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
 }
 
 .course-wizard-editor__select select {
-  border: none;
-  padding: 4px 8px;
-  color: var(--text-secondary);
-  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 5px 26px 5px 10px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 256 256'%3E%3Cpath fill='%23a1a1aa' d='M213.66 101.66l-80 80a8 8 0 0 1-11.32 0l-80-80a8 8 0 0 1 11.32-11.32L128 164.69l74.34-74.35a8 8 0 0 1 11.32 11.32z'/%3E%3C/svg%3E") no-repeat right 8px center;
   font-size: 0.82rem;
+  font-weight: 500;
   outline: none;
   cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.course-wizard-editor__select select:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.course-wizard-editor__select select:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.course-wizard-editor__select select option {
+  color: var(--text, #f4f4f5);
+  background-color: var(--surface, #18181b);
+  padding: 8px 12px;
 }
 
 .course-wizard-editor__divider {
@@ -9276,8 +9311,146 @@ html:has(.settings-profile__privacy-dialog[open]) {
   color: var(--text);
 }
 
-.course-wizard-editor textarea {
+.editor-btn.is-active {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.course-wizard-emoji-popover-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.course-wizard-emoji-popover {
+  position: fixed !important;
+  z-index: 99999 !important;
+  width: 320px;
+  height: 360px;
+  max-height: calc(100vh - 32px);
+  border-radius: 12px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+  overscroll-behavior: contain;
+  animation: emojiPopoverFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.course-wizard-emoji-popover .EmojiPickerReact {
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+  --epr-bg-color: var(--surface, #18181b) !important;
+  --epr-picker-height: 360px !important;
+  --epr-picker-width: 320px !important;
+}
+
+/* Link Popover Styles */
+.course-wizard-link-popover {
+  position: fixed !important;
+  z-index: 99999 !important;
+  width: 310px;
+  background: var(--surface, #18181b);
+  border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
+  border-radius: 10px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+  padding: 10px;
+  animation: emojiPopoverFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.course-wizard-link-popover__inner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.course-wizard-link-input {
   width: 100%;
+  padding: 7px 10px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--text) 16%, transparent);
+  background: color-mix(in srgb, var(--surface) 80%, black 20%);
+  color: var(--text);
+  font-size: 0.84rem;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.course-wizard-link-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.course-wizard-link-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.course-wizard-link-btn-primary {
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: none;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.course-wizard-link-btn-primary:hover {
+  opacity: 0.9;
+}
+
+.course-wizard-link-btn-secondary {
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.course-wizard-link-btn-secondary:hover {
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+
+.course-wizard-link-btn-danger {
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, #ef4444 30%, transparent);
+  background: color-mix(in srgb, #ef4444 12%, transparent);
+  color: #f87171;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  margin-right: auto;
+  transition: background 0.15s ease;
+}
+
+.course-wizard-link-btn-danger:hover {
+  background: color-mix(in srgb, #ef4444 22%, transparent);
+}
+
+@keyframes emojiPopoverFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.course-wizard-editor textarea,
+.course-wizard-editor__raw-markdown,
+.course-wizard-editor__content .ProseMirror {
+  width: 100%;
+  min-height: 140px;
   border: none;
   padding: 14px;
   color: var(--text);
@@ -9286,7 +9459,219 @@ html:has(.settings-profile__privacy-dialog[open]) {
   font-size: 0.88rem;
   line-height: 1.6;
   resize: vertical;
+  overflow: auto;
   outline: none;
+  box-sizing: border-box;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--accent) 45%, transparent) transparent;
+}
+
+.course-wizard-editor textarea::-webkit-scrollbar {
+  width: 6px;
+}
+
+.course-wizard-editor textarea::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 6px 0;
+}
+
+.course-wizard-editor textarea::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 999px;
+  transition: background 0.15s ease;
+}
+
+.course-wizard-editor textarea::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+.course-wizard-editor textarea::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.course-wizard-editor textarea::-webkit-resizer {
+  background: transparent;
+}
+
+.course-wizard-editor__content .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--muted);
+  pointer-events: none;
+  height: 0;
+}
+
+/* Shared ProCodrr Rich Text & Markdown Typography */
+.course-wizard-editor__content .ProseMirror,
+.course-preview-markdown-content {
+  color: var(--text-secondary, rgba(255, 255, 255, 0.88));
+  font-size: 0.88rem;
+  line-height: 1.65;
+}
+
+/* Preview wrapper — internal padding so content never touches card edges */
+.course-preview-markdown-content {
+  margin-top: 6px;
+  padding: 2px 2px 4px;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* ── Headings ───────────────────────────────────────────────────────────── */
+.course-wizard-editor__content .ProseMirror h1,
+.course-preview-markdown-content h1,
+.course-preview-markdown-content h4 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text, #ffffff);
+  margin: 1em 0 0.4em 0;
+}
+
+.course-wizard-editor__content .ProseMirror h2,
+.course-preview-markdown-content h2,
+.course-preview-markdown-content h5 {
+  font-size: 1.08rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text, #ffffff);
+  margin: 0.9em 0 0.35em 0;
+}
+
+.course-wizard-editor__content .ProseMirror h3,
+.course-preview-markdown-content h3,
+.course-preview-markdown-content h6 {
+  font-size: 0.96rem;
+  font-weight: 600;
+  color: var(--text, #ffffff);
+  margin: 0.75em 0 0.3em 0;
+}
+
+/* Don't add extra top-margin when a heading is the very first child */
+.course-preview-markdown-content > h1:first-child,
+.course-preview-markdown-content > h2:first-child,
+.course-preview-markdown-content > h3:first-child {
+  margin-top: 0;
+}
+
+/* ── Paragraphs ─────────────────────────────────────────────────────────── */
+.course-wizard-editor__content .ProseMirror p,
+.course-preview-markdown-content p {
+  margin: 0.5em 0;
+}
+
+/* ── Lists ──────────────────────────────────────────────────────────────── */
+.course-wizard-editor__content .ProseMirror ul,
+.course-preview-markdown-content ul {
+  list-style-type: disc !important;
+  padding-left: 1.4em !important;
+  margin: 0.55em 0 0.65em !important;
+}
+
+.course-wizard-editor__content .ProseMirror ol,
+.course-preview-markdown-content ol {
+  list-style-type: decimal !important;
+  padding-left: 1.4em !important;
+  margin: 0.55em 0 0.65em !important;
+}
+
+.course-wizard-editor__content .ProseMirror li,
+.course-preview-markdown-content li {
+  margin: 0.22em 0 !important;
+  padding-left: 0.15em !important;
+}
+
+.course-wizard-editor__content .ProseMirror li p,
+.course-preview-markdown-content li p {
+  margin: 0 !important;
+  display: inline !important;
+}
+
+/* Nested lists */
+.course-preview-markdown-content ul ul,
+.course-preview-markdown-content ol ol,
+.course-preview-markdown-content ul ol,
+.course-preview-markdown-content ol ul {
+  margin: 0.2em 0 0.2em !important;
+}
+
+/* ── Blockquotes ────────────────────────────────────────────────────────── */
+.course-wizard-editor__content .ProseMirror blockquote,
+.course-preview-markdown-content blockquote {
+  border-left: 3px solid var(--accent);
+  padding: 8px 14px;
+  margin: 0.9em 0;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-radius: 0 8px 8px 0;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Collapse paragraph margins inside blockquotes */
+.course-wizard-editor__content .ProseMirror blockquote p,
+.course-preview-markdown-content blockquote p {
+  margin: 0 !important;
+}
+
+/* ── Inline code ────────────────────────────────────────────────────────── */
+.course-wizard-editor__content .ProseMirror code,
+.course-preview-markdown-content code {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  color: var(--accent);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.84em;
+}
+
+/* ── Fenced code blocks (pre > code) ────────────────────────────────────── */
+.course-wizard-editor__content .ProseMirror pre,
+.course-preview-markdown-content pre {
+  background: color-mix(in srgb, var(--surface, #1a1a2e) 60%, black 40%);
+  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin: 0.9em 0;
+  overflow-x: auto;
+  font-size: 0.84em;
+  line-height: 1.6;
+}
+
+/* Reset inline code styles inside a pre block */
+.course-wizard-editor__content .ProseMirror pre code,
+.course-preview-markdown-content pre code {
+  background: transparent;
+  color: var(--text, #e8e8f0);
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+  white-space: pre;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+/* ── Links ──────────────────────────────────────────────────────────────── */
+.course-wizard-editor__content .ProseMirror a,
+.course-preview-markdown-content a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+/* ── Horizontal rules ───────────────────────────────────────────────────── */
+.course-wizard-editor__content .ProseMirror hr,
+.course-preview-markdown-content hr {
+  border: none;
+  border-top: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+  margin: 1.1rem 0;
 }
 
 .course-wizard-editor__footer {
@@ -9465,6 +9850,11 @@ html:has(.settings-profile__privacy-dialog[open]) {
 
 .course-preview-about {
   margin-top: 14px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .course-preview-about h4 {
@@ -9479,6 +9869,8 @@ html:has(.settings-profile__privacy-dialog[open]) {
   color: var(--muted);
   font-size: 0.82rem;
   line-height: 1.5;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* Top Right Corner Action Bar inside Wizard Header */
@@ -9593,6 +9985,17 @@ html:has(.settings-profile__privacy-dialog[open]) {
   border: 1px solid color-mix(in srgb, var(--text) 16%, transparent) !important;
   color: var(--text) !important;
   background: color-mix(in srgb, var(--canvas) 60%, var(--surface)) !important;
+}
+
+:root[data-theme="light"] .course-wizard-editor__select select {
+  border-color: rgba(0, 0, 0, 0.12);
+  background: rgba(0, 0, 0, 0.03) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 256 256'%3E%3Cpath fill='%2352525b' d='M213.66 101.66l-80 80a8 8 0 0 1-11.32 0l-80-80a8 8 0 0 1 11.32-11.32L128 164.69l74.34-74.35a8 8 0 0 1 11.32 11.32z'/%3E%3C/svg%3E") no-repeat right 8px center;
+  color: var(--text);
+}
+
+:root[data-theme="light"] .course-wizard-editor__select select option {
+  color: #18181b;
+  background-color: #ffffff;
 }
 
 :root[data-theme="light"] .course-wizard-input-wrap input:focus,
@@ -12265,6 +12668,17 @@ html:has(.settings-profile__privacy-dialog[open]) {
     font-size: 0.82rem !important;
     line-height: 1.35 !important;
     animation: bannerSlideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+
+  .course-wizard-emoji-popover {
+    position: fixed !important;
+    top: auto !important;
+    bottom: calc(70px + env(safe-area-inset-bottom)) !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    max-width: calc(100vw - 32px) !important;
+    z-index: 250 !important;
   }
 }
 

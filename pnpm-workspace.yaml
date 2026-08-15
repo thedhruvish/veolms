@@ -2,6 +2,9 @@ packages:
   - "apps/*"
   - "packages/*"
 
+minimumReleaseAgeExclude:
+  - '@tiptap/core@3.30.1'
+
 onlyBuiltDependencies: []
 
 # Turbo starts persistent workspace scripts concurrently. Keep dependency
