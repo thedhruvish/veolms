@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import frameworkRoutes from "../../src/routes.ts";
 import {
   destinationPaths,
+  getAuthRouteMeta,
   getDestinationPath,
   getEffectiveRouteId,
   getMatchedRouteDescriptor,
@@ -14,6 +15,8 @@ import {
 describe("React Router framework route configuration", () => {
   const academyLayout = frameworkRoutes[0]!;
   const childRoutes = academyLayout.children!;
+  const authLayout = frameworkRoutes[1]!;
+  const authChildRoutes = authLayout.children!;
 
   it("keeps every app URL beneath one persistent academy layout", () => {
     expect(academyLayout).toMatchObject({
@@ -87,6 +90,31 @@ describe("React Router framework route configuration", () => {
         .filter(({ index }) => !index)
         .every(({ caseSensitive }) => caseSensitive),
     ).toBe(true);
+  });
+
+  it("serves authentication from a sibling layout, never from the academy shell", () => {
+    expect(frameworkRoutes).toHaveLength(2);
+    expect(authLayout).toMatchObject({
+      id: "auth-layout",
+      file: "routes/auth-layout.tsx",
+    });
+    expect(
+      Object.fromEntries(authChildRoutes.map(({ id, path }) => [id, path])),
+    ).toEqual({
+      login: "login",
+      register: "register",
+    });
+    expect(authChildRoutes.find(({ id }) => id === "login")).toMatchObject({
+      file: "routes/login.tsx",
+      caseSensitive: true,
+    });
+    expect(authChildRoutes.find(({ id }) => id === "register")).toMatchObject({
+      file: "routes/register.tsx",
+      caseSensitive: true,
+    });
+    expect(
+      childRoutes.some(({ id }) => id === "login" || id === "register"),
+    ).toBe(false);
   });
 });
 
@@ -194,6 +222,13 @@ describe("framework route descriptors", () => {
     expect(getRouteMeta("courses", {}, "/COURSES")).toEqual({
       title: "Home \u00B7 ProCodrr",
       description: routeDescriptors.home.description,
+    });
+  });
+
+  it("brands authentication metadata like every other route", () => {
+    expect(getAuthRouteMeta("Log in", "Log in or create an account.")).toEqual({
+      title: "Log in · ProCodrr",
+      description: "Log in or create an account.",
     });
   });
 
