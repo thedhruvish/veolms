@@ -380,8 +380,8 @@ test("light mode uses a visible neutral shadow for elevated surfaces", async ({
     settingsCard.evaluate((element) => getComputedStyle(element).boxShadow);
   const mainSurfaceShadow = () =>
     mainSurface.evaluate((element) => getComputedStyle(element).boxShadow);
-  await expect.poll(cardShadow).toContain("rgba(25, 32, 45");
-  await expect.poll(mainSurfaceShadow).toContain("rgba(25, 32, 45");
+  await expect.poll(cardShadow).toContain("0px 19px 38px");
+  await expect.poll(mainSurfaceShadow).toContain("0px 19px 38px");
 
   await elevatedSurfaces.click();
   await expect.poll(cardShadow).toBe("none");
@@ -521,7 +521,7 @@ test("active dock controls reuse the sidebar menu active surface", async ({
   await expectMatchingSurface(".sidebar-appearance > button.is-active");
 });
 
-test("mobile bottom navigation reuses the sidebar elevation in both themes", async ({
+test("mobile bottom navigation keeps its active item flat in both themes", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -532,31 +532,40 @@ test("mobile bottom navigation reuses the sidebar elevation in both themes", asy
     name: "Student mobile navigation",
   });
   const mobileActive = mobileNavigation.locator(":scope > button.is-active");
-  const sidebarActive = page.locator(".courses-nav button.is-active");
   const activeSurface = async (locator: typeof mobileActive) =>
     locator.evaluate((element) => {
       const style = getComputedStyle(element);
+      const icon = element.querySelector("svg");
+      const label = element.querySelector("small");
       return {
         backgroundColor: style.backgroundColor,
         backgroundImage: style.backgroundImage,
         boxShadow: style.boxShadow,
+        color: style.color,
+        iconColor: icon ? getComputedStyle(icon).color : null,
+        labelColor: label ? getComputedStyle(label).color : null,
       };
     });
-  const expectMatchingElevation = async () => {
+  const expectFlatActiveState = async () => {
     const mobileSurface = await activeSurface(mobileActive);
-    expect(mobileSurface).toEqual(await activeSurface(sidebarActive));
-    expect(mobileSurface.boxShadow).not.toBe("none");
+    expect(mobileSurface).toMatchObject({
+      backgroundColor: "rgba(0, 0, 0, 0)",
+      backgroundImage: "none",
+      boxShadow: "none",
+    });
+    expect(mobileSurface.iconColor).toBe(mobileSurface.color);
+    expect(mobileSurface.labelColor).toBe(mobileSurface.color);
   };
 
   await expect(root).toHaveAttribute("data-theme", "dark");
   await expect(mobileActive).toBeVisible();
-  await expectMatchingElevation();
+  await expectFlatActiveState();
 
   await page.evaluate(() => localStorage.setItem("veolms-theme", "light"));
   await page.reload();
   await expect(root).toHaveAttribute("data-theme", "light");
   await expect(mobileActive).toBeVisible();
-  await expectMatchingElevation();
+  await expectFlatActiveState();
 });
 
 test("sidebar navigation clips at the rail edges without moving its menu items", async ({
@@ -1110,7 +1119,7 @@ test("profile control keeps equal avatar padding and a fixed height while the si
 
   const expanded = await profileGeometry();
   expect(expanded.buttonHeight).toBe(57);
-  expect(new Set(expanded.padding)).toEqual(new Set(["9px"]));
+  expect(new Set(expanded.padding)).toEqual(new Set(["7px"]));
   expect(expanded.avatarInsets.top).toBe(expanded.avatarInsets.bottom);
   expect(expanded.avatarInsets.left).toBe(expanded.avatarInsets.top);
   expect(expanded.avatarCenter).toBe(expanded.navigationCenter);
@@ -1124,7 +1133,7 @@ test("profile control keeps equal avatar padding and a fixed height while the si
   const collapsed = await profileGeometry();
   expect(collapsed.buttonHeight).toBe(57);
   expect(collapsed.buttonWidth).toBe(57);
-  expect(new Set(Object.values(collapsed.avatarInsets))).toEqual(new Set([9]));
+  expect(new Set(Object.values(collapsed.avatarInsets))).toEqual(new Set([7]));
   expect(collapsed.avatarCenter).toBe(collapsed.navigationCenter);
   expect(new Set((await appearanceGeometry()).padding)).toEqual(
     new Set(["8px"]),
@@ -1143,10 +1152,10 @@ test("profile control keeps equal avatar padding and a fixed height while the si
   await expect(profileButton).toHaveCSS("height", "57px");
   await expect(appearanceControls).toHaveCSS("padding", "8px");
   expect((await profileGeometry()).padding).toEqual([
-    "9px",
-    "9px",
-    "9px",
-    "9px",
+    "7px",
+    "7px",
+    "7px",
+    "7px",
   ]);
   await page.mouse.up();
 });

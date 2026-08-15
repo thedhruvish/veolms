@@ -7,7 +7,7 @@ import {
   SidebarSimple,
   UserCircle,
 } from "@phosphor-icons/react";
-import { useEffect, type ComponentType } from "react";
+import { useEffect, useRef, type ComponentType } from "react";
 import { handleRovingTabKeyDown } from "./accessibility/rovingTabFocus";
 import { AccountSettings } from "./settings/AccountSettings";
 import { AppearanceSettings } from "./settings/AppearanceSettings";
@@ -36,6 +36,7 @@ import {
   getNumberShortcutIndex,
   isEditingShortcutTarget,
 } from "./keyboardShortcuts";
+import { SwipeableTabPanel } from "./navigation/SwipeableTabPanel";
 
 export type { SettingsTab } from "./routing/tabSessionState";
 
@@ -81,6 +82,8 @@ const SETTINGS_TABS: readonly SettingsTabDefinition[] = [
   { id: "account", label: "Account", Icon: GearSix, tone: "rose" },
 ];
 
+const SETTINGS_TAB_IDS = SETTINGS_TABS.map(({ id }) => id);
+
 export interface SettingsPageProps {
   tab?: string;
   role?: ProfileRole;
@@ -117,10 +120,48 @@ export function SettingsPage({
   onSidebarModeChange,
 }: SettingsPageProps) {
   const activeTab = normalizeSettingsTab(tab);
+  const tabListRef = useRef<HTMLElement>(null);
   const navigateTab = (id: SettingsTab) => {
     rememberSettingsTab(id);
     onNavigatePage?.(`/settings/${id}`, { preserveScroll: true });
   };
+
+  const renderSettingsTab = (panelTab: SettingsTab) => (
+    <>
+      {panelTab === "profile" && (
+        <ProfileSettings
+          role={role}
+          onNavigatePage={onNavigatePage}
+          onProfileSaved={onProfileSaved}
+        />
+      )}
+      {panelTab === "appearance" && (
+        <AppearanceSettings
+          theme={theme}
+          onThemeChange={onThemeChange}
+          academyTheme={academyTheme}
+          onAcademyThemeChange={onAcademyThemeChange}
+          pageTabColors={pageTabColors}
+          onPageTabColorsChange={onPageTabColorsChange}
+        />
+      )}
+      {panelTab === "sidebar" && (
+        <SidebarSettings
+          sidebarPreferences={sidebarPreferences}
+          onSidebarPreferencesChange={onSidebarPreferencesChange}
+          academyTheme={academyTheme}
+          sidebarMode={sidebarMode}
+          onSidebarModeChange={onSidebarModeChange}
+        />
+      )}
+      {panelTab === "learning" && <LearningSettings />}
+      {panelTab === "notifications" && <NotificationSettings />}
+      {panelTab === "security" && <SecuritySettings />}
+      {panelTab === "account" && (
+        <AccountSettings role={role} onNavigatePage={onNavigatePage} />
+      )}
+    </>
+  );
 
   useEffect(() => {
     rememberSettingsTab(activeTab);
@@ -196,6 +237,7 @@ export function SettingsPage({
       </header>
 
       <nav
+        ref={tabListRef}
         className="settings-tabs page-tabs"
         aria-label="Settings sections"
         role="tablist"
@@ -210,6 +252,7 @@ export function SettingsPage({
             aria-controls="settings-tab-panel"
             aria-keyshortcuts={`Alt+${index + 1}`}
             data-page-tab-tone={tone}
+            data-swipe-tab-id={id}
             tabIndex={activeTab === id ? 0 : -1}
             className={activeTab === id ? "is-active" : ""}
             onClick={() => navigateTab(id)}
@@ -225,49 +268,21 @@ export function SettingsPage({
             <span>{label}</span>
           </button>
         ))}
+        <span className="page-tabs__indicator" aria-hidden="true" />
       </nav>
 
-      <div
+      <SwipeableTabPanel
+        tabs={SETTINGS_TAB_IDS}
+        activeTab={activeTab}
+        onTabChange={navigateTab}
+        tabListRef={tabListRef}
         id="settings-tab-panel"
         className="settings-tab-content"
-        data-settings-tab={activeTab}
-        role="tabpanel"
-        aria-labelledby={`settings-tab-${activeTab}`}
-        tabIndex={0}
+        stateAttribute="data-settings-tab"
+        labelledBy={`settings-tab-${activeTab}`}
       >
-        {activeTab === "profile" && (
-          <ProfileSettings
-            role={role}
-            onNavigatePage={onNavigatePage}
-            onProfileSaved={onProfileSaved}
-          />
-        )}
-        {activeTab === "appearance" && (
-          <AppearanceSettings
-            theme={theme}
-            onThemeChange={onThemeChange}
-            academyTheme={academyTheme}
-            onAcademyThemeChange={onAcademyThemeChange}
-            pageTabColors={pageTabColors}
-            onPageTabColorsChange={onPageTabColorsChange}
-          />
-        )}
-        {activeTab === "sidebar" && (
-          <SidebarSettings
-            sidebarPreferences={sidebarPreferences}
-            onSidebarPreferencesChange={onSidebarPreferencesChange}
-            academyTheme={academyTheme}
-            sidebarMode={sidebarMode}
-            onSidebarModeChange={onSidebarModeChange}
-          />
-        )}
-        {activeTab === "learning" && <LearningSettings />}
-        {activeTab === "notifications" && <NotificationSettings />}
-        {activeTab === "security" && <SecuritySettings />}
-        {activeTab === "account" && (
-          <AccountSettings role={role} onNavigatePage={onNavigatePage} />
-        )}
-      </div>
+        {(panelTab) => renderSettingsTab(panelTab)}
+      </SwipeableTabPanel>
     </div>
   );
 }

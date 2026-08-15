@@ -761,7 +761,7 @@ export function CoursesPage({
       if (
         mobileMenuOpen ||
         nextScrollTop <= MOBILE_NAV_TOP_GUARD ||
-        mobileBottomNavRef.current?.contains(document.activeElement)
+        mobileBottomNavRef.current?.querySelector(":focus-visible")
       ) {
         revealNavigation();
         return;
@@ -811,10 +811,12 @@ export function CoursesPage({
       capture: true,
       passive: true,
     });
+    window.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("keydown", handleKeyboardNavigation);
     return () => {
       if (frame !== null) window.cancelAnimationFrame(frame);
       document.removeEventListener("scroll", handleScroll, true);
+      window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("keydown", handleKeyboardNavigation);
     };
   }, [compactNavigation, mobileMenuOpen, page]);
@@ -2783,7 +2785,7 @@ export function CoursesPage({
       )}
 
       <main
-        className={`courses-main ${renderMain ? "courses-main--learning" : page !== "explore-courses" ? "student-surface-main" : ""}`}
+        className={`courses-main ${renderMain ? "courses-main--learning" : page !== "explore-courses" ? "student-surface-main" : ""}${!renderMain && page === "settings" ? " courses-main--settings" : ""}`}
       >
         {renderMain ? (
           renderMain()
