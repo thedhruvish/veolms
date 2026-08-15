@@ -130,6 +130,9 @@ importers:
       '@veolms/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@veolms/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       isbot:
         specifier: ^5
         version: 5.2.1
