@@ -83,12 +83,10 @@ describe("verifying with a passkey", () => {
     renderForm();
 
     expect(screen.getByText("Recommended")).toBeInTheDocument();
-    expect(
-      screen.getByText("Use your device biometrics or a security key"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Sign in with your passkey")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Works with Face ID, Touch ID, Windows Hello, or a hardware security key.",
+        "Your passkey is kept on this device or in your password manager, so there is no code to type.",
       ),
     ).toBeInTheDocument();
     expect(
@@ -148,9 +146,6 @@ describe("verifying with an authenticator app", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Verify & Continue" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Codes refresh every 30 seconds."),
     ).toBeInTheDocument();
   });
 

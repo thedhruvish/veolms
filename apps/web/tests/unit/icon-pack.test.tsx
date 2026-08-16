@@ -1,7 +1,6 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, render } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AuthAppearanceSwitcher } from "../../src/auth/AuthAppearanceSwitcher.tsx";
 import { IdentifierForm } from "../../src/auth/IdentifierForm.tsx";
 import { Icon } from "../../src/icons/Icon.tsx";
 import {
@@ -39,12 +38,8 @@ describe("icon registry", () => {
     expect(Object.keys(iconRegistry).sort()).toEqual([
       "arrowRight",
       "authenticator",
-      "darkMode",
       "email",
-      "iconPack",
-      "lightMode",
       "mobile",
-      "palette",
       "passkey",
       "person",
       "recommended",
@@ -143,49 +138,23 @@ describe("icon pack storage", () => {
   });
 });
 
-describe("icon pack switcher", () => {
-  it("parks a keyboard-operable trigger beside the appearance controls", () => {
-    const { container } = render(<AuthAppearanceSwitcher />);
-    const trigger = screen.getByRole("button", {
-      name: "Switch to Phosphor icons",
-    });
-
-    expect(container.querySelector(".auth-appearance")).toContainElement(
-      trigger,
-    );
-    expect(trigger.tagName).toBe("BUTTON");
-    expect(trigger).toHaveAttribute("type", "button");
-    expect(trigger).not.toHaveAttribute("tabindex");
-  });
-
+describe("icon pack selection", () => {
   it("switches the pack and remembers the choice", () => {
-    render(<AuthAppearanceSwitcher />);
-
-    fireEvent.click(
-      screen.getByRole("button", { name: "Switch to Phosphor icons" }),
-    );
+    act(() => setIconPack("phosphor"));
 
     expect(window.localStorage.getItem(ICON_PACK_KEY)).toBe("phosphor");
-    expect(
-      screen.getByRole("button", { name: "Switch to Lucide icons" }),
-    ).toBeInTheDocument();
   });
 
   it("keeps the glyphs on the identifier form in step with the chosen pack", () => {
     const { container } = render(
-      <>
-        <AuthAppearanceSwitcher />
-        <IdentifierForm status="idle" onSubmit={vi.fn()} />
-      </>,
+      <IdentifierForm status="idle" onSubmit={vi.fn()} />,
     );
     const fieldGlyph = () =>
       container.querySelector(".auth-form__input-shell > svg");
 
     expect(fieldGlyph()).toHaveAttribute("viewBox", LUCIDE_VIEW_BOX);
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Switch to Phosphor icons" }),
-    );
+    act(() => setIconPack("phosphor"));
 
     expect(fieldGlyph()).toHaveAttribute("viewBox", PHOSPHOR_VIEW_BOX);
   });

@@ -44,65 +44,81 @@ describe("identifier method switch", () => {
     ).toBeInTheDocument();
   });
 
-  it("starts on email so the field asks for an email address", () => {
+  it("lists mobile ahead of email, as the reference design does", () => {
     renderForm();
 
-    expect(screen.getByRole("tab", { name: "Email" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
-    expect(screen.getByLabelText("Email address")).toHaveAttribute(
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+      "Mobile",
+      "Email",
+    ]);
+  });
+
+  it("starts on mobile so the field asks for a mobile number", () => {
+    renderForm();
+
+    const mobileTab = screen.getByRole("tab", { name: "Mobile" });
+    const emailTab = screen.getByRole("tab", { name: "Email" });
+    expect(mobileTab).toHaveAttribute("aria-selected", "true");
+    expect(mobileTab).toHaveAttribute("tabindex", "0");
+    expect(emailTab).toHaveAttribute("aria-selected", "false");
+    expect(emailTab).toHaveAttribute("tabindex", "-1");
+    expect(screen.getByLabelText("Mobile number")).toHaveAttribute(
       "placeholder",
-      "you@example.com",
+      "Enter your mobile number",
     );
   });
 
   it("names each field so password managers and keyboards recognise it", () => {
     renderForm();
 
-    expect(screen.getByLabelText("Email address")).toHaveAttribute(
-      "autocomplete",
-      "email",
-    );
-
-    fireEvent.click(screen.getByRole("tab", { name: "Mobile" }));
-
     expect(screen.getByLabelText("Mobile number")).toHaveAttribute(
       "autocomplete",
       "tel-national",
     );
+
+    fireEvent.click(screen.getByRole("tab", { name: "Email" }));
+
+    expect(screen.getByLabelText("Email address")).toHaveAttribute(
+      "autocomplete",
+      "email",
+    );
   });
 
-  it("swaps the field and its label when mobile is chosen", () => {
+  it("swaps the field and its label when the method changes", () => {
     renderForm();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Email" }));
+
+    expect(screen.getByLabelText("Email address")).toHaveAttribute(
+      "placeholder",
+      "Enter your email address",
+    );
+    expect(screen.queryByLabelText("Mobile number")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "Mobile" }));
 
-    expect(screen.getByLabelText("Mobile number")).toHaveAttribute(
-      "placeholder",
-      "98XXXXXXXX",
-    );
+    expect(screen.getByLabelText("Mobile number")).toBeInTheDocument();
     expect(screen.queryByLabelText("Email address")).not.toBeInTheDocument();
   });
 
   it("walks the tabs with the arrow keys and selects on focus", () => {
     renderForm();
 
-    fireEvent.keyDown(screen.getByRole("tab", { name: "Email" }), {
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Mobile" }), {
       key: "ArrowRight",
     });
-    expect(screen.getByLabelText("Mobile number")).toBeInTheDocument();
+    expect(screen.getByLabelText("Email address")).toBeInTheDocument();
 
-    fireEvent.keyDown(screen.getByRole("tab", { name: "Mobile" }), {
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Email" }), {
       key: "ArrowLeft",
     });
-    expect(screen.getByLabelText("Email address")).toBeInTheDocument();
+    expect(screen.getByLabelText("Mobile number")).toBeInTheDocument();
   });
 
   it("gives each method a decorative glyph that leaves its name alone", () => {
     renderForm();
 
-    for (const name of ["Email", "Mobile"]) {
+    for (const name of ["Mobile", "Email"]) {
       const glyph = screen.getByRole("tab", { name }).querySelector("svg");
       expect(glyph).not.toBeNull();
       expect(glyph).toHaveAttribute("aria-hidden", "true");
@@ -112,20 +128,28 @@ describe("identifier method switch", () => {
   it("keeps aria-selected and the tab stop on the chosen method", () => {
     renderForm();
 
-    fireEvent.click(screen.getByRole("tab", { name: "Mobile" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Email" }));
 
     const emailTab = screen.getByRole("tab", { name: "Email" });
     const mobileTab = screen.getByRole("tab", { name: "Mobile" });
-    expect(emailTab).toHaveAttribute("aria-selected", "false");
-    expect(emailTab).toHaveAttribute("tabindex", "-1");
-    expect(mobileTab).toHaveAttribute("aria-selected", "true");
-    expect(mobileTab).toHaveAttribute("tabindex", "0");
+    expect(mobileTab).toHaveAttribute("aria-selected", "false");
+    expect(mobileTab).toHaveAttribute("tabindex", "-1");
+    expect(emailTab).toHaveAttribute("aria-selected", "true");
+    expect(emailTab).toHaveAttribute("tabindex", "0");
   });
 });
 
 describe("email validation", () => {
+  const renderEmailForm = () => {
+    const view = renderForm();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Email" }));
+
+    return view;
+  };
+
   it("rejects an empty address on submit", () => {
-    renderForm();
+    renderEmailForm();
 
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
 
@@ -135,7 +159,7 @@ describe("email validation", () => {
   });
 
   it("rejects a value that is not an address", () => {
-    renderForm();
+    renderEmailForm();
 
     fireEvent.change(screen.getByLabelText("Email address"), {
       target: { value: "not-an-email" },
@@ -148,7 +172,7 @@ describe("email validation", () => {
   });
 
   it("hands a normalised address to the caller", () => {
-    const { onSubmit } = renderForm();
+    const { onSubmit } = renderEmailForm();
 
     fireEvent.change(screen.getByLabelText("Email address"), {
       target: { value: "  Learner@ProCodrr.com  " },
@@ -169,9 +193,11 @@ describe("error reporting", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
 
-    const field = screen.getByLabelText("Email address");
+    const field = screen.getByLabelText("Mobile number");
     const alert = screen.getByRole("alert");
-    expect(alert).toHaveTextContent("Please enter a valid email address.");
+    expect(alert).toHaveTextContent(
+      "Please enter a valid 10-digit mobile number.",
+    );
     expect(field).toHaveAttribute("aria-invalid", "true");
     expect(field).toHaveAttribute("aria-describedby", alert.id);
   });
@@ -181,7 +207,7 @@ describe("error reporting", () => {
     renderForm({ errorMessage: failure });
 
     expect(screen.getByRole("alert")).toHaveTextContent(failure);
-    expect(screen.getByLabelText("Email address")).toHaveAttribute(
+    expect(screen.getByLabelText("Mobile number")).toHaveAttribute(
       "aria-invalid",
       "true",
     );
@@ -191,10 +217,10 @@ describe("error reporting", () => {
     renderForm();
 
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-    fireEvent.click(screen.getByRole("tab", { name: "Mobile" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Email" }));
 
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Mobile number")).toHaveAttribute(
+    expect(screen.getByLabelText("Email address")).toHaveAttribute(
       "aria-invalid",
       "false",
     );
@@ -202,6 +228,8 @@ describe("error reporting", () => {
 
   it("re-checks the field when it loses focus", () => {
     renderForm();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Email" }));
 
     const field = screen.getByLabelText("Email address");
     fireEvent.change(field, { target: { value: "not-an-email" } });
@@ -227,7 +255,6 @@ describe("mobile validation", () => {
   const submitMobile = (value: string) => {
     const view = renderForm();
 
-    fireEvent.click(screen.getByRole("tab", { name: "Mobile" }));
     fireEvent.change(screen.getByLabelText("Mobile number"), {
       target: { value },
     });
@@ -238,8 +265,6 @@ describe("mobile validation", () => {
 
   it("keeps the country trigger down to the dial code it contributes", () => {
     renderForm();
-
-    fireEvent.click(screen.getByRole("tab", { name: "Mobile" }));
 
     expect(
       screen.getByRole("combobox", { name: "Country code" }),

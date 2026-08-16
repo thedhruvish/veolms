@@ -66,7 +66,7 @@ describe("code destination", () => {
     renderForm();
 
     expect(
-      screen.getByRole("heading", { name: "Verify OTP" }),
+      screen.getByRole("heading", { name: "Verify your OTP" }),
     ).toBeInTheDocument();
     expect(
       screen.getByText("Enter the 6-digit code sent to your email"),
@@ -81,10 +81,9 @@ describe("code destination", () => {
   it("carries the id the auth card is labelled by", () => {
     renderForm();
 
-    expect(screen.getByRole("heading", { name: "Verify OTP" })).toHaveAttribute(
-      "id",
-      "auth-card-heading",
-    );
+    expect(
+      screen.getByRole("heading", { name: "Verify your OTP" }),
+    ).toHaveAttribute("id", "auth-card-heading");
   });
 
   it("dot-masks the mobile number and offers to change it instead", () => {
@@ -115,7 +114,7 @@ describe("the order of the card", () => {
   it("runs heading, destination, code, resend, verify, change", () => {
     renderForm();
 
-    const heading = screen.getByRole("heading", { name: "Verify OTP" });
+    const heading = screen.getByRole("heading", { name: "Verify your OTP" });
     const destination = screen.getByText("Code sent to");
     const firstDigit = screen.getByLabelText("Verification code digit 1 of 6");
     const resend = screen.getByRole("button", { name: "Resend in 60s" });
