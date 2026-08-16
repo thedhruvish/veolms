@@ -20,6 +20,7 @@ vi.mock("../../src/ThemedSelect.tsx", () => ({
 }));
 
 const submitEmail = (address: string) => {
+  fireEvent.click(screen.getByRole("tab", { name: "Email" }));
   fireEvent.change(screen.getByLabelText("Email address"), {
     target: { value: address },
   });
@@ -27,7 +28,6 @@ const submitEmail = (address: string) => {
 };
 
 const submitMobile = (number: string) => {
-  fireEvent.click(screen.getByRole("tab", { name: "Mobile" }));
   fireEvent.change(screen.getByLabelText("Mobile number"), {
     target: { value: number },
   });
@@ -38,6 +38,15 @@ const typeCode = (code: string) => {
   [...code].forEach((digit, index) => {
     fireEvent.change(
       screen.getByLabelText(`Verification code digit ${index + 1} of 6`),
+      { target: { value: digit } },
+    );
+  });
+};
+
+const typeAuthenticatorCode = (code: string) => {
+  [...code].forEach((digit, index) => {
+    fireEvent.change(
+      screen.getByLabelText(`Authentication code digit ${index + 1} of 6`),
       { target: { value: digit } },
     );
   });
@@ -58,7 +67,7 @@ describe("the login flow", () => {
     expect(
       screen.getByRole("heading", { level: 1, name: "Welcome to ProCodrr" }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText("Email address")).toBeInTheDocument();
+    expect(screen.getByLabelText("Mobile number")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Continue with Google" }),
     ).toBeInTheDocument();
@@ -70,7 +79,7 @@ describe("the login flow", () => {
     submitEmail("learner@procodrr.com");
 
     expect(
-      screen.getByRole("heading", { level: 1, name: "Verify OTP" }),
+      screen.getByRole("heading", { level: 1, name: "Verify your OTP" }),
     ).toBeInTheDocument();
     expect(screen.getByText("le●●●●●@procodrr.com")).toBeInTheDocument();
     expect(screen.queryByLabelText("Email address")).not.toBeInTheDocument();
@@ -99,25 +108,84 @@ describe("the login flow", () => {
     expect(
       screen.getByRole("heading", { level: 1, name: "Welcome to ProCodrr" }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText("Email address")).toBeInTheDocument();
+    expect(screen.getByLabelText("Mobile number")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Continue with Google" }),
     ).toBeInTheDocument();
   });
 
-  it("leaves the primary action ready after six digits, with no server to answer yet", () => {
+  it("asks an email learner for a name once the code is accepted", () => {
     render(<LoginRoute />);
 
     submitEmail("learner@procodrr.com");
     typeCode("140926");
     fireEvent.click(screen.getByRole("button", { name: "Verify & Continue" }));
 
-    expect(
-      screen.getByRole("button", { name: "Verify & Continue" }),
-    ).toBeEnabled();
-    expect(
-      screen.queryByRole("button", { name: "Verifying..." }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Your name")).toBeInTheDocument();
+    expect(screen.getByText("le●●●●●@procodrr.com")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("closes the flow once the account is created, having no academy to open yet", () => {
+    render(<LoginRoute />);
+
+    submitEmail("learner@procodrr.com");
+    typeCode("140926");
+    fireEvent.click(screen.getByRole("button", { name: "Verify & Continue" }));
+    fireEvent.change(screen.getByLabelText("Your name"), {
+      target: { value: "Anurag" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+
+    expect(screen.queryByLabelText("Your name")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Mobile number")).toBeInTheDocument();
+  });
+
+  it("walks a mobile learner through the second factor to the end of the flow", () => {
+    render(<LoginRoute />);
+
+    submitMobile("9876543210");
+    typeCode("140926");
+    fireEvent.click(screen.getByRole("button", { name: "Verify & Continue" }));
+
+    expect(
+      screen.getByRole("heading", {
+        level: 1,
+        name: "Two-factor authentication",
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Use authenticator app instead" }),
+    );
+    typeAuthenticatorCode("184273");
+    fireEvent.click(screen.getByRole("button", { name: "Verify & Continue" }));
+
+    expect(
+      screen.queryByRole("heading", {
+        level: 1,
+        name: "Two-factor authentication",
+      }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Mobile number")).toBeInTheDocument();
+  });
+
+  it("ends the flow for a mobile learner straight from the passkey", () => {
+    render(<LoginRoute />);
+
+    submitMobile("9876543210");
+    typeCode("140926");
+    fireEvent.click(screen.getByRole("button", { name: "Verify & Continue" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Continue with passkey" }),
+    );
+
+    expect(
+      screen.queryByRole("heading", {
+        level: 1,
+        name: "Two-factor authentication",
+      }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Mobile number")).toBeInTheDocument();
   });
 });

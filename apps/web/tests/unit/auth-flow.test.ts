@@ -233,19 +233,34 @@ describe("auth flow reducer", () => {
 
     expect(
       authFlowReducer(verifying, { type: "OTP_VERIFIED", next: "newUserName" }),
-    ).toEqual({ status: "newUserName", identifier: email });
+    ).toEqual({
+      status: "newUserName",
+      identifier: email,
+      name: "",
+      message: null,
+    });
     expect(
       authFlowReducer(verifying, {
         type: "OTP_VERIFIED",
         next: "twoFactorPasskey",
       }),
-    ).toEqual({ status: "twoFactorPasskey", identifier: email });
+    ).toEqual({
+      status: "twoFactorPasskey",
+      identifier: email,
+      code: "",
+      message: null,
+    });
     expect(
       authFlowReducer(verifying, {
         type: "OTP_VERIFIED",
         next: "twoFactorAuthenticator",
       }),
-    ).toEqual({ status: "twoFactorAuthenticator", identifier: email });
+    ).toEqual({
+      status: "twoFactorAuthenticator",
+      identifier: email,
+      code: "",
+      message: null,
+    });
     expect(
       authFlowReducer(verifying, {
         type: "OTP_VERIFIED",
@@ -325,5 +340,216 @@ describe("auth flow reducer", () => {
     } as const;
 
     expect(authFlowReducer(verifying, { type: "RESEND_OTP" })).toBe(verifying);
+  });
+});
+
+describe("account creation", () => {
+  it("records the name as it is typed", () => {
+    expect(
+      authFlowReducer(
+        {
+          status: "newUserName",
+          identifier: email,
+          name: "Ari",
+          message: null,
+        },
+        { type: "CHANGE_ACCOUNT_NAME", name: "Arik" },
+      ),
+    ).toEqual({
+      status: "newUserName",
+      identifier: email,
+      name: "Arik",
+      message: null,
+    });
+  });
+
+  it("creates the account with the name it was handed", () => {
+    expect(
+      authFlowReducer(
+        {
+          status: "newUserName",
+          identifier: email,
+          name: " Arik ",
+          message: "Please try again.",
+        },
+        { type: "SUBMIT_ACCOUNT_NAME", name: "Arik" },
+      ),
+    ).toEqual({ status: "creatingAccount", identifier: email, name: "Arik" });
+  });
+
+  it("lands on the signed-in screen once the account exists", () => {
+    expect(
+      authFlowReducer(
+        { status: "creatingAccount", identifier: email, name: "Arik" },
+        { type: "ACCOUNT_CREATED" },
+      ),
+    ).toEqual({ status: "authenticated" });
+  });
+
+  it("returns the name to the form with the reason it was refused", () => {
+    expect(
+      authFlowReducer(
+        { status: "creatingAccount", identifier: email, name: "Arik" },
+        {
+          type: "ACCOUNT_CREATION_FAILED",
+          message: "That name is already taken.",
+        },
+      ),
+    ).toEqual({
+      status: "newUserName",
+      identifier: email,
+      name: "Arik",
+      message: "That name is already taken.",
+    });
+  });
+});
+
+describe("second factor", () => {
+  it("switches from the passkey to the authenticator app", () => {
+    expect(
+      authFlowReducer(
+        {
+          status: "twoFactorPasskey",
+          identifier: email,
+          code: "12",
+          message: null,
+        },
+        { type: "CHANGE_TWO_FACTOR_METHOD", method: "authenticator" },
+      ),
+    ).toEqual({
+      status: "twoFactorAuthenticator",
+      identifier: email,
+      code: "12",
+      message: null,
+    });
+  });
+
+  it("switches back to the passkey, keeping the message it was given", () => {
+    expect(
+      authFlowReducer(
+        {
+          status: "twoFactorAuthenticator",
+          identifier: email,
+          code: "12",
+          message: "That code did not match.",
+        },
+        { type: "CHANGE_TWO_FACTOR_METHOD", method: "passkey" },
+      ),
+    ).toEqual({
+      status: "twoFactorPasskey",
+      identifier: email,
+      code: "12",
+      message: "That code did not match.",
+    });
+  });
+
+  it("records the authenticator digits as they are typed", () => {
+    expect(
+      authFlowReducer(
+        {
+          status: "twoFactorAuthenticator",
+          identifier: email,
+          code: "12",
+          message: null,
+        },
+        { type: "CHANGE_TWO_FACTOR_CODE", code: "123" },
+      ),
+    ).toEqual({
+      status: "twoFactorAuthenticator",
+      identifier: email,
+      code: "123",
+      message: null,
+    });
+  });
+
+  it("remembers which method was in use while the check runs", () => {
+    expect(
+      authFlowReducer(
+        {
+          status: "twoFactorAuthenticator",
+          identifier: email,
+          code: "184273",
+          message: null,
+        },
+        { type: "SUBMIT_TWO_FACTOR" },
+      ),
+    ).toEqual({
+      status: "verifyingTwoFactor",
+      identifier: email,
+      method: "authenticator",
+      code: "184273",
+    });
+
+    expect(
+      authFlowReducer(
+        {
+          status: "twoFactorPasskey",
+          identifier: email,
+          code: "",
+          message: null,
+        },
+        { type: "SUBMIT_TWO_FACTOR" },
+      ),
+    ).toEqual({
+      status: "verifyingTwoFactor",
+      identifier: email,
+      method: "passkey",
+      code: "",
+    });
+  });
+
+  it("lands on the signed-in screen once the second factor holds", () => {
+    expect(
+      authFlowReducer(
+        {
+          status: "verifyingTwoFactor",
+          identifier: email,
+          method: "authenticator",
+          code: "184273",
+        },
+        { type: "TWO_FACTOR_VERIFIED" },
+      ),
+    ).toEqual({ status: "authenticated" });
+  });
+
+  it("returns a rejected check to the method it came from", () => {
+    const rejected = {
+      type: "TWO_FACTOR_REJECTED",
+      message: "That code did not match.",
+    } as const;
+
+    expect(
+      authFlowReducer(
+        {
+          status: "verifyingTwoFactor",
+          identifier: email,
+          method: "authenticator",
+          code: "184273",
+        },
+        rejected,
+      ),
+    ).toEqual({
+      status: "twoFactorAuthenticator",
+      identifier: email,
+      code: "184273",
+      message: "That code did not match.",
+    });
+
+    expect(
+      authFlowReducer(
+        {
+          status: "verifyingTwoFactor",
+          identifier: mobile,
+          method: "passkey",
+          code: "",
+        },
+        rejected,
+      ),
+    ).toEqual({
+      status: "twoFactorPasskey",
+      identifier: mobile,
+      code: "",
+      message: "That code did not match.",
+    });
   });
 });
