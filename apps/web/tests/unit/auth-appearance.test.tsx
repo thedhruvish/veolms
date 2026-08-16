@@ -1,7 +1,7 @@
 import { render } from "@testing-library/react";
 import React from "react";
 import { MemoryRouter } from "react-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AuthLayout from "../../src/routes/auth-layout.tsx";
 import { useAuthAppearance } from "../../src/auth/useAuthAppearance.ts";
 
@@ -31,51 +31,51 @@ beforeEach(() => {
 });
 
 describe("useAuthAppearance", () => {
-  it("keeps the document defaults when nothing is stored", () => {
+  it("holds the auth screens on the palette the sign-in artwork is drawn for", () => {
     render(<AppearanceHarness />);
 
-    expect(document.documentElement.dataset.palette).toBe("codex");
+    expect(document.documentElement.dataset.palette).toBe("midnight");
     expect(document.documentElement.dataset.theme).toBe("dark");
   });
 
-  it("applies the stored academy palette", () => {
+  it("ignores a stored palette, because nobody is signed in yet", () => {
     storePalette("graphite");
 
     render(<AppearanceHarness />);
 
-    expect(document.documentElement.dataset.palette).toBe("graphite");
+    expect(document.documentElement.dataset.palette).toBe("midnight");
   });
 
-  it("falls back to the default palette when the stored value is unknown", () => {
-    storePalette("not-a-real-palette");
-
-    render(<AppearanceHarness />);
-
-    expect(document.documentElement.dataset.palette).toBe("codex");
-  });
-
-  it("applies the stored light or dark choice", () => {
+  it("ignores a stored light or dark choice", () => {
     window.localStorage.setItem("veolms-theme", "light");
-
-    render(<AppearanceHarness />);
-
-    expect(document.documentElement.dataset.theme).toBe("light");
-  });
-
-  it("falls back to the default theme when the stored choice is unknown", () => {
-    window.localStorage.setItem("veolms-theme", "neon");
 
     render(<AppearanceHarness />);
 
     expect(document.documentElement.dataset.theme).toBe("dark");
   });
 
-  it("resolves the device choice against the color scheme media query", () => {
-    window.localStorage.setItem("veolms-theme", "device");
+  it("hands the palette and mode back when the visitor leaves the auth screens", () => {
+    const root = document.documentElement;
+    root.dataset.palette = "ocean";
+    root.dataset.theme = "light";
 
-    render(<AppearanceHarness />);
+    const { unmount } = render(<AppearanceHarness />);
+    unmount();
 
-    expect(document.documentElement.dataset.theme).toBe("light");
+    expect(root.dataset.palette).toBe("ocean");
+    expect(root.dataset.theme).toBe("light");
+  });
+
+  it("clears the palette and mode again when the page carried none", () => {
+    const root = document.documentElement;
+    delete root.dataset.palette;
+    delete root.dataset.theme;
+
+    const { unmount } = render(<AppearanceHarness />);
+    unmount();
+
+    expect(root.dataset.palette).toBeUndefined();
+    expect(root.dataset.theme).toBeUndefined();
   });
 
   it("applies the stored reduce-animations preference", () => {
@@ -109,14 +109,55 @@ describe("useAuthAppearance", () => {
 
     expect(() => render(<AppearanceHarness />)).not.toThrow();
 
-    expect(document.documentElement.dataset.palette).toBe("codex");
+    expect(document.documentElement.dataset.palette).toBe("midnight");
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(consoleError).not.toHaveBeenCalled();
   });
 });
 
+describe("useAuthAppearance ?theme= preview", () => {
+  afterEach(() => {
+    window.history.replaceState(null, "", "/");
+    vi.unstubAllEnvs();
+  });
+
+  it("lets a developer preview another palette on the auth screens", () => {
+    window.history.replaceState(null, "", "/login?theme=grove");
+
+    render(<AppearanceHarness />);
+
+    expect(document.documentElement.dataset.palette).toBe("grove");
+    expect(document.documentElement.dataset.theme).toBe("dark");
+  });
+
+  it("stays locked when the parameter names no palette", () => {
+    window.history.replaceState(null, "", "/login?theme=not-a-real-palette");
+
+    render(<AppearanceHarness />);
+
+    expect(document.documentElement.dataset.palette).toBe("midnight");
+  });
+
+  it("stays locked when the parameter is empty", () => {
+    window.history.replaceState(null, "", "/login?theme=");
+
+    render(<AppearanceHarness />);
+
+    expect(document.documentElement.dataset.palette).toBe("midnight");
+  });
+
+  it("is absent from a production build", () => {
+    vi.stubEnv("DEV", false);
+    window.history.replaceState(null, "", "/login?theme=grove");
+
+    render(<AppearanceHarness />);
+
+    expect(document.documentElement.dataset.palette).toBe("midnight");
+  });
+});
+
 describe("AuthLayout", () => {
-  it("applies the stored appearance on a direct visit", () => {
+  it("renders in the fixed auth appearance whatever the visitor stored", () => {
     storePalette("ocean");
     window.localStorage.setItem("veolms-theme", "light");
 
@@ -126,7 +167,17 @@ describe("AuthLayout", () => {
       </MemoryRouter>,
     );
 
-    expect(document.documentElement.dataset.palette).toBe("ocean");
-    expect(document.documentElement.dataset.theme).toBe("light");
+    expect(document.documentElement.dataset.palette).toBe("midnight");
+    expect(document.documentElement.dataset.theme).toBe("dark");
+  });
+
+  it("offers no appearance control, because the auth screens have one look", () => {
+    const { container } = render(
+      <MemoryRouter initialEntries={["/login"]}>
+        <AuthLayout />
+      </MemoryRouter>,
+    );
+
+    expect(container.querySelector(".auth-appearance")).toBeNull();
   });
 });
