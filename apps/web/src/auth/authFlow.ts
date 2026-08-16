@@ -30,26 +30,42 @@ export type AuthFlowState =
       readonly code: string;
       readonly sendCount: number;
     }
-  | { readonly status: "newUserName"; readonly identifier: AuthIdentifier }
+  | {
+      readonly status: "newUserName";
+      readonly identifier: AuthIdentifier;
+      readonly name: string;
+      readonly message: string | null;
+    }
   | {
       readonly status: "creatingAccount";
       readonly identifier: AuthIdentifier;
       readonly name: string;
     }
-  | { readonly status: "twoFactorPasskey"; readonly identifier: AuthIdentifier }
+  | {
+      readonly status: "twoFactorPasskey";
+      readonly identifier: AuthIdentifier;
+      readonly code: string;
+      readonly message: string | null;
+    }
   | {
       readonly status: "twoFactorAuthenticator";
       readonly identifier: AuthIdentifier;
+      readonly code: string;
+      readonly message: string | null;
     }
   | {
       readonly status: "verifyingTwoFactor";
       readonly identifier: AuthIdentifier;
+      readonly method: TwoFactorMethod;
+      readonly code: string;
     }
   | { readonly status: "authenticated" }
   | { readonly status: "error"; readonly message: string };
 
 export type OtpFailureReason =
   "incorrect" | "expired" | "attemptsExceeded" | "verifyFailed";
+
+export type TwoFactorMethod = "passkey" | "authenticator";
 
 export type OtpVerifiedOutcome =
   | "newUserName"
@@ -178,7 +194,41 @@ export type AuthFlowAction =
   | { readonly type: "OTP_VERIFIED"; readonly next: OtpVerifiedOutcome }
   | { readonly type: "RESEND_OTP" }
   | { readonly type: "CHANGE_IDENTIFIER" }
+  | { readonly type: "CHANGE_ACCOUNT_NAME"; readonly name: string }
+  | { readonly type: "SUBMIT_ACCOUNT_NAME"; readonly name: string }
+  | { readonly type: "ACCOUNT_CREATED" }
+  | { readonly type: "ACCOUNT_CREATION_FAILED"; readonly message: string }
+  | {
+      readonly type: "CHANGE_TWO_FACTOR_METHOD";
+      readonly method: TwoFactorMethod;
+    }
+  | { readonly type: "CHANGE_TWO_FACTOR_CODE"; readonly code: string }
+  | { readonly type: "SUBMIT_TWO_FACTOR" }
+  | { readonly type: "TWO_FACTOR_VERIFIED" }
+  | { readonly type: "TWO_FACTOR_REJECTED"; readonly message: string }
   | { readonly type: "UNEXPECTED_FAILURE" };
+
+const TWO_FACTOR_STATUS = {
+  passkey: "twoFactorPasskey",
+  authenticator: "twoFactorAuthenticator",
+} as const;
+
+export const TWO_FACTOR_METHOD = {
+  twoFactorPasskey: "passkey",
+  twoFactorAuthenticator: "authenticator",
+} as const;
+
+type TwoFactorState = Extract<
+  AuthFlowState,
+  { status: "twoFactorPasskey" | "twoFactorAuthenticator" }
+>;
+
+function isTwoFactorState(state: AuthFlowState): state is TwoFactorState {
+  return (
+    state.status === "twoFactorPasskey" ||
+    state.status === "twoFactorAuthenticator"
+  );
+}
 
 export const initialAuthFlowState: AuthFlowState = {
   status: "identifier",
@@ -245,9 +295,84 @@ export function authFlowReducer(
   }
 
   if (state.status === "verifyingOtp" && action.type === "OTP_VERIFIED") {
-    return action.next === "authenticated"
-      ? { status: "authenticated" }
-      : { status: action.next, identifier: state.identifier };
+    if (action.next === "authenticated") {
+      return { status: "authenticated" };
+    }
+
+    if (action.next === "newUserName") {
+      return {
+        status: "newUserName",
+        identifier: state.identifier,
+        name: "",
+        message: null,
+      };
+    }
+
+    return {
+      status: action.next,
+      identifier: state.identifier,
+      code: "",
+      message: null,
+    };
+  }
+
+  if (state.status === "newUserName" && action.type === "CHANGE_ACCOUNT_NAME") {
+    return { ...state, name: action.name };
+  }
+
+  if (state.status === "newUserName" && action.type === "SUBMIT_ACCOUNT_NAME") {
+    return {
+      status: "creatingAccount",
+      identifier: state.identifier,
+      name: action.name,
+    };
+  }
+
+  if (state.status === "creatingAccount" && action.type === "ACCOUNT_CREATED") {
+    return { status: "authenticated" };
+  }
+
+  if (
+    state.status === "creatingAccount" &&
+    action.type === "ACCOUNT_CREATION_FAILED"
+  ) {
+    return { ...state, status: "newUserName", message: action.message };
+  }
+
+  if (isTwoFactorState(state) && action.type === "CHANGE_TWO_FACTOR_METHOD") {
+    return { ...state, status: TWO_FACTOR_STATUS[action.method] };
+  }
+
+  if (isTwoFactorState(state) && action.type === "CHANGE_TWO_FACTOR_CODE") {
+    return { ...state, code: action.code };
+  }
+
+  if (isTwoFactorState(state) && action.type === "SUBMIT_TWO_FACTOR") {
+    return {
+      status: "verifyingTwoFactor",
+      identifier: state.identifier,
+      method: TWO_FACTOR_METHOD[state.status],
+      code: state.code,
+    };
+  }
+
+  if (
+    state.status === "verifyingTwoFactor" &&
+    action.type === "TWO_FACTOR_VERIFIED"
+  ) {
+    return { status: "authenticated" };
+  }
+
+  if (
+    state.status === "verifyingTwoFactor" &&
+    action.type === "TWO_FACTOR_REJECTED"
+  ) {
+    return {
+      status: TWO_FACTOR_STATUS[state.method],
+      identifier: state.identifier,
+      code: state.code,
+      message: action.message,
+    };
   }
 
   return state;
