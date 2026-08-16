@@ -1,9 +1,8 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import React from "react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { describe, expect, it } from "vitest";
 import AuthLayout from "../../src/routes/auth-layout.tsx";
-import { academyThemes, getInitialAcademyTheme } from "../../src/themes.ts";
 import RegisterRoute, {
   clientLoader as registerClientLoader,
 } from "../../src/routes/register.tsx";
@@ -34,8 +33,13 @@ describe("login screen", () => {
   it("mounts the identifier form and the social actions in the card", () => {
     render(<LoginRoute />);
 
+    expect(screen.getByRole("tab", { name: "Mobile" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
     expect(screen.getByRole("tab", { name: "Email" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Email address")).toBeInTheDocument();
+    expect(screen.getByLabelText("Mobile number")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Email address")).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Continue with Google" }),
     ).toBeInTheDocument();
@@ -117,95 +121,6 @@ describe("auth layout", () => {
     expect(footer).not.toBeNull();
     expect(footer).toHaveTextContent("© 2026 ProCodrr. All rights reserved.");
     expect(footer).toHaveTextContent("Learn. Build. Grow.");
-  });
-});
-
-describe("auth appearance switcher", () => {
-  const renderSwitcher = async () => {
-    const router = createMemoryRouter(
-      [
-        {
-          Component: AuthLayout,
-          children: [{ index: true, element: <p>routed auth screen</p> }],
-        },
-      ],
-      { initialEntries: ["/"] },
-    );
-    const view = render(<RouterProvider router={router} />);
-
-    await screen.findByText("routed auth screen");
-    return {
-      ...view,
-      paletteTrigger: screen.getByRole("button", {
-        name: "Choose color theme",
-      }),
-    };
-  };
-
-  it("parks a palette chooser and a light/dark toggle in the page corner", async () => {
-    const { container, paletteTrigger } = await renderSwitcher();
-
-    expect(container.querySelector(".auth-appearance")).toContainElement(
-      paletteTrigger,
-    );
-    expect(paletteTrigger).toHaveAttribute("type", "button");
-    expect(paletteTrigger).toHaveAttribute("aria-expanded", "false");
-    expect(paletteTrigger).toHaveAttribute(
-      "aria-controls",
-      "auth-palette-menu",
-    );
-    expect(
-      screen.getByRole("button", { name: "Switch to light mode" }),
-    ).toBeInTheDocument();
-    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
-  });
-
-  it("opens every academy palette so each one can be tried on this screen", async () => {
-    const { paletteTrigger } = await renderSwitcher();
-
-    fireEvent.click(paletteTrigger);
-
-    expect(screen.getByRole("menu")).toHaveAttribute("id", "auth-palette-menu");
-    expect(screen.getAllByRole("menuitemradio")).toHaveLength(
-      academyThemes.length,
-    );
-    expect(paletteTrigger).toHaveAttribute("aria-expanded", "true");
-  });
-
-  it("persists a chosen palette the way the academy shell reads it back", async () => {
-    const { paletteTrigger } = await renderSwitcher();
-
-    fireEvent.click(paletteTrigger);
-    fireEvent.click(
-      screen.getByRole("menuitemradio", { name: /Graphite Studio/ }),
-    );
-
-    expect(document.documentElement.dataset.palette).toBe("graphite");
-    expect(getInitialAcademyTheme()).toBe("graphite");
-  });
-
-  it("returns focus to the trigger when Escape closes the palette menu", async () => {
-    const { paletteTrigger } = await renderSwitcher();
-
-    fireEvent.click(paletteTrigger);
-    fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
-
-    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
-    expect(paletteTrigger).toHaveFocus();
-  });
-
-  it("stores light and dark under the preference key the shell shares", async () => {
-    await renderSwitcher();
-
-    fireEvent.click(
-      screen.getByRole("button", { name: "Switch to light mode" }),
-    );
-
-    expect(document.documentElement.dataset.theme).toBe("light");
-    expect(window.localStorage.getItem("veolms-theme")).toBe("light");
-    expect(
-      screen.getByRole("button", { name: "Switch to dark mode" }),
-    ).toBeInTheDocument();
   });
 });
 

@@ -1,5 +1,4 @@
 import { Outlet } from "react-router";
-import { AuthAppearanceSwitcher } from "../auth/AuthAppearanceSwitcher";
 import { AuthBrandPanel } from "../auth/AuthBrandPanel";
 import { useAuthAppearance } from "../auth/useAuthAppearance";
 import { productName } from "../routing/routeDescriptors";
@@ -26,8 +25,6 @@ export default function AuthLayout() {
         </span>
         <span className="auth-page__footer-tagline">Learn. Build. Grow.</span>
       </p>
-
-      <AuthAppearanceSwitcher />
     </div>
   );
 }
