@@ -108,7 +108,7 @@ export function OtpForm({
     <div className="auth-otp-form">
       <AuthBrandMark />
       <h1 className="auth-card__heading" id={AUTH_CARD_HEADING_ID}>
-        Verify OTP
+        Verify your OTP
       </h1>
       <p className="auth-card__subheading">{SUBHEADINGS[identifier.method]}</p>
 

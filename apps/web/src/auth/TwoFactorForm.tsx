@@ -27,7 +27,6 @@ type TwoFactorMethod = TwoFactorFormProps["method"];
 const CODE_LABEL = "Authentication code";
 const MESSAGE_ID = "auth-two-factor-message";
 const PASSKEY_ACTION = "Continue with passkey";
-const REFRESH_NOTE = "Codes refresh every 30 seconds.";
 const USE_AUTHENTICATOR_ACTION = "Use authenticator app instead";
 const USE_PASSKEY_ACTION = "Use passkey instead";
 
@@ -114,28 +113,28 @@ export function TwoFactorForm({
           <div className="auth-two-factor__passkey">
             <div className="auth-two-factor__panel">
               <div className="auth-two-factor__panel-body">
+                <p className="auth-two-factor__badge">
+                  <Icon
+                    aria-hidden
+                    emphasis="fill"
+                    name="recommended"
+                    size={11}
+                  />
+                  Recommended
+                </p>
+
                 <div className="auth-two-factor__intro">
                   <span className="auth-two-factor__mark">
-                    <Icon aria-hidden name="passkey" size={36} />
+                    <Icon aria-hidden name="passkey" size={22} />
                   </span>
 
                   <div className="auth-two-factor__copy">
-                    <p className="auth-two-factor__badge">
-                      <Icon
-                        aria-hidden
-                        emphasis="fill"
-                        name="recommended"
-                        size={13}
-                      />
-                      Recommended
-                    </p>
-
                     <p className="auth-two-factor__title">
-                      Use your device biometrics or a security key
+                      Sign in with your passkey
                     </p>
                     <p className="auth-two-factor__body">
-                      Works with Face ID, Touch ID, Windows Hello, or a hardware
-                      security key.
+                      Your passkey is kept on this device or in your password
+                      manager, so there is no code to type.
                     </p>
                   </div>
                 </div>
@@ -156,7 +155,6 @@ export function TwoFactorForm({
               type="button"
             >
               <span className="auth-form__submit-label">
-                <Icon aria-hidden name="passkey" size={18} />
                 {verifying ? OTP_ACTION_LABELS.verifying : PASSKEY_ACTION}
               </span>
               <Icon aria-hidden emphasis="bold" name="arrowRight" size={18} />
@@ -206,7 +204,6 @@ export function TwoFactorForm({
               type="submit"
             >
               <span className="auth-form__submit-label">
-                <Icon aria-hidden name="shield" size={18} />
                 {verifying
                   ? OTP_ACTION_LABELS.verifying
                   : OTP_ACTION_LABELS.verify}
@@ -221,11 +218,6 @@ export function TwoFactorForm({
             >
               {USE_PASSKEY_ACTION}
             </button>
-
-            <p className="auth-two-factor__refresh">
-              <Icon aria-hidden name="refreshTimer" size={16} />
-              {REFRESH_NOTE}
-            </p>
           </form>
         )}
       </div>

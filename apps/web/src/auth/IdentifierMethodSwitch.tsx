@@ -10,8 +10,8 @@ export interface IdentifierMethodSwitchProps {
 
 const METHOD_TABS: readonly (readonly [IdentifierMethod, string, IconName])[] =
   [
-    ["email", "Email", "email"],
     ["mobile", "Mobile", "mobile"],
+    ["email", "Email", "email"],
   ];
 
 export function IdentifierMethodSwitch({

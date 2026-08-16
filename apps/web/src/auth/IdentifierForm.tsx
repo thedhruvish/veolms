@@ -68,7 +68,7 @@ export function IdentifierForm({
   onSubmit,
 }: IdentifierFormProps) {
   const sending = status === "sending";
-  const [method, setMethod] = useState<IdentifierMethod>("email");
+  const [method, setMethod] = useState<IdentifierMethod>("mobile");
   const [email, setEmail] = useState("");
   const [mobile, setMobile] = useState("");
   const [country, setCountry] = useState<CountryOption>(DEFAULT_COUNTRY);
@@ -134,7 +134,7 @@ export function IdentifierForm({
               name="email"
               onBlur={() => setInvalidReason(checkIdentifier())}
               onChange={(event) => setEmail(event.target.value)}
-              placeholder="you@example.com"
+              placeholder="Enter your email address"
               type="email"
               value={email}
             />
@@ -156,6 +156,7 @@ export function IdentifierForm({
           <div className="auth-form__mobile-row">
             <ThemedSelect
               ariaLabel="Country code"
+              contentClassName="auth-form__country-menu"
               onValueChange={selectCountry}
               options={COUNTRY_OPTIONS}
               triggerClassName="auth-form__country"
@@ -174,7 +175,7 @@ export function IdentifierForm({
                 name="mobile"
                 onBlur={() => setInvalidReason(checkIdentifier())}
                 onChange={(event) => setMobile(event.target.value)}
-                placeholder="98XXXXXXXX"
+                placeholder="Enter your mobile number"
                 type="tel"
                 value={mobile}
               />
