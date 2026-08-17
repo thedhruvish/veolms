@@ -121,7 +121,7 @@ test("page tabs pin beneath the shell edge while the framed surface uses only a 
     ).toHaveCount(1);
     await expect(
       floatingScrollbar.locator(":scope > .floating-scrollbar__thumb"),
-    ).toHaveCSS("width", "7px");
+    ).toHaveCSS("width", "5px");
     await expect(floatingScrollbar).toHaveCSS("cursor", "auto");
     await expect(
       floatingScrollbar.locator(":scope > .floating-scrollbar__thumb"),
@@ -248,6 +248,47 @@ test("the framed learning scrollbar clears content at compact and wide desktop s
     expect(
       trackBounds!.x - (contentBounds!.x + contentBounds!.width),
     ).toBeGreaterThanOrEqual(3.5);
+
+    if (width > 1080) {
+      const matchingScrollbarStyles = await page.evaluate(() => {
+        const curriculum = document.querySelector(".learning-curriculum");
+        const mainThumb = document.querySelector(".floating-scrollbar__thumb");
+        if (!curriculum || !mainThumb) return null;
+        const curriculumScrollbar = getComputedStyle(
+          curriculum,
+          "::-webkit-scrollbar",
+        );
+        const curriculumThumb = getComputedStyle(
+          curriculum,
+          "::-webkit-scrollbar-thumb",
+        );
+        const mainThumbStyle = getComputedStyle(mainThumb);
+        return {
+          curriculumCursor: getComputedStyle(curriculum).cursor,
+          curriculumThumbBackground: curriculumThumb.backgroundColor,
+          curriculumThumbBorderWidth: Number.parseFloat(
+            curriculumThumb.borderTopWidth,
+          ),
+          curriculumWidth: Number.parseFloat(curriculumScrollbar.width),
+          mainThumbBackground: mainThumbStyle.backgroundColor,
+          mainThumbCursor: mainThumbStyle.cursor,
+          mainThumbWidth: mainThumb.getBoundingClientRect().width,
+        };
+      });
+      expect(matchingScrollbarStyles).not.toBeNull();
+      expect(matchingScrollbarStyles!.curriculumWidth).toBeCloseTo(5, 1);
+      expect(matchingScrollbarStyles!.mainThumbWidth).toBeCloseTo(5, 1);
+      expect(matchingScrollbarStyles!.curriculumWidth).toBeCloseTo(
+        matchingScrollbarStyles!.mainThumbWidth,
+        1,
+      );
+      expect(matchingScrollbarStyles!.curriculumThumbBackground).toBe(
+        matchingScrollbarStyles!.mainThumbBackground,
+      );
+      expect(matchingScrollbarStyles!.curriculumThumbBorderWidth).toBe(0);
+      expect(matchingScrollbarStyles!.curriculumCursor).toBe("auto");
+      expect(matchingScrollbarStyles!.mainThumbCursor).toBe("auto");
+    }
   }
 });
 

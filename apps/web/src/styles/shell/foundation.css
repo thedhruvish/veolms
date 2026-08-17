@@ -155,17 +155,23 @@
   position: absolute;
   top: 0;
   right: 0;
-  width: 7px;
+  width: var(--scrollbar-thumb-size, 5px);
   height: var(--floating-scrollbar-thumb-height, 40px);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 58%, transparent);
+  background: var(
+    --scrollbar-thumb-color,
+    color-mix(in srgb, var(--accent) 58%, transparent)
+  );
   transform: translate3d(0, var(--floating-scrollbar-thumb-offset, 0), 0);
   transition: background-color 150ms ease-out;
 }
 
 .floating-scrollbar:hover .floating-scrollbar__thumb,
 .floating-scrollbar.is-dragging .floating-scrollbar__thumb {
-  background: color-mix(in srgb, var(--accent) 74%, transparent);
+  background: var(
+    --scrollbar-thumb-hover-color,
+    color-mix(in srgb, var(--accent) 74%, transparent)
+  );
 }
 
 .floating-scrollbar:focus-visible {
