@@ -10,6 +10,10 @@ const MINIMUM_THUMB_HEIGHT = 40;
 
 type FloatingScrollbarProps = {
   scrollportRef: RefObject<HTMLElement | null>;
+  ariaControls?: string;
+  ariaLabel?: string;
+  className?: string;
+  disabled?: boolean;
 };
 
 type ScrollbarDrag = {
@@ -21,7 +25,13 @@ type ScrollbarDrag = {
 const clamp = (value: number, minimum: number, maximum: number) =>
   Math.min(maximum, Math.max(minimum, value));
 
-export function FloatingScrollbar({ scrollportRef }: FloatingScrollbarProps) {
+export function FloatingScrollbar({
+  scrollportRef,
+  ariaControls = "courses-main-scrollport",
+  ariaLabel = "Page scroll position",
+  className,
+  disabled = false,
+}: FloatingScrollbarProps) {
   const scrollbarRef = useRef<HTMLSpanElement>(null);
   const dragRef = useRef<ScrollbarDrag | null>(null);
 
@@ -36,11 +46,14 @@ export function FloatingScrollbar({ scrollportRef }: FloatingScrollbarProps) {
       animationFrame = 0;
       const scrollportStyle = window.getComputedStyle(scrollport);
       const canScroll =
+        !disabled &&
+        scrollport.getClientRects().length > 0 &&
         (scrollportStyle.overflowY === "auto" ||
           scrollportStyle.overflowY === "scroll") &&
         scrollport.scrollHeight > scrollport.clientHeight + 1;
 
       scrollbar.classList.toggle("is-visible", canScroll);
+      scrollbar.setAttribute("aria-hidden", canScroll ? "false" : "true");
       scrollbar.tabIndex = canScroll ? 0 : -1;
       if (!canScroll) {
         scrollbar.setAttribute("aria-valuemax", "0");
@@ -142,7 +155,7 @@ export function FloatingScrollbar({ scrollportRef }: FloatingScrollbarProps) {
       resizeObserver?.disconnect();
       contentObserver.disconnect();
     };
-  }, [scrollportRef]);
+  }, [disabled, scrollportRef]);
 
   const beginDrag = (event: ReactPointerEvent<HTMLSpanElement>) => {
     if (
@@ -253,10 +266,11 @@ export function FloatingScrollbar({ scrollportRef }: FloatingScrollbarProps) {
   return (
     <span
       ref={scrollbarRef}
-      className="floating-scrollbar"
+      className={`floating-scrollbar${className ? ` ${className}` : ""}`}
       role="scrollbar"
-      aria-label="Page scroll position"
-      aria-controls="courses-main-scrollport"
+      aria-label={ariaLabel}
+      aria-controls={ariaControls}
+      aria-hidden="true"
       aria-orientation="vertical"
       aria-valuemin={0}
       aria-valuemax={0}

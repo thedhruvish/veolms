@@ -227,7 +227,9 @@ test("the framed learning scrollbar clears content at compact and wide desktop s
     );
 
     const mainSurface = page.locator("main.courses-main");
-    const floatingScrollbar = page.locator(".floating-scrollbar");
+    const floatingScrollbar = page.locator(
+      '.floating-scrollbar[aria-controls="courses-main-scrollport"]',
+    );
     const rightmostContent = page.locator(
       width <= 1080
         ? ".learning-workspace__player-wrap"
@@ -256,50 +258,146 @@ test("the framed learning scrollbar clears content at compact and wide desktop s
     ).toBeGreaterThanOrEqual(3.5);
 
     if (width > 1080) {
+      const curriculum = page.locator("#learning-course-curriculum-scrollport");
+      const curriculumScrollbar = page.locator(
+        '.floating-scrollbar[aria-controls="learning-course-curriculum-scrollport"]',
+      );
+      const curriculumThumb = curriculumScrollbar.locator(
+        ":scope > .floating-scrollbar__thumb",
+      );
+      await expect(curriculumScrollbar).toHaveClass(/is-visible/);
+      await expect(curriculumScrollbar).toHaveAttribute("aria-hidden", "false");
+
+      const [curriculumBounds, curriculumTrackBounds] = await Promise.all([
+        curriculum.boundingBox(),
+        curriculumScrollbar.boundingBox(),
+      ]);
+      expect(curriculumBounds).not.toBeNull();
+      expect(curriculumTrackBounds).not.toBeNull();
+      expect(
+        Math.abs(
+          curriculumTrackBounds!.x +
+            curriculumTrackBounds!.width -
+            (curriculumBounds!.x + curriculumBounds!.width),
+        ),
+      ).toBeLessThan(0.5);
+      expect(
+        curriculumTrackBounds!.y - curriculumBounds!.y,
+      ).toBeGreaterThanOrEqual(13.5);
+      expect(
+        curriculumBounds!.y +
+          curriculumBounds!.height -
+          (curriculumTrackBounds!.y + curriculumTrackBounds!.height),
+      ).toBeGreaterThanOrEqual(13.5);
+
       const matchingScrollbarStyles = await page.evaluate(() => {
-        const curriculum = document.querySelector(".learning-curriculum");
-        const mainThumb = document.querySelector(".floating-scrollbar__thumb");
-        if (!curriculum || !mainThumb) return null;
-        const curriculumScrollbar = getComputedStyle(
+        const curriculum = document.querySelector(
+          "#learning-course-curriculum-scrollport",
+        );
+        const curriculumScrollbar = document.querySelector(
+          '.floating-scrollbar[aria-controls="learning-course-curriculum-scrollport"]',
+        );
+        const curriculumThumb = curriculumScrollbar?.querySelector(
+          ".floating-scrollbar__thumb",
+        );
+        const mainScrollbar = document.querySelector(
+          '.floating-scrollbar[aria-controls="courses-main-scrollport"]',
+        );
+        const mainThumb = mainScrollbar?.querySelector(
+          ".floating-scrollbar__thumb",
+        );
+        if (
+          !curriculum ||
+          !curriculumScrollbar ||
+          !curriculumThumb ||
+          !mainThumb
+        )
+          return null;
+        const nativeScrollbar = getComputedStyle(
           curriculum,
           "::-webkit-scrollbar",
         );
-        const curriculumThumb = getComputedStyle(
-          curriculum,
-          "::-webkit-scrollbar-thumb",
-        );
-        const curriculumTrack = getComputedStyle(
-          curriculum,
-          "::-webkit-scrollbar-track",
-        );
+        const curriculumStyle = getComputedStyle(curriculum);
+        const curriculumThumbStyle = getComputedStyle(curriculumThumb);
         const mainThumbStyle = getComputedStyle(mainThumb);
+        const horizontalBorderWidth =
+          Number.parseFloat(curriculumStyle.borderLeftWidth) +
+          Number.parseFloat(curriculumStyle.borderRightWidth);
         return {
-          curriculumCursor: getComputedStyle(curriculum).cursor,
-          curriculumThumbBackground: curriculumThumb.backgroundColor,
-          curriculumThumbBorderWidth: Number.parseFloat(
-            curriculumThumb.borderTopWidth,
-          ),
-          curriculumTrackInset: Number.parseFloat(curriculumTrack.marginTop),
-          curriculumWidth: Number.parseFloat(curriculumScrollbar.width),
+          curriculumCursor: curriculumThumbStyle.cursor,
+          curriculumLayoutGutter:
+            (curriculum as HTMLElement).offsetWidth -
+            (curriculum as HTMLElement).clientWidth -
+            horizontalBorderWidth,
+          curriculumNativeWidth: Number.parseFloat(nativeScrollbar.width),
+          curriculumPosition: getComputedStyle(curriculumScrollbar).position,
+          curriculumThumbBackground: curriculumThumbStyle.backgroundColor,
+          curriculumThumbWidth: curriculumThumb.getBoundingClientRect().width,
           mainThumbBackground: mainThumbStyle.backgroundColor,
           mainThumbCursor: mainThumbStyle.cursor,
           mainThumbWidth: mainThumb.getBoundingClientRect().width,
         };
       });
       expect(matchingScrollbarStyles).not.toBeNull();
-      expect(matchingScrollbarStyles!.curriculumWidth).toBeCloseTo(6, 1);
+      expect(matchingScrollbarStyles!.curriculumNativeWidth).toBe(0);
+      expect(matchingScrollbarStyles!.curriculumLayoutGutter).toBe(0);
+      expect(matchingScrollbarStyles!.curriculumPosition).toBe("fixed");
+      expect(matchingScrollbarStyles!.curriculumThumbWidth).toBeCloseTo(6, 1);
       expect(matchingScrollbarStyles!.mainThumbWidth).toBeCloseTo(6, 1);
-      expect(matchingScrollbarStyles!.curriculumWidth).toBeCloseTo(
+      expect(matchingScrollbarStyles!.curriculumThumbWidth).toBeCloseTo(
         matchingScrollbarStyles!.mainThumbWidth,
         1,
       );
       expect(matchingScrollbarStyles!.curriculumThumbBackground).toBe(
         matchingScrollbarStyles!.mainThumbBackground,
       );
-      expect(matchingScrollbarStyles!.curriculumThumbBorderWidth).toBe(0);
-      expect(matchingScrollbarStyles!.curriculumTrackInset).toBeCloseTo(14, 1);
       expect(matchingScrollbarStyles!.curriculumCursor).toBe("auto");
       expect(matchingScrollbarStyles!.mainThumbCursor).toBe("auto");
+
+      const curriculumThumbAppearance = await curriculumThumb.evaluate(
+        (element) => {
+          const background = getComputedStyle(element).backgroundColor;
+          const modernAlpha = background.match(/\/\s*([\d.]+)\)/)?.[1];
+          const legacyAlpha = background.match(
+            /rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)/,
+          )?.[1];
+          return Number(modernAlpha ?? legacyAlpha ?? 1);
+        },
+      );
+      expect(curriculumThumbAppearance).toBeGreaterThan(0);
+      expect(curriculumThumbAppearance).toBeLessThan(1);
+
+      await curriculum.evaluate((scrollport) => scrollport.scrollTo(0, 0));
+      const curriculumScrollTopBeforeClick = await curriculum.evaluate(
+        (scrollport) => scrollport.scrollTop,
+      );
+      await page.mouse.click(
+        curriculumTrackBounds!.x + curriculumTrackBounds!.width / 2,
+        curriculumTrackBounds!.y + curriculumTrackBounds!.height * 0.82,
+      );
+      await expect
+        .poll(() => curriculum.evaluate((scrollport) => scrollport.scrollTop))
+        .toBeGreaterThan(curriculumScrollTopBeforeClick);
+
+      const curriculumThumbBounds = await curriculumThumb.boundingBox();
+      expect(curriculumThumbBounds).not.toBeNull();
+      const curriculumScrollTopBeforeDrag = await curriculum.evaluate(
+        (scrollport) => scrollport.scrollTop,
+      );
+      await page.mouse.move(
+        curriculumThumbBounds!.x + curriculumThumbBounds!.width / 2,
+        curriculumThumbBounds!.y + curriculumThumbBounds!.height / 2,
+      );
+      await page.mouse.down();
+      await page.mouse.move(
+        curriculumThumbBounds!.x + curriculumThumbBounds!.width / 2,
+        curriculumThumbBounds!.y + curriculumThumbBounds!.height / 2 - 60,
+        { steps: 4 },
+      );
+      await page.mouse.up();
+      await expect
+        .poll(() => curriculum.evaluate((scrollport) => scrollport.scrollTop))
+        .toBeLessThan(curriculumScrollTopBeforeDrag);
     }
   }
 });

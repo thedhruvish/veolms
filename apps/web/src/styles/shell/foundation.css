@@ -140,7 +140,7 @@
   right: var(--floating-scrollbar-right, 0);
   width: 12px;
   height: var(--floating-scrollbar-height, 0);
-  pointer-events: auto;
+  pointer-events: none;
   touch-action: none;
   user-select: none;
   opacity: 0;
@@ -149,6 +149,7 @@
 
 .floating-scrollbar.is-visible {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .floating-scrollbar__thumb {
