@@ -1979,8 +1979,10 @@ test("dismissing More clears a desktop reading menu hidden by a viewport change"
     .getByRole("navigation", { name: "Student mobile navigation" })
     .getByRole("button", { name: "More navigation options" });
   await more.click();
-  await expect(page.getByRole("dialog", { name: /More/ })).toBeVisible();
+  const moreDialog = page.getByRole("dialog", { name: /More/ });
+  await expect(moreDialog).toBeVisible();
   await page.keyboard.press("Escape");
+  await expect(moreDialog).toBeHidden();
 
   await page.setViewportSize({ width: 1440, height: 1000 });
   await expect(quickSettings).toBeHidden();
