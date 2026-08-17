@@ -151,6 +151,54 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   // Basics Form state
   const [courseTitle, setCourseTitle] = useState("");
   const [courseDescription, setCourseDescription] = useState("");
+  const [thumbnail, setThumbnail] = useState<string | null>(null);
+  const thumbnailInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [videoTrailer, setVideoTrailer] = useState<string | null>(null);
+  const [videoTrailerName, setVideoTrailerName] = useState<string>("");
+  const videoTrailerInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleThumbnailFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const imageUrl = URL.createObjectURL(file);
+      setThumbnail(imageUrl);
+    }
+  };
+
+  const triggerThumbnailUpload = () => {
+    thumbnailInputRef.current?.click();
+  };
+
+  const handleRemoveThumbnail = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setThumbnail(null);
+    if (thumbnailInputRef.current) {
+      thumbnailInputRef.current.value = "";
+    }
+  };
+
+  const handleVideoTrailerFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const videoUrl = URL.createObjectURL(file);
+      setVideoTrailer(videoUrl);
+      setVideoTrailerName(file.name);
+    }
+  };
+
+  const triggerVideoTrailerUpload = () => {
+    videoTrailerInputRef.current?.click();
+  };
+
+  const handleRemoveVideoTrailer = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setVideoTrailer(null);
+    setVideoTrailerName("");
+    if (videoTrailerInputRef.current) {
+      videoTrailerInputRef.current.value = "";
+    }
+  };
 
   const [category, setCategory] = useState("");
   const [difficultyLevel, setDifficultyLevel] = useState("");
@@ -865,7 +913,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     enrolled: false,
     duration: computedDuration,
     students: 0,
-    thumbnail: "/assets/instructor-poster.jpg",
+    thumbnail: thumbnail || "/assets/instructor-poster.jpg",
   };
 
   const previewSections: CourseSection[] =
@@ -1188,28 +1236,76 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                 </div>
 
                 <div className="course-wizard-media-grid">
+                  {/* Hidden Thumbnail File Input */}
+                  <input
+                    type="file"
+                    ref={thumbnailInputRef}
+                    onChange={handleThumbnailFileSelect}
+                    accept="image/*"
+                    style={{ display: "none" }}
+                  />
+
+                  {/* Hidden Video Trailer File Input */}
+                  <input
+                    type="file"
+                    ref={videoTrailerInputRef}
+                    onChange={handleVideoTrailerFileSelect}
+                    accept="video/*"
+                    style={{ display: "none" }}
+                  />
+
                   {/* Thumbnail Upload */}
                   <div className="course-wizard-media-box">
                     <h3>
                       Thumbnail <span className="req-star">*</span>
                     </h3>
                     <p className="media-sub">
-                      Select a thumbnail from your media library.
+                      Upload a thumbnail for your course.
                     </p>
-                    <div className="course-wizard-media-dropzone">
-                      <div className="dropzone-icon">
-                        <ImageIcon size={32} weight="light" />
+                    {thumbnail ? (
+                      <div className="course-wizard-media-dropzone course-wizard-media-dropzone--has-image">
+                        <img
+                          src={thumbnail}
+                          alt="Course thumbnail preview"
+                          className="course-wizard-thumbnail-preview-img"
+                        />
+                        <div className="course-wizard-thumbnail-overlay">
+                          <button
+                            type="button"
+                            className="course-wizard-btn-secondary"
+                            onClick={triggerThumbnailUpload}
+                          >
+                            <ImageIcon size={15} /> Change Image
+                          </button>
+                          <button
+                            type="button"
+                            className="course-wizard-btn-danger"
+                            onClick={handleRemoveThumbnail}
+                            title="Remove Thumbnail"
+                          >
+                            <Trash size={15} /> Remove
+                          </button>
+                        </div>
                       </div>
-                      <button
-                        type="button"
-                        className="course-wizard-btn-secondary"
-                      >
-                        Select from Media
-                      </button>
-                      <p className="dropzone-hint">
-                        Recommended: 1280x720px (16:9)
-                      </p>
-                    </div>
+                    ) : (
+                      <div className="course-wizard-media-dropzone">
+                        <div className="dropzone-icon">
+                          <ImageIcon size={32} weight="light" />
+                        </div>
+                        <div className="course-wizard-media-dropzone-actions">
+                          <button
+                            type="button"
+                            className="course-wizard-btn-secondary"
+                            onClick={triggerThumbnailUpload}
+                          >
+                            <UploadSimple size={15} weight="bold" /> Upload
+                          </button>
+                        </div>
+                        <p className="dropzone-hint">
+                          Recommended: 1280x720px (16:9)
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Video Trailer Upload */}
@@ -1218,18 +1314,57 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     <p className="media-sub">
                       Add a trailer video to showcase your course.
                     </p>
-                    <div className="course-wizard-media-dropzone">
-                      <div className="dropzone-icon">
-                        <PlayCircle size={32} weight="light" />
+                    {videoTrailer ? (
+                      <div className="course-wizard-media-dropzone course-wizard-media-dropzone--has-image">
+                        <video
+                          src={videoTrailer}
+                          className="course-wizard-thumbnail-preview-img"
+                          controls
+                        />
+                        <div className="course-wizard-thumbnail-overlay">
+                          <button
+                            type="button"
+                            className="course-wizard-btn-secondary"
+                            onClick={triggerVideoTrailerUpload}
+                          >
+                            <PlayCircle size={15} /> Change Video
+                          </button>
+                          <button
+                            type="button"
+                            className="course-wizard-btn-danger"
+                            onClick={handleRemoveVideoTrailer}
+                            title="Remove Video Trailer"
+                          >
+                            <Trash size={15} /> Remove
+                          </button>
+                        </div>
                       </div>
-                      <button
-                        type="button"
-                        className="course-wizard-btn-secondary"
-                      >
-                        Select from Media
-                      </button>
-                      <p className="dropzone-hint">Recommended: 16:9 video</p>
-                    </div>
+                    ) : (
+                      <div className="course-wizard-media-dropzone">
+                        <div className="dropzone-icon">
+                          <PlayCircle size={32} weight="light" />
+                        </div>
+                        <div className="course-wizard-media-dropzone-actions">
+                          <button
+                            type="button"
+                            className="course-wizard-btn-secondary"
+                            onClick={triggerVideoTrailerUpload}
+                          >
+                            <UploadSimple size={15} weight="bold" /> Upload
+                          </button>
+                          <button
+                            type="button"
+                            className="course-wizard-btn-secondary"
+                            onClick={() => {
+                              // Select from media action will be none for now
+                            }}
+                          >
+                            Select from Media
+                          </button>
+                        </div>
+                        <p className="dropzone-hint">Recommended: 16:9 video</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </section>
@@ -1243,13 +1378,41 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   This is how your course will appear to students.
                 </p>
 
-                <div className="course-preview-media">
-                  <div className="course-preview-media__placeholder">
-                    <div className="course-preview-media__placeholder-icon">
-                      <ImageIcon size={32} weight="light" />
+                <div
+                  className={`course-preview-media ${!thumbnail ? "is-clickable" : ""}`}
+                  onClick={!thumbnail ? triggerThumbnailUpload : undefined}
+                  title={!thumbnail ? "Click to upload thumbnail" : undefined}
+                  role={!thumbnail ? "button" : undefined}
+                  tabIndex={!thumbnail ? 0 : undefined}
+                  onKeyDown={
+                    !thumbnail
+                      ? (e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            triggerThumbnailUpload();
+                          }
+                        }
+                      : undefined
+                  }
+                >
+                  {thumbnail ? (
+                    <div className="course-preview-media__image-wrap">
+                      <img
+                        src={thumbnail}
+                        alt="Course Thumbnail"
+                        className="course-preview-media__img"
+                      />
                     </div>
-                    <span>Course thumbnail will appear here</span>
-                  </div>
+                  ) : (
+                    <div className="course-preview-media__placeholder">
+                      <div className="course-preview-media__placeholder-icon">
+                        <ImageIcon size={32} weight="light" />
+                      </div>
+                      <span>Course thumbnail will appear here</span>
+                      <span className="course-preview-media__placeholder-cta">
+                        Click to upload
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="course-preview-info">
