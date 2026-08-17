@@ -122,6 +122,10 @@ test("page tabs pin beneath the shell edge while the framed surface uses only a 
     await expect(
       floatingScrollbar.locator(":scope > .floating-scrollbar__thumb"),
     ).toHaveCSS("width", "7px");
+    await expect(floatingScrollbar).toHaveCSS("cursor", "auto");
+    await expect(
+      floatingScrollbar.locator(":scope > .floating-scrollbar__thumb"),
+    ).toHaveCSS("cursor", "auto");
     await expect
       .poll(() =>
         mainSurface.evaluate(
@@ -134,7 +138,45 @@ test("page tabs pin beneath the shell edge while the framed surface uses only a 
 
     await mainSurface.evaluate((main) => main.scrollTo(0, 0));
     const trackBounds = await floatingScrollbar.boundingBox();
+    const mainBounds = await mainSurface.boundingBox();
     expect(trackBounds).not.toBeNull();
+    expect(mainBounds).not.toBeNull();
+    expect(
+      Math.abs(
+        trackBounds!.x +
+          trackBounds!.width -
+          (mainBounds!.x + mainBounds!.width),
+      ),
+    ).toBeLessThan(0.5);
+
+    const thumb = floatingScrollbar.locator(
+      ":scope > .floating-scrollbar__thumb",
+    );
+    const thumbAppearance = await thumb.evaluate((element) => {
+      const background = getComputedStyle(element).backgroundColor;
+      const modernAlpha = background.match(/\/\s*([\d.]+)\)/)?.[1];
+      const legacyAlpha = background.match(
+        /rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)/,
+      )?.[1];
+      return {
+        alpha: Number(modernAlpha ?? legacyAlpha ?? 1),
+        background,
+      };
+    });
+    expect(thumbAppearance.alpha).toBeGreaterThan(0);
+    expect(thumbAppearance.alpha).toBeLessThan(1);
+    await page.locator("html").evaluate((root) => {
+      root.style.setProperty("--accent", "#ff0066");
+    });
+    await expect
+      .poll(() =>
+        thumb.evaluate((element) => getComputedStyle(element).backgroundColor),
+      )
+      .not.toBe(thumbAppearance.background);
+    await page.locator("html").evaluate((root) => {
+      root.style.removeProperty("--accent");
+    });
+
     const scrollTopBeforeTrackClick = await mainSurface.evaluate(
       (main) => main.scrollTop,
     );
@@ -146,9 +188,6 @@ test("page tabs pin beneath the shell edge while the framed surface uses only a 
       .poll(() => mainSurface.evaluate((main) => main.scrollTop))
       .toBeGreaterThan(scrollTopBeforeTrackClick);
 
-    const thumb = floatingScrollbar.locator(
-      ":scope > .floating-scrollbar__thumb",
-    );
     const thumbBounds = await thumb.boundingBox();
     expect(thumbBounds).not.toBeNull();
     const scrollTopBeforeDrag = await mainSurface.evaluate(
@@ -168,6 +207,47 @@ test("page tabs pin beneath the shell edge while the framed surface uses only a 
     await expect
       .poll(() => mainSurface.evaluate((main) => main.scrollTop))
       .toBeLessThan(scrollTopBeforeDrag);
+  }
+});
+
+test("the framed learning scrollbar clears content at compact and wide desktop sizes", async ({
+  page,
+}) => {
+  for (const width of [981, 1133]) {
+    await page.setViewportSize({ width, height: 678 });
+    await openApp(
+      page,
+      "/learn/typescript-course/career-opportunities?from=home",
+    );
+
+    const mainSurface = page.locator("main.courses-main");
+    const floatingScrollbar = page.locator(".floating-scrollbar");
+    const rightmostContent = page.locator(
+      width <= 1080
+        ? ".learning-workspace__player-wrap"
+        : ".learning-workspace__curriculum-column",
+    );
+    await expect(floatingScrollbar).toHaveClass(/is-visible/);
+    await expect(rightmostContent).toBeVisible();
+
+    const [mainBounds, trackBounds, contentBounds] = await Promise.all([
+      mainSurface.boundingBox(),
+      floatingScrollbar.boundingBox(),
+      rightmostContent.boundingBox(),
+    ]);
+    expect(mainBounds).not.toBeNull();
+    expect(trackBounds).not.toBeNull();
+    expect(contentBounds).not.toBeNull();
+    expect(
+      Math.abs(
+        trackBounds!.x +
+          trackBounds!.width -
+          (mainBounds!.x + mainBounds!.width),
+      ),
+    ).toBeLessThan(0.5);
+    expect(
+      trackBounds!.x - (contentBounds!.x + contentBounds!.width),
+    ).toBeGreaterThanOrEqual(3.5);
   }
 });
 
