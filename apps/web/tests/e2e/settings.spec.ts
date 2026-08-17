@@ -4,6 +4,7 @@ import {
   expectStoredValue,
   installBaselineState,
   openApp,
+  revealDeferredAppearanceSettings,
   setApplicationScrollTop,
 } from "./support.ts";
 
@@ -148,8 +149,9 @@ test("Escape leaves Settings for the previous non-settings destination", async (
     .getByRole("group", {
       name: "Appearance controls",
     })
-    .getByRole("button", { name: "Choose color theme" });
-  await paletteTrigger.click();
+    .getByRole("button")
+    .first();
+  await paletteTrigger.click({ button: "right" });
   await expect(
     page.getByRole("menu", { name: "Choose a color theme" }),
   ).toBeVisible();
@@ -189,6 +191,7 @@ test("page tab colors follow the sidebar and keep explicit overrides", async ({
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await openApp(page, "/settings/appearance");
+  await revealDeferredAppearanceSettings(page);
 
   const root = page.locator("html");
   const pageTabColorOptions = page.getByRole("radiogroup", {
@@ -236,6 +239,7 @@ test("page tab colors follow the sidebar and keep explicit overrides", async ({
   await expect(root).toHaveAttribute("data-page-tab-colors", "monochrome");
   await expectStoredValue(page, "veolms-page-tab-colors", "monochrome");
   await page.reload();
+  await revealDeferredAppearanceSettings(page);
   await expect(root).toHaveAttribute("data-page-tab-colors", "monochrome");
   expect(await activeTabColor("Appearance")).toBe(followedMonochromeColor);
 
@@ -359,7 +363,7 @@ test("appearance and sidebar preferences persist through their direct settings r
     "monochrome",
   );
 
-  await page.locator(".settings-deferred-sentinel").scrollIntoViewIfNeeded();
+  await revealDeferredAppearanceSettings(page);
   const randomTheme = page.getByRole("switch", {
     name: "Random theme on app open",
   });

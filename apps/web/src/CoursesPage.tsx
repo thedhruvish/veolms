@@ -2092,7 +2092,6 @@ export function CoursesPage({
   const endSidebarResize = (event: PointerPositionEvent, cancelled = false) => {
     const resize = sidebarResizeRef.current;
     if (!resize || resize.pointerId !== event.pointerId) return;
-    if (resize.active && !cancelled) moveSidebarResize(event);
     sidebarResizeRef.current = null;
     try {
       resize.handle?.releasePointerCapture?.(resize.pointerId);
@@ -2111,7 +2110,7 @@ export function CoursesPage({
       return;
     }
 
-    const totalDistance = event.clientX - resize.startX;
+    const totalDistance = resize.lastX - resize.startX;
     const finishedAt = event.timeStamp || performance.now();
     const averageVelocity =
       totalDistance / Math.max(1, finishedAt - resize.startedAt);

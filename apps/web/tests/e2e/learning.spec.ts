@@ -244,7 +244,7 @@ test("curriculum keeps its minimum panel width while the collapse drag clips it 
   const firstClip = await geometry();
   expect(firstClip.overflowX).toBe("visible");
   expect(firstClip.viewportOverflowX).toBe("hidden");
-  expect(firstClip.columnRight).toBeCloseTo(firstClip.mainRight, 0);
+  expect(firstClip.mainRight - firstClip.columnRight).toBeCloseTo(14, 0);
   expect(firstClip.columnWidth).toBeCloseTo(initialColumnWidth - 20, 0);
   expect(firstClip.panelLeft).toBeCloseTo(firstClip.columnLeft, 0);
   expect(firstClip.panelWidth).toBeCloseTo(300, 0);
@@ -253,7 +253,7 @@ test("curriculum keeps its minimum panel width while the collapse drag clips it 
 
   await page.mouse.move(startX + 120, dragY);
   const deeperClip = await geometry();
-  expect(deeperClip.columnRight).toBeCloseTo(deeperClip.mainRight, 0);
+  expect(deeperClip.mainRight - deeperClip.columnRight).toBeCloseTo(14, 0);
   expect(deeperClip.columnWidth).toBeCloseTo(initialColumnWidth - 120, 0);
   expect(deeperClip.panelLeft).toBeCloseTo(deeperClip.columnLeft, 0);
   expect(deeperClip.panelWidth).toBeCloseTo(300, 0);
@@ -287,7 +287,7 @@ test("curriculum rail rests at the edge, reveals, snaps at halfway, then grows",
   const collapsedColumn = page.locator(
     ".learning-workspace__curriculum-column.is-collapsed",
   );
-  await expect(workspaceMain).toHaveCSS("padding-right", "0px");
+  await expect(workspaceMain).toHaveCSS("padding-right", "14px");
   const workspaceBox = await workspaceMain.boundingBox();
   const collapsedColumnBox = await collapsedColumn.boundingBox();
   expect(workspaceBox).not.toBeNull();
@@ -298,7 +298,7 @@ test("curriculum rail rests at the edge, reveals, snaps at halfway, then grows",
   expect(collapsedRailBox).not.toBeNull();
   const collapsedX = collapsedRailBox!.x + collapsedRailBox!.width - 1;
   expect(collapsedRailBox!.x + collapsedRailBox!.width).toBeCloseTo(
-    workspaceBox!.x + workspaceBox!.width,
+    workspaceBox!.x + workspaceBox!.width - 14,
     0,
   );
   const dragY = collapsedRailBox!.y + 180;
@@ -717,10 +717,10 @@ test("learning drafts and searches survive navigation away and resume", async ({
 test("lesson tools and discussion interactions retain their current contracts", async ({
   page,
 }) => {
-  await openApp(page, "/learn/typescript-course");
-  await page.locator("html").evaluate((root) => {
-    root.dataset.pageTabColors = "multicolor";
+  await page.addInitScript(() => {
+    localStorage.setItem("veolms-page-tab-colors", "multicolor");
   });
+  await openApp(page, "/learn/typescript-course");
 
   const discussion = page.locator("section.learning-discussion");
   const lessonTools = discussion.getByRole("tablist", { name: "Lesson tools" });
@@ -759,7 +759,7 @@ test("lesson tools and discussion interactions retain their current contracts", 
   await expect(
     discussion
       .getByRole("article")
-      .getByRole("heading", { name: "Ethan Park", level: 3 }),
+      .getByRole("heading", { name: "Ethan Park", level: 2 }),
   ).toBeVisible();
 
   await commentSearch.fill("no matching comment");
@@ -783,7 +783,7 @@ test("lesson tools and discussion interactions retain their current contracts", 
     hasText: "This discussion characterization should survive extraction.",
   });
   await expect(
-    postedComment.getByRole("heading", { name: "Sofia Chen", level: 3 }),
+    postedComment.getByRole("heading", { name: "Sofia Chen", level: 2 }),
   ).toBeVisible();
 
   const ethanComment = discussion

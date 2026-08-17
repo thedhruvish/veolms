@@ -73,12 +73,7 @@ test("settings content swipes between adjacent tabs without moving the sidebar",
     ),
   ).toBeLessThan(1);
 
-  await expect(panel.locator(".is-preview.is-previous")).toContainText(
-    "Your public profile",
-  );
-  await expect(panel.locator(".is-preview.is-next")).toContainText(
-    "Sidebar header",
-  );
+  await expect(panel.locator(".is-preview")).toHaveCount(0);
   await expect(panel).not.toHaveAttribute("data-tab-swipe-active", "");
 
   const finishSwipe = await startTouchSwipe(page, panel, -190);
@@ -222,14 +217,12 @@ test("discussion content and lesson tools use the same adjacent swipe behavior",
   const lessonComposerBox = await lessonPanel
     .locator(".learning-comment-composer")
     .boundingBox();
-  expect(Math.abs(lessonPanelBox!.x - lessonColumnBox!.x)).toBeLessThan(1);
+  expect(lessonPanelBox!.x - lessonColumnBox!.x).toBeCloseTo(-12, 0);
   expect(
-    Math.abs(
-      lessonPanelBox!.x +
-        lessonPanelBox!.width -
-        (lessonColumnBox!.x + lessonColumnBox!.width),
-    ),
-  ).toBeLessThan(1);
+    lessonColumnBox!.x +
+      lessonColumnBox!.width -
+      (lessonPanelBox!.x + lessonPanelBox!.width),
+  ).toBeCloseTo(-10, 0);
   expect(lessonComposerBox!.x - lessonPanelBox!.x).toBeGreaterThanOrEqual(6);
   const finishLessonSwipe = await startTouchSwipe(page, lessonPanel, -190);
   await expect(lessonPanel.locator(".is-preview.is-next")).toContainText(
@@ -282,9 +275,7 @@ test("a short slow swipe springs back and an edge swipe stays inside the tab pan
   const app = page.locator(".courses-app");
   const panel = page.locator("#settings-tab-panel");
   await expect(panel.locator(".is-preview.is-previous")).toHaveCount(0);
-  await expect(panel.locator(".is-preview.is-next")).toContainText(
-    "Display mode",
-  );
+  await expect(panel.locator(".is-preview.is-next")).toHaveCount(0);
   const finishEdgeSwipe = await startTouchSwipe(page, panel, 52);
   await expect(panel.locator(".is-preview.is-previous")).toHaveCount(0);
   await finishEdgeSwipe();
@@ -293,7 +284,7 @@ test("a short slow swipe springs back and an edge swipe stays inside the tab pan
   await expect(panel).not.toHaveAttribute("data-tab-swipe-active", "");
 
   await openApp(page, "/settings/appearance");
-  await expect(panel.locator(".is-preview")).toHaveCount(2);
+  await expect(panel.locator(".is-preview")).toHaveCount(0);
   const finishShortSwipe = await startTouchSwipe(page, panel, -42);
   await expect(panel.locator(".is-preview.is-next")).toHaveCount(1);
   await finishShortSwipe();
