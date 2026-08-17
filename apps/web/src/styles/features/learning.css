@@ -21,7 +21,7 @@
   width: min(100%, 1840px);
   min-height: 100vh;
   margin: 0 auto;
-  padding: 14px 0 20px 16px;
+  padding: 14px 16px 20px;
   transition: --learning-curriculum-width 280ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -954,7 +954,7 @@
   .learning-workspace__main {
     grid-template-columns: minmax(0, 1fr);
     max-width: 1060px;
-    padding: 14px 10px 30px 16px;
+    padding: 14px 16px 30px;
   }
 
   .learning-workspace__curriculum-column {
@@ -979,7 +979,7 @@
 
   .learning-discussion {
     --learning-panel-inline-start: 22px;
-    --learning-panel-inline-end: 16px;
+    --learning-panel-inline-end: 22px;
   }
 }
 

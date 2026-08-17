@@ -80,7 +80,7 @@ export function FloatingScrollbar({ scrollportRef }: FloatingScrollbarProps) {
       );
       scrollbar.style.setProperty(
         "--floating-scrollbar-right",
-        `${Math.max(2, window.innerWidth - scrollportRect.right + 4)}px`,
+        `${Math.max(0, window.innerWidth - scrollportRect.right)}px`,
       );
       scrollbar.style.setProperty(
         "--floating-scrollbar-height",
