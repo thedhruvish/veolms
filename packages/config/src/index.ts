@@ -53,7 +53,7 @@ const serverConfigSchema = z.object({
   GITHUB_CLIENT_SECRET: z.string().optional(),
 
   // Email Delivery
-  EMAIL_FROM: z.string().min(1).default("noreply@academy.com"),
+  EMAIL_FROM: z.string().min(1).default("noreply@veolms.org"),
   SMTP_HOST: z.string().min(1).default("localhost"),
   SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(1025),
   SMTP_USER: z.string().optional(),
