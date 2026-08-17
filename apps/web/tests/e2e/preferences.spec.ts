@@ -1959,6 +1959,33 @@ test("mobile More dialog traps the workflow and restores focus on Escape", async
   await expect(more).toBeFocused();
 });
 
+test("dismissing More clears a desktop reading menu hidden by a viewport change", async ({
+  page,
+}) => {
+  await openApp(page, "/explore-courses");
+  const desktopReadingModeControl = page
+    .getByRole("complementary", { name: "Student navigation" })
+    .getByRole("button", { name: "Turn reading mode on" });
+  const quickSettings = page.getByRole("dialog", {
+    name: "Reading mode quick settings",
+  });
+
+  await desktopReadingModeControl.click({ button: "right" });
+  await expect(quickSettings).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(quickSettings).toBeHidden();
+  const more = page
+    .getByRole("navigation", { name: "Student mobile navigation" })
+    .getByRole("button", { name: "More navigation options" });
+  await more.click();
+  await expect(page.getByRole("dialog", { name: /More/ })).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await expect(quickSettings).toBeHidden();
+});
+
 test("mobile More drawer keeps five dock controls in one touch-friendly row", async ({
   page,
 }) => {
@@ -2282,9 +2309,7 @@ test("mobile bottom navigation hides on forward scroll and returns on reversal",
   await page.setViewportSize({ width: 390, height: 844 });
   await openApp(page, "/explore-courses");
 
-  const navigation = page.getByRole("navigation", {
-    name: "Student mobile navigation",
-  });
+  const navigation = page.locator(".mobile-bottom-nav");
   const scrollTo = (top: number) =>
     page.evaluate((scrollTop) => window.scrollTo(0, scrollTop), top);
 

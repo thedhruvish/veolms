@@ -94,12 +94,6 @@
     height: 176px;
   }
 
-  .settings-choice-card--sidebar-style .settings-icon-preview {
-    width: 170px;
-    height: 140px;
-    flex-basis: 170px;
-  }
-
   .settings-color-tools--redesign {
     grid-template-columns: minmax(0, 1fr) minmax(220px, 0.85fr);
   }
@@ -395,17 +389,6 @@
     width: 136px;
     height: 168px;
     padding: 11px 10px;
-  }
-
-  .settings-choice-card--sidebar-style .settings-icon-preview {
-    width: 136px;
-    height: 140px;
-    flex-basis: 136px;
-    padding: 11px 10px;
-  }
-
-  .settings-choice-card--sidebar-style .settings-icon-preview > span > b {
-    font-size: 0.64rem;
   }
 
   .settings-choice-card--sidebar-style .settings-choice-card__label strong {

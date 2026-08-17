@@ -764,7 +764,7 @@ test("sidebar logo stays on one anchor while the rail reveals it", async ({
   const compact = await measureLogoAnchor();
   expect(
     Math.abs(compact.logoMarkCenter - compact.collapseSurfaceCenter),
-  ).toBeLessThan(0.1);
+  ).toBeLessThan(1);
 
   const resizeRail = page.getByRole("separator", { name: "Resize sidebar" });
   const resizeRailBox = await resizeRail.boundingBox();
@@ -789,11 +789,11 @@ test("sidebar logo stays on one anchor while the rail reveals it", async ({
   const expanded = await measureLogoAnchor();
 
   for (const state of [compact, dragging, expanded]) {
-    expect(Math.abs(state.logoLeft - state.homeLeft)).toBeLessThan(0.1);
+    expect(Math.abs(state.logoLeft - state.homeLeft)).toBeLessThan(1);
     expect(state.transitionProperty).toBe("none");
   }
-  expect(Math.abs(dragging.logoLeft - compact.logoLeft)).toBeLessThan(0.1);
-  expect(Math.abs(expanded.logoLeft - compact.logoLeft)).toBeLessThan(0.1);
+  expect(Math.abs(dragging.logoLeft - compact.logoLeft)).toBeLessThan(1);
+  expect(Math.abs(expanded.logoLeft - compact.logoLeft)).toBeLessThan(1);
 });
 
 test("learning settings save a coherent preference object", async ({

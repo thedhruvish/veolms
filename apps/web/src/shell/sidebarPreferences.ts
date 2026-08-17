@@ -17,6 +17,19 @@ const SIDEBAR_DEFAULT_WIDTH = 300;
 const SIDEBAR_MAX_WIDTH_DEFAULT_VERSION = "300px-v1";
 const SIDEBAR_ICON_DEFAULT_VERSION = "monochrome-theme-v1";
 const SIDEBAR_DOCK_DEFAULT_VERSION = "three-controls-v2";
+const LEGACY_SIDEBAR_DOCK_DEFAULT_ITEMS = [
+  "appearance",
+  "theme",
+  "reading-mode",
+  "fullscreen",
+];
+const LEGACY_SIDEBAR_DOCK_DEFAULT_ORDER = [
+  "appearance",
+  "theme",
+  "reading-mode",
+  "fullscreen",
+  "settings",
+];
 
 export const clampSidebarMaxWidth = (value: unknown): number => {
   const numericValue = Number(value);
@@ -52,19 +65,19 @@ export const getInitialSidebarWidth = (): number => {
 };
 
 export const getDefaultSidebarPreferences = (): SidebarPreferences => ({
-    iconStyle: "monochrome",
-    monochromeMode: "theme",
-    monochromeColor: "#6c78ff",
-    contentLayout: "framed",
-    sidebarMaxWidth: SIDEBAR_MAX_WIDTH,
-    headerLayout: "inline",
-    dockItems: [...SIDEBAR_DOCK_DEFAULT_ITEMS],
-    dockOrder: [...SIDEBAR_DOCK_DEFAULT_ORDER],
-    showKeyboardShortcuts: true,
-    showCollapsedLabels: true,
-    showCollapsedLogo: true,
-    highlightActive: true,
-    elevateMenus: false,
+  iconStyle: "monochrome",
+  monochromeMode: "theme",
+  monochromeColor: "#6c78ff",
+  contentLayout: "framed",
+  sidebarMaxWidth: SIDEBAR_MAX_WIDTH,
+  headerLayout: "inline",
+  dockItems: [...SIDEBAR_DOCK_DEFAULT_ITEMS],
+  dockOrder: [...SIDEBAR_DOCK_DEFAULT_ORDER],
+  showKeyboardShortcuts: true,
+  showCollapsedLabels: true,
+  showCollapsedLogo: true,
+  highlightActive: true,
+  elevateMenus: false,
 });
 
 export const getInitialSidebarPreferences = (): SidebarPreferences => {
@@ -111,7 +124,9 @@ export const getInitialSidebarPreferences = (): SidebarPreferences => {
       localStorage.getItem("veolms-sidebar-dock-default-version") ===
         "four-controls-v1" &&
       JSON.stringify(storedPreferences.dockItems) ===
-        JSON.stringify(["appearance", "theme", "reading-mode", "fullscreen"]);
+        JSON.stringify(LEGACY_SIDEBAR_DOCK_DEFAULT_ITEMS) &&
+      JSON.stringify(storedPreferences.dockOrder) ===
+        JSON.stringify(LEGACY_SIDEBAR_DOCK_DEFAULT_ORDER);
     const needsDockDefaultMigration =
       !hasCurrentDockDefault &&
       (storedPreferences.dockItems === undefined || usesKnownLegacyDockDefault);
@@ -119,12 +134,11 @@ export const getInitialSidebarPreferences = (): SidebarPreferences => {
       needsDockDefaultMigration && storedPreferences.showThemeIcon !== false
         ? [...SIDEBAR_DOCK_DEFAULT_ITEMS]
         : legacyDockItems;
-    preferences.dockOrder =
-      needsDockDefaultMigration
-        ? [...SIDEBAR_DOCK_DEFAULT_ORDER]
-        : normalizeSidebarDockOrder(
-            storedPreferences.dockOrder ?? storedPreferences.dockItems,
-          );
+    preferences.dockOrder = needsDockDefaultMigration
+      ? [...SIDEBAR_DOCK_DEFAULT_ORDER]
+      : normalizeSidebarDockOrder(
+          storedPreferences.dockOrder ?? storedPreferences.dockItems,
+        );
     const needsStructureMigration =
       storedPreferences.headerLayout !== preferences.headerLayout ||
       JSON.stringify(storedPreferences.dockItems) !==

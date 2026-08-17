@@ -199,6 +199,13 @@ describe("sidebar preference storage", () => {
       JSON.stringify({
         headerLayout: "fixed",
         dockItems: ["appearance", "theme", "reading-mode", "fullscreen"],
+        dockOrder: [
+          "appearance",
+          "theme",
+          "reading-mode",
+          "fullscreen",
+          "settings",
+        ],
       }),
     );
 
@@ -226,6 +233,30 @@ describe("sidebar preference storage", () => {
     expect(getInitialSidebarPreferences()).toMatchObject({
       headerLayout: "fixed",
       dockItems: ["appearance", "theme", "reading-mode", "fullscreen"],
+    });
+  });
+
+  it("preserves a customized legacy dock order", () => {
+    const dockItems = ["appearance", "theme", "reading-mode", "fullscreen"];
+    const dockOrder = [
+      "reading-mode",
+      "appearance",
+      "theme",
+      "fullscreen",
+      "settings",
+    ];
+    localStorage.setItem(
+      "veolms-sidebar-dock-default-version",
+      "four-controls-v1",
+    );
+    localStorage.setItem(
+      "veolms-sidebar-preferences",
+      JSON.stringify({ dockItems, dockOrder }),
+    );
+
+    expect(getInitialSidebarPreferences()).toMatchObject({
+      dockItems,
+      dockOrder,
     });
   });
 
