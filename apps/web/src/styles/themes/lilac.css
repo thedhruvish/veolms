@@ -1,0 +1,69 @@
+/* lilac theme tokens. Keep this file free of component selectors. */
+:root[data-palette="lilac"] {
+  --canvas: #1d1823;
+  --header: #1c171f;
+  --surface: #32283c;
+  --hover: #443750;
+  --selected: #493760;
+  --track: #241d2a;
+  --border: #493b56;
+  --border-strong: #6b587b;
+  --text: #fff8ff;
+  --text-secondary: #eadbef;
+  --muted: #bea9c5;
+  --accent: #c18cff;
+  --accent-hover: #d0a6ff;
+  --accent-soft: rgba(193, 140, 255, 0.16);
+  --accent-border: rgba(193, 140, 255, 0.42);
+  --accent-shadow: rgba(151, 84, 219, 0.28);
+  --on-accent: #21102f;
+}
+
+:root[data-theme="light"][data-palette="lilac"] {
+  --canvas: #f4eef9;
+  --header: #efe8f5;
+  --surface: #ffffff;
+  --hover: #ebdff4;
+  --selected: #ead9f8;
+  --track: #e3d8eb;
+  --border: #ddcee8;
+  --border-strong: #bda4cd;
+  --text: #25162d;
+  --text-secondary: #51405b;
+  --muted: #73637c;
+  --accent: #7f40b7;
+  --accent-hover: #6b329d;
+  --accent-soft: rgba(127, 64, 183, 0.12);
+  --accent-border: rgba(127, 64, 183, 0.3);
+  --accent-shadow: rgba(107, 50, 157, 0.17);
+  --on-accent: #ffffff;
+}
+
+:root[data-palette="lilac"] {
+  --app-shell: #17131c;
+  --main-surface: #261f2f;
+  --canvas: #1d1823;
+  --header: #1c171f;
+  --surface: #32283c;
+  --surface-strong: #3b3047;
+  --hover: #443750;
+  --selected: #493760;
+  --track: #241d2a;
+  --border: transparent;
+  --border-strong: transparent;
+  --text: #fff8ff;
+  --text-secondary: #eadbef;
+  --muted: #bea9c5;
+  --accent: #c18cff;
+  --accent-hover: #d0a6ff;
+  --accent-soft: rgba(193, 140, 255, 0.16);
+  --accent-border: rgba(193, 140, 255, 0.42);
+  --accent-shadow: rgba(151, 84, 219, 0.28);
+  --on-accent: #21102f;
+  --on-accent-glyph: #21102f;
+  --card-surface: #32283c;
+  --card-surface-raised: #3b3047;
+  --card-surface-soft: #211a28;
+  --card-surface-hover: #40334c;
+  --card-shadow: 0 16px 34px rgba(20, 7, 27, 0.28);
+}

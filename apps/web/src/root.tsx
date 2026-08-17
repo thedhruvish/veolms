@@ -6,6 +6,7 @@ import procodrrLogoMark from "./assets/procodrr-logo-mark.svg";
 import { ReadingModeEffects } from "./reading-mode/ReadingModeEffects";
 import { getReadingModeBootstrapScript } from "./reading-mode/readingModePreferences";
 import { getSurfaceDepthBootstrapScript } from "./settings/settingsPreferences";
+import { academyThemeStylesheets } from "./themeStylesheet";
 import {
   ACADEMY_THEME_VERSION,
   DEFAULT_ACADEMY_THEME,
@@ -17,6 +18,10 @@ interface LayoutProps {
 }
 
 const academyThemeIds = JSON.stringify(academyThemes.map(({ id }) => id));
+const academyThemeStylesheetUrls = JSON.stringify(academyThemeStylesheets);
+
+const getThemeStylesheetBootstrapScript = () =>
+  `(()=>{try{const r=document.documentElement,u=${academyThemeStylesheetUrls},v=r.dataset.palette||${JSON.stringify(DEFAULT_ACADEMY_THEME)},h=u[v]||u[${JSON.stringify(DEFAULT_ACADEMY_THEME)}];if(!h||document.querySelector('link[data-academy-theme="'+v+'"]'))return;const l=document.createElement("link");l.rel="stylesheet";l.href=h;l.dataset.academyTheme=v;l.addEventListener("load",()=>{l.dataset.loaded="true"},{once:true});l.addEventListener("error",()=>{l.dataset.loaded="true"},{once:true});document.head.append(l)}catch{}})();`;
 
 const getAppearanceBootstrapScript = () =>
   `(()=>{const r=document.documentElement,p=${academyThemeIds};try{const t=localStorage.getItem("veolms-theme")||"dark";r.dataset.theme=t==="device"?(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"):t==="light"?"light":"dark"}catch{}try{const e=localStorage.getItem("veolms-randomize-academy-theme")==="true",s=sessionStorage.getItem("veolms-session-academy-theme"),l=localStorage.getItem("veolms-academy-theme"),c=localStorage.getItem("veolms-academy-theme-version")===${JSON.stringify(ACADEMY_THEME_VERSION)},v=e&&p.includes(s||"")?s:c&&p.includes(l||"")?l:${JSON.stringify(DEFAULT_ACADEMY_THEME)};r.dataset.palette=v}catch{}})();`;
@@ -61,6 +66,11 @@ export function Layout({ children }: LayoutProps) {
         />
         <script
           dangerouslySetInnerHTML={{ __html: getAppearanceBootstrapScript() }}
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: getThemeStylesheetBootstrapScript(),
+          }}
         />
         <script
           dangerouslySetInnerHTML={{ __html: getReadingModeBootstrapScript() }}

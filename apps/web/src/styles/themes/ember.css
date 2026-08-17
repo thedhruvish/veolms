@@ -1,0 +1,54 @@
+/* ember theme tokens. Keep this file free of component selectors. */
+:root[data-palette="ember"] {
+  --canvas: #100b08;
+  --header: #0e0907;
+  --surface: #1a120e;
+  --hover: #271a13;
+  --selected: #3a1d0a;
+  --track: #2b1c14;
+  --border: #3a261b;
+  --border-strong: #59402f;
+  --text: #fff8f3;
+  --text-secondary: #f1ddd1;
+  --muted: #c4a996;
+  --accent: #ff8a34;
+  --accent-hover: #f27a24;
+  --accent-soft: rgba(255, 138, 52, 0.16);
+  --accent-border: rgba(255, 138, 52, 0.42);
+  --accent-shadow: rgba(255, 138, 52, 0.24);
+  --on-accent: #241004;
+}
+
+:root[data-theme="light"][data-palette="ember"] {
+  --canvas: #fff7f0;
+  --header: #fffdfb;
+  --surface: #ffffff;
+  --hover: #fff0e3;
+  --selected: #ffe5d0;
+  --track: #f0ded1;
+  --border: #ead5c4;
+  --border-strong: #c9a991;
+  --text: #211811;
+  --text-secondary: #46362c;
+  --muted: #6d594a;
+  --accent: #b84308;
+  --accent-hover: #9f3604;
+  --accent-soft: rgba(184, 67, 8, 0.12);
+  --accent-border: rgba(184, 67, 8, 0.3);
+  --accent-shadow: rgba(184, 67, 8, 0.16);
+  --on-accent: #ffffff;
+}
+
+:root[data-palette="ember"] {
+  --app-shell: #171412;
+  --main-surface: #27211d;
+  --canvas: #1c1815;
+  --header: #1b1714;
+  --surface: #322a25;
+  --surface-strong: #3a302a;
+  --hover: #40342d;
+  --selected: #493025;
+  --track: #251f1b;
+  --border: transparent;
+  --border-strong: transparent;
+}

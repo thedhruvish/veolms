@@ -1,0 +1,70 @@
+/* codex theme tokens. Keep this file free of component selectors. */
+:root[data-palette="codex"] {
+  --canvas: #0d0d0f;
+  --header: #111113;
+  --surface: #1b1b1d;
+  --hover: #27272a;
+  --selected: #303034;
+  --track: #19191b;
+  --border: #2a2a2e;
+  --border-strong: #45454a;
+  --text: #f4f4f5;
+  --text-secondary: #d8d8dc;
+  --muted: #a4a4aa;
+  --accent: #f4f4f5;
+  --accent-hover: #e5e5e8;
+  --accent-soft: rgba(244, 244, 245, 0.14);
+  --accent-border: rgba(244, 244, 245, 0.36);
+  --accent-shadow: rgba(0, 0, 0, 0.3);
+  --on-accent: #171719;
+}
+
+:root[data-theme="light"][data-palette="codex"] {
+  --canvas: #f2f2f3;
+  --header: #f9f9fa;
+  --surface: #ffffff;
+  --hover: #ebebed;
+  --selected: #e4e4e7;
+  --track: #dedee1;
+  --border: #d1d1d6;
+  --border-strong: #a6a6ad;
+  --text: #18181b;
+  --text-secondary: #3f3f46;
+  --muted: #71717a;
+  --accent: #252529;
+  --accent-hover: #18181b;
+  --accent-soft: rgba(37, 37, 41, 0.1);
+  --accent-border: rgba(37, 37, 41, 0.25);
+  --accent-shadow: rgba(24, 24, 27, 0.16);
+  --on-accent: #f9f9fa;
+}
+
+:root[data-palette="codex"] {
+  --app-shell: #0b0b0d;
+  --main-surface: #111113;
+  --canvas: #0d0d0f;
+  --header: #101012;
+  --surface: #1b1b1d;
+  --surface-strong: #29292d;
+  --hover: #323236;
+  --selected: #303034;
+  --track: #19191b;
+  --progress-track: #45454a;
+  --border: transparent;
+  --border-strong: transparent;
+  --text: #f4f4f5;
+  --text-secondary: #d8d8dc;
+  --muted: #a4a4aa;
+  --accent: #f4f4f5;
+  --accent-hover: #e5e5e8;
+  --accent-soft: rgba(244, 244, 245, 0.14);
+  --accent-border: rgba(244, 244, 245, 0.36);
+  --accent-shadow: rgba(0, 0, 0, 0.3);
+  --on-accent: #171719;
+  --on-accent-glyph: #171719;
+  --card-surface: #1b1b1d;
+  --card-surface-raised: #29292d;
+  --card-surface-soft: #141416;
+  --card-surface-hover: #242427;
+  --card-shadow: 0 16px 34px rgba(0, 0, 0, 0.3);
+}

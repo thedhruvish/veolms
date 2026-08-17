@@ -8,7 +8,7 @@ import {
 import { Outlet, useLocation, useMatches, useNavigate } from "react-router";
 import { CoursesPage } from "../CoursesPage";
 import type { Course } from "../courses/catalogue";
-import type { LearningCourse } from "../StudentPages";
+import type { LearningCourse } from "../student-learning/types";
 import {
   discardPendingCourseCommentDraft,
   getActiveCoursePlayerSession,

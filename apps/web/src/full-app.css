@@ -1,5 +1,9 @@
-@import "./styles.css";
-@import "./shell-theme.css";
+/* Common CSS loaded once for the academy layout. Route-owned styles are
+   imported by their feature modules so they can be split and cached. */
+@import "./styles/core.css";
+@import "./styles/theme-contract.css";
+@import "./styles/shell/shell.css";
+@import "./styles/global/surface-effects.css";
 @import "./reading-mode.css";
 
 @font-face {

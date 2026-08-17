@@ -1,3 +1,4 @@
+import "../styles/features/profile.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { At } from "@phosphor-icons/react/At";

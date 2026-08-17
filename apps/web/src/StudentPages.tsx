@@ -1,3 +1,4 @@
+import "./styles/features/student-learning.css";
 import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { ArrowRight } from "@phosphor-icons/react/ArrowRight";
@@ -15,7 +16,9 @@ import { MagnifyingGlass } from "@phosphor-icons/react/MagnifyingGlass";
 import { Medal } from "@phosphor-icons/react/Medal";
 import { Play } from "@phosphor-icons/react/Play";
 import { Target } from "@phosphor-icons/react/Target";
-import type { Icon } from "@phosphor-icons/react";
+import { ProgressBar } from "./student-learning/components/ProgressBar";
+import { SectionHeader } from "./student-learning/components/SectionHeader";
+import type { LearningCourse } from "./student-learning/types";
 import { ThemedSelect } from "./ThemedSelect";
 import { handleRovingTabKeyDown } from "./accessibility/rovingTabFocus";
 import javascriptThumbnail from "./assets/course-thumbnails/javascript-960.webp";
@@ -33,36 +36,10 @@ import {
   useSessionStorageState,
 } from "./learning/useSessionStorageState";
 
-export interface LearningCourse {
-  id: string;
-  title: string;
-  sections: number;
-  lectures: number;
-  status: "in-progress" | "not-started" | "completed";
-  progress: number;
-  lastLesson?: string;
-  accessed?: string;
-  enrolledOn?: string;
-  completedOn?: string;
-  thumbnail: string;
-}
-
 interface NavigationCallbacks {
   onOpenCourse: (course: LearningCourse) => void;
   onNavigatePage: (page: string) => void;
   studentName?: string;
-}
-
-interface SectionHeaderProps {
-  icon: Icon;
-  title: string;
-  action?: string;
-  onAction?: () => void;
-}
-
-interface ProgressBarProps {
-  value: number;
-  completed?: boolean;
 }
 
 interface LearningCourseCardProps {
@@ -204,37 +181,6 @@ const progressMetrics = [
   },
   { value: "7", label: "Day Streak", icon: ChartLineUp, tone: "gold" },
 ];
-
-function SectionHeader({
-  icon: Icon,
-  title,
-  action,
-  onAction,
-}: SectionHeaderProps) {
-  return (
-    <div className="dashboard-section-heading">
-      <h2>
-        <Icon size={19} weight="duotone" /> {title}
-      </h2>
-      {action && (
-        <button type="button" onClick={onAction}>
-          {action} <ArrowRight size={17} />
-        </button>
-      )}
-    </div>
-  );
-}
-
-function ProgressBar({ value, completed = false }: ProgressBarProps) {
-  return (
-    <span
-      className={`learning-progress-track ${completed ? "is-complete" : ""}`}
-      aria-hidden="true"
-    >
-      <span style={{ width: `${value}%` }} />
-    </span>
-  );
-}
 
 export function StudentHome({
   onOpenCourse,

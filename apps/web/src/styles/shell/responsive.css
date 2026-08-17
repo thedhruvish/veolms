@@ -1,0 +1,499 @@
+/* Keep the expanded rail and the phone navigation contract authoritative over
+   the legacy responsive rail rules above. */
+@media (min-width: 821px) {
+  .courses-app {
+    grid-template-columns: var(--sidebar-expanded-width, 302px) minmax(0, 1fr);
+  }
+
+  .courses-app--resizing {
+    cursor: e-resize;
+    user-select: none;
+    transition: none;
+  }
+
+  .courses-app--resizing .courses-main,
+  .courses-app--resizing .courses-sidebar {
+    transition: none;
+  }
+
+  .courses-app--resizing .courses-sidebar {
+    overflow: clip;
+  }
+
+  .courses-sidebar {
+    padding-top: 0;
+  }
+
+  .courses-sidebar__brand {
+    align-items: flex-end;
+    margin-top: 12px;
+  }
+
+  .courses-app--collapsed .courses-sidebar__brand {
+    align-items: flex-end;
+    justify-content: flex-start;
+  }
+
+  .courses-app--collapsed {
+    grid-template-columns: var(--sidebar-resize-preview-width, 76px) minmax(
+        0,
+        1fr
+      );
+  }
+
+  .courses-app.courses-app--resizing {
+    grid-template-columns: var(--sidebar-resize-preview-width, 76px) minmax(
+        0,
+        1fr
+      );
+  }
+
+  .courses-app--hidden {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .courses-app--hidden .courses-sidebar {
+    width: var(--sidebar-expanded-width, 302px);
+  }
+
+  /* The rail narrows as a layout, while its word-bearing content is clipped
+     at full scale. This keeps collapse feeling like the main surface is
+     covering the labels instead of shrinking the artwork and text. */
+  .courses-sidebar__brand {
+    position: relative;
+    min-height: 38px;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 8px;
+    min-width: 0;
+    /* Matches the navigation label anchor: button inset + icon + row gap. */
+    padding-left: 50.5px;
+    overflow: visible;
+  }
+
+  .sidebar-collapse {
+    position: absolute;
+    top: 0;
+    right: auto;
+    left: 6px;
+    z-index: 2;
+  }
+
+  .courses-logo-clip {
+    display: block;
+    width: 156px;
+    height: 38px;
+    min-width: 0;
+    flex: 1 1 156px;
+    max-width: 156px;
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+    transition: none;
+  }
+
+  .courses-logo-clip svg {
+    width: 156px;
+    height: 38px;
+    max-width: none;
+    object-position: left bottom;
+    transform: none;
+  }
+
+  .courses-sidebar__label {
+    max-height: 18px;
+    clip-path: inset(0 0 0 0);
+    transition:
+      max-height 220ms cubic-bezier(0.16, 1, 0.3, 1),
+      margin 220ms cubic-bezier(0.16, 1, 0.3, 1),
+      opacity 120ms ease,
+      clip-path 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .courses-nav button > .courses-nav__text,
+  .courses-nav button > b,
+  .courses-profile__button > span,
+  .courses-profile__button > svg,
+  .sidebar-appearance > button > span {
+    max-width: 190px;
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+    transition:
+      max-width 220ms cubic-bezier(0.16, 1, 0.3, 1),
+      margin 220ms cubic-bezier(0.16, 1, 0.3, 1),
+      opacity 120ms ease,
+      clip-path 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Keep the icon anchor constant while the sidebar width changes. Labels
+     reveal inside the remaining row space; they never participate in the
+     icon's horizontal positioning. */
+  .courses-nav button {
+    padding-left: 12.5px;
+  }
+
+  .courses-nav button > svg {
+    width: 23px;
+    height: 23px;
+    flex: 0 0 23px;
+  }
+
+  .courses-profile__button {
+    padding-left: 7px;
+  }
+
+  .courses-app--collapsed .courses-profile {
+    margin-inline: -0.5px;
+  }
+
+  .courses-app--collapsed .courses-profile__button {
+    justify-content: flex-start;
+    padding: 7px;
+  }
+
+  .courses-nav button > .courses-nav__text,
+  .courses-profile__button > span,
+  .sidebar-appearance > button > span {
+    display: block;
+    overflow: hidden;
+  }
+
+  .courses-nav button > b {
+    flex: 0 0 auto;
+    overflow: hidden;
+  }
+
+  .courses-profile__button > svg {
+    flex: 0 0 auto;
+    overflow: hidden;
+  }
+
+  .courses-app--collapsed .courses-sidebar__brand {
+    min-height: 36px;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 0;
+    padding-left: 0;
+  }
+
+  .courses-app--collapsed .sidebar-collapse {
+    left: 10px;
+  }
+
+  .courses-app--collapsed .sidebar-collapse__asset {
+    /* Match the compact P's optical center without shifting the shared logo axis. */
+    transform: translateX(1.5px);
+  }
+
+  .courses-app--collapsed .courses-logo-clip {
+    display: block;
+    width: 156px;
+    max-width: 0;
+    height: 38px;
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+    pointer-events: none;
+  }
+
+  .courses-app--collapsed .courses-logo-clip svg {
+    width: 156px;
+    height: 38px;
+    max-width: none;
+    transform: none;
+  }
+
+  .courses-app--collapsed .courses-sidebar__label {
+    max-height: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+    pointer-events: none;
+  }
+
+  .courses-app--collapsed .courses-nav button > .courses-nav__text,
+  .courses-app--collapsed .courses-nav button > b,
+  .courses-app--collapsed .courses-profile__button > span,
+  .courses-app--collapsed .courses-profile__button > svg,
+  .courses-app--collapsed .sidebar-appearance > button > span {
+    display: block;
+    max-width: 0;
+    margin-left: 0;
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+    pointer-events: none;
+  }
+
+  .courses-app--collapsed .courses-nav button > b {
+    display: inline-flex;
+    min-width: 0;
+    width: 0;
+    padding-inline: 0;
+  }
+
+  .courses-app--collapsed .courses-profile__button > span {
+    display: grid;
+  }
+
+  .courses-app--collapsed .courses-profile__button > svg {
+    display: block;
+    width: 0;
+  }
+
+  .courses-app--collapsed .sidebar-appearance > button > span {
+    display: inline-block;
+  }
+
+
+
+  /* While the rail crosses its collapse snap, keep the full-scale wordmark in
+     the same coordinate space and let the sidebar edge crop it. The compact P
+     (or the user's hidden-logo preference) takes over only after release. */
+
+
+  /* Revealing the 38px wordmark temporarily adds 2px to the compact brand
+     slot. Cancel that growth here so the navigation icons keep their exact
+     settled y-axis throughout pointer-down and the pre-snap drag. */
+
+
+
+
+  /* With the fixed-control preference off, the logo owns the stable leading
+     position and the collapse control follows the sidebar edge. */
+
+
+
+
+  /* At rest, the compact logo and expand control share one slot. The control
+     replaces the logo on rail hover/focus; it never sits beside it. When the
+     compact logo preference is disabled, the control remains available. */
+
+
+
+
+
+
+
+
+  .sidebar-appearance {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    align-items: center;
+    flex-direction: column;
+  }
+
+  .sidebar-appearance > button,
+  .sidebar-palette-wrap {
+    width: 40px;
+    flex: 0 0 38px;
+  }
+
+  .sidebar-appearance--horizontal {
+    width: 100%;
+    flex-direction: row;
+  }
+
+  .sidebar-appearance--horizontal > button,
+  .sidebar-appearance--horizontal > .sidebar-palette-wrap {
+    width: auto;
+    flex: 1 1 0;
+  }
+
+  .courses-app--resizing .sidebar-appearance--horizontal {
+    flex-direction: row;
+  }
+
+  .courses-app--resizing .sidebar-appearance--horizontal > button,
+  .courses-app--resizing
+    .sidebar-appearance--horizontal
+    > .sidebar-palette-wrap {
+    width: auto;
+    flex: 1 1 0;
+  }
+
+  .courses-app--resizing .courses-sidebar {
+    overflow: hidden;
+  }
+
+  .courses-app--resize-content-visible.courses-app--collapsed
+    .courses-profile__button {
+    /* Keep the expanded profile rhythm while the remaining text width clips. */
+    gap: 12px;
+  }
+
+  .courses-app--resize-content-visible.courses-app--collapsed
+    .courses-nav
+    button
+    > .courses-nav__text,
+  .courses-app--resize-content-visible.courses-app--collapsed
+    .courses-profile__button
+    > span {
+    display: block;
+    max-width: 190px;
+    margin-left: initial;
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+    pointer-events: none;
+  }
+}
+
+@media (max-width: 820px) {
+  .courses-app,
+  .courses-app--collapsed,
+  .courses-app--hidden {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    padding: 0;
+    background: var(--main-surface);
+  }
+
+  .courses-sidebar,
+  .sidebar-edge-trigger {
+    display: none !important;
+  }
+
+  .courses-main,
+  .student-surface-main {
+    min-height: 100vh;
+    min-height: 100dvh;
+    border-radius: 0;
+    padding-bottom: calc(104px + env(safe-area-inset-bottom));
+    box-shadow: none;
+  }
+
+  .courses-main.courses-main--learning {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .courses-app .mobile-palette-menu {
+    right: 12px;
+    bottom: calc(78px + env(safe-area-inset-bottom));
+    left: auto;
+    width: min(212px, calc(100% - 24px));
+  }
+}
+
+@media (max-width: 820px) {
+  .home-greeting-row {
+    display: grid;
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .home-goal-summary {
+    width: 100%;
+    min-width: 0;
+    min-height: 76px;
+    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+    border-radius: 12px;
+  }
+
+  /* The lesson list starts below the mobile hero. Let the browser defer its
+     internal layout until it approaches the viewport while retaining a stable
+     remembered block size for scroll continuity. */
+  .home-resume-list {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 260px;
+  }
+
+  .home-goal-summary > div {
+    min-width: 0;
+    gap: clamp(9px, 2vw, 12px);
+    padding: 11px clamp(12px, 2.5vw, 18px);
+  }
+
+  .home-goal-summary > div + div {
+    border-top: 0;
+    border-left: 1px solid
+      color-mix(in srgb, var(--surface-strong) 72%, transparent);
+  }
+
+  .home-goal-summary > div:first-child > svg,
+  .home-goal-summary i {
+    flex: 0 0 auto;
+  }
+
+  .home-goal-summary span {
+    min-width: 0;
+  }
+
+  .home-goal-summary strong,
+  .home-goal-summary small {
+    white-space: nowrap;
+  }
+
+  .home-goal-summary strong {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (max-width: 440px) {
+  .home-goal-summary {
+    grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
+    min-height: 72px;
+  }
+
+  .home-goal-summary > div {
+    min-width: 0;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .home-goal-summary > div + div {
+    border-top: 0;
+    border-left: 1px solid
+      color-mix(in srgb, var(--surface-strong) 72%, transparent);
+  }
+
+  .home-goal-summary i {
+    width: 40px;
+    height: 40px;
+  }
+
+  .home-goal-summary > div:first-child > svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  .home-goal-summary strong {
+    font-size: 0.84rem;
+  }
+
+  .home-goal-summary small {
+    font-size: 0.65rem;
+  }
+
+  .home-resume-visual {
+    height: auto;
+    aspect-ratio: 16 / 9;
+  }
+
+  .home-resume-copy {
+    padding: 14px 4px 6px;
+  }
+
+  .home-resume-copy h2 {
+    margin-top: 8px;
+  }
+
+  .home-resume-copy > strong {
+    margin-top: 9px;
+  }
+
+  .home-resume-copy > p {
+    margin-top: 10px;
+  }
+
+  .home-resume-progress {
+    margin-top: 0;
+    padding-top: 14px;
+  }
+
+  .primary-learning-action {
+    margin-top: 12px;
+  }
+}

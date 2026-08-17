@@ -26,7 +26,6 @@ import { Eye } from "@phosphor-icons/react/Eye";
 import { GearSix } from "@phosphor-icons/react/GearSix";
 import { Moon } from "@phosphor-icons/react/Moon";
 import { Palette } from "@phosphor-icons/react/Palette";
-import { Play } from "@phosphor-icons/react/Play";
 import { Question } from "@phosphor-icons/react/Question";
 import { SignOut } from "@phosphor-icons/react/SignOut";
 import { SidebarSimple } from "@phosphor-icons/react/SidebarSimple";
@@ -34,12 +33,7 @@ import { Student } from "@phosphor-icons/react/Student";
 import { Sun } from "@phosphor-icons/react/Sun";
 import { Users } from "@phosphor-icons/react/Users";
 import logoDarkSvg from "./assets/procodrr-logo-dark.svg?raw";
-import { StudentHome } from "./StudentHome";
-import { MyCoursesPage, type LearningCourse } from "./StudentPages";
-import { SettingsPage } from "./SettingsPage";
-import { CourseCatalogue } from "./courses/CourseCatalogue";
-import { PlaceholderPage } from "./courses/PlaceholderPage";
-import { WorkspacePage } from "./workspace/WorkspacePages";
+import type { LearningCourse } from "./student-learning/types";
 import { courses, getVisibleCourses } from "./courses/catalogue";
 import type {
   Course,
@@ -49,7 +43,14 @@ import type {
   CourseSort,
 } from "./courses/catalogue";
 import { AcademyPaletteMenu } from "./shell/AcademyPaletteMenu";
+import { CourseResumeIndicator } from "./shell/CourseResumeIndicator";
+import { ShellProfileAvatar } from "./shell/ShellProfileAvatar";
+import { ShortcutKeys } from "./shell/ShortcutKeys";
 import { SidebarToggleIcon } from "./shell/SidebarToggleIcon";
+import {
+  SidebarTooltipSurface,
+  type SidebarTooltip,
+} from "./shell/SidebarTooltipSurface";
 import {
   getDefaultNavigationOrder,
   getInitialNavigationOrder,
@@ -70,8 +71,11 @@ import {
   academyThemes,
   DEFAULT_ACADEMY_THEME,
   getInitialAcademyTheme,
-  persistAcademyTheme,
 } from "./themes";
+import {
+  type ThemePreference,
+  useThemePreferences,
+} from "./shell/useThemePreferences";
 import type {
   PageTabColors,
   SidebarDockItem,
@@ -89,7 +93,6 @@ import {
 import { getStoredProfilePreferences } from "./settings/profilePreferences";
 import type { ProfilePreferences } from "./settings/profilePreferences";
 import type { NavigateTo } from "./routing/navigation";
-import type { SettingsPageProps } from "./SettingsPage";
 import { isEditingShortcutTarget } from "./keyboardShortcuts";
 import { useShortcutPlatform } from "./useShortcutPlatform";
 import {
@@ -125,8 +128,37 @@ const ReadingModeQuickMenu = lazy(() =>
     default: module.ReadingModeQuickMenu,
   })),
 );
+const StudentHomePage = lazy(() =>
+  import("./StudentHome").then((module) => ({
+    default: module.StudentHome,
+  })),
+);
+const MyCoursesPage = lazy(() =>
+  import("./StudentPages").then((module) => ({
+    default: module.MyCoursesPage,
+  })),
+);
+const SettingsPage = lazy(() =>
+  import("./SettingsPage").then((module) => ({
+    default: module.SettingsPage,
+  })),
+);
+const WorkspacePage = lazy(() =>
+  import("./workspace/WorkspacePages").then((module) => ({
+    default: module.WorkspacePage,
+  })),
+);
+const PlaceholderPage = lazy(() =>
+  import("./courses/PlaceholderPage").then((module) => ({
+    default: module.PlaceholderPage,
+  })),
+);
+const CourseCatalogue = lazy(() =>
+  import("./courses/CourseCatalogue").then((module) => ({
+    default: module.CourseCatalogue,
+  })),
+);
 
-type ThemePreference = "light" | "dark" | "device";
 type AppearanceOption = ThemePreference | "theme";
 type AppearanceSwipeSource = AppearanceOption;
 type NavigationDropPosition = "before" | "after";
@@ -223,112 +255,6 @@ interface MobileTouchDrag extends MobileDragBase {
 
 type MobileDrag = MobilePointerDrag | MobileTouchDrag;
 
-interface SidebarTooltip {
-  label: string;
-  shortcutGroups: readonly (readonly string[])[];
-  active: boolean;
-  top: number;
-  left: number;
-  focusVisible: boolean;
-  preferenceControlled: boolean;
-}
-
-function ShortcutKeys({
-  className = "",
-  keys,
-}: {
-  className?: string;
-  keys: readonly string[];
-}) {
-  return (
-    <span className={`shortcut-keys ${className}`.trim()} aria-hidden="true">
-      {keys.map((key, index) => (
-        <span className="shortcut-keys__part" key={`${key}-${index}`}>
-          {index > 0 && <span className="shortcut-keys__join">+</span>}
-          <kbd>{key}</kbd>
-        </span>
-      ))}
-    </span>
-  );
-}
-
-const SIDEBAR_TOOLTIP_SOURCE_WIDTH = 352;
-const SIDEBAR_TOOLTIP_SOURCE_HEIGHT = 177;
-const SIDEBAR_TOOLTIP_RENDER_HEIGHT = 38;
-
-function SidebarTooltipSurface() {
-  const surfaceRef = useRef<SVGSVGElement>(null);
-  const [surfaceWidth, setSurfaceWidth] = useState<number | null>(null);
-
-  useLayoutEffect(() => {
-    const surface = surfaceRef.current;
-    if (!surface) return undefined;
-
-    const updateSurfaceWidth = () => {
-      const nextWidth = surface.getBoundingClientRect().width;
-      if (nextWidth <= 0) return;
-      setSurfaceWidth((currentWidth) =>
-        currentWidth !== null && Math.abs(currentWidth - nextWidth) < 0.05
-          ? currentWidth
-          : nextWidth,
-      );
-    };
-
-    updateSurfaceWidth();
-    const resizeObserver = new ResizeObserver(updateSurfaceWidth);
-    resizeObserver.observe(surface);
-    return () => resizeObserver.disconnect();
-  }, []);
-
-  const viewBoxWidth = surfaceWidth
-    ? (surfaceWidth * SIDEBAR_TOOLTIP_SOURCE_HEIGHT) /
-      SIDEBAR_TOOLTIP_RENDER_HEIGHT
-    : SIDEBAR_TOOLTIP_SOURCE_WIDTH;
-  const rightEdge = viewBoxWidth - 1;
-  const topRightCurveStart = viewBoxWidth - 21;
-  const rightCurveControl = viewBoxWidth - 10;
-  const bottomRightCurveEnd = viewBoxWidth - 22;
-
-  return (
-    <svg
-      ref={surfaceRef}
-      className="sidebar-nav-tooltip__surface"
-      viewBox={`0 0 ${viewBoxWidth} ${SIDEBAR_TOOLTIP_SOURCE_HEIGHT}`}
-      preserveAspectRatio="xMinYMid meet"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <defs>
-        <linearGradient
-          id="sidebar-tooltip-material"
-          x1="0"
-          y1="0"
-          x2="0"
-          y2="1"
-        >
-          <stop className="sidebar-nav-tooltip__surface-start" offset="0%" />
-          <stop className="sidebar-nav-tooltip__surface-end" offset="100%" />
-        </linearGradient>
-        <linearGradient id="sidebar-tooltip-edge" x1="0" y1="0" x2="0" y2="1">
-          <stop className="sidebar-nav-tooltip__edge-highlight" offset="0%" />
-          <stop className="sidebar-nav-tooltip__edge-accent" offset="100%" />
-        </linearGradient>
-      </defs>
-      <path
-        d={`M 51 1 H ${topRightCurveStart} C ${rightCurveControl} 1 ${rightEdge} 10 ${rightEdge} 21 V 156 C ${rightEdge} 167 ${rightCurveControl} 176 ${bottomRightCurveEnd} 176 H 51 C 40 176 34 167 34 156 V 132 C 34 126 32 123 29 120 L 4 96 C 1.6 93.7 0 91.2 0 88.5 C 0 85.8 1.6 83.3 4 81 L 29 56 C 32 53 34 50 34 45 V 21 C 34 10 40 1 51 1 Z`}
-      />
-    </svg>
-  );
-}
-
-function CourseResumeIndicator() {
-  return (
-    <i className="courses-nav__resume-indicator" aria-hidden="true">
-      <Play size={8} weight="fill" />
-    </i>
-  );
-}
-
 const isSidebarMode = (value: string | null): value is SidebarMode =>
   value === "expanded" || value === "collapsed" || value === "hidden";
 
@@ -376,41 +302,6 @@ const SIDEBAR_SWIPE_EXCLUSION_SELECTOR = [
 const isSidebarSwipeExcludedTarget = (target: EventTarget | null) =>
   target instanceof Element &&
   Boolean(target.closest(SIDEBAR_SWIPE_EXCLUSION_SELECTOR));
-
-const getProfileInitials = (displayName: string) => {
-  const words = displayName.trim().split(/\s+/).filter(Boolean);
-  if (!words.length) return "?";
-  return words
-    .slice(0, 2)
-    .map((word) => word[0]?.toLocaleUpperCase())
-    .join("");
-};
-
-function ShellProfileAvatar({
-  avatarUrl,
-  displayName,
-}: {
-  avatarUrl: string | null;
-  displayName: string;
-}) {
-  return (
-    <i className="shell-profile-avatar" aria-hidden="true">
-      {avatarUrl ? (
-        <img
-          src={avatarUrl}
-          alt=""
-          width={43}
-          height={43}
-          loading="lazy"
-          decoding="async"
-          fetchPriority="low"
-        />
-      ) : (
-        <strong>{getProfileInitials(displayName)}</strong>
-      )}
-    </i>
-  );
-}
 
 export function CoursesPage({
   onOpenCourse,
@@ -503,6 +394,13 @@ export function CoursesPage({
   const [sort, setSort] = useState<CourseSort>("latest");
   const [wishlisted, setWishlisted] = useState<Set<string>>(() => new Set());
   const [storedPreferencesReady, setStoredPreferencesReady] = useState(false);
+  useThemePreferences({
+    ready: storedPreferencesReady,
+    theme,
+    academyTheme,
+    displayedAcademyTheme,
+    setResolvedTheme,
+  });
   const [courseMenu, setCourseMenu] = useState<string | null>(null);
   const [profileMenu, setProfileMenu] = useState(false);
   const [paletteMenu, setPaletteMenu] = useState(false);
@@ -653,23 +551,6 @@ export function CoursesPage({
   );
 
   useEffect(() => {
-    if (!storedPreferencesReady) return undefined;
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const applyTheme = () => {
-      const nextTheme =
-        theme === "device" ? (media.matches ? "dark" : "light") : theme;
-      document.documentElement.dataset.theme = nextTheme;
-      document.documentElement.dataset.appearance = theme;
-      setResolvedTheme(nextTheme);
-    };
-    applyTheme();
-    localStorage.setItem("veolms-theme", theme);
-    if (theme !== "device") return undefined;
-    media.addEventListener("change", applyTheme);
-    return () => media.removeEventListener("change", applyTheme);
-  }, [storedPreferencesReady, theme]);
-
-  useEffect(() => {
     // Appearance preferences are stored independently from the settings route,
     // so restore this shell-wide preference whenever the app mounts or refreshes.
     document.documentElement.dataset.hideScrollbars = String(
@@ -679,16 +560,6 @@ export function CoursesPage({
       localStorage.getItem(ELEVATED_SURFACES_KEY) !== "false",
     );
   }, []);
-
-  useEffect(() => {
-    if (!storedPreferencesReady) return;
-    document.documentElement.dataset.palette = displayedAcademyTheme;
-  }, [displayedAcademyTheme, storedPreferencesReady]);
-
-  useEffect(() => {
-    if (!storedPreferencesReady) return;
-    persistAcademyTheme(academyTheme);
-  }, [academyTheme, storedPreferencesReady]);
 
   useEffect(() => {
     if (!storedPreferencesReady) return;
@@ -2942,87 +2813,101 @@ export function CoursesPage({
           {renderMain ? (
             renderMain()
           ) : role === "creator" && page === "home" ? (
-            <CreatorDashboard
-              onNavigatePage={onNavigatePage}
-              setNotice={setNotice}
-              academyTheme={academyTheme}
-            />
+            <Suspense fallback={null}>
+              <CreatorDashboard
+                onNavigatePage={onNavigatePage}
+                setNotice={setNotice}
+                academyTheme={academyTheme}
+              />
+            </Suspense>
           ) : role === "student" && page === "home" ? (
-            <StudentHome
-              onOpenCourse={onOpenCourse}
-              onNavigatePage={onNavigatePage}
-              studentName={shellProfileDisplayName}
-            />
+            <Suspense fallback={null}>
+              <StudentHomePage
+                onOpenCourse={onOpenCourse}
+                onNavigatePage={onNavigatePage}
+                studentName={shellProfileDisplayName}
+              />
+            </Suspense>
           ) : role === "student" && page === "my-courses" ? (
-            <MyCoursesPage
-              onOpenCourse={onOpenCourse}
-              wishlisted={wishlisted}
-              onWishlist={toggleWishlist}
-              setNotice={setNotice}
-            />
+            <Suspense fallback={null}>
+              <MyCoursesPage
+                onOpenCourse={onOpenCourse}
+                wishlisted={wishlisted}
+                onWishlist={toggleWishlist}
+                setNotice={setNotice}
+              />
+            </Suspense>
           ) : page === "settings" ? (
-            <SettingsPage
-              tab={settingsTab}
-              role={role}
-              onNavigatePage={onNavigatePage}
-              onExitSettings={onExitSettings}
-              onProfileSaved={(profile) => {
-                setSavedShellProfiles((current) => ({
-                  ...current,
-                  [role]: profile,
-                }));
-              }}
-              theme={theme}
-              onThemeChange={setTheme}
-              academyTheme={academyTheme}
-              onAcademyThemeChange={setAcademyTheme}
-              pageTabColors={pageTabColors}
-              onPageTabColorsChange={setPageTabColors}
-              sidebarPreferences={sidebarPreferences}
-              onSidebarPreferencesChange={setSidebarPreferences}
-              sidebarMode={sidebarMode}
-              onSidebarModeChange={setSidebarMode}
-            />
+            <Suspense fallback={null}>
+              <SettingsPage
+                tab={settingsTab}
+                role={role}
+                onNavigatePage={onNavigatePage}
+                onExitSettings={onExitSettings}
+                onProfileSaved={(profile) => {
+                  setSavedShellProfiles((current) => ({
+                    ...current,
+                    [role]: profile,
+                  }));
+                }}
+                theme={theme}
+                onThemeChange={setTheme}
+                academyTheme={academyTheme}
+                onAcademyThemeChange={setAcademyTheme}
+                pageTabColors={pageTabColors}
+                onPageTabColorsChange={setPageTabColors}
+                sidebarPreferences={sidebarPreferences}
+                onSidebarPreferencesChange={setSidebarPreferences}
+                sidebarMode={sidebarMode}
+                onSidebarModeChange={setSidebarMode}
+              />
+            </Suspense>
           ) : page === "workspace" ? (
-            <WorkspacePage
-              section={requestedSection || activeSection}
-              role={role}
-              discussionTab={discussionTab}
-              onNavigatePage={onNavigatePage}
-              setNotice={setNotice}
-              onSignOut={() => {
-                localStorage.removeItem("veolms-role");
-                sessionStorage.removeItem("veolms-course-section");
-                setRole("student");
-              }}
-            />
+            <Suspense fallback={null}>
+              <WorkspacePage
+                section={requestedSection || activeSection}
+                role={role}
+                discussionTab={discussionTab}
+                onNavigatePage={onNavigatePage}
+                setNotice={setNotice}
+                onSignOut={() => {
+                  localStorage.removeItem("veolms-role");
+                  sessionStorage.removeItem("veolms-course-section");
+                  setRole("student");
+                }}
+              />
+            </Suspense>
           ) : page === "placeholder" ? (
-            <PlaceholderPage
-              section={requestedSection || activeSection}
-              role={role}
-            />
+            <Suspense fallback={null}>
+              <PlaceholderPage
+                section={requestedSection || activeSection}
+                role={role}
+              />
+            </Suspense>
           ) : (
-            <CourseCatalogue
-              activeSection={activeSection}
-              role={role}
-              wishlisted={wishlisted}
-              enrollmentFilter={enrollmentFilter}
-              onEnrollmentFilterChange={setEnrollmentFilter}
-              search={search}
-              onSearchChange={setSearch}
-              sort={sort}
-              onSortChange={setSort}
-              category={category}
-              onCategoryChange={setCategory}
-              visibleCourses={visibleCourses}
-              onWishlist={toggleWishlist}
-              onOpenCourse={onOpenCourse}
-              courseMenu={courseMenu}
-              setCourseMenu={setCourseMenu}
-              setNotice={setNotice}
-              onNavigatePage={onNavigatePage}
-              onResetCatalogue={resetCatalogue}
-            />
+            <Suspense fallback={null}>
+              <CourseCatalogue
+                activeSection={activeSection}
+                role={role}
+                wishlisted={wishlisted}
+                enrollmentFilter={enrollmentFilter}
+                onEnrollmentFilterChange={setEnrollmentFilter}
+                search={search}
+                onSearchChange={setSearch}
+                sort={sort}
+                onSortChange={setSort}
+                category={category}
+                onCategoryChange={setCategory}
+                visibleCourses={visibleCourses}
+                onWishlist={toggleWishlist}
+                onOpenCourse={onOpenCourse}
+                courseMenu={courseMenu}
+                setCourseMenu={setCourseMenu}
+                setNotice={setNotice}
+                onNavigatePage={onNavigatePage}
+                onResetCatalogue={resetCatalogue}
+              />
+            </Suspense>
           )}
         </>
       </main>
