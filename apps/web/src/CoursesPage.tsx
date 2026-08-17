@@ -225,7 +225,6 @@ type MobileDrag = MobilePointerDrag | MobileTouchDrag;
 
 interface SidebarTooltip {
   label: string;
-  shortcutGroups: readonly (readonly string[])[];
   active: boolean;
   top: number;
   left: number;
@@ -1869,7 +1868,6 @@ export function CoursesPage({
       ReactMouseEvent<HTMLButtonElement> | ReactFocusEvent<HTMLButtonElement>,
     label: string,
     active: boolean,
-    shortcutGroups: readonly (readonly string[])[] = [],
     showWhenExpanded = false,
     preferenceControlled = true,
   ) => {
@@ -1884,7 +1882,6 @@ export function CoursesPage({
     const rect = event.currentTarget.getBoundingClientRect();
     const nextTooltip: SidebarTooltip = {
       label,
-      shortcutGroups: showKeyboardShortcuts ? shortcutGroups : [],
       active,
       top: rect.top + rect.height / 2,
       // The tooltip coordinate starts at the SVG tip; its flexible body
@@ -2539,25 +2536,11 @@ export function CoursesPage({
                       );
                     }}
                     onMouseEnter={(event) =>
-                      showSidebarTooltip(
-                        event,
-                        displayLabel,
-                        active,
-                        label === "Settings"
-                          ? [settingsShortcutKeys]
-                          : [[String(navigationIndex + 1)]],
-                      )
+                      showSidebarTooltip(event, displayLabel, active)
                     }
                     onMouseLeave={hideCollapsedNavigationTooltip}
                     onFocus={(event) =>
-                      showSidebarTooltip(
-                        event,
-                        displayLabel,
-                        active,
-                        label === "Settings"
-                          ? [settingsShortcutKeys]
-                          : [[String(navigationIndex + 1)]],
-                      )
+                      showSidebarTooltip(event, displayLabel, active)
                     }
                     onBlur={hideCollapsedNavigationTooltip}
                   >
@@ -2924,13 +2907,6 @@ export function CoursesPage({
             <span className="sidebar-nav-tooltip__label">
               {sidebarTooltip.label}
             </span>
-            {sidebarTooltip.shortcutGroups.length > 0 && (
-              <span className="sidebar-nav-tooltip__shortcuts">
-                {sidebarTooltip.shortcutGroups.map((keys, index) => (
-                  <ShortcutKeys key={`tooltip-shortcut-${index}`} keys={keys} />
-                ))}
-              </span>
-            )}
           </span>
         </div>
       )}
