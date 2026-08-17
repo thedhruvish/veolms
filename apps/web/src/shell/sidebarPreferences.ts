@@ -3,6 +3,7 @@ import {
   normalizeSidebarDockOrder,
   SIDEBAR_DOCK_DEFAULT_ITEMS,
   SIDEBAR_DOCK_DEFAULT_ORDER,
+  SIDEBAR_HEADER_DEFAULT_VERSION,
 } from "../settings/settingsPreferences";
 import type {
   SidebarDockItem,
@@ -15,7 +16,7 @@ const SIDEBAR_MAX_WIDTH_LIMIT = 520;
 const SIDEBAR_DEFAULT_WIDTH = 300;
 const SIDEBAR_MAX_WIDTH_DEFAULT_VERSION = "300px-v1";
 const SIDEBAR_ICON_DEFAULT_VERSION = "monochrome-theme-v1";
-const SIDEBAR_DOCK_DEFAULT_VERSION = "four-controls-v1";
+const SIDEBAR_DOCK_DEFAULT_VERSION = "three-controls-v2";
 
 export const clampSidebarMaxWidth = (value: unknown): number => {
   const numericValue = Number(value);
@@ -56,7 +57,7 @@ export const getDefaultSidebarPreferences = (): SidebarPreferences => ({
     monochromeColor: "#6c78ff",
     contentLayout: "framed",
     sidebarMaxWidth: SIDEBAR_MAX_WIDTH,
-    headerLayout: "fixed",
+    headerLayout: "inline",
     dockItems: [...SIDEBAR_DOCK_DEFAULT_ITEMS],
     dockOrder: [...SIDEBAR_DOCK_DEFAULT_ORDER],
     showKeyboardShortcuts: true,
@@ -82,8 +83,18 @@ export const getInitialSidebarPreferences = (): SidebarPreferences => {
       ...fallback,
       ...storedPreferences,
     } as SidebarPreferences;
+    const hasCurrentHeaderDefault =
+      localStorage.getItem("veolms-sidebar-header-default-version") ===
+      SIDEBAR_HEADER_DEFAULT_VERSION;
+    const usedPreviousHeaderDefault =
+      storedPreferences.headerLayout === undefined ||
+      storedPreferences.headerLayout === "fixed";
     preferences.headerLayout =
-      storedPreferences.headerLayout === "inline" ? "inline" : "fixed";
+      !hasCurrentHeaderDefault && usedPreviousHeaderDefault
+        ? "inline"
+        : storedPreferences.headerLayout === "fixed"
+          ? "fixed"
+          : "inline";
     preferences.elevateMenus =
       storedPreferences.elevateMenus === true ||
       (storedPreferences.elevateMenus === undefined &&
@@ -99,6 +110,8 @@ export const getInitialSidebarPreferences = (): SidebarPreferences => {
       SIDEBAR_DOCK_DEFAULT_VERSION;
     const usedPreviousDefault =
       storedPreferences.dockItems === undefined ||
+      JSON.stringify(storedPreferences.dockItems) ===
+        JSON.stringify(["appearance", "theme", "reading-mode", "fullscreen"]) ||
       JSON.stringify(storedPreferences.dockItems) ===
         JSON.stringify(["appearance", "theme", "fullscreen"]);
     preferences.dockItems =
@@ -150,7 +163,8 @@ export const getInitialSidebarPreferences = (): SidebarPreferences => {
       needsMaxWidthMigration ||
       needsIconMigration ||
       needsStructureMigration ||
-      !hasCurrentDockDefault
+      !hasCurrentDockDefault ||
+      !hasCurrentHeaderDefault
     ) {
       localStorage.setItem(
         "veolms-sidebar-preferences",
@@ -175,6 +189,13 @@ export const getInitialSidebarPreferences = (): SidebarPreferences => {
         localStorage.setItem(
           "veolms-sidebar-dock-default-version",
           SIDEBAR_DOCK_DEFAULT_VERSION,
+        );
+      }
+
+      if (!hasCurrentHeaderDefault) {
+        localStorage.setItem(
+          "veolms-sidebar-header-default-version",
+          SIDEBAR_HEADER_DEFAULT_VERSION,
         );
       }
     }

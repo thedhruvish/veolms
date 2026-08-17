@@ -41,6 +41,7 @@ export function Layout({ children }: LayoutProps) {
       data-reading-mode-colors="full"
       data-page-tab-colors="follow-sidebar"
       data-content-layout="framed"
+      data-sidebar-header-layout="inline"
       data-elevated-surfaces="true"
       data-sidebar-menu-elevation="false"
       suppressHydrationWarning
