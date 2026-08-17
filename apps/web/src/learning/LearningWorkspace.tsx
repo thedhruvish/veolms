@@ -12,6 +12,7 @@ import type {
   PointerEvent as ReactPointerEvent,
 } from "react";
 import { SidebarToggleIcon } from "../shell/SidebarToggleIcon";
+import { FloatingScrollbar } from "../shell/FloatingScrollbar";
 import { scrollApplicationTo } from "../shell/applicationScroll";
 import { isEditingShortcutTarget } from "../keyboardShortcuts";
 import { useShortcutPlatform } from "../useShortcutPlatform";
@@ -125,6 +126,8 @@ export function LearningWorkspace({
   const [theaterMode, setTheaterMode] = useState(false);
   const lessonTriggerRef = useRef<HTMLButtonElement>(null);
   const lessonDialogRef = useRef<HTMLDivElement>(null);
+  const curriculumScrollportRef = useRef<HTMLElement>(null);
+  const lessonDrawerScrollportRef = useRef<HTMLElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const curriculumResizeRef = useRef<CurriculumResize | null>(null);
   const curriculumResizeMoveRef = useRef<
@@ -635,6 +638,8 @@ export function LearningWorkspace({
             className="learning-curriculum__viewport"
           >
             <Curriculum
+              scrollportRef={curriculumScrollportRef}
+              scrollportId="learning-course-curriculum-scrollport"
               selectedLesson={selectedLesson}
               onSelectLesson={selectLesson}
               courseTitle={courseTitle}
@@ -645,6 +650,14 @@ export function LearningWorkspace({
           </div>
         </div>
       </main>
+
+      <FloatingScrollbar
+        scrollportRef={curriculumScrollportRef}
+        ariaControls="learning-course-curriculum-scrollport"
+        ariaLabel="Course curriculum scroll position"
+        className="floating-scrollbar--curriculum"
+        disabled={curriculumCollapsed || theaterMode || lessonDrawer}
+      />
 
       {lessonDrawer && (
         <div
@@ -664,6 +677,8 @@ export function LearningWorkspace({
           />
           <div className="lesson-drawer-panel">
             <Curriculum
+              scrollportRef={lessonDrawerScrollportRef}
+              scrollportId="lesson-drawer-curriculum-scrollport"
               selectedLesson={selectedLesson}
               onSelectLesson={selectLesson}
               courseTitle={courseTitle}
@@ -673,6 +688,12 @@ export function LearningWorkspace({
               onClose={closeLessonDrawer}
             />
           </div>
+          <FloatingScrollbar
+            scrollportRef={lessonDrawerScrollportRef}
+            ariaControls="lesson-drawer-curriculum-scrollport"
+            ariaLabel="Course curriculum scroll position"
+            className="floating-scrollbar--curriculum"
+          />
         </div>
       )}
     </div>

@@ -6,6 +6,7 @@ import { MagnifyingGlass } from "@phosphor-icons/react/MagnifyingGlass";
 import { Play } from "@phosphor-icons/react/Play";
 import { X } from "@phosphor-icons/react/X";
 import React, { useEffect, useRef, useState } from "react";
+import type { RefObject } from "react";
 import { lessonsById, sections } from "./courseContent";
 import { IconButton } from "./IconButton";
 import {
@@ -22,6 +23,8 @@ interface CurriculumProps {
   onClose?: () => void;
   focusRequest?: number;
   persistenceKey: string;
+  scrollportId?: string;
+  scrollportRef?: RefObject<HTMLElement | null>;
 }
 
 export function Curriculum({
@@ -32,6 +35,8 @@ export function Curriculum({
   onClose,
   focusRequest = 0,
   persistenceKey,
+  scrollportId,
+  scrollportRef,
 }: CurriculumProps) {
   const [expanded, setExpanded] = useState<number[]>([1, 2]);
   const storageBase = `veolms-learning-${persistenceKey}-curriculum`;
@@ -113,7 +118,12 @@ export function Curriculum({
   }, [focusRequest, currentSection.id]);
 
   return (
-    <aside className="learning-curriculum" aria-label="Course curriculum">
+    <aside
+      ref={scrollportRef}
+      id={scrollportId}
+      className="learning-curriculum"
+      aria-label="Course curriculum"
+    >
       <div className="learning-curriculum__hero">
         <img
           src={courseThumbnail}
