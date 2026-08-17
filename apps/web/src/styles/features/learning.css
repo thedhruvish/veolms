@@ -371,8 +371,7 @@
   background: color-mix(in srgb, var(--surface) 91%, var(--canvas));
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.12);
   scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--accent) 45%, transparent)
-    transparent;
+  scrollbar-color: var(--scrollbar-thumb-color) transparent;
 }
 
 .learning-curriculum__hero {
