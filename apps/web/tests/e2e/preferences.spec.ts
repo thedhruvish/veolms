@@ -1066,6 +1066,9 @@ test("theme picker keeps pointer choices open and makes keyboard previews revers
       menuShadowLayers: countShadowLayers(menuStyles.boxShadow),
       selectedBorderLayers: countShadowLayers(buttonStyles.boxShadow),
       selectedInsetLayers: buttonStyles.boxShadow.match(/inset/g)?.length ?? 0,
+      selectedBackgroundImage: buttonStyles.backgroundImage,
+      selectedBorderWidth: Number.parseFloat(buttonStyles.borderTopWidth),
+      selectedTransitionProperty: buttonStyles.transitionProperty,
       swatchDepthLayers: countShadowLayers(swatchStyles.boxShadow),
       swatchBackgroundImage: swatchStyles.backgroundImage,
       swatchTransform: swatchStyles.transform,
@@ -1080,10 +1083,30 @@ test("theme picker keeps pointer choices open and makes keyboard previews revers
   expect(paletteMaterial.swatchSize).toBeLessThanOrEqual(38);
   expect(paletteMaterial.menuShadowLayers).toBeGreaterThanOrEqual(4);
   expect(paletteMaterial.selectedBorderLayers).toBe(2);
-  expect(paletteMaterial.selectedInsetLayers).toBe(2);
+  expect(paletteMaterial.selectedInsetLayers).toBe(1);
+  expect(paletteMaterial.selectedBackgroundImage).toContain("conic-gradient");
+  expect(paletteMaterial.selectedBorderWidth).toBe(2);
+  expect(paletteMaterial.selectedTransitionProperty).toContain("transform");
   expect(paletteMaterial.swatchDepthLayers).toBe(2);
   expect(paletteMaterial.swatchBackgroundImage).toBe("none");
   expect(paletteMaterial.swatchTransform).toBe("none");
+
+  const graphiteBounds = await graphite.boundingBox();
+  expect(graphiteBounds).not.toBeNull();
+  await page.mouse.move(
+    graphiteBounds!.x + graphiteBounds!.width / 2,
+    graphiteBounds!.y + graphiteBounds!.height / 2,
+  );
+  await page.mouse.down();
+  await expect
+    .poll(() =>
+      graphite.evaluate((button) => {
+        const transform = getComputedStyle(button).transform;
+        return transform === "none" ? 1 : new DOMMatrix(transform).a;
+      }),
+    )
+    .toBeCloseTo(0.985, 2);
+  await page.mouse.up();
   await ocean.hover();
   await expect(page.locator("html")).toHaveAttribute(
     "data-palette",
