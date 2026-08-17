@@ -304,6 +304,10 @@
     touch-action: pan-y pinch-zoom;
   }
 
+  .courses-main {
+    touch-action: pan-y pinch-zoom;
+  }
+
   .sidebar-resize-handle {
     right: -22px;
     width: 44px;

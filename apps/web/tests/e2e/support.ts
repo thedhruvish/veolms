@@ -50,7 +50,10 @@ export async function installBaselineState(
 
 export async function openApp(page: Page, path = "/") {
   await page.goto(path);
-  await expect(page.locator("#root")).not.toBeEmpty({ timeout: 15_000 });
+  await expect(page.locator("[data-app-loading]")).toHaveCount(0, {
+    timeout: 15_000,
+  });
+  await expect(page.locator(".courses-app")).toBeVisible({ timeout: 15_000 });
   await page.evaluate(async () => {
     await document.fonts?.ready;
     await Promise.all(
@@ -62,6 +65,15 @@ export async function openApp(page: Page, path = "/") {
             : image.decode?.().catch(() => undefined),
         ),
     );
+  });
+}
+
+export async function revealDeferredAppearanceSettings(page: Page) {
+  const sentinel = page.locator(".settings-deferred-sentinel");
+  await expect(sentinel).toBeAttached();
+  await sentinel.scrollIntoViewIfNeeded();
+  await expect(page.locator(".settings-reading-mode")).toBeAttached({
+    timeout: 15_000,
   });
 }
 

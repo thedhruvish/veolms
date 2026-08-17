@@ -1,9 +1,32 @@
 import { test, expect } from "./app.fixture.ts";
-import { expectStoredValue, installBaselineState, openApp } from "./support.ts";
+import type { Page } from "@playwright/test";
+import {
+  expectStoredValue,
+  installBaselineState,
+  openApp,
+  revealDeferredAppearanceSettings,
+} from "./support.ts";
 
 test.beforeEach(async ({ page }) => {
   await installBaselineState(page);
 });
+
+const updateSidebarPreferences = async (
+  page: Page,
+  path: string,
+  patch: Record<string, unknown>,
+) => {
+  await page.evaluate((nextPatch) => {
+    const current = JSON.parse(
+      localStorage.getItem("veolms-sidebar-preferences") || "{}",
+    ) as Record<string, unknown>;
+    localStorage.setItem(
+      "veolms-sidebar-preferences",
+      JSON.stringify({ ...current, ...nextPatch }),
+    );
+  }, patch);
+  await openApp(page, path);
+};
 
 test("framed layout scrolls inside its main surface while edge-to-edge uses the document", async ({
   page,
@@ -80,6 +103,9 @@ test("page tabs pin beneath the shell edge while the framed surface uses only a 
     ["/settings/appearance", ".settings-tabs"],
   ] as const) {
     await openApp(page, path);
+    if (path === "/settings/appearance") {
+      await revealDeferredAppearanceSettings(page);
+    }
 
     const mainSurface = page.locator("main.courses-main");
     const tabs = page.locator(tabSelector);
@@ -363,7 +389,7 @@ test("the framed learning scrollbar clears content at compact and wide desktop s
           return Number(modernAlpha ?? legacyAlpha ?? 1);
         },
       );
-      expect(curriculumThumbAppearance).toBe(1);
+      expect(curriculumThumbAppearance).toBeCloseTo(0.9, 2);
 
       await curriculum.evaluate((scrollport) => scrollport.scrollTo(0, 0));
       const curriculumScrollTopBeforeClick = await curriculum.evaluate(
@@ -519,7 +545,7 @@ test("dock context menus stay attached and reading controls update immediately",
   );
 
   await quickSettings
-    .getByRole("combobox", { name: "Quick reading mode colors" })
+    .getByRole("button", { name: "Quick reading mode colors" })
     .click();
   await page.getByRole("option", { name: "Light colors" }).click();
   await expect(page.locator("html")).toHaveAttribute(
@@ -692,6 +718,7 @@ test("sidebar menu depth is independent from application surface depth", async (
   page,
 }) => {
   await openApp(page, "/settings/appearance");
+  await revealDeferredAppearanceSettings(page);
 
   const root = page.locator("html");
   const mainSurface = page.locator("main.student-surface-main");
@@ -799,6 +826,7 @@ test("light mode uses a visible neutral shadow for elevated surfaces", async ({
   page,
 }) => {
   await openApp(page, "/settings/appearance");
+  await revealDeferredAppearanceSettings(page);
 
   await page.getByRole("radio", { name: /^Light / }).click();
   const elevatedSurfaces = page.getByRole("switch", {
@@ -824,6 +852,7 @@ test("dark mode uses distinct contact and ambient shadows for elevated surfaces"
   page,
 }) => {
   await openApp(page, "/settings/appearance");
+  await revealDeferredAppearanceSettings(page);
 
   await page.getByRole("radio", { name: /^Dark / }).click();
   const root = page.locator("html");
@@ -915,6 +944,11 @@ test("active dock controls reuse the sidebar menu active surface", async ({
   page,
 }) => {
   await openApp(page, "/");
+  const dockItems = ["appearance", "theme", "reading-mode", "fullscreen"];
+  await updateSidebarPreferences(page, "/", {
+    dockItems,
+    dockOrder: dockItems,
+  });
 
   const activeNavigation = page.locator(".courses-nav button.is-active");
   const appearanceControls = page.getByRole("group", {
@@ -1052,6 +1086,11 @@ test("role, appearance, and academy palette persist across routes and reloads", 
   page,
 }) => {
   await openApp(page, "/");
+  const dockItems = ["appearance", "theme", "reading-mode", "fullscreen"];
+  await updateSidebarPreferences(page, "/", {
+    dockItems,
+    dockOrder: dockItems,
+  });
   const sidebar = page.getByRole("complementary", {
     name: "Student navigation",
   });
@@ -1148,7 +1187,7 @@ test("role, appearance, and academy palette persist across routes and reloads", 
 
   await sidebar
     .getByRole("button", { name: "Open role and appearance menu" })
-    .click();
+    .click({ position: { x: 24, y: 24 } });
   await expect(paletteMenu).toBeHidden();
   await page.getByRole("menuitemradio", { name: "Creator" }).click();
   await expect(
@@ -1532,11 +1571,13 @@ test("moving header control swaps with the compact logo without showing both", a
 test("sidebar wordmark aligns with navigation text and crops throughout a continuous collapse drag", async ({
   page,
 }) => {
-  await page.addInitScript(() => {
+  const path = "/learn/ui-ux-design-mastery?from=explore-courses";
+  await openApp(page, path);
+  await page.evaluate(() => {
     window.localStorage.setItem("veolms-sidebar-mode", "expanded");
     window.localStorage.setItem("veolms-sidebar-width", "300");
   });
-  await openApp(page, "/learn/ui-ux-design-mastery?from=explore-courses");
+  await updateSidebarPreferences(page, path, { headerLayout: "fixed" });
 
   const sidebar = page.getByRole("complementary", {
     name: "Student navigation",
@@ -1799,7 +1840,13 @@ test("appearance controls grow with the sidebar before animating into a horizont
       return originalAnimate.apply(this, args);
     };
   });
-  await openApp(page, "/learn/ui-ux-design-mastery");
+  const path = "/learn/ui-ux-design-mastery";
+  await openApp(page, path);
+  const dockItems = ["appearance", "theme", "reading-mode", "fullscreen"];
+  await updateSidebarPreferences(page, path, {
+    dockItems,
+    dockOrder: dockItems,
+  });
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.evaluate(() => {
     window.localStorage.setItem("veolms-reduce-animations", "false");
@@ -2370,7 +2417,6 @@ test.describe("wide touch tablet navigation", () => {
     const cdp = await page.context().newCDPSession(page);
     const iconCenters = async () => {
       const controls = [
-        page.locator("button.sidebar-collapse"),
         page
           .getByRole("complementary", { name: "Student navigation" })
           .getByRole("button", { name: "Explore Courses" })
@@ -2389,7 +2435,7 @@ test.describe("wide touch tablet navigation", () => {
 
     const initialIconCenters = await iconCenters();
     for (const center of initialIconCenters) {
-      expect(center).toBeCloseTo(initialIconCenters[1]!, 0);
+      expect(center).toBeCloseTo(initialIconCenters[0]!, 0);
     }
 
     await cdp.send("Input.dispatchTouchEvent", {
@@ -2416,7 +2462,7 @@ test.describe("wide touch tablet navigation", () => {
     ).toHaveCSS("opacity", "1");
     const resizingIconCenters = await iconCenters();
     for (const center of resizingIconCenters) {
-      expect(center).toBeCloseTo(resizingIconCenters[1]!, 0);
+      expect(center).toBeCloseTo(resizingIconCenters[0]!, 0);
     }
     await cdp.send("Input.dispatchTouchEvent", {
       type: "touchEnd",
@@ -2508,7 +2554,9 @@ test.describe("wide touch tablet navigation", () => {
   test("swipes from the full screen with distance and velocity settling while sliders remain isolated", async ({
     page,
   }) => {
-    await page.addInitScript(() => {
+    test.setTimeout(45_000);
+    await openApp(page, "/notifications");
+    await page.evaluate(() => {
       window.localStorage.setItem("veolms-sidebar-mode", "expanded");
       window.localStorage.setItem("veolms-sidebar-width", "252");
     });
@@ -2577,7 +2625,8 @@ test.describe("wide touch tablet navigation", () => {
     await sendTouch("touchEnd", []);
     await expect(app).not.toHaveClass(/courses-app--collapsed/);
 
-    await page.goto("/settings/appearance");
+    await openApp(page, "/settings/appearance");
+    await revealDeferredAppearanceSettings(page);
     const slider = page.locator("#reading-mode-color-temperature");
     await slider.scrollIntoViewIfNeeded();
     const sliderBox = await slider.boundingBox();

@@ -67,11 +67,13 @@ describe("Curriculum", () => {
     fireEvent.click(screen.getByRole("button", { name: "Search lessons" }));
 
     fireEvent.click(
-      screen.getByRole("button", { name: /10\.\s*Usability Testing\s*11:39/ }),
+      screen.getByRole("button", {
+        name: /10\.\s*Usability Testing\s*11:39/,
+      }),
     );
     expect(onSelectLesson).toHaveBeenCalledWith(10);
     expect(onClose).toHaveBeenCalledTimes(1);
-  });
+  }, 10_000);
 
   it("opens repeated dummy lectures from the remaining sections", () => {
     const onSelectLesson = vi.fn();

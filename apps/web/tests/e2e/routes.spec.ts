@@ -105,6 +105,9 @@ test("My Courses overview metrics render as separate responsive cards", async ({
 test("discussion tabs use canonical routes and browser history", async ({
   page,
 }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("veolms-page-tab-colors", "multicolor");
+  });
   await page.setViewportSize({ width: 1440, height: 650 });
   await openApp(page, "/discussions/q-and-a");
 
@@ -112,10 +115,6 @@ test("discussion tabs use canonical routes and browser history", async ({
   const questions = tabs.getByRole("tab", { name: "Q&A" });
   const comments = tabs.getByRole("tab", { name: "Comments" });
   const mentions = tabs.getByRole("tab", { name: "Mentions" });
-
-  await page.locator("html").evaluate((root) => {
-    root.dataset.pageTabColors = "multicolor";
-  });
 
   await expect(questions).toHaveAttribute("aria-selected", "true");
   const questionStyle = await questions.evaluate((tab) => {
