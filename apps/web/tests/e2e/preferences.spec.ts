@@ -110,11 +110,55 @@ test("page tabs pin beneath the shell edge while the framed surface uses only a 
     await expect(
       floatingScrollbar.locator(":scope > .floating-scrollbar__thumb"),
     ).toHaveCount(1);
+    await expect(
+      floatingScrollbar.locator(":scope > .floating-scrollbar__thumb"),
+    ).toHaveCSS("width", "7px");
     await expect
       .poll(() =>
-        mainSurface.evaluate((main) => main.offsetWidth - main.clientWidth),
+        mainSurface.evaluate(
+          (main) =>
+            (main as HTMLElement).offsetWidth -
+            (main as HTMLElement).clientWidth,
+        ),
       )
       .toBe(0);
+
+    await mainSurface.evaluate((main) => main.scrollTo(0, 0));
+    const trackBounds = await floatingScrollbar.boundingBox();
+    expect(trackBounds).not.toBeNull();
+    const scrollTopBeforeTrackClick = await mainSurface.evaluate(
+      (main) => main.scrollTop,
+    );
+    await page.mouse.click(
+      trackBounds!.x + trackBounds!.width / 2,
+      trackBounds!.y + trackBounds!.height * 0.82,
+    );
+    await expect
+      .poll(() => mainSurface.evaluate((main) => main.scrollTop))
+      .toBeGreaterThan(scrollTopBeforeTrackClick);
+
+    const thumb = floatingScrollbar.locator(
+      ":scope > .floating-scrollbar__thumb",
+    );
+    const thumbBounds = await thumb.boundingBox();
+    expect(thumbBounds).not.toBeNull();
+    const scrollTopBeforeDrag = await mainSurface.evaluate(
+      (main) => main.scrollTop,
+    );
+    await page.mouse.move(
+      thumbBounds!.x + thumbBounds!.width / 2,
+      thumbBounds!.y + thumbBounds!.height / 2,
+    );
+    await page.mouse.down();
+    await page.mouse.move(
+      thumbBounds!.x + thumbBounds!.width / 2,
+      thumbBounds!.y + thumbBounds!.height / 2 - 70,
+      { steps: 4 },
+    );
+    await page.mouse.up();
+    await expect
+      .poll(() => mainSurface.evaluate((main) => main.scrollTop))
+      .toBeLessThan(scrollTopBeforeDrag);
   }
 });
 

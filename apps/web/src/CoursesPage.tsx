@@ -2914,6 +2914,7 @@ export function CoursesPage({
       )}
 
       <main
+        id="courses-main-scrollport"
         ref={mainScrollportRef}
         className={`courses-main ${renderMain ? "courses-main--learning" : page !== "explore-courses" ? "student-surface-main" : ""}${!renderMain && page === "settings" ? " courses-main--settings" : ""}`}
       >
