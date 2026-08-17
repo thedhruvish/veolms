@@ -5,7 +5,7 @@ import type {
   RefObject,
 } from "react";
 
-const TRACK_INSET = 8;
+const MINIMUM_TRACK_INSET = 8;
 const MINIMUM_THUMB_HEIGHT = 40;
 
 type FloatingScrollbarProps = {
@@ -49,7 +49,18 @@ export function FloatingScrollbar({ scrollportRef }: FloatingScrollbarProps) {
       }
 
       const scrollportRect = scrollport.getBoundingClientRect();
-      const trackHeight = Math.max(0, scrollportRect.height - TRACK_INSET * 2);
+      const topTrackInset = Math.max(
+        MINIMUM_TRACK_INSET,
+        Number.parseFloat(scrollportStyle.borderTopRightRadius) || 0,
+      );
+      const bottomTrackInset = Math.max(
+        MINIMUM_TRACK_INSET,
+        Number.parseFloat(scrollportStyle.borderBottomRightRadius) || 0,
+      );
+      const trackHeight = Math.max(
+        0,
+        scrollportRect.height - topTrackInset - bottomTrackInset,
+      );
       const thumbHeight = Math.min(
         trackHeight,
         Math.max(
@@ -76,7 +87,7 @@ export function FloatingScrollbar({ scrollportRef }: FloatingScrollbarProps) {
 
       scrollbar.style.setProperty(
         "--floating-scrollbar-top",
-        `${scrollportRect.top + TRACK_INSET}px`,
+        `${scrollportRect.top + topTrackInset}px`,
       );
       scrollbar.style.setProperty(
         "--floating-scrollbar-right",
