@@ -27,8 +27,6 @@ export class ProcessWorkerRunner {
     const scriptPath =
       options.workerScriptPath ??
       resolve(process.cwd(), "apps/media-worker/src/index.ts");
-    const nodeBinary = options.nodeBinaryPath ?? process.execPath;
-
     const env: NodeJS.ProcessEnv = {
       ...process.env,
       ...options.environment,
@@ -37,9 +35,15 @@ export class ProcessWorkerRunner {
       INSTANCE_ID: instanceId,
       PROVIDER: "local_process",
       MANAGER_API_URL: spec.managerApiUrl,
+      FLEET_MANAGER_API_URL: spec.managerApiUrl,
       QUEUE_CONNECTION_STRING: spec.queueConnectionString,
+      STORAGE_BASE_PATH:
+        process.env.STORAGE_BASE_PATH || resolve(process.cwd(), "s3-bucket"),
+      SCRATCH_DIR:
+        process.env.SCRATCH_DIR || resolve(process.cwd(), ".tmp/scratch"),
     };
 
+    const nodeBinary = options.nodeBinaryPath ?? process.execPath;
     const child = spawn(nodeBinary, [scriptPath], {
       cwd: options.cwd ?? process.cwd(),
       env,
@@ -66,11 +70,21 @@ export class ProcessWorkerRunner {
     this.processes.set(spec.workerId, entry);
 
     child.stdout?.on("data", (chunk: Buffer) => {
-      options.onLog?.(spec.workerId, "stdout", chunk.toString("utf-8"));
+      const text = chunk.toString("utf-8");
+      if (options.onLog) {
+        options.onLog(spec.workerId, "stdout", text);
+      } else {
+        process.stdout.write(text);
+      }
     });
 
     child.stderr?.on("data", (chunk: Buffer) => {
-      options.onLog?.(spec.workerId, "stderr", chunk.toString("utf-8"));
+      const text = chunk.toString("utf-8");
+      if (options.onLog) {
+        options.onLog(spec.workerId, "stderr", text);
+      } else {
+        process.stderr.write(text);
+      }
     });
 
     child.on("exit", (code, signal) => {

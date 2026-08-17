@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import {
   getCompletedChunksCountForVideo,
@@ -34,7 +34,8 @@ interface ChunkSegment {
 /**
  * ManifestFinalizerCoordinator: Detects when all chunks for a video are finished,
  * concatenates and stitches HLS segment playlists for each rendition, generates the
- * unified master.m3u8 manifest, and marks the video job as COMPLETED.
+ * unified master.m3u8 manifest, auto-prunes intermediate raw chunk MP4 files,
+ * and marks the video job as COMPLETED.
  */
 export class ManifestFinalizerCoordinator {
   private readonly context: CoordinationContext;
@@ -75,10 +76,20 @@ export class ManifestFinalizerCoordinator {
           );
         }
 
-        // 3. Generate final master manifest key
+        // 3. Auto-prune intermediate raw chunk MP4 files to save ~50% storage
+        try {
+          await this.pruneTemporaryChunkAssets(job.id);
+        } catch (err) {
+          console.error(
+            `Error pruning temporary chunk assets for video ${job.id}:`,
+            err,
+          );
+        }
+
+        // 4. Generate final master manifest key
         const masterManifestKey = `videos/${job.id}/master.m3u8`;
 
-        // 4. Mark video as COMPLETED
+        // 5. Mark video as COMPLETED
         await updateVideoJobStatus(this.context.database, job.id, "COMPLETED", {
           outputManifestKey: masterManifestKey,
         });
@@ -232,5 +243,56 @@ export class ManifestFinalizerCoordinator {
     console.log(
       `[ManifestFinalizer] Assembled Master HLS Manifest: ${masterManifestPath} (${qualitiesToInclude.join(", ")})`,
     );
+  }
+
+  /**
+   * Auto-prunes raw intermediate split MP4 chunk files while preserving .ts video segments and .m3u8 manifests.
+   */
+  private async pruneTemporaryChunkAssets(videoId: string): Promise<void> {
+    const storageBase = resolve(
+      process.env.STORAGE_BASE_PATH || process.env.STORAGE_DIR || "s3-bucket",
+    );
+    const chunksDir = join(storageBase, `videos/${videoId}/chunks`);
+
+    try {
+      const entries = await readdir(chunksDir, { withFileTypes: true });
+      let prunedCount = 0;
+
+      for (const entry of entries) {
+        // 1. Prune raw split chunk video files in chunks/ directory (e.g., chunk-01.mp4, chunk-02.mp4)
+        if (entry.isFile() && entry.name.endsWith(".mp4")) {
+          const filePath = join(chunksDir, entry.name);
+          await unlink(filePath).catch(() => {});
+          prunedCount += 1;
+        }
+
+        // 2. Prune any stray intermediate files inside chunks/<chunkUuid>/
+        if (entry.isDirectory()) {
+          const subDir = join(chunksDir, entry.name);
+          try {
+            const subEntries = await readdir(subDir, { withFileTypes: true });
+            for (const subEntry of subEntries) {
+              if (
+                subEntry.isFile() &&
+                (subEntry.name.endsWith(".mp4") || subEntry.name.endsWith(".tmp"))
+              ) {
+                await unlink(join(subDir, subEntry.name)).catch(() => {});
+                prunedCount += 1;
+              }
+            }
+          } catch {
+            // Ignore if directory access fails
+          }
+        }
+      }
+
+      if (prunedCount > 0) {
+        console.log(
+          `[ManifestFinalizer] Auto-pruned ${prunedCount} intermediate raw chunk files for video ${videoId} 🧹`,
+        );
+      }
+    } catch {
+      // Ignore if chunks directory does not exist
+    }
   }
 }

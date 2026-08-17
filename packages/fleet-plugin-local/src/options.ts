@@ -48,6 +48,11 @@ export interface LocalDriverOptions {
   readonly cwd?: string;
 
   /**
+   * Root path for local s3-bucket storage.
+   */
+  readonly storageBasePath?: string;
+
+  /**
    * Custom environment variables injected into spawned workers.
    */
   readonly environment?: Readonly<Record<string, string>>;
@@ -98,6 +103,7 @@ export const DEFAULT_LOCAL_DRIVER_OPTIONS: Required<
     | "environment"
     | "volumeMounts"
     | "networkMode"
+    | "storageBasePath"
     | "onLog"
     | "onExit"
   >

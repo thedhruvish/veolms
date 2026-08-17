@@ -1,8 +1,9 @@
-import { writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import ffmpeg from "fluent-ffmpeg";
 
 import { filterRenditionsForSource } from "./filter.ts";
+import { detectHardwareEncoder } from "./hwaccel.ts";
 import { probeMedia } from "./probe.ts";
 import type {
   NormalizedProgress,
@@ -55,8 +56,14 @@ export class FluentFfmpegTranscoder {
     const preset = options.preset ?? "veryfast";
     const segmentDuration = options.hlsSegmentDuration ?? 6;
 
-    // 3. Transcode each rendition
+    // 3. Ensure output directory exists
+    await mkdir(options.outputDir, { recursive: true });
+
+    // 4. Transcode each rendition
     const successfulRenditions: RenditionSpec[] = [];
+    const hwInfo = await detectHardwareEncoder(
+      process.env.FORCE_SOFTWARE_ENCODER === "true",
+    );
 
     for (let i = 0; i < targetRenditions.length; i++) {
       const rendition = targetRenditions[i];
@@ -72,19 +79,33 @@ export class FluentFfmpegTranscoder {
       );
 
       await new Promise<void>((resolve, reject) => {
-        const cmd = ffmpeg(options.sourcePath)
-          .videoCodec("libx264")
-          .outputOptions([
-            `-crf ${crf}`,
-            `-preset ${preset}`,
-            "-profile:v main",
-            "-sc_threshold 0",
-            "-g 48",
-            "-keyint_min 48",
-            `-vf scale=w=${rendition.width}:h=${rendition.height}:force_original_aspect_ratio=decrease,pad=${rendition.width}:${rendition.height}:(ow-iw)/2:(oh-ih)/2`,
-            `-maxrate ${rendition.maxBitrateKbps}k`,
-            `-bufsize ${rendition.bufSizeKbps}k`,
-          ])
+        const cmd = ffmpeg(options.sourcePath).videoCodec(hwInfo.encoder);
+
+        const videoOptions =
+          hwInfo.type === "nvenc"
+            ? [
+                `-cq ${crf}`,
+                "-preset p3",
+                "-profile:v main",
+                "-g 48",
+                "-keyint_min 48",
+                `-vf scale=w=${rendition.width}:h=${rendition.height}:force_original_aspect_ratio=decrease,pad=${rendition.width}:${rendition.height}:(ow-iw)/2:(oh-ih)/2`,
+                `-maxrate ${rendition.maxBitrateKbps}k`,
+                `-bufsize ${rendition.bufSizeKbps}k`,
+              ]
+            : [
+                `-crf ${crf}`,
+                `-preset ${preset}`,
+                "-profile:v main",
+                "-sc_threshold 0",
+                "-g 48",
+                "-keyint_min 48",
+                `-vf scale=w=${rendition.width}:h=${rendition.height}:force_original_aspect_ratio=decrease,pad=${rendition.width}:${rendition.height}:(ow-iw)/2:(oh-ih)/2`,
+                `-maxrate ${rendition.maxBitrateKbps}k`,
+                `-bufsize ${rendition.bufSizeKbps}k`,
+              ];
+
+        cmd.outputOptions(videoOptions)
           .audioCodec("aac")
           .outputOptions([
             `-b:a ${rendition.audioBitrateKbps}k`,

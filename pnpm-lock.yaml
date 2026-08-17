@@ -120,9 +120,6 @@ importers:
       '@veolms/fleet-plugin-local':
         specifier: workspace:*
         version: link:../../packages/fleet-plugin-local
-      '@veolms/fleet-plugin-simulator':
-        specifier: workspace:*
-        version: link:../../packages/fleet-plugin-simulator
       '@veolms/fleet-types':
         specifier: workspace:*
         version: link:../../packages/fleet-types
@@ -133,6 +130,9 @@ importers:
       '@types/node':
         specifier: ^24.10.13
         version: 24.13.3
+      '@veolms/fleet-plugin-simulator':
+        specifier: workspace:*
+        version: link:../../packages/fleet-plugin-simulator
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'

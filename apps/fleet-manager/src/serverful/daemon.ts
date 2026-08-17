@@ -7,6 +7,7 @@ import { InMemoryQueueAdapter } from "../core/queues/in-memory-adapter.ts";
 import type { QueueAdapter } from "../core/queues/types.ts";
 import type { ServerfulDaemonConfig } from "./config.ts";
 import { createCloudDriver } from "./factory.ts";
+import { createConfiguredDriver } from "./driver-instance.ts";
 import { createWorkerApiServer } from "./server.ts";
 import type { CloudDriver } from "@veolms/fleet-types";
 
@@ -31,7 +32,7 @@ export class FleetDaemon {
     this.config = config;
 
     const database = createDatabase(config.databaseUrl);
-    const driver = customDriver ?? createCloudDriver(config.driverType);
+    const driver = customDriver ?? createConfiguredDriver();
     const queueAdapter = customQueueAdapter ?? new InMemoryQueueAdapter();
 
     this.context = {

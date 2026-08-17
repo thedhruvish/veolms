@@ -23,6 +23,7 @@
     "db:reset": "pnpm --filter @veolms/database reset",
     "compose:up": "docker compose up -d",
     "compose:down": "docker compose down",
+    "fleet:pre:setup": "node scripts/fleet-pre-setup.ts",
     "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm build"
   },
   "devDependencies": {

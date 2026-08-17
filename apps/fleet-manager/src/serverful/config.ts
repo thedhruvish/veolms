@@ -8,8 +8,12 @@ export interface ServerfulDaemonConfig {
   readonly host: string;
   readonly databaseUrl: string;
   readonly queueConnectionString: string;
-  readonly driverType:
-    "simulator" | "local_process" | "local_podman" | "local_docker" | string;
+  readonly driverType?:
+    | "simulator"
+    | "local_process"
+    | "local_podman"
+    | "local_docker"
+    | string;
   readonly coordinationIntervalMs: number;
   readonly managerApiUrl: string;
   readonly fleetConfig: FleetManagerConfig;
