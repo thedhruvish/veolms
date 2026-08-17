@@ -162,30 +162,51 @@ function CurriculumSectionItem({
   const durationLabel = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
 
   return (
-    <div className={`cov-section-card${isOpen ? " is-open" : ""}`} role="listitem">
+    <div
+      className={`rounded-xl border bg-[var(--surface)] overflow-hidden transition-[border-color] duration-150 ${
+        isOpen
+          ? "border-[color-mix(in_srgb,var(--accent)_35%,transparent)]"
+          : "border-[color-mix(in_srgb,var(--text)_10%,transparent)]"
+      }`}
+      role="listitem"
+    >
       <button
         type="button"
-        className="cov-section__toggle"
+        className="flex w-full min-h-[52px] items-center gap-3.5 border-0 px-[18px] py-3 text-[var(--text)] bg-transparent text-[0.92rem] font-semibold text-left cursor-pointer transition-colors duration-140 hover:bg-[var(--hover)] max-[640px]:p-[10px_14px] max-[640px]:text-[0.88rem]"
         aria-expanded={isOpen}
         onClick={onToggle}
       >
-        <span className="cov-section__num-badge" aria-hidden="true">
+        <span
+          className="inline-flex w-[26px] h-[26px] shrink-0 items-center justify-center rounded-md bg-[var(--accent)] text-[var(--on-accent,#ffffff)] text-[0.82rem] font-bold"
+          aria-hidden="true"
+        >
           {index + 1}
         </span>
-        <span className="cov-section__title">{section.title}</span>
-        <span className="cov-section__meta">
+        <span className="flex-1 min-w-0 text-[var(--text)]">
+          {section.title}
+        </span>
+        <span className="shrink-0 text-[var(--muted)] text-[0.82rem] font-normal mr-1">
           {lectureCount} Lectures &bull; {durationLabel}
         </span>
-        <span className="cov-section__caret" aria-hidden="true">
+        <span
+          className={`shrink-0 text-[var(--muted)] inline-flex items-center justify-center transition-transform duration-200 ease-out motion-reduce:transition-none ${
+            isOpen ? "rotate-180" : ""
+          }`}
+          aria-hidden="true"
+        >
           <CaretDown size={16} weight="bold" />
         </span>
       </button>
 
       <div
-        className={`cov-section__lessons${isOpen ? " is-open" : ""}`}
+        className={`overflow-hidden motion-reduce:transition-none ${
+          isOpen
+            ? "max-h-[800px] opacity-100 visible transition-[max-height,opacity,visibility] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+            : "max-h-0 opacity-0 invisible transition-[max-height,opacity,visibility] duration-250 ease-[cubic-bezier(0,1,0,1)]"
+        }`}
         aria-hidden={!isOpen}
       >
-        <div className="cov-section__lessons-inner">
+        <div className="min-h-0 px-3.5 pt-1 pb-2.5 border-t border-[color-mix(in_srgb,var(--text)_8%,transparent)] bg-[color-mix(in_srgb,var(--surface)_95%,var(--text))]">
           {section.lessons.length > 0
             ? section.lessons.map(([number, title, duration, status]) => {
                 const isDoc =
@@ -194,28 +215,38 @@ function CurriculumSectionItem({
                   title.toLowerCase().includes("community") ||
                   title.toLowerCase().includes("download");
                 return (
-                  <div className="cov-lesson" key={number}>
-                    <span className="cov-lesson__type-icon" aria-hidden="true">
+                  <div
+                    className="group/lesson flex items-center gap-3 min-h-[38px] px-3 py-1.5 rounded-md text-[var(--text-secondary)] text-[0.85rem] cursor-pointer transition-colors duration-140 hover:bg-[color-mix(in_srgb,var(--text)_8%,transparent)] hover:text-[var(--text)]"
+                    key={number}
+                  >
+                    <span
+                      className="inline-flex w-5 shrink-0 items-center justify-center text-[var(--muted)] transition-colors duration-140 group-hover/lesson:text-[var(--accent)]"
+                      aria-hidden="true"
+                    >
                       {isDoc ? (
                         <FileText size={16} weight="regular" />
                       ) : (
                         <PlayCircle size={16} weight="regular" />
                       )}
                     </span>
-                    <span className="cov-lesson__title">{title}</span>
-                    <span className="cov-lesson__duration">{duration}</span>
+                    <span className="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[0.85rem] text-[var(--text-secondary)]">
+                      {title}
+                    </span>
+                    <span className="text-[var(--muted)] text-[0.78rem] shrink-0 w-[45px] text-right">
+                      {duration}
+                    </span>
                     <span
-                      className="cov-lesson__status-icon"
+                      className="inline-flex items-center justify-center shrink-0"
                       aria-hidden="true"
                     >
                       {status === "done" ? (
                         <CheckCircle
                           size={16}
                           weight="fill"
-                          className="is-check"
+                          className="text-[#10b981]"
                         />
                       ) : (
-                        <Circle size={16} className="is-circle" />
+                        <Circle size={16} className="text-[var(--muted)]" />
                       )}
                     </span>
                   </div>
@@ -225,15 +256,21 @@ function CurriculumSectionItem({
                 const isDoc = i === 1 || i === 2;
                 const isDone = i === 0 || i === 3;
                 return (
-                  <div className="cov-lesson" key={i}>
-                    <span className="cov-lesson__type-icon" aria-hidden="true">
+                  <div
+                    className="group/lesson flex items-center gap-3 min-h-[38px] px-3 py-1.5 rounded-md text-[var(--text-secondary)] text-[0.85rem] cursor-pointer transition-colors duration-140 hover:bg-[color-mix(in_srgb,var(--text)_8%,transparent)] hover:text-[var(--text)]"
+                    key={i}
+                  >
+                    <span
+                      className="inline-flex w-5 shrink-0 items-center justify-center text-[var(--muted)] transition-colors duration-140 group-hover/lesson:text-[var(--accent)]"
+                      aria-hidden="true"
+                    >
                       {isDoc ? (
                         <FileText size={16} weight="regular" />
                       ) : (
                         <PlayCircle size={16} weight="regular" />
                       )}
                     </span>
-                    <span className="cov-lesson__title">
+                    <span className="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[0.85rem] text-[var(--text-secondary)]">
                       {i === 0
                         ? "Welcome to the course and setup your environment"
                         : i === 1
@@ -244,7 +281,7 @@ function CurriculumSectionItem({
                               ? "Prerequisites"
                               : `Lesson ${i + 1}`}
                     </span>
-                    <span className="cov-lesson__duration">
+                    <span className="text-[var(--muted)] text-[0.78rem] shrink-0 w-[45px] text-right">
                       {isDoc
                         ? "--:--"
                         : i === 0
@@ -254,17 +291,17 @@ function CurriculumSectionItem({
                             : "04:35"}
                     </span>
                     <span
-                      className="cov-lesson__status-icon"
+                      className="inline-flex items-center justify-center shrink-0"
                       aria-hidden="true"
                     >
                       {isDone ? (
                         <CheckCircle
                           size={16}
                           weight="fill"
-                          className="is-check"
+                          className="text-[#10b981]"
                         />
                       ) : (
-                        <Circle size={16} className="is-circle" />
+                        <Circle size={16} className="text-[var(--muted)]" />
                       )}
                     </span>
                   </div>
@@ -324,18 +361,18 @@ function CourseHeroSection({
   const perksList = inclusions !== undefined ? inclusions : defaultPerks;
 
   return (
-    <div className="cov-hero-container">
+    <div className="flex flex-col w-full">
       {/* Two-column Hero: Course Info & Pricing on Left, Trailer on Right */}
-      <div className="cov-hero-split">
-        <div className="cov-hero-split__left">
+      <div className="grid grid-cols-[minmax(0,1.25fr)_minmax(320px,560px)] gap-7 items-stretch w-full box-border max-[900px]:flex max-[900px]:flex-col max-[900px]:gap-4">
+        <div className="flex flex-col min-w-0 w-full gap-3 max-[900px]:contents">
           {/* Header Info: Back Button, Badge, Title, Metadata */}
-          <div className="cov-hero-left__header">
+          <div className="flex flex-col min-w-0 shrink-0 max-[900px]:order-1 max-[900px]:gap-1.5 max-[900px]:w-full">
             {/* Top Row: Back Button + Level Badge */}
-            <div className="cov-hero-left__top">
+            <div className="flex items-center gap-3 mb-1.5">
               {onNavigateCourses && (
                 <button
                   type="button"
-                  className="cov-back-icon-btn"
+                  className="inline-flex items-center justify-center w-[38px] h-[38px] rounded-xl border border-[color-mix(in_srgb,var(--text)_14%,transparent)] bg-[color-mix(in_srgb,var(--surface)_90%,#000)] text-[var(--text)] cursor-pointer p-0 shadow-[0_2px_8px_rgba(0,0,0,0.14)] transition-[border-color,background-color,transform,color] duration-160 ease-out hover:border-[color-mix(in_srgb,var(--text)_30%,transparent)] hover:bg-[var(--hover)] hover:text-[var(--text)] hover:-translate-x-0.5"
                   aria-label="Back to courses"
                   onClick={onNavigateCourses}
                   title="Back to courses"
@@ -345,7 +382,7 @@ function CourseHeroSection({
               )}
 
               <span
-                className="cov-level-badge"
+                className="inline-flex items-center border border-[var(--accent-border,color-mix(in_srgb,var(--accent)_35%,transparent))] rounded-full px-[13px] py-[5px] text-[var(--accent-ink,var(--accent))] bg-[var(--accent-soft,color-mix(in_srgb,var(--accent)_15%,transparent))] text-[0.74rem] font-[750] tracking-[0.06em] leading-none"
                 aria-label={`Level: ${course.level}`}
               >
                 {course.level.toUpperCase()}
@@ -353,32 +390,34 @@ function CourseHeroSection({
             </div>
 
             {/* Title */}
-            <h1 className="cov-title">{title}</h1>
+            <h1 className="m-0 mb-1.5 text-[var(--text)] text-[2.15rem] font-extrabold leading-[1.16] tracking-[-0.025em] max-[900px]:text-[1.85rem] max-[640px]:text-[1.65rem]">
+              {title}
+            </h1>
 
             {/* Meta row */}
-            <div className="cov-meta">
-              <span className="cov-meta__item cov-meta__instructor">
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[var(--text-secondary)] text-[0.88rem] max-[900px]:gap-x-3 max-[900px]:gap-y-1.5 max-[640px]:text-[0.86rem] max-[640px]:gap-x-2.5 max-[640px]:gap-y-1.25">
+              <span className="inline-flex items-center gap-1.5 text-[var(--text)] font-[650]">
                 <User size={17} weight="bold" aria-hidden="true" />
                 <span>Instructor</span>
               </span>
-              <span className="cov-meta__dot" aria-hidden="true">
+              <span className="text-[color-mix(in_srgb,var(--text)_30%,transparent)] text-[0.8rem]" aria-hidden="true">
                 •
               </span>
-              <span className="cov-meta__item">
+              <span className="inline-flex items-center gap-1.5">
                 <Stack size={17} aria-hidden="true" />
                 <span>{course.sections} Sections</span>
               </span>
-              <span className="cov-meta__dot" aria-hidden="true">
+              <span className="text-[color-mix(in_srgb,var(--text)_30%,transparent)] text-[0.8rem]" aria-hidden="true">
                 •
               </span>
-              <span className="cov-meta__item">
+              <span className="inline-flex items-center gap-1.5">
                 <BookOpen size={17} aria-hidden="true" />
                 <span>{course.lectures} Lectures</span>
               </span>
-              <span className="cov-meta__dot" aria-hidden="true">
+              <span className="text-[color-mix(in_srgb,var(--text)_30%,transparent)] text-[0.8rem]" aria-hidden="true">
                 •
               </span>
-              <span className="cov-meta__item">
+              <span className="inline-flex items-center gap-1.5">
                 <Clock size={17} aria-hidden="true" />
                 <span>{course.duration}</span>
               </span>
@@ -387,24 +426,38 @@ function CourseHeroSection({
 
           {/* Full-width Rich Pricing Section in Left Column */}
           <div
-            className={`cov-hero-pricing${perksList.length > 0 ? " has-perks" : " no-perks"}`}
+            className={`flex flex-col min-h-0 rounded-[14px] border border-[color-mix(in_srgb,var(--text)_12%,transparent)] bg-[color-mix(in_srgb,var(--surface)_95%,transparent)] shadow-[0_4px_16px_rgba(0,0,0,0.12)] w-full box-border max-[900px]:order-3 max-[900px]:flex-initial max-[900px]:w-full max-[900px]:mt-0 max-[640px]:p-[16px_14px] max-[640px]:gap-3 ${
+              perksList.length > 0
+                ? "flex-1 justify-between gap-3 p-[18px_20px]"
+                : "flex-initial gap-4 p-[18px_20px]"
+            }`}
             aria-label="Course pricing and enrollment"
           >
             {/* Top Row: Prominent Price + Original Price + Discount (Left) and Favourite Button (Top Right) */}
-            <div className="cov-hero-pricing__price-row">
-              <div className="cov-hero-pricing__price-left">
-                <span className="cov-hero-pricing__current">{price}</span>
+            <div className="flex items-center justify-between gap-3 w-full">
+              <div className="flex items-baseline gap-2.5">
+                <span className="text-[var(--text)] text-[2.15rem] font-[850] tracking-[-0.03em] leading-none max-[640px]:text-[1.95rem]">
+                  {price}
+                </span>
                 {originalPrice && (
-                  <span className="cov-hero-pricing__original">{originalPrice}</span>
+                  <span className="text-[var(--muted)] text-[1.05rem] font-medium line-through">
+                    {originalPrice}
+                  </span>
                 )}
                 {discount && (
-                  <span className="cov-hero-pricing__discount">{discount}</span>
+                  <span className="inline-flex items-center rounded-md px-2 py-[3px] bg-[var(--accent-soft,color-mix(in_srgb,var(--accent)_18%,transparent))] text-[var(--accent-ink,var(--accent))] text-[0.75rem] font-[750] leading-none">
+                    {discount}
+                  </span>
                 )}
               </div>
 
               <button
                 type="button"
-                className={`cov-hero-pricing__wishlist-btn${wishlisted ? " is-wishlisted" : ""}`}
+                className={`inline-flex items-center justify-center w-[38px] h-[38px] shrink-0 rounded-full border border-[color-mix(in_srgb,var(--text)_16%,transparent)] bg-[color-mix(in_srgb,var(--surface)_80%,transparent)] text-[var(--muted)] cursor-pointer transition-[border-color,color,background-color,transform] duration-160 ease-out hover:border-[color-mix(in_srgb,var(--text)_32%,transparent)] hover:text-[var(--text)] hover:bg-[var(--hover)] hover:scale-[1.06] ${
+                  wishlisted
+                    ? "!border-[#ec4899] !text-[#ec4899] !bg-[rgba(236,72,153,0.14)]"
+                    : ""
+                }`}
                 aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
                 aria-pressed={wishlisted}
                 disabled={isReadOnlyPreview}
@@ -420,10 +473,10 @@ function CourseHeroSection({
             </div>
 
             {/* Middle Row: Actions (Apply Coupon + Buy Now) */}
-            <div className="cov-hero-pricing__actions-row">
+            <div className="flex items-center gap-2.5 w-full max-[640px]:flex-wrap max-[640px]:gap-2">
               <button
                 type="button"
-                className="cov-hero-pricing__coupon-btn"
+                className="inline-flex items-center justify-center gap-1.5 min-h-[40px] border border-dashed border-[color-mix(in_srgb,var(--text)_22%,transparent)] rounded-[9px] px-4 py-[9px] text-[var(--text-secondary)] bg-[color-mix(in_srgb,var(--surface)_60%,transparent)] text-[0.86rem] font-semibold cursor-pointer whitespace-nowrap transition-[border-color,color,background-color,transform] duration-160 ease-out hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft,color-mix(in_srgb,var(--accent)_12%,transparent))] hover:-translate-y-px max-[640px]:flex-1 max-[640px]:min-w-[120px] max-[640px]:px-3.5 max-[640px]:py-2.5 max-[640px]:text-[0.84rem]"
                 disabled={isReadOnlyPreview}
               >
                 <Ticket size={18} aria-hidden="true" />
@@ -432,7 +485,7 @@ function CourseHeroSection({
 
               <button
                 type="button"
-                className="cov-hero-pricing__buy-btn"
+                className="inline-flex items-center justify-center gap-[7px] flex-1 min-h-[42px] px-5 py-2.5 border-0 rounded-[9px] text-[var(--on-accent,#ffffff)] bg-[var(--accent)] shadow-[0_4px_14px_var(--accent-shadow,color-mix(in_srgb,var(--accent)_28%,transparent))] text-[0.92rem] font-[750] cursor-pointer whitespace-nowrap transition-[background-color,transform,box-shadow] duration-160 ease-out hover:bg-[var(--accent-hover,color-mix(in_srgb,var(--accent)_85%,var(--text)))] hover:-translate-y-px hover:shadow-[0_6px_18px_var(--accent-shadow,color-mix(in_srgb,var(--accent)_38%,transparent))] max-[640px]:min-w-[140px] max-[640px]:px-4 max-[640px]:py-2.5 max-[640px]:text-[0.88rem]"
                 disabled={isReadOnlyPreview}
                 onClick={() => {
                   if (!isReadOnlyPreview && onNavigatePage) {
@@ -453,10 +506,10 @@ function CourseHeroSection({
 
             {/* Bottom Row: Additional Inclusions / Value Perks */}
             {perksList.length > 0 && (
-              <div className="cov-hero-pricing__perks">
+              <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 pt-2.5 border-t border-[color-mix(in_srgb,var(--text)_8%,transparent)] text-[var(--muted)] text-[0.82rem] max-[640px]:text-[0.78rem] max-[640px]:gap-x-3 max-[640px]:gap-y-2">
                 {perksList.map((perk, idx) => (
-                  <span key={idx} className="cov-hero-pricing__perk">
-                    <CheckCircle size={16} weight="fill" className="cov-perk-icon" />
+                  <span key={idx} className="inline-flex items-center gap-1.5">
+                    <CheckCircle size={16} weight="fill" className="text-[#10b981] shrink-0" />
                     <span>{perk}</span>
                   </span>
                 ))}
@@ -466,26 +519,26 @@ function CourseHeroSection({
         </div>
 
         {/* Right Column: 16:9 Course Trailer */}
-        <div className="cov-hero-split__right">
-          <div className="cov-preview-hero" aria-label="Course preview player">
-            <div className="cov-preview-hero__media">
+        <div className="flex items-start justify-end w-full min-w-0 max-[900px]:order-2 max-[900px]:w-full">
+          <div className="group w-full rounded-[14px] overflow-hidden border border-[color-mix(in_srgb,var(--text)_10%,transparent)] bg-[color-mix(in_srgb,var(--surface)_60%,#000)] shadow-[0_4px_18px_rgba(0,0,0,0.14)]" aria-label="Course preview player">
+            <div className="relative w-full aspect-video overflow-hidden flex items-center justify-center">
               <img
                 src={thumbnail}
                 alt={`Preview thumbnail for ${title}`}
-                className="cov-preview-hero__img"
+                className="w-full h-full object-cover opacity-90 transition-[transform,opacity] duration-300 motion-reduce:transition-none group-hover:scale-[1.015] group-hover:opacity-[0.98]"
               />
-              <div className="cov-preview-hero__overlay" />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/[0.08] to-black/[0.45] pointer-events-none" />
 
               {/* Center Play Button */}
               <button
                 type="button"
-                className="cov-preview-hero__play-btn"
+                className="group/play absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 border-0 bg-transparent cursor-pointer p-0 z-[2]"
                 aria-label={`Play preview for ${title}`}
                 onClick={handlePreviewClick}
                 disabled={isReadOnlyPreview}
               >
                 <span
-                  className="cov-preview-hero__play-circle"
+                  className="inline-flex w-[54px] h-[54px] items-center justify-center rounded-full bg-black/55 backdrop-blur-md border-[1.5px] border-white/25 text-white shadow-[0_4px_18px_rgba(0,0,0,0.35)] transition-[transform,background-color,border-color] duration-180 ease-out motion-reduce:transition-none group-hover/play:scale-[1.08] group-hover/play:bg-black/75 group-hover/play:border-white/50 max-[640px]:w-[50px] max-[640px]:h-[50px]"
                   aria-hidden="true"
                 >
                   <Play size={22} weight="fill" />
@@ -495,7 +548,7 @@ function CourseHeroSection({
               {/* Bottom Left Pill Button */}
               <button
                 type="button"
-                className="cov-preview-hero__pill-btn"
+                className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 bg-black/65 backdrop-blur-[10px] border border-white/[0.18] text-white text-[0.78rem] font-semibold px-[13px] py-1.5 rounded-full cursor-pointer z-[2] transition-[background-color,border-color,transform] duration-160 ease-out hover:bg-black/85 hover:border-white/40 hover:-translate-y-px"
                 onClick={handlePreviewClick}
                 disabled={isReadOnlyPreview}
                 aria-label="View trailer"
@@ -531,27 +584,33 @@ function CourseAboutCard({
   onToggleShowMore,
 }: CourseAboutCardProps) {
   return (
-    <section className="cov-about-card" aria-labelledby="cov-about-heading">
-      <h2 id="cov-about-heading" className="cov-section-heading">
+    <section
+      className="p-[18px_22px] rounded-xl border border-[color-mix(in_srgb,var(--text)_10%,transparent)] bg-[var(--surface)] shadow-[0_2px_6px_rgba(0,0,0,0.06)] max-[640px]:p-[18px_16px]"
+      aria-labelledby="cov-about-heading"
+    >
+      <h2
+        id="cov-about-heading"
+        className="m-0 mb-2.5 text-[var(--text)] text-[1.1rem] font-bold tracking-[-0.015em]"
+      >
         About this course
       </h2>
-      <div className="cov-about__body">
+      <div className="flex flex-col gap-2">
         {description ? (
           <div className="course-preview-markdown-content">
             <RenderMarkdown content={description} />
           </div>
         ) : (
           <>
-            {aboutLead && <p>{aboutLead}</p>}
-            {aboutBody && <p>{aboutBody}</p>}
-            {showMore && aboutExtra && <p>{aboutExtra}</p>}
+            {aboutLead && <p className="m-0 text-[var(--text-secondary)] text-[0.87rem] leading-[1.6]">{aboutLead}</p>}
+            {aboutBody && <p className="m-0 text-[var(--text-secondary)] text-[0.87rem] leading-[1.6]">{aboutBody}</p>}
+            {showMore && aboutExtra && <p className="m-0 text-[var(--text-secondary)] text-[0.87rem] leading-[1.6]">{aboutExtra}</p>}
           </>
         )}
       </div>
       {!description && (
         <button
           type="button"
-          className="cov-see-more-btn"
+          className="inline-flex items-center gap-1 mt-2.5 border-0 bg-transparent text-[var(--accent)] text-[0.82rem] font-semibold p-0 cursor-pointer transition-opacity duration-140 hover:opacity-85"
           aria-expanded={showMore}
           onClick={onToggleShowMore}
         >
@@ -559,7 +618,9 @@ function CourseAboutCard({
           <CaretDown
             size={14}
             weight="bold"
-            className={`cov-see-more-btn__icon${showMore ? " is-open" : ""}`}
+            className={`transition-transform duration-200 ease-out motion-reduce:transition-none ${
+              showMore ? "rotate-180" : ""
+            }`}
             aria-hidden="true"
           />
         </button>
@@ -584,19 +645,25 @@ function CourseCurriculumCard({
   onToggleSection,
 }: CourseCurriculumCardProps) {
   return (
-    <section className="cov-curriculum-card" aria-labelledby="cov-curriculum-heading">
-      <div className="cov-curriculum__header">
-        <div className="cov-curriculum__header-left">
-          <h2 id="cov-curriculum-heading" className="cov-section-heading">
+    <section
+      className="p-0 border-0 bg-transparent"
+      aria-labelledby="cov-curriculum-heading"
+    >
+      <div className="flex items-end justify-between gap-4 mb-2.5">
+        <div>
+          <h2
+            id="cov-curriculum-heading"
+            className="m-0 mb-2.5 text-[var(--text)] text-[1.1rem] font-bold tracking-[-0.015em]"
+          >
             Course curriculum
           </h2>
-          <p className="cov-curriculum__subtitle">
+          <p className="m-0 mt-0.5 text-[var(--muted)] text-[0.82rem]">
             {course.sections} Sections &bull; {course.lectures} Lectures
           </p>
         </div>
       </div>
 
-      <div className="cov-curriculum__sections-list" role="list">
+      <div className="flex flex-col gap-1.5" role="list">
         {courseSections.map((section, index) => (
           <CurriculumSectionItem
             key={section.id}
@@ -716,9 +783,9 @@ export function CourseOverviewPage({
   const aboutExtra = `By the end of this course, you will have built complete production-ready projects, learned testing and deployment workflows, and acquired the professional skill set needed for industry roles.`;
 
   return (
-    <div className="cov-page">
-      <div className="cov-scroll-container">
-        <div className="cov-content-inner">
+    <div className="cov-page w-full h-[calc(100vh-28px)] max-h-[calc(100vh-28px)] p-0 text-[var(--text)] bg-[color-mix(in_srgb,var(--surface)_18%,var(--canvas))] rounded-[18px] box-border overflow-hidden flex flex-col max-[640px]:h-full max-[640px]:rounded-none">
+      <div className="cov-scroll-container flex-[1_1_auto] min-h-0 w-full overflow-y-auto overflow-x-hidden box-border [scrollbar-width:thin] [scrollbar-color:color-mix(in_srgb,var(--text)_20%,transparent)_transparent]">
+        <div className="cov-content-inner w-full max-w-[1220px] mx-auto p-[36px_24px_48px] flex flex-col gap-6 box-border max-[900px]:p-[24px_16px_48px] max-[900px]:gap-[18px] max-[640px]:p-[20px_14px_72px] max-[640px]:gap-4">
           {/* 1. Two-Column Hero Section with Info & Pricing on Left, Trailer on Right */}
           <CourseHeroSection
             course={course}
