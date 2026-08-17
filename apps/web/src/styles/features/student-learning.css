@@ -1,6 +1,7 @@
 /* Student home and learning library */
 .student-surface-main {
-  padding: 22px 25px 28px;
+  --student-surface-block-start: 22px;
+  padding: var(--student-surface-block-start) 25px 28px;
 }
 
 .student-home,
@@ -1166,7 +1167,8 @@
   }
 
   .student-surface-main {
-    padding: 20px 15px 30px;
+    --student-surface-block-start: 20px;
+    padding: var(--student-surface-block-start) 15px 30px;
   }
 
   .home-goal-summary {

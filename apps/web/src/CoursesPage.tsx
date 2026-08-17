@@ -49,6 +49,7 @@ import type {
   CourseSort,
 } from "./courses/catalogue";
 import { AcademyPaletteMenu } from "./shell/AcademyPaletteMenu";
+import { FloatingScrollbar } from "./shell/FloatingScrollbar";
 import { SidebarToggleIcon } from "./shell/SidebarToggleIcon";
 import {
   getDefaultNavigationOrder,
@@ -551,6 +552,7 @@ export function CoursesPage({
   const mobileAppearanceModeTriggerRef = useRef<HTMLButtonElement>(null);
   const mobilePaletteTriggerRef = useRef<HTMLButtonElement>(null);
   const navigationRef = useRef<HTMLElement>(null);
+  const mainScrollportRef = useRef<HTMLElement>(null);
   const mobileBottomNavRef = useRef<HTMLElement>(null);
   const mobileMoreRef = useRef<HTMLButtonElement>(null);
   const mobileSheetRef = useRef<HTMLElement>(null);
@@ -2912,6 +2914,7 @@ export function CoursesPage({
       )}
 
       <main
+        ref={mainScrollportRef}
         className={`courses-main ${renderMain ? "courses-main--learning" : page !== "explore-courses" ? "student-surface-main" : ""}${!renderMain && page === "settings" ? " courses-main--settings" : ""}`}
       >
         <>
@@ -3002,6 +3005,8 @@ export function CoursesPage({
           )}
         </>
       </main>
+
+      <FloatingScrollbar scrollportRef={mainScrollportRef} />
 
       {compactNavigation && (
         <nav

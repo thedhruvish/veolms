@@ -84,8 +84,56 @@
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
-    scrollbar-gutter: stable;
+    scrollbar-gutter: auto;
   }
+
+  :root[data-content-layout="framed"] .courses-main.student-surface-main {
+    --page-tabs-sticky-top: calc(-1 * var(--student-surface-block-start, 0px));
+  }
+
+  :root[data-content-layout="framed"] .courses-main {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  :root[data-content-layout="framed"] .courses-main::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+}
+
+.floating-scrollbar {
+  position: fixed;
+  z-index: 45;
+  top: var(--floating-scrollbar-top, 0);
+  right: var(--floating-scrollbar-right, 0);
+  width: 4px;
+  height: var(--floating-scrollbar-height, 0);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 160ms ease-out;
+}
+
+.floating-scrollbar.is-visible {
+  opacity: 1;
+}
+
+.floating-scrollbar__thumb {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 4px;
+  height: var(--floating-scrollbar-thumb-height, 40px);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 42%, transparent);
+  transform: translate3d(0, var(--floating-scrollbar-thumb-offset, 0), 0);
+  transition: background-color 150ms ease-out;
+}
+
+:root[data-hide-scrollbars="true"] .floating-scrollbar,
+:root:not([data-content-layout="framed"]) .floating-scrollbar {
+  display: none;
 }
 
 .courses-sidebar__brand {
