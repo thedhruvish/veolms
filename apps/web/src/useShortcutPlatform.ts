@@ -11,13 +11,19 @@ import type {
   ShortcutPlatformPreference,
 } from "./keyboardShortcuts";
 
-export function useShortcutPlatformPreference(): ShortcutPlatformPreference {
+interface ShortcutPlatformPreferenceState {
+  preference: ShortcutPlatformPreference;
+  ready: boolean;
+}
+
+function useShortcutPlatformPreferenceState(): ShortcutPlatformPreferenceState {
   // Keep the prerendered markup and the first client render identical. Reading
   // localStorage during the state initializer can otherwise change shortcut
   // labels (for example Ctrl to Command) before React has hydrated the page.
   const [preference, setPreference] = useState<ShortcutPlatformPreference>(
     SHORTCUT_PLATFORM_PREFERENCE_DEFAULT,
   );
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const syncPreference = () =>
@@ -27,6 +33,7 @@ export function useShortcutPlatformPreference(): ShortcutPlatformPreference {
     };
 
     syncPreference();
+    setReady(true);
     window.addEventListener(SHORTCUT_PLATFORM_PREFERENCE_EVENT, syncPreference);
     window.addEventListener("storage", syncStoredPreference);
     return () => {
@@ -38,12 +45,18 @@ export function useShortcutPlatformPreference(): ShortcutPlatformPreference {
     };
   }, []);
 
-  return preference;
+  return { preference, ready };
+}
+
+export function useShortcutPlatformPreference(): ShortcutPlatformPreference {
+  return useShortcutPlatformPreferenceState().preference;
 }
 
 export function useShortcutPlatform(): ShortcutPlatform {
-  const preference = useShortcutPlatformPreference();
-  // Explicit preferences are authoritative as soon as they hydrate; system
-  // detection is only needed for the follow-system setting.
-  return resolveShortcutPlatform(preference);
+  const { preference, ready } = useShortcutPlatformPreferenceState();
+  // Keep the server-safe snapshot until storage restoration completes. This
+  // prevents a saved override from briefly rendering the opposite shortcut
+  // platform during hydration. Explicit preferences become authoritative once
+  // the preference state is ready; follow-system then detects the runtime OS.
+  return ready ? resolveShortcutPlatform(preference) : "windows";
 }
