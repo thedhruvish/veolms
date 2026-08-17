@@ -147,7 +147,7 @@ export function SidebarSettings({
   const layout = preferences.contentLayout || "framed";
   const sidebarMaxWidth = normalizeSidebarMaxWidth(preferences.sidebarMaxWidth);
   const headerLayout =
-    preferences.headerLayout === "inline" ? "inline" : "fixed";
+    preferences.headerLayout === "fixed" ? "fixed" : "inline";
   const dockItems = normalizeSidebarDockItems(preferences.dockItems);
   const dockOrder = normalizeSidebarDockOrder(preferences.dockOrder);
   const orderedDockOptions = dockOrder.map((item) =>

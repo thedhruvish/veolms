@@ -47,12 +47,25 @@ describe("page tab color preferences", () => {
     );
     expect(document.documentElement.dataset.sidebarMenuElevation).toBe("true");
     expect(document.documentElement.dataset.contentLayout).toBe("edge-to-edge");
+    expect(document.documentElement.dataset.sidebarHeaderLayout).toBe("inline");
   });
 
   it("defaults missing and unsupported values to following the sidebar", () => {
     expect(readPageTabColors()).toBe(PAGE_TAB_COLORS_DEFAULT);
     expect(normalizePageTabColors("unsupported")).toBe("follow-sidebar");
     expect(normalizePageTabColors(null)).toBe("follow-sidebar");
+  });
+
+  it("preserves a fixed header after the new default migration is current", () => {
+    localStorage.setItem("veolms-sidebar-header-default-version", "inline-v1");
+    localStorage.setItem(
+      "veolms-sidebar-preferences",
+      JSON.stringify({ headerLayout: "fixed" }),
+    );
+
+    window.eval(getSurfaceDepthBootstrapScript());
+
+    expect(document.documentElement.dataset.sidebarHeaderLayout).toBe("fixed");
   });
 
   it.each(["follow-sidebar", "multicolor", "monochrome"] as const)(
@@ -81,10 +94,9 @@ describe("sidebar width preferences", () => {
 });
 
 describe("sidebar dock preferences", () => {
-  it("defaults to the four appearance controls in the requested order", () => {
+  it("defaults to mode, reading, and fullscreen controls", () => {
     expect(normalizeSidebarDockItems(undefined)).toEqual([
       "appearance",
-      "theme",
       "reading-mode",
       "fullscreen",
     ]);

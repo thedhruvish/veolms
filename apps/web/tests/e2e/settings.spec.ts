@@ -359,6 +359,7 @@ test("appearance and sidebar preferences persist through their direct settings r
     "monochrome",
   );
 
+  await page.locator(".settings-deferred-sentinel").scrollIntoViewIfNeeded();
   const randomTheme = page.getByRole("switch", {
     name: "Random theme on app open",
   });
@@ -448,11 +449,11 @@ test("appearance and sidebar preferences persist through their direct settings r
   const sidebarAppearance = page
     .getByRole("complementary", { name: "Student navigation" })
     .getByRole("group", { name: "Appearance controls" });
-  await expect(themeDockControl).toHaveAttribute("aria-checked", "true");
+  await expect(themeDockControl).toHaveAttribute("aria-checked", "false");
   await expect(readingModeDockControl).toBeEnabled();
   await expect(readingModeDockControl).toHaveAttribute("aria-checked", "true");
-  await expect(page.getByText("4 visible")).toBeVisible();
-  await expect(sidebarThemePicker).toBeVisible();
+  await expect(page.getByText("3 visible")).toBeVisible();
+  await expect(sidebarThemePicker).toHaveCount(0);
 
   await expect
     .poll(() =>
@@ -462,7 +463,7 @@ test("appearance and sidebar preferences persist through their direct settings r
         ),
       ),
     )
-    .toEqual(["appearance", "theme", "reading-mode", "fullscreen"]);
+    .toEqual(["appearance", "reading-mode", "fullscreen"]);
 
   const readingModeReorderHandle = page.getByRole("button", {
     name: "Reorder Reading mode",
@@ -510,7 +511,7 @@ test("appearance and sidebar preferences persist through their direct settings r
         ),
       ),
     )
-    .toEqual(["appearance", "reading-mode", "theme", "fullscreen"]);
+    .toEqual(["appearance", "reading-mode", "fullscreen"]);
 
   const settingsDockControl = page.getByRole("switch", {
     name: "Show Settings in sidebar dock",
@@ -543,7 +544,7 @@ test("appearance and sidebar preferences persist through their direct settings r
   await page.mouse.up();
 
   await expect(settingsDockControl).toHaveAttribute("aria-checked", "true");
-  await expect(page.getByText("5 visible")).toBeVisible();
+  await expect(page.getByText("4 visible")).toBeVisible();
   await expect(
     page
       .getByRole("complementary", { name: "Student navigation" })
@@ -560,7 +561,7 @@ test("appearance and sidebar preferences persist through their direct settings r
         ),
       ),
     )
-    .toEqual(["appearance", "reading-mode", "theme", "settings", "fullscreen"]);
+    .toEqual(["appearance", "reading-mode", "settings", "fullscreen"]);
 
   await page
     .getByRole("complementary", { name: "Student navigation" })
@@ -573,7 +574,7 @@ test("appearance and sidebar preferences persist through their direct settings r
   await expect(page).toHaveURL(/\/settings\/sidebar$/);
 
   await settingsDockControl.click();
-  await expect(page.getByText("4 visible")).toBeVisible();
+  await expect(page.getByText("3 visible")).toBeVisible();
   await expect(
     page
       .getByRole("complementary", { name: "Student navigation" })
@@ -581,11 +582,16 @@ test("appearance and sidebar preferences persist through their direct settings r
   ).toBeVisible();
 
   await fullscreenDockControl.click();
-  await expect(page.getByText("3 visible")).toBeVisible();
+  await expect(page.getByText("2 visible")).toBeVisible();
 
+  await themeDockControl.click();
+  await expect(themeDockControl).toHaveAttribute("aria-checked", "true");
+  await expect(sidebarThemePicker).toBeVisible();
+  await expect(page.getByText("3 visible")).toBeVisible();
   await themeDockControl.click();
   await expect(themeDockControl).toHaveAttribute("aria-checked", "false");
   await expect(sidebarThemePicker).toHaveCount(0);
+  await expect(page.getByText("2 visible")).toBeVisible();
   await sidebarAppearance
     .getByRole("button", { name: /mode active\. Switch/ })
     .click({ button: "right" });
@@ -625,6 +631,12 @@ test("appearance and sidebar preferences persist through their direct settings r
   const fixedHeader = page.getByRole("switch", {
     name: "Fixed collapse control",
   });
+  await expect(fixedHeader).toHaveAttribute("aria-checked", "false");
+  await fixedHeader.click();
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-sidebar-header-layout",
+    "fixed",
+  );
   await fixedHeader.click();
   await expect(page.locator("html")).toHaveAttribute(
     "data-sidebar-header-layout",

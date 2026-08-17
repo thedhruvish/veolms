@@ -462,7 +462,7 @@ export function CoursesPage({
     PAGE_TAB_COLORS_DEFAULT,
   );
   const sidebarHeaderLayout =
-    sidebarPreferences.headerLayout === "inline" ? "inline" : "fixed";
+    sidebarPreferences.headerLayout === "fixed" ? "fixed" : "inline";
   const selectedSidebarDockItems = normalizeSidebarDockItems(
     sidebarPreferences.dockItems,
   );
@@ -699,7 +699,7 @@ export function CoursesPage({
     document.documentElement.dataset.contentLayout =
       next.contentLayout || "framed";
     document.documentElement.dataset.sidebarHeaderLayout =
-      next.headerLayout === "inline" ? "inline" : "fixed";
+      next.headerLayout === "fixed" ? "fixed" : "inline";
     document.documentElement.dataset.collapsedTooltips = String(
       next.showCollapsedLabels !== false,
     );
