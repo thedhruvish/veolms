@@ -5,6 +5,7 @@
   "scripts": {
     "build": "react-router build",
     "dev": "react-router dev",
+    "generate:reading-mode-texture": "node scripts/generate-reading-mode-texture.mjs",
     "preview": "vite preview --outDir build/client",
     "routes": "react-router routes",
     "typegen": "react-router typegen",
