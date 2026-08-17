@@ -19,6 +19,7 @@
 .courses-app--hidden {
   grid-template-columns: minmax(0, 1fr);
   gap: 0;
+  padding-left: 14px;
 }
 
 .courses-sidebar,
