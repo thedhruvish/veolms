@@ -121,7 +121,7 @@ test("page tabs pin beneath the shell edge while the framed surface uses only a 
     ).toHaveCount(1);
     await expect(
       floatingScrollbar.locator(":scope > .floating-scrollbar__thumb"),
-    ).toHaveCSS("width", "5px");
+    ).toHaveCSS("width", "6px");
     await expect(floatingScrollbar).toHaveCSS("cursor", "auto");
     await expect(
       floatingScrollbar.locator(":scope > .floating-scrollbar__thumb"),
@@ -148,6 +148,12 @@ test("page tabs pin beneath the shell edge while the framed surface uses only a 
           (mainBounds!.x + mainBounds!.width),
       ),
     ).toBeLessThan(0.5);
+    expect(trackBounds!.y - mainBounds!.y).toBeGreaterThanOrEqual(17.5);
+    expect(
+      mainBounds!.y +
+        mainBounds!.height -
+        (trackBounds!.y + trackBounds!.height),
+    ).toBeGreaterThanOrEqual(17.5);
 
     const thumb = floatingScrollbar.locator(
       ":scope > .floating-scrollbar__thumb",
@@ -262,6 +268,10 @@ test("the framed learning scrollbar clears content at compact and wide desktop s
           curriculum,
           "::-webkit-scrollbar-thumb",
         );
+        const curriculumTrack = getComputedStyle(
+          curriculum,
+          "::-webkit-scrollbar-track",
+        );
         const mainThumbStyle = getComputedStyle(mainThumb);
         return {
           curriculumCursor: getComputedStyle(curriculum).cursor,
@@ -269,6 +279,7 @@ test("the framed learning scrollbar clears content at compact and wide desktop s
           curriculumThumbBorderWidth: Number.parseFloat(
             curriculumThumb.borderTopWidth,
           ),
+          curriculumTrackInset: Number.parseFloat(curriculumTrack.marginTop),
           curriculumWidth: Number.parseFloat(curriculumScrollbar.width),
           mainThumbBackground: mainThumbStyle.backgroundColor,
           mainThumbCursor: mainThumbStyle.cursor,
@@ -276,8 +287,8 @@ test("the framed learning scrollbar clears content at compact and wide desktop s
         };
       });
       expect(matchingScrollbarStyles).not.toBeNull();
-      expect(matchingScrollbarStyles!.curriculumWidth).toBeCloseTo(5, 1);
-      expect(matchingScrollbarStyles!.mainThumbWidth).toBeCloseTo(5, 1);
+      expect(matchingScrollbarStyles!.curriculumWidth).toBeCloseTo(6, 1);
+      expect(matchingScrollbarStyles!.mainThumbWidth).toBeCloseTo(6, 1);
       expect(matchingScrollbarStyles!.curriculumWidth).toBeCloseTo(
         matchingScrollbarStyles!.mainThumbWidth,
         1,
@@ -286,6 +297,7 @@ test("the framed learning scrollbar clears content at compact and wide desktop s
         matchingScrollbarStyles!.mainThumbBackground,
       );
       expect(matchingScrollbarStyles!.curriculumThumbBorderWidth).toBe(0);
+      expect(matchingScrollbarStyles!.curriculumTrackInset).toBeCloseTo(14, 1);
       expect(matchingScrollbarStyles!.curriculumCursor).toBe("auto");
       expect(matchingScrollbarStyles!.mainThumbCursor).toBe("auto");
     }

@@ -910,6 +910,8 @@ html:has(.settings-profile__privacy-dialog[open]) {
 }
 
 .settings-profile__privacy-dialog {
+  --scrollbar-track-block-inset: 16px;
+
   position: fixed;
   inset: 0;
   width: min(calc(100vw - 32px), 470px);

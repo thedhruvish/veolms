@@ -155,7 +155,7 @@
   position: absolute;
   top: 0;
   right: 0;
-  width: var(--scrollbar-thumb-size, 5px);
+  width: var(--scrollbar-thumb-size, 6px);
   height: var(--floating-scrollbar-thumb-height, 40px);
   border-radius: 999px;
   background: var(

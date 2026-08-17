@@ -2,7 +2,8 @@
    nested scrollports. The transparent channel leaves only a mobile-like thumb
    visible, while component-level scrollbar-none rules remain authoritative. */
 :root {
-  --scrollbar-thumb-size: 5px;
+  --scrollbar-thumb-size: 6px;
+  --scrollbar-track-block-inset: 8px;
   --scrollbar-thumb-color: color-mix(in srgb, var(--accent) 58%, transparent);
   --scrollbar-thumb-hover-color: color-mix(
     in srgb,
@@ -28,6 +29,10 @@ html,
 ::-webkit-scrollbar-track-piece,
 ::-webkit-scrollbar-corner {
   background: transparent;
+}
+
+::-webkit-scrollbar-track {
+  margin-block: var(--scrollbar-track-block-inset);
 }
 
 ::-webkit-scrollbar-thumb {
