@@ -404,10 +404,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   // Extras Step state
   const [extras, setExtras] = useState<ExtrasState>({
     inclusions: [
-      { id: "inc-1", text: "Downloadable resources" },
-      { id: "inc-2", text: "Certificate of completion" },
-      { id: "inc-3", text: "Lifetime access" },
-      { id: "inc-4", text: "Lifetime updates" },
+      { id: "inc-1", text: "Full lifetime access" },
+      { id: "inc-2", text: "Downloadable resources" },
+      { id: "inc-3", text: "Access on all devices" },
     ],
     enableCertificate: true,
     certificateTemplate: "purple-certificate",
@@ -948,19 +947,28 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
           },
         ];
 
+  const rawInclusions = extras.inclusions
+    .map((inc) => inc.text.trim())
+    .filter((text) => text.length > 0);
+
+  // If certificate toggle is enabled in Card 1, include "Certificate of completion"
+  const nonCertInclusions = rawInclusions.filter(
+    (text) => !/certificate of completion/i.test(text),
+  );
+
+  const previewInclusions: string[] = [
+    ...(extras.enableCertificate ? ["Certificate of completion"] : []),
+    ...nonCertInclusions,
+  ];
+
   const previewIncludes: CourseInclude[] = [
-    { icon: Stack, label: `${Math.max(1, totalSections)} Sections` },
-    { icon: BookOpen, label: `${Math.max(1, totalLessons)} Lectures` },
-    { icon: Clock, label: `${computedDuration} On-demand content` },
     ...(extras.enableCertificate
       ? [{ icon: Certificate, label: "Certificate of completion" }]
       : []),
-    ...extras.inclusions
-      .filter((inc) => inc.text.trim().length > 0)
-      .map((inc) => ({
-        icon: CheckCircle,
-        label: inc.text.trim(),
-      })),
+    ...nonCertInclusions.map((text) => ({
+      icon: CheckCircle,
+      label: text,
+    })),
   ];
 
   const previewPricing: CourseOverviewPricingProps =
@@ -3297,7 +3305,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   customCourse={previewCourse}
                   customDescription={courseDescription}
                   customSections={previewSections}
-                  customIncludes={previewIncludes}
+                  customInclusions={previewInclusions}
                   customPricing={previewPricing}
                   isReadOnlyPreview={true}
                   onNavigateCourses={() => setIsPreviewModalOpen(false)}
