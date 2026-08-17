@@ -61,7 +61,7 @@ test("framed layout scrolls inside its main surface while edge-to-edge uses the 
     .toBeGreaterThan(300);
 });
 
-test("page tabs pin flush while the framed surface uses only a floating thumb", async ({
+test("page tabs pin beneath the shell edge while the framed surface uses only a floating thumb", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1133, height: 753 });
@@ -92,6 +92,20 @@ test("page tabs pin flush while the framed surface uses only a floating thumb", 
       .toBeLessThan(0.5);
 
     await expect(tabs).toBeVisible();
+    const shellLayering = await page
+      .locator(".courses-app")
+      .evaluate((app, selector) => {
+        const tabList = document.querySelector(selector);
+        if (!tabList) return null;
+        return {
+          edgeShadow: getComputedStyle(app, "::after").boxShadow,
+          edgeZIndex: Number(getComputedStyle(app, "::after").zIndex),
+          tabZIndex: Number(getComputedStyle(tabList).zIndex),
+        };
+      }, tabSelector);
+    expect(shellLayering).not.toBeNull();
+    expect(shellLayering!.edgeShadow).not.toBe("none");
+    expect(shellLayering!.edgeZIndex).toBeGreaterThan(shellLayering!.tabZIndex);
     await expect(floatingScrollbar).toHaveClass(/is-visible/);
     await expect(
       floatingScrollbar.locator(":scope > .floating-scrollbar__thumb"),
