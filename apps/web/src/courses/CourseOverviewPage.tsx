@@ -783,9 +783,25 @@ export function CourseOverviewPage({
   const aboutExtra = `By the end of this course, you will have built complete production-ready projects, learned testing and deployment workflows, and acquired the professional skill set needed for industry roles.`;
 
   return (
-    <div className="cov-page w-full h-[calc(100vh-28px)] max-h-[calc(100vh-28px)] p-0 text-[var(--text)] bg-[color-mix(in_srgb,var(--surface)_18%,var(--canvas))] rounded-[18px] box-border overflow-hidden flex flex-col max-[640px]:h-full max-[640px]:rounded-none">
-      <div className="cov-scroll-container flex-[1_1_auto] min-h-0 w-full overflow-y-auto overflow-x-hidden box-border [scrollbar-width:thin] [scrollbar-color:color-mix(in_srgb,var(--text)_20%,transparent)_transparent]">
-        <div className="cov-content-inner w-full max-w-[1220px] mx-auto p-[36px_24px_48px] flex flex-col gap-6 box-border max-[900px]:p-[24px_16px_48px] max-[900px]:gap-[18px] max-[640px]:p-[20px_14px_72px] max-[640px]:gap-4">
+    <div
+      className={`w-full p-0 text-[var(--text)] box-border overflow-hidden flex flex-col ${
+        isReadOnlyPreview
+          ? "h-full min-h-full max-h-none rounded-none bg-transparent"
+          : "h-[calc(100vh-28px)] max-h-[calc(100vh-28px)] rounded-[18px] bg-[color-mix(in_srgb,var(--surface)_18%,var(--canvas))] max-[640px]:h-full max-[640px]:rounded-none"
+      }`}
+    >
+      <div
+        className={`flex-[1_1_auto] min-h-0 w-full overflow-y-auto overflow-x-hidden box-border [scrollbar-width:thin] [scrollbar-color:color-mix(in_srgb,var(--text)_20%,transparent)_transparent] ${
+          isReadOnlyPreview ? "h-full" : ""
+        }`}
+      >
+        <div
+          className={`w-full max-w-[1220px] mx-auto flex flex-col gap-6 box-border ${
+            isReadOnlyPreview
+              ? "p-[36px_24px_48px] max-[900px]:p-[24px_16px_48px] max-[900px]:gap-[18px] max-[640px]:p-[16px_14px_40px] max-[640px]:gap-4"
+              : "p-[36px_24px_48px] max-[900px]:p-[24px_16px_48px] max-[900px]:gap-[18px] max-[640px]:p-[20px_14px_72px] max-[640px]:gap-4"
+          }`}
+        >
           {/* 1. Two-Column Hero Section with Info & Pricing on Left, Trailer on Right */}
           <CourseHeroSection
             course={course}
