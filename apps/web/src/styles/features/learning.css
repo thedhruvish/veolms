@@ -91,15 +91,26 @@
   background: rgba(7, 12, 22, 0.64);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
   backdrop-filter: blur(5px);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
   transition:
-    color 160ms ease,
+    opacity 160ms ease,
     background-color 160ms ease,
-    box-shadow 160ms ease;
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.learning-workspace__player-wrap:hover .learning-workspace__curriculum-toggle,
+.learning-workspace__curriculum-toggle:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
 }
 
 .learning-workspace__curriculum-toggle:hover,
 .learning-workspace__curriculum-toggle:focus-visible {
-  color: var(--accent-ink, var(--accent));
+  color: white;
   background: rgba(7, 12, 22, 0.84);
   box-shadow:
     0 12px 28px rgba(0, 0, 0, 0.24),
@@ -174,7 +185,8 @@
 }
 
 @media (hover: none), (pointer: coarse) {
-  .learning-workspace__back {
+  .learning-workspace__back,
+  .learning-workspace__curriculum-toggle {
     opacity: 1;
     pointer-events: auto;
     transform: none;
