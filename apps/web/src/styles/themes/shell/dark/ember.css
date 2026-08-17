@@ -1,0 +1,13 @@
+:root[data-palette="ember"] {
+  --app-shell: #171412;
+  --main-surface: #27211d;
+  --canvas: #1c1815;
+  --header: #1b1714;
+  --surface: #322a25;
+  --surface-strong: #3a302a;
+  --hover: #40342d;
+  --selected: #493025;
+  --track: #251f1b;
+  --border: transparent;
+  --border-strong: transparent;
+}

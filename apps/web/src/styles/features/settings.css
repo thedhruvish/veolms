@@ -1,6 +1,0 @@
-/* Settings route compatibility entrypoint. Import the section that matches the
-   settings panel being rendered so future panels can own their styles. */
-@import "./settings/foundation.css";
-@import "./settings/learning.css";
-@import "./settings/profile.css";
-@import "./settings/responsive.css";

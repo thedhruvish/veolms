@@ -1,0 +1,13 @@
+:root[data-theme="light"][data-palette="sunlit"] {
+  --app-shell: #e9e6d9;
+  --main-surface: #faf8ef;
+  --canvas: #f2efe3;
+  --header: #edeade;
+  --surface: #fffefa;
+  --surface-strong: #f5f0dc;
+  --hover: #eee8d3;
+  --selected: #f3e8b9;
+  --track: #e5dfca;
+  --border: transparent;
+  --border-strong: transparent;
+}

@@ -1,4 +1,3 @@
-import "../styles/features/learning.css";
 import { ArrowLeft } from "@phosphor-icons/react/ArrowLeft";
 import {
   useCallback,
@@ -21,7 +20,6 @@ import {
   getInitialAcademyTheme,
   persistAcademyTheme,
 } from "../themes";
-import { applyAcademyThemeStylesheet } from "../themeStylesheet";
 import { courseVideos, lessonsById, lessonVideoMap } from "./courseContent";
 import { Curriculum } from "./Curriculum";
 import { getCourseThumbnail, getCourseTitle } from "./courseMetadata";
@@ -426,7 +424,7 @@ export function LearningWorkspace({
   }, [theme]);
 
   useEffect(() => {
-    void applyAcademyThemeStylesheet(academyTheme);
+    document.documentElement.dataset.palette = academyTheme;
     persistAcademyTheme(academyTheme);
   }, [academyTheme]);
 

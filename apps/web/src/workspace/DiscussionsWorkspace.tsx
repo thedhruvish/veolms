@@ -1,4 +1,3 @@
-import "../styles/features/workspace.css";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ArrowRight } from "@phosphor-icons/react/ArrowRight";

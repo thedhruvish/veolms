@@ -1,4 +1,3 @@
-import "../styles/features/learning.css";
 import { CaretDown } from "@phosphor-icons/react/CaretDown";
 import { CaretRight } from "@phosphor-icons/react/CaretRight";
 import { Check } from "@phosphor-icons/react/Check";
@@ -8,7 +7,7 @@ import { Play } from "@phosphor-icons/react/Play";
 import { X } from "@phosphor-icons/react/X";
 import React, { useEffect, useRef, useState } from "react";
 import { lessonsById, sections } from "./courseContent";
-import { IconButton } from "../ui/IconButton";
+import { IconButton } from "./IconButton";
 import {
   isStoredBoolean,
   isStoredString,

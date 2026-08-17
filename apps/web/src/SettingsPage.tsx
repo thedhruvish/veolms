@@ -1,4 +1,3 @@
-import "./styles/features/settings.css";
 import { Bell } from "@phosphor-icons/react/Bell";
 import { GearSix } from "@phosphor-icons/react/GearSix";
 import { GraduationCap } from "@phosphor-icons/react/GraduationCap";

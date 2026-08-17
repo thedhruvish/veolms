@@ -1,0 +1,19 @@
+:root[data-theme="light"][data-palette="barbie"] {
+  --canvas: #fff0f8;
+  --header: #fffdfd;
+  --surface: #ffffff;
+  --hover: #ffe4f2;
+  --selected: #ffd7eb;
+  --track: #f2d9e7;
+  --border: #ecc7db;
+  --border-strong: #d89abf;
+  --text: #2d0b21;
+  --text-secondary: #63334e;
+  --muted: #895d76;
+  --accent: #be216d;
+  --accent-hover: #a9195c;
+  --accent-soft: rgba(190, 33, 109, 0.12);
+  --accent-border: rgba(190, 33, 109, 0.3);
+  --accent-shadow: rgba(169, 25, 92, 0.17);
+  --on-accent: #ffffff;
+}

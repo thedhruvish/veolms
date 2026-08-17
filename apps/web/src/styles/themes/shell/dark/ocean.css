@@ -1,0 +1,13 @@
+:root[data-palette="ocean"] {
+  --app-shell: #12151a;
+  --main-surface: #1e242d;
+  --canvas: #171b22;
+  --header: #161a20;
+  --surface: #282f39;
+  --surface-strong: #303843;
+  --hover: #333d49;
+  --selected: #293b58;
+  --track: #1d232c;
+  --border: transparent;
+  --border-strong: transparent;
+}

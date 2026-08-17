@@ -1,0 +1,19 @@
+:root[data-palette="signal"] {
+  --canvas: #17090d;
+  --header: #14080c;
+  --surface: #251116;
+  --hover: #351821;
+  --selected: #4d1a27;
+  --track: #2b141b;
+  --border: #48202a;
+  --border-strong: #71303e;
+  --text: #fff7f8;
+  --text-secondary: #f3d9de;
+  --muted: #c9a3ac;
+  --accent: #d92d4e;
+  --accent-hover: #c52343;
+  --accent-soft: rgba(217, 45, 78, 0.16);
+  --accent-border: rgba(217, 45, 78, 0.42);
+  --accent-shadow: rgba(181, 23, 58, 0.26);
+  --on-accent: #ffffff;
+}

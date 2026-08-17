@@ -1,0 +1,13 @@
+:root[data-theme="light"][data-palette="rose"] {
+  --app-shell: #ebe2e5;
+  --main-surface: #faf3f5;
+  --canvas: #f2eaed;
+  --header: #eee6e9;
+  --surface: #fffdfd;
+  --surface-strong: #f6eaee;
+  --hover: #f0e3e8;
+  --selected: #f5dce5;
+  --track: #e7dce0;
+  --border: transparent;
+  --border-strong: transparent;
+}

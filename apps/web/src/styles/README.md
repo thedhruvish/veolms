@@ -1,20 +1,15 @@
-# Styles architecture
+# Web CSS structure
 
-The academy stylesheet is intentionally layered:
+`full-app.css` remains the single application stylesheet. It imports
+`styles.css`, then `shell-theme.css`, then reading-mode CSS in the same
+cascade order used before the modular split.
 
-- `core.css` and `theme-contract.css` are the common foundation loaded by the
-  app shell.
-- `themes/<id>.css` contains only that palette's semantic tokens. The active
-  palette is loaded as a single stylesheet by `themeStylesheet.ts`; the other
-  palettes are not requested by the browser.
-- `shell/` contains navigation and app-shell styles. The smaller files are
-  imported in order by `shell/shell.css`.
-- `features/` owns route or feature styles. A route component imports its
-  feature entrypoint so Vite can keep that CSS in the route chunk.
-- `global/surface-effects.css` contains cross-route surface behavior.
+- `base/` contains global tokens, resets, and shared controls.
+- `features/` contains page- and feature-owned rules.
+- `shell/` contains navigation, shell controls, cards, and responsive shell rules.
+- `themes/` contains theme declarations grouped by their original cascade stage.
+- `global/` contains app-wide behavior that must remain late in the cascade.
 
-Keep new selectors close to the component or feature that owns them. Use
-Tailwind utilities for one-off layout and spacing, and promote a repeated
-utility composition into `src/ui` when it appears in more than one feature.
-The compatibility entrypoints (`styles.css` and `shell-theme.css`) remain for
-legacy imports, but new code should import the smallest relevant module.
+All modules are intentionally imported globally for now. Do not move imports into
+React components or reorder the entrypoints without visual-regression coverage;
+the existing UI relies on the established cascade.

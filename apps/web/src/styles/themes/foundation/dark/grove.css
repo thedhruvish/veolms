@@ -1,0 +1,19 @@
+:root[data-palette="grove"] {
+  --canvas: #07100b;
+  --header: #060e09;
+  --surface: #0d1912;
+  --hover: #13251a;
+  --selected: #123d24;
+  --track: #13291c;
+  --border: #1d3a29;
+  --border-strong: #315b43;
+  --text: #f3fff8;
+  --text-secondary: #d8eee2;
+  --muted: #9fbea9;
+  --accent: #4dda85;
+  --accent-hover: #3dcb75;
+  --accent-soft: rgba(77, 218, 133, 0.16);
+  --accent-border: rgba(77, 218, 133, 0.42);
+  --accent-shadow: rgba(77, 218, 133, 0.22);
+  --on-accent: #052012;
+}

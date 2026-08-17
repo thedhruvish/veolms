@@ -1,0 +1,19 @@
+:root[data-palette="lilac"] {
+  --canvas: #1d1823;
+  --header: #1c171f;
+  --surface: #32283c;
+  --hover: #443750;
+  --selected: #493760;
+  --track: #241d2a;
+  --border: #493b56;
+  --border-strong: #6b587b;
+  --text: #fff8ff;
+  --text-secondary: #eadbef;
+  --muted: #bea9c5;
+  --accent: #c18cff;
+  --accent-hover: #d0a6ff;
+  --accent-soft: rgba(193, 140, 255, 0.16);
+  --accent-border: rgba(193, 140, 255, 0.42);
+  --accent-shadow: rgba(151, 84, 219, 0.28);
+  --on-accent: #21102f;
+}

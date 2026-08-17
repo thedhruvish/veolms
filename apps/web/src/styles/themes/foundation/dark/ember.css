@@ -1,0 +1,19 @@
+:root[data-palette="ember"] {
+  --canvas: #100b08;
+  --header: #0e0907;
+  --surface: #1a120e;
+  --hover: #271a13;
+  --selected: #3a1d0a;
+  --track: #2b1c14;
+  --border: #3a261b;
+  --border-strong: #59402f;
+  --text: #fff8f3;
+  --text-secondary: #f1ddd1;
+  --muted: #c4a996;
+  --accent: #ff8a34;
+  --accent-hover: #f27a24;
+  --accent-soft: rgba(255, 138, 52, 0.16);
+  --accent-border: rgba(255, 138, 52, 0.42);
+  --accent-shadow: rgba(255, 138, 52, 0.24);
+  --on-accent: #241004;
+}

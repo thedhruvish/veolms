@@ -1,0 +1,20 @@
+/* Additional academy palettes retain the same semantic tokens in both modes. */
+:root[data-palette="codex"] {
+  --canvas: #0d0d0f;
+  --header: #111113;
+  --surface: #1b1b1d;
+  --hover: #27272a;
+  --selected: #303034;
+  --track: #19191b;
+  --border: #2a2a2e;
+  --border-strong: #45454a;
+  --text: #f4f4f5;
+  --text-secondary: #d8d8dc;
+  --muted: #a4a4aa;
+  --accent: #f4f4f5;
+  --accent-hover: #e5e5e8;
+  --accent-soft: rgba(244, 244, 245, 0.14);
+  --accent-border: rgba(244, 244, 245, 0.36);
+  --accent-shadow: rgba(0, 0, 0, 0.3);
+  --on-accent: #171719;
+}

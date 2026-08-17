@@ -1,8 +1,0 @@
-/* Shell compatibility entrypoint. Keep shell sections independently editable
-   and importable while preserving the original cascade order. */
-@import "./foundation.css";
-@import "./navigation.css";
-@import "./compact.css";
-@import "./controls.css";
-@import "./cards.css";
-@import "./responsive.css";

@@ -357,7 +357,10 @@
 /* Graphite Studio keeps discussion copy readable on the same raised neutral
    surfaces used by the student home cards. Accent color is reserved for
    selection, actions, and status—not the message-card fill. */
-
+:root[data-theme="dark"][data-palette="graphite"]
+  .courses-app:has(.discussion-hub) {
+  --muted: #b5bbb7;
+}
 
 .discussion-hub__header {
   display: flex;

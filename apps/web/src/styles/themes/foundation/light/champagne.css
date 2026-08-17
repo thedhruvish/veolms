@@ -1,0 +1,19 @@
+:root[data-theme="light"][data-palette="champagne"] {
+  --canvas: #f3eee4;
+  --header: #eee8dc;
+  --surface: #fffdf9;
+  --hover: #ece2d0;
+  --selected: #f2e3bd;
+  --track: #e5dccb;
+  --border: #ddd0ba;
+  --border-strong: #b9a584;
+  --text: #261f15;
+  --text-secondary: #554b3c;
+  --muted: #766b5a;
+  --accent: #896312;
+  --accent-hover: #735109;
+  --accent-soft: rgba(137, 99, 18, 0.12);
+  --accent-border: rgba(137, 99, 18, 0.3);
+  --accent-shadow: rgba(115, 81, 9, 0.16);
+  --on-accent: #ffffff;
+}

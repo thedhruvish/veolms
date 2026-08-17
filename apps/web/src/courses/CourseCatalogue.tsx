@@ -1,4 +1,3 @@
-import "../styles/features/courses.css";
 import { ArrowsDownUp } from "@phosphor-icons/react/ArrowsDownUp";
 import { Funnel } from "@phosphor-icons/react/Funnel";
 import { Heart } from "@phosphor-icons/react/Heart";
