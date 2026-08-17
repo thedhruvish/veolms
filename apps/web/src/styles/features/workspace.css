@@ -257,20 +257,26 @@
 }
 
 .workspace-signout {
+  display: grid;
+  width: min(100%, 620px);
   min-width: 0;
+  gap: 16px;
   border-radius: 16px;
+  padding: clamp(22px, 5vw, 42px);
   background: var(--surface);
   box-shadow: var(--card-shadow);
+  text-align: center;
 }
 
 .workspace-signout__icon {
   display: inline-flex;
-  width: 40px;
-  height: 40px;
+  width: 54px;
+  height: 54px;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
+  justify-self: center;
+  border-radius: 17px;
   color: var(--accent-ink, var(--accent));
   background: var(--accent-soft);
 }
@@ -278,19 +284,6 @@
   display: grid;
   min-height: min(580px, calc(100vh - 80px));
   place-items: center;
-}
-.workspace-signout {
-  width: min(100%, 620px);
-  display: grid;
-  gap: 16px;
-  padding: clamp(22px, 5vw, 42px);
-  text-align: center;
-}
-.workspace-signout__icon {
-  justify-self: center;
-  width: 54px;
-  height: 54px;
-  border-radius: 17px;
 }
 .workspace-signout p {
   margin-right: auto;
@@ -1124,10 +1117,6 @@
     align-items: center;
     gap: 8px 12px;
   }
-  .discussion-thread__more {
-    grid-column: 3;
-    grid-row: 1;
-  }
   .discussion-thread__body {
     grid-column: 2 / -1;
     grid-row: 1;
@@ -1204,5 +1193,18 @@
   }
   .discussion-side-card {
     padding: 15px;
+  }
+}
+
+@media (max-width: 820px) {
+  .student-surface-main > :is(.discussion-hub, .workspace-page) {
+    padding: 0;
+  }
+
+  .student-surface-main > .discussion-hub .discussion-hub__tabs {
+    margin-right: 0;
+    margin-left: 0;
+    padding-right: 0;
+    padding-left: 0;
   }
 }

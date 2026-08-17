@@ -1,6 +1,8 @@
 import { test, expect } from "./app.fixture.ts";
 import { expectStoredValue, installBaselineState, openApp } from "./support.ts";
 
+const LEARNING_DESKTOP_VIEWPORT = { width: 1424, height: 678 } as const;
+
 test.beforeEach(async ({ page }) => {
   await installBaselineState(page);
 });
@@ -8,7 +10,7 @@ test.beforeEach(async ({ page }) => {
 test("desktop discussion preserves card elevation to the lesson frame edges", async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1424, height: 678 });
+  await page.setViewportSize(LEARNING_DESKTOP_VIEWPORT);
   await openApp(page, "/learn/typescript-course/the-design-mindset?from=home");
   await expect(
     page.getByRole("textbox", { name: "Add a comment" }),
@@ -69,7 +71,10 @@ test("desktop discussion preserves card elevation to the lesson frame edges", as
   expect(geometry.mainPaddingBottom).toBe(12);
   expect(geometry.mainPaddingLeft).toBe(12);
   expect(geometry.curriculumTop).toBe(12);
-  expect(geometry.curriculumHeight).toBeCloseTo(678 - 24, 0);
+  expect(geometry.curriculumHeight).toBeCloseTo(
+    LEARNING_DESKTOP_VIEWPORT.height - 24,
+    0,
+  );
   expect(geometry.mainRight - geometry.curriculumRight).toBeCloseTo(14, 0);
   expect(geometry.curriculumLeft - geometry.lessonRight).toBeCloseTo(10, 0);
   expect(geometry.panelLeft).toBeCloseTo(geometry.mainLeft, 0);

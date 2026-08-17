@@ -31,8 +31,12 @@ html,
   background: transparent;
 }
 
-::-webkit-scrollbar-track {
+::-webkit-scrollbar-track:vertical {
   margin-block: var(--scrollbar-track-block-inset);
+}
+
+::-webkit-scrollbar-track:horizontal {
+  margin-inline: var(--scrollbar-track-block-inset);
 }
 
 ::-webkit-scrollbar-thumb {

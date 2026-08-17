@@ -1,13 +1,13 @@
 /* rose palette — light mode. */
 :root[data-theme="light"][data-palette="rose"] {
-  --canvas: #fff4f7;
-  --header: #fffdfd;
-  --surface: #ffffff;
-  --hover: #ffe9ef;
-  --selected: #ffdce7;
-  --track: #f1dce3;
-  --border: #e7cbd4;
-  --border-strong: #c89dac;
+  --canvas: #f2eaed;
+  --header: #eee6e9;
+  --surface: #fffdfd;
+  --hover: #f0e3e8;
+  --selected: #f5dce5;
+  --track: #e7dce0;
+  --border: transparent;
+  --border-strong: transparent;
   --text: #251218;
   --text-secondary: #4d303a;
   --muted: #735963;
@@ -17,18 +17,7 @@
   --accent-border: rgba(184, 23, 72, 0.3);
   --accent-shadow: rgba(184, 23, 72, 0.16);
   --on-accent: #ffffff;
-}
-
-:root[data-theme="light"][data-palette="rose"] {
   --app-shell: #ebe2e5;
   --main-surface: #faf3f5;
-  --canvas: #f2eaed;
-  --header: #eee6e9;
-  --surface: #fffdfd;
   --surface-strong: #f6eaee;
-  --hover: #f0e3e8;
-  --selected: #f5dce5;
-  --track: #e7dce0;
-  --border: transparent;
-  --border-strong: transparent;
 }

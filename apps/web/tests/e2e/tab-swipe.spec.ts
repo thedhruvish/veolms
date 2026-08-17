@@ -179,6 +179,9 @@ test("discussion content and lesson tools use the same adjacent swipe behavior",
     .locator(".discussion-thread")
     .first()
     .boundingBox();
+  expect(discussionMainBox).not.toBeNull();
+  expect(discussionPanelBox).not.toBeNull();
+  expect(discussionThreadBox).not.toBeNull();
   expect(Math.abs(discussionPanelBox!.x - discussionMainBox!.x)).toBeLessThan(
     1,
   );
@@ -217,6 +220,11 @@ test("discussion content and lesson tools use the same adjacent swipe behavior",
   const lessonComposerBox = await lessonPanel
     .locator(".learning-comment-composer")
     .boundingBox();
+  expect(lessonColumnBox).not.toBeNull();
+  expect(lessonPanelBox).not.toBeNull();
+  expect(lessonComposerBox).not.toBeNull();
+  // The panel intentionally extends beyond its lesson column on both sides so
+  // elevated cards can cast an unclipped shadow at the page edges.
   expect(lessonPanelBox!.x - lessonColumnBox!.x).toBeCloseTo(-12, 0);
   expect(
     lessonColumnBox!.x +
@@ -249,7 +257,7 @@ test("discussion surfaces keep swipe clipping outside mobile content gutters", a
       ".learning-comment-composer",
     ],
   ] as const) {
-    await page.goto(path);
+    await openApp(page, path);
     const panel = page.locator(panelSelector);
     await expect(panel).toBeVisible({ timeout: 15_000 });
     const mainBox = await page.locator(".courses-main").boundingBox();
@@ -258,6 +266,9 @@ test("discussion surfaces keep swipe clipping outside mobile content gutters", a
       .locator(contentSelector)
       .first()
       .boundingBox();
+    expect(mainBox).not.toBeNull();
+    expect(panelBox).not.toBeNull();
+    expect(contentBox).not.toBeNull();
 
     expect(Math.abs(panelBox!.x - mainBox!.x), path).toBeLessThan(1);
     expect(

@@ -39,10 +39,15 @@
   background: transparent;
   box-shadow: none;
 }
-:root[data-high-contrast="true"] {
+:root[data-theme="light"][data-high-contrast="true"] {
+  --text: #101820;
+  --text-secondary: #1f354b;
+  --muted: #38546e;
+}
+:root[data-theme="dark"][data-high-contrast="true"] {
   --text: #ffffff;
-  --text-secondary: color-mix(in srgb, var(--text) 92%, var(--accent));
-  --muted: color-mix(in srgb, var(--text) 76%, var(--accent));
+  --text-secondary: #f1f5f9;
+  --muted: #d2dbe5;
 }
 :root[data-text-size="small"] {
   font-size: 93.75%;
@@ -59,7 +64,7 @@
   padding-bottom: 8px;
 }
 :root[data-compact-layout="true"] .courses-main {
-  min-height: calc(100vh - 16px);
+  min-height: calc(100dvh - 16px);
 }
 :root[data-compact-layout="true"] .settings-page {
   padding-top: 20px;
@@ -72,6 +77,42 @@
   animation-iteration-count: 1 !important;
   scroll-behavior: auto !important;
   transition-duration: 0.001ms !important;
+}
+
+@media (max-width: 1120px) {
+  .settings-choice-grid--sidebar-style-options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-choice-card--sidebar-style {
+    min-height: 172px;
+    gap: 16px;
+  }
+
+  .settings-choice-card--sidebar-style .settings-mini-surface {
+    width: 170px;
+    height: 176px;
+  }
+
+  .settings-choice-card--sidebar-style .settings-icon-preview {
+    width: 170px;
+    height: 140px;
+    flex-basis: 170px;
+  }
+
+  .settings-color-tools--redesign {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 0.85fr);
+  }
+
+  .settings-color-tools--redesign .settings-preset-list {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 10px;
+  }
+
+  .settings-color-tools__value {
+    max-width: 320px;
+  }
 }
 
 @media (max-width: 900px) {
@@ -116,7 +157,7 @@
 }
 
 @media (max-width: 640px) {
-  .settings-page {
+.settings-page {
     --settings-page-inline-gutter: 15px;
     padding: 22px 0 28px;
   }
@@ -303,46 +344,8 @@
   .settings-profile__primary-action {
     min-width: 0;
   }
-}
 
-@media (max-width: 1120px) {
-  .settings-choice-grid--sidebar-style-options {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .settings-choice-card--sidebar-style {
-    min-height: 172px;
-    gap: 16px;
-  }
-
-  .settings-choice-card--sidebar-style .settings-mini-surface {
-    width: 170px;
-    height: 176px;
-  }
-
-  .settings-choice-card--sidebar-style .settings-icon-preview {
-    width: 170px;
-    height: 140px;
-    flex-basis: 170px;
-  }
-
-  .settings-color-tools--redesign {
-    grid-template-columns: minmax(0, 1fr) minmax(220px, 0.85fr);
-  }
-
-  .settings-color-tools--redesign .settings-preset-list {
-    flex-wrap: wrap;
-    justify-content: flex-start;
-    gap: 10px;
-  }
-
-  .settings-color-tools__value {
-    max-width: 320px;
-  }
-}
-
-@media (max-width: 640px) {
-  .settings-sidebar-category-heading {
+.settings-sidebar-category-heading {
     grid-template-columns: 34px minmax(0, 1fr);
     margin-inline: 1px;
   }

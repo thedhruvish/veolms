@@ -1,5 +1,6 @@
 import { test, expect } from "./app.fixture.ts";
 import {
+  clickLearningBack,
   getApplicationScrollTop,
   installBaselineState,
   openApp,
@@ -437,7 +438,7 @@ test("Explore Courses navigation resumes its player until explicit player back",
     /\/learn\/ui-ux-design-mastery\/[^/?]+\?from=explore-courses$/,
   );
 
-  await page.getByRole("button", { name: "Return to Explore Courses" }).click();
+  await clickLearningBack(page, "Return to Explore Courses");
   await expect(page).toHaveURL(/\/explore-courses$/);
   await expect(
     page.getByRole("heading", { name: "Explore Courses", level: 1 }),
@@ -515,7 +516,7 @@ test("My Courses resumes the same paused lesson until explicit player back", asy
   await expect(
     navigation.getByRole("button", { name: "My Courses" }),
   ).toHaveAttribute("aria-current", "page");
-  await page.getByRole("button", { name: "Return to My Courses" }).click();
+  await clickLearningBack(page, "Return to My Courses");
 
   await expect(page).toHaveURL(/\/my-courses$/);
   await expect(
@@ -755,7 +756,7 @@ test("opening a new course moves the single resumable session and navigation ind
   await expect(page).toHaveURL(
     /\/learn\/ui-ux-design-mastery\/[^/?]+\?from=wishlist$/,
   );
-  await page.getByRole("button", { name: "Return to Wishlist" }).click();
+  await clickLearningBack(page, "Return to Wishlist");
   await expect(page).toHaveURL(/\/wishlist$/);
   await expect(
     wishlistNavigation.locator(".courses-nav__resume-indicator"),
@@ -773,7 +774,7 @@ test("listing searches survive opening a player and returning explicitly", async
     .filter({ hasText: "The Ultimate TypeScript Course" })
     .getByRole("button", { name: "Continue Learning" })
     .click();
-  await page.getByRole("button", { name: "Return to My Courses" }).click();
+  await clickLearningBack(page, "Return to My Courses");
   await expect(page.getByPlaceholder("Search my courses...")).toHaveValue(
     "TypeScript",
   );
@@ -789,7 +790,7 @@ test("listing searches survive opening a player and returning explicitly", async
   const catalogueSearch = page.getByPlaceholder("Search your courses...");
   await catalogueSearch.fill("UI/UX");
   await page.getByRole("button", { name: "Open UI/UX Design Mastery" }).click();
-  await page.getByRole("button", { name: "Return to Wishlist" }).click();
+  await clickLearningBack(page, "Return to Wishlist");
   await expect(page.getByPlaceholder("Search your courses...")).toHaveValue(
     "UI/UX",
   );
@@ -806,7 +807,7 @@ test("direct course player links return to Explore Courses by default", async ({
   await expect(
     navigation.getByRole("button", { name: "Explore Courses" }),
   ).toHaveAttribute("aria-current", "page");
-  await page.getByRole("button", { name: "Return to Explore Courses" }).click();
+  await clickLearningBack(page, "Return to Explore Courses");
   await expect(page).toHaveURL(/\/explore-courses$/);
 });
 

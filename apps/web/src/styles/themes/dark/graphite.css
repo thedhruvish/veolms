@@ -38,7 +38,6 @@
     var(--surface) 94%,
     var(--accent) 6%
   );
-  --card-shadow: 0 14px 34px rgba(0, 0, 0, 0.07);
 
   /* Compact-rail tooltips intentionally invert the palette mode: dark shell
      surfaces get a luminous theme tint, while light shells get a deeper

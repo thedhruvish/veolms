@@ -982,11 +982,26 @@ export function CoursesPage({
       }
     };
 
+    const dismissOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+
+      // Handle this at capture time so Settings' page-level Escape shortcut
+      // cannot navigate away while it dismisses the mobile navigation sheet.
+      event.preventDefault();
+      event.stopPropagation();
+      setMobileMenuOpen(false);
+      setMobilePaletteMenu(false);
+      setReadingModeMenu((current) => (current === "mobile" ? null : current));
+      setMobileSheetOffset(0);
+    };
+
     document.addEventListener("keydown", keepFocusInside);
+    document.addEventListener("keydown", dismissOnEscape, true);
     return () => {
       window.clearTimeout(focusTimer);
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", keepFocusInside);
+      document.removeEventListener("keydown", dismissOnEscape, true);
     };
   }, [mobileMenuOpen]);
 

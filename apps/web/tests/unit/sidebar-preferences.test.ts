@@ -189,7 +189,7 @@ describe("sidebar preference storage", () => {
     expect(migratedPreferences).not.toHaveProperty("showThemeIcon");
   });
 
-  it("migrates the previous dock and fixed-header defaults only once", () => {
+  it("migrates a dock only when its legacy marker confirms the old default", () => {
     localStorage.setItem(
       "veolms-sidebar-dock-default-version",
       "four-controls-v1",
@@ -204,7 +204,7 @@ describe("sidebar preference storage", () => {
 
     const migratedPreferences = getInitialSidebarPreferences();
     expect(migratedPreferences).toMatchObject({
-      headerLayout: "inline",
+      headerLayout: "fixed",
       dockItems: ["appearance", "reading-mode", "fullscreen"],
     });
     expect(localStorage.getItem("veolms-sidebar-dock-default-version")).toBe(
@@ -214,17 +214,18 @@ describe("sidebar preference storage", () => {
       "inline-v1",
     );
 
+    localStorage.removeItem("veolms-sidebar-dock-default-version");
+    localStorage.removeItem("veolms-sidebar-header-default-version");
     localStorage.setItem(
       "veolms-sidebar-preferences",
       JSON.stringify({
-        ...migratedPreferences,
         headerLayout: "fixed",
-        dockItems: ["appearance", "theme"],
+        dockItems: ["appearance", "theme", "reading-mode", "fullscreen"],
       }),
     );
     expect(getInitialSidebarPreferences()).toMatchObject({
       headerLayout: "fixed",
-      dockItems: ["appearance", "theme"],
+      dockItems: ["appearance", "theme", "reading-mode", "fullscreen"],
     });
   });
 

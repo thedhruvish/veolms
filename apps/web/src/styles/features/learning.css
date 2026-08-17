@@ -52,7 +52,7 @@
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
   backdrop-filter: blur(5px);
   opacity: 0;
-  pointer-events: auto;
+  pointer-events: none;
   transform: translateY(-4px);
   transition:
     opacity 160ms ease,
@@ -63,6 +63,7 @@
 .learning-workspace__player-wrap:hover .learning-workspace__back,
 .learning-workspace__back:focus-visible {
   opacity: 1;
+  pointer-events: auto;
   transform: translateY(0);
 }
 
@@ -775,12 +776,14 @@
   border-radius: 13px;
   padding: 9px 11px;
   background: color-mix(in srgb, var(--surface) 92%, var(--canvas));
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--card-shadow);
 }
 
 .learning-comment-composer:focus-within {
   border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 11%, transparent);
+  box-shadow:
+    inset 0 0 0 1px var(--accent),
+    0 0 0 3px color-mix(in srgb, var(--accent) 11%, transparent);
 }
 
 .learning-comment-composer__avatar,
@@ -874,6 +877,7 @@
   border-radius: 13px;
   padding: 16px 18px;
   background: color-mix(in srgb, var(--surface) 88%, var(--canvas));
+  box-shadow: var(--card-shadow);
 }
 
 .learning-comment-card__avatar {

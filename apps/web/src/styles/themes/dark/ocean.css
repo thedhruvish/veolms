@@ -1,13 +1,13 @@
 /* ocean palette — dark mode. */
 :root[data-palette="ocean"] {
-  --canvas: #07101f;
-  --header: #060d1b;
-  --surface: #0c172a;
-  --hover: #12223b;
-  --selected: #172e62;
-  --track: #132440;
-  --border: #1d3659;
-  --border-strong: #315383;
+  --canvas: #171b22;
+  --header: #161a20;
+  --surface: #282f39;
+  --hover: #333d49;
+  --selected: #293b58;
+  --track: #1d232c;
+  --border: transparent;
+  --border-strong: transparent;
   --text: #f4f8ff;
   --text-secondary: #dce6f6;
   --muted: #a6b9d4;
@@ -17,18 +17,7 @@
   --accent-border: rgba(113, 147, 255, 0.42);
   --accent-shadow: rgba(113, 147, 255, 0.22);
   --on-accent: #07102a;
-}
-
-:root[data-palette="ocean"] {
   --app-shell: #12151a;
   --main-surface: #1e242d;
-  --canvas: #171b22;
-  --header: #161a20;
-  --surface: #282f39;
   --surface-strong: #303843;
-  --hover: #333d49;
-  --selected: #293b58;
-  --track: #1d232c;
-  --border: transparent;
-  --border-strong: transparent;
 }

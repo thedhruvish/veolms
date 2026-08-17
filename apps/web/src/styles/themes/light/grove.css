@@ -1,13 +1,13 @@
 /* grove palette — light mode. */
 :root[data-theme="light"][data-palette="grove"] {
-  --canvas: #f1faf5;
-  --header: #fcfffd;
-  --surface: #ffffff;
-  --hover: #e6f5ec;
-  --selected: #d8f2e2;
-  --track: #d9e8df;
-  --border: #cadfd2;
-  --border-strong: #9fbea9;
+  --canvas: #e9f1eb;
+  --header: #e4ece6;
+  --surface: #fbfffc;
+  --hover: #e2eee6;
+  --selected: #d7ebde;
+  --track: #dbe7de;
+  --border: transparent;
+  --border-strong: transparent;
   --text: #111e16;
   --text-secondary: #36483d;
   --muted: #586b5e;
@@ -17,18 +17,7 @@
   --accent-border: rgba(22, 115, 67, 0.3);
   --accent-shadow: rgba(22, 115, 67, 0.16);
   --on-accent: #ffffff;
-}
-
-:root[data-theme="light"][data-palette="grove"] {
   --app-shell: #dfe8e2;
   --main-surface: #f2f8f4;
-  --canvas: #e9f1eb;
-  --header: #e4ece6;
-  --surface: #fbfffc;
   --surface-strong: #e9f3ec;
-  --hover: #e2eee6;
-  --selected: #d7ebde;
-  --track: #dbe7de;
-  --border: transparent;
-  --border-strong: transparent;
 }

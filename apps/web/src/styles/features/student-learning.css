@@ -185,7 +185,7 @@
   border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--border));
   border-radius: 999px;
   padding: 0 10px;
-  color: color-mix(in srgb, var(--accent) 82%, white 18%);
+  color: var(--accent-ink, var(--accent));
   background: color-mix(in srgb, var(--accent) 11%, var(--canvas));
   font-size: 0.68rem;
   font-weight: 600;
@@ -472,20 +472,20 @@
 }
 
 .tone-violet > span {
-  color: #8c6aff;
-  background: rgba(113, 72, 255, 0.16);
+  color: color-mix(in srgb, #8c6aff 76%, var(--text));
+  background: color-mix(in srgb, #7148ff 16%, var(--surface));
 }
 .tone-green > span {
-  color: #5eea7c;
-  background: rgba(39, 192, 82, 0.14);
+  color: color-mix(in srgb, #5eea7c 76%, var(--text));
+  background: color-mix(in srgb, #27c052 14%, var(--surface));
 }
 .tone-cyan > span {
-  color: #21d4f3;
-  background: rgba(19, 174, 216, 0.14);
+  color: color-mix(in srgb, #21d4f3 76%, var(--text));
+  background: color-mix(in srgb, #13aed8 14%, var(--surface));
 }
 .tone-gold > span {
-  color: #f6c945;
-  background: rgba(222, 169, 14, 0.14);
+  color: color-mix(in srgb, #f6c945 76%, var(--text));
+  background: color-mix(in srgb, #dea90e 14%, var(--surface));
 }
 
 .home-metric > strong {
@@ -784,7 +784,7 @@
 
 .learning-filter-tabs button[aria-selected="true"] {
   border-color: var(--accent);
-  color: color-mix(in srgb, var(--accent) 88%, white 12%);
+  color: var(--accent-ink, var(--accent));
   background: var(--accent-soft);
 }
 
@@ -860,7 +860,7 @@
   border: 1px solid var(--border);
   border-radius: 10px;
   background: color-mix(in srgb, var(--surface) 68%, transparent);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--card-shadow);
   transition:
     border-color 180ms ease,
     background-color 180ms ease,
@@ -871,7 +871,7 @@
   border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
   background: color-mix(in srgb, var(--surface) 76%, var(--accent) 3%);
   box-shadow:
-    0 14px 34px rgba(0, 0, 0, 0.15),
+    var(--card-hover-shadow),
     0 0 22px color-mix(in srgb, var(--accent) 9%, transparent);
 }
 

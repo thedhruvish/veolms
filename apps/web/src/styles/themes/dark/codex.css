@@ -2,37 +2,11 @@
 /* Additional academy palettes retain the same semantic tokens in both modes. */
 :root[data-palette="codex"] {
   --canvas: #0d0d0f;
-  --header: #111113;
-  --surface: #1b1b1d;
-  --hover: #27272a;
-  --selected: #303034;
-  --track: #19191b;
-  --border: #2a2a2e;
-  --border-strong: #45454a;
-  --text: #f4f4f5;
-  --text-secondary: #d8d8dc;
-  --muted: #a4a4aa;
-  --accent: #f4f4f5;
-  --accent-hover: #e5e5e8;
-  --accent-soft: rgba(244, 244, 245, 0.14);
-  --accent-border: rgba(244, 244, 245, 0.36);
-  --accent-shadow: rgba(0, 0, 0, 0.3);
-  --on-accent: #171719;
-}
-
-/* Additional academy palettes: dark shells are tuned independently from their
-   light counterparts so the surface hierarchy remains clear without borders. */
-:root[data-palette="codex"] {
-  --app-shell: #0b0b0d;
-  --main-surface: #111113;
-  --canvas: #0d0d0f;
   --header: #101012;
   --surface: #1b1b1d;
-  --surface-strong: #29292d;
   --hover: #323236;
   --selected: #303034;
   --track: #19191b;
-  --progress-track: #45454a;
   --border: transparent;
   --border-strong: transparent;
   --text: #f4f4f5;
@@ -44,12 +18,15 @@
   --accent-border: rgba(244, 244, 245, 0.36);
   --accent-shadow: rgba(0, 0, 0, 0.3);
   --on-accent: #171719;
+  --app-shell: #0b0b0d;
+  --main-surface: #111113;
+  --surface-strong: #29292d;
+  --progress-track: #45454a;
   --on-accent-glyph: #171719;
   --card-surface: #1b1b1d;
   --card-surface-raised: #29292d;
   --card-surface-soft: #141416;
   --card-surface-hover: #242427;
-  --card-shadow: 0 16px 34px rgba(0, 0, 0, 0.3);
 }
 
 :root[data-high-contrast="true"][data-palette="codex"] {

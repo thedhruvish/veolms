@@ -358,6 +358,7 @@
   border-radius: 12px;
   padding: 16px;
   background: var(--canvas);
+  box-shadow: var(--card-shadow);
 }
 
 .settings-profile__avatar--preview {
@@ -1217,34 +1218,5 @@ html:has(.settings-profile__privacy-dialog[open]) {
   }
   .settings-profile__privacy-dialog-actions button {
     width: 100%;
-  }
-}
-
-/* Mobile routes already inherit the Home/My Courses page gutter from
-   student-surface-main. Avoid stacking a second page-level inset inside it. */
-@media (max-width: 820px) {
-  .courses-main.student-surface-main.courses-main--settings {
-    padding-inline: 15px;
-  }
-
-  .student-surface-main
-    > :is(
-      .settings-page,
-      .discussion-hub,
-      .workspace-page,
-      .courses-placeholder-page
-    ) {
-    padding: 0;
-  }
-
-  .student-surface-main > .settings-page {
-    --settings-page-inline-gutter: 0px;
-  }
-
-  .student-surface-main > .discussion-hub .discussion-hub__tabs {
-    margin-right: 0;
-    margin-left: 0;
-    padding-right: 0;
-    padding-left: 0;
   }
 }

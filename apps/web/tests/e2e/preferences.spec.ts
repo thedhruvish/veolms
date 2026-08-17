@@ -1,31 +1,73 @@
 import { test, expect } from "./app.fixture.ts";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import {
   expectStoredValue,
   installBaselineState,
   openApp,
   revealDeferredAppearanceSettings,
+  updateSidebarPreferences,
 } from "./support.ts";
 
 test.beforeEach(async ({ page }) => {
   await installBaselineState(page);
 });
 
-const updateSidebarPreferences = async (
+const getFloatingScrollbarThumb = (scrollbar: Locator) =>
+  scrollbar.locator(":scope > .floating-scrollbar__thumb");
+
+const getFloatingScrollbarThumbAppearance = async (thumb: Locator) =>
+  thumb.evaluate((element) => {
+    const background = getComputedStyle(element).backgroundColor;
+    const modernAlpha = background.match(/\/\s*([\d.]+)\)/)?.[1];
+    const legacyAlpha = background.match(
+      /rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)/,
+    )?.[1];
+    return {
+      alpha: Number(modernAlpha ?? legacyAlpha ?? 1),
+      background,
+    };
+  });
+
+const exerciseFloatingScrollbar = async (
   page: Page,
-  path: string,
-  patch: Record<string, unknown>,
+  scrollport: Locator,
+  scrollbar: Locator,
+  upwardDragDistance: number,
 ) => {
-  await page.evaluate((nextPatch) => {
-    const current = JSON.parse(
-      localStorage.getItem("veolms-sidebar-preferences") || "{}",
-    ) as Record<string, unknown>;
-    localStorage.setItem(
-      "veolms-sidebar-preferences",
-      JSON.stringify({ ...current, ...nextPatch }),
-    );
-  }, patch);
-  await openApp(page, path);
+  const thumb = getFloatingScrollbarThumb(scrollbar);
+  await scrollport.evaluate((element) => element.scrollTo(0, 0));
+  const trackBounds = await scrollbar.boundingBox();
+  expect(trackBounds).not.toBeNull();
+  const scrollTopBeforeTrackClick = await scrollport.evaluate(
+    (element) => element.scrollTop,
+  );
+  await page.mouse.click(
+    trackBounds!.x + trackBounds!.width / 2,
+    trackBounds!.y + trackBounds!.height * 0.82,
+  );
+  await expect
+    .poll(() => scrollport.evaluate((element) => element.scrollTop))
+    .toBeGreaterThan(scrollTopBeforeTrackClick);
+
+  const thumbBounds = await thumb.boundingBox();
+  expect(thumbBounds).not.toBeNull();
+  const scrollTopBeforeDrag = await scrollport.evaluate(
+    (element) => element.scrollTop,
+  );
+  await page.mouse.move(
+    thumbBounds!.x + thumbBounds!.width / 2,
+    thumbBounds!.y + thumbBounds!.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(
+    thumbBounds!.x + thumbBounds!.width / 2,
+    thumbBounds!.y + thumbBounds!.height / 2 - upwardDragDistance,
+    { steps: 4 },
+  );
+  await page.mouse.up();
+  await expect
+    .poll(() => scrollport.evaluate((element) => element.scrollTop))
+    .toBeLessThan(scrollTopBeforeDrag);
 };
 
 test("framed layout scrolls inside its main surface while edge-to-edge uses the document", async ({
@@ -142,16 +184,11 @@ test("page tabs pin beneath the shell edge while the framed surface uses only a 
     expect(shellLayering!.edgeShadow).not.toBe("none");
     expect(shellLayering!.edgeZIndex).toBeGreaterThan(shellLayering!.tabZIndex);
     await expect(floatingScrollbar).toHaveClass(/is-visible/);
-    await expect(
-      floatingScrollbar.locator(":scope > .floating-scrollbar__thumb"),
-    ).toHaveCount(1);
-    await expect(
-      floatingScrollbar.locator(":scope > .floating-scrollbar__thumb"),
-    ).toHaveCSS("width", "6px");
+    const thumb = getFloatingScrollbarThumb(floatingScrollbar);
+    await expect(thumb).toHaveCount(1);
+    await expect(thumb).toHaveCSS("width", "6px");
     await expect(floatingScrollbar).toHaveCSS("cursor", "auto");
-    await expect(
-      floatingScrollbar.locator(":scope > .floating-scrollbar__thumb"),
-    ).toHaveCSS("cursor", "auto");
+    await expect(thumb).toHaveCSS("cursor", "auto");
     await expect
       .poll(() =>
         mainSurface.evaluate(
@@ -181,20 +218,7 @@ test("page tabs pin beneath the shell edge while the framed surface uses only a 
         (trackBounds!.y + trackBounds!.height),
     ).toBeGreaterThanOrEqual(17.5);
 
-    const thumb = floatingScrollbar.locator(
-      ":scope > .floating-scrollbar__thumb",
-    );
-    const thumbAppearance = await thumb.evaluate((element) => {
-      const background = getComputedStyle(element).backgroundColor;
-      const modernAlpha = background.match(/\/\s*([\d.]+)\)/)?.[1];
-      const legacyAlpha = background.match(
-        /rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)/,
-      )?.[1];
-      return {
-        alpha: Number(modernAlpha ?? legacyAlpha ?? 1),
-        background,
-      };
-    });
+    const thumbAppearance = await getFloatingScrollbarThumbAppearance(thumb);
     expect(thumbAppearance.alpha).toBeCloseTo(0.9, 2);
     await page.locator("html").evaluate((root) => {
       root.style.setProperty("--accent", "#ff0066");
@@ -208,36 +232,7 @@ test("page tabs pin beneath the shell edge while the framed surface uses only a 
       root.style.removeProperty("--accent");
     });
 
-    const scrollTopBeforeTrackClick = await mainSurface.evaluate(
-      (main) => main.scrollTop,
-    );
-    await page.mouse.click(
-      trackBounds!.x + trackBounds!.width / 2,
-      trackBounds!.y + trackBounds!.height * 0.82,
-    );
-    await expect
-      .poll(() => mainSurface.evaluate((main) => main.scrollTop))
-      .toBeGreaterThan(scrollTopBeforeTrackClick);
-
-    const thumbBounds = await thumb.boundingBox();
-    expect(thumbBounds).not.toBeNull();
-    const scrollTopBeforeDrag = await mainSurface.evaluate(
-      (main) => main.scrollTop,
-    );
-    await page.mouse.move(
-      thumbBounds!.x + thumbBounds!.width / 2,
-      thumbBounds!.y + thumbBounds!.height / 2,
-    );
-    await page.mouse.down();
-    await page.mouse.move(
-      thumbBounds!.x + thumbBounds!.width / 2,
-      thumbBounds!.y + thumbBounds!.height / 2 - 70,
-      { steps: 4 },
-    );
-    await page.mouse.up();
-    await expect
-      .poll(() => mainSurface.evaluate((main) => main.scrollTop))
-      .toBeLessThan(scrollTopBeforeDrag);
+    await exerciseFloatingScrollbar(page, mainSurface, floatingScrollbar, 70);
   }
 });
 
@@ -287,9 +282,7 @@ test("the framed learning scrollbar clears content at compact and wide desktop s
       const curriculumScrollbar = page.locator(
         '.floating-scrollbar[aria-controls="learning-course-curriculum-scrollport"]',
       );
-      const curriculumThumb = curriculumScrollbar.locator(
-        ":scope > .floating-scrollbar__thumb",
-      );
+      const curriculumThumb = getFloatingScrollbarThumb(curriculumScrollbar);
       await expect(curriculumScrollbar).toHaveClass(/is-visible/);
       await expect(curriculumScrollbar).toHaveAttribute("aria-hidden", "false");
 
@@ -379,49 +372,15 @@ test("the framed learning scrollbar clears content at compact and wide desktop s
       expect(matchingScrollbarStyles!.curriculumCursor).toBe("auto");
       expect(matchingScrollbarStyles!.mainThumbCursor).toBe("auto");
 
-      const curriculumThumbAppearance = await curriculumThumb.evaluate(
-        (element) => {
-          const background = getComputedStyle(element).backgroundColor;
-          const modernAlpha = background.match(/\/\s*([\d.]+)\)/)?.[1];
-          const legacyAlpha = background.match(
-            /rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)/,
-          )?.[1];
-          return Number(modernAlpha ?? legacyAlpha ?? 1);
-        },
+      expect(
+        (await getFloatingScrollbarThumbAppearance(curriculumThumb)).alpha,
+      ).toBeCloseTo(0.9, 2);
+      await exerciseFloatingScrollbar(
+        page,
+        curriculum,
+        curriculumScrollbar,
+        60,
       );
-      expect(curriculumThumbAppearance).toBeCloseTo(0.9, 2);
-
-      await curriculum.evaluate((scrollport) => scrollport.scrollTo(0, 0));
-      const curriculumScrollTopBeforeClick = await curriculum.evaluate(
-        (scrollport) => scrollport.scrollTop,
-      );
-      await page.mouse.click(
-        curriculumTrackBounds!.x + curriculumTrackBounds!.width / 2,
-        curriculumTrackBounds!.y + curriculumTrackBounds!.height * 0.82,
-      );
-      await expect
-        .poll(() => curriculum.evaluate((scrollport) => scrollport.scrollTop))
-        .toBeGreaterThan(curriculumScrollTopBeforeClick);
-
-      const curriculumThumbBounds = await curriculumThumb.boundingBox();
-      expect(curriculumThumbBounds).not.toBeNull();
-      const curriculumScrollTopBeforeDrag = await curriculum.evaluate(
-        (scrollport) => scrollport.scrollTop,
-      );
-      await page.mouse.move(
-        curriculumThumbBounds!.x + curriculumThumbBounds!.width / 2,
-        curriculumThumbBounds!.y + curriculumThumbBounds!.height / 2,
-      );
-      await page.mouse.down();
-      await page.mouse.move(
-        curriculumThumbBounds!.x + curriculumThumbBounds!.width / 2,
-        curriculumThumbBounds!.y + curriculumThumbBounds!.height / 2 - 60,
-        { steps: 4 },
-      );
-      await page.mouse.up();
-      await expect
-        .poll(() => curriculum.evaluate((scrollport) => scrollport.scrollTop))
-        .toBeLessThan(curriculumScrollTopBeforeDrag);
     }
   }
 });
@@ -545,7 +504,7 @@ test("dock context menus stay attached and reading controls update immediately",
   );
 
   await quickSettings
-    .getByRole("button", { name: "Quick reading mode colors" })
+    .getByRole("button", { name: /^Quick reading mode colors:/ })
     .click();
   await page.getByRole("option", { name: "Light colors" }).click();
   await expect(page.locator("html")).toHaveAttribute(
@@ -588,17 +547,11 @@ test("theme menus use the available height before introducing overflow", async (
 }) => {
   await page.setViewportSize({ width: 1101, height: 753 });
   await openApp(page, "/");
-  await page.evaluate(() => {
-    const current = JSON.parse(
-      localStorage.getItem("veolms-sidebar-preferences") || "{}",
-    ) as Record<string, unknown>;
-    const dockItems = ["appearance", "theme", "reading-mode", "fullscreen"];
-    localStorage.setItem(
-      "veolms-sidebar-preferences",
-      JSON.stringify({ ...current, dockItems, dockOrder: dockItems }),
-    );
+  const dockItems = ["appearance", "theme", "reading-mode", "fullscreen"];
+  await updateSidebarPreferences(page, "/", {
+    dockItems,
+    dockOrder: dockItems,
   });
-  await page.reload();
 
   const sidebar = page.getByRole("complementary", {
     name: "Student navigation",

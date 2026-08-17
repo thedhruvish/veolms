@@ -252,10 +252,6 @@
 .courses-nav button.is-dragging,
 .mobile-menu-sheet__list > button.is-dragging {
   transform: none;
-}
-
-.courses-nav button.is-dragging,
-.mobile-menu-sheet__list > button.is-dragging {
   opacity: 0.46;
 }
 
@@ -608,6 +604,13 @@
     var(--surface-depth-shadow);
 }
 
+:root[data-theme="light"] .profile-menu {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 96%),
+    inset 1px 0 0 rgb(255 255 255 / 68%),
+    var(--surface-depth-shadow);
+}
+
 :root[data-theme="light"]
   .sidebar-palette-menu
   > button[data-theme-swatch]:not(.is-selected) {
@@ -951,9 +954,6 @@
 
 .courses-app--collapsed .sidebar-appearance {
   margin-top: 6px;
-}
-
-.courses-app--collapsed .sidebar-appearance {
   align-items: center;
   flex-direction: column;
   padding: 8px;
