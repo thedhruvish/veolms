@@ -80,10 +80,7 @@ export function ThemedSelect<Value extends string>({
       spaceBelow < Math.min(desiredHeight, 160) && spaceAbove > spaceBelow;
     const maxHeight = Math.max(
       80,
-      Math.min(
-        desiredHeight,
-        useAbove ? spaceAbove - gap : spaceBelow - gap,
-      ),
+      Math.min(desiredHeight, useAbove ? spaceAbove - gap : spaceBelow - gap),
     );
     const width = Math.min(
       Math.max(rect.width, 120),
@@ -159,8 +156,8 @@ export function ThemedSelect<Value extends string>({
       document.activeElement as HTMLButtonElement,
     );
     if (event.key === "Escape" || event.key === "Tab") {
-      if (event.key === "Escape") event.preventDefault();
-      closeMenu(event.key === "Escape");
+      event.preventDefault();
+      closeMenu(true);
       return;
     }
     let nextIndex: number | null = null;
@@ -204,10 +201,7 @@ export function ThemedSelect<Value extends string>({
             id={menuId}
             role="listbox"
             aria-label={ariaLabel}
-            className={joinClasses(
-              "themed-select__content",
-              contentClassName,
-            )}
+            className={joinClasses("themed-select__content", contentClassName)}
             onKeyDown={handleMenuKeyDown}
             style={
               {
@@ -225,9 +219,7 @@ export function ThemedSelect<Value extends string>({
               } as CSSProperties
             }
           >
-            <div
-              className={joinClasses("themed-select__viewport", className)}
-            >
+            <div className={joinClasses("themed-select__viewport", className)}>
               {options.map(([optionValue, optionLabel], index) => (
                 <button
                   ref={(node) => {
@@ -236,9 +228,7 @@ export function ThemedSelect<Value extends string>({
                   type="button"
                   role="option"
                   aria-selected={optionValue === value}
-                  data-state={
-                    optionValue === value ? "checked" : "unchecked"
-                  }
+                  data-state={optionValue === value ? "checked" : "unchecked"}
                   className="themed-select__item"
                   key={optionValue}
                   onClick={() => {

@@ -34,12 +34,10 @@ const courseTitlesBySlug: Record<string, string | undefined> = {
 
 export const getCourseTitle = (courseSlug: string | undefined) =>
   (courseSlug ? courseTitlesBySlug[courseSlug] : undefined) ||
-  (typeof window !== "undefined"
-    ? window.localStorage.getItem("veolms-current-course-title")
-    : null) ||
   "UI/UX Design Mastery";
 
 const courseThumbnailsBySlug: Record<string, string | undefined> = {
+  "ui-ux-design-mastery": "/assets/instructor-poster-960.webp",
   "typescript-course": typescriptCourseThumbnail,
   "javascript-course": javascriptCourseThumbnail,
   "backend-nodejs": nodeCourseThumbnail,

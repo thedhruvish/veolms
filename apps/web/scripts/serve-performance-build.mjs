@@ -12,7 +12,7 @@ const commandLinePort =
   portArgumentIndex >= 0 ? Number(process.argv[portArgumentIndex + 1]) : NaN;
 const port = Number.isFinite(commandLinePort)
   ? commandLinePort
-  : Number(process.env.PORT || 4174);
+  : Number(process.env.PORT || 4173);
 const hostArgumentIndex = process.argv.indexOf("--host");
 const host =
   hostArgumentIndex >= 0 && process.argv[hostArgumentIndex + 1]
@@ -31,7 +31,12 @@ const mimeTypes = new Map([
 ]);
 
 const resolveRequestPath = async (pathname) => {
-  const decoded = decodeURIComponent(pathname);
+  let decoded;
+  try {
+    decoded = decodeURIComponent(pathname);
+  } catch {
+    return null;
+  }
   const relative = decoded === "/" ? "index.html" : decoded.slice(1);
   const candidate = path.resolve(root, relative);
   if (!candidate.startsWith(`${root}${path.sep}`) && candidate !== root) {

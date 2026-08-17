@@ -36,10 +36,14 @@ export function LearningSettings() {
 
   useEffect(() => {
     if (!storageReady) return;
-    window.localStorage.setItem(
-      LEARNING_PREFERENCES_KEY,
-      JSON.stringify(preferences),
-    );
+    try {
+      window.localStorage.setItem(
+        LEARNING_PREFERENCES_KEY,
+        JSON.stringify(preferences),
+      );
+    } catch {
+      // Preferences remain available for this session when storage is blocked.
+    }
   }, [preferences, storageReady]);
 
   return (

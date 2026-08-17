@@ -66,7 +66,8 @@ export function AcademyPaletteMenu({
       const nextColumn =
         (column + (key === "ArrowRight" ? 1 : -1) + PALETTE_GRID_COLUMNS) %
         PALETTE_GRID_COLUMNS;
-      return row * PALETTE_GRID_COLUMNS + nextColumn;
+      const nextIndex = row * PALETTE_GRID_COLUMNS + nextColumn;
+      return nextIndex < themes.length ? nextIndex : activeIndex;
     }
 
     const nextRow =

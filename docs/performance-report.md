@@ -8,10 +8,10 @@ application surface tested on mobile and desktop.
 
 The supplied `dev.veolms.org` PageSpeed screenshots are the deployment baseline:
 
-| Profile | Performance | Accessibility | Best Practices | SEO |
-| --- | ---: | ---: | ---: | ---: |
-| Deployed baseline — desktop | 93 | 100 | 100 | 92 |
-| Deployed baseline — mobile | 88 | 100 | 100 | 92 |
+| Profile                     | Performance | Accessibility | Best Practices | SEO |
+| --------------------------- | ----------: | ------------: | -------------: | --: |
+| Deployed baseline — desktop |          93 |           100 |            100 |  92 |
+| Deployed baseline — mobile  |          88 |           100 |            100 |  92 |
 
 ### Final clean production runs
 
@@ -19,24 +19,24 @@ The table records the final successful run for each route template. Times are
 milliseconds. All rows scored **100 / 100 / 100 / 100**, reported zero layout
 shift, and passed the browser-console-errors audit.
 
-| Route | Profile | FCP | LCP | TBT | CLS |
-| --- | --- | ---: | ---: | ---: | ---: |
-| Home | Mobile | 997 | 1,208 | 47 | 0 |
-| Home | Desktop | 271 | 286 | 0 | 0 |
-| My Courses | Mobile | 906 | 1,356 | 32 | 0 |
-| My Courses | Desktop | 289 | 316 | 0 | 0 |
-| Explore Courses | Mobile | 907 | 1,582 | 29 | 0 |
-| Explore Courses | Desktop | 267 | 392 | 0 | 0 |
-| Discussions | Mobile | 905 | 1,055 | 65 | 0 |
-| Discussions | Desktop | 288 | 288 | 0 | 0 |
-| Learning player | Mobile | 907 | 1,207 | 28 | 0 |
-| Learning player | Desktop | 297 | 312 | 0 | 0 |
-| Settings / Appearance | Mobile | 926 | 1,060 | 65 | 0 |
-| Settings / Appearance | Desktop | 263 | 289 | 0 | 0 |
-| Settings / Profile | Mobile | 905 | 1,130 | 32 | 0 |
-| Settings / Profile | Desktop | 285 | 285 | 0 | 0 |
-| Settings / Learning | Mobile | 925 | 1,062 | 53 | 0 |
-| Settings / Sidebar | Mobile | 911 | 1,061 | 65 | 0 |
+| Route                 | Profile | FCP |   LCP | TBT | CLS |
+| --------------------- | ------- | --: | ----: | --: | --: |
+| Home                  | Mobile  | 997 | 1,208 |  47 |   0 |
+| Home                  | Desktop | 271 |   286 |   0 |   0 |
+| My Courses            | Mobile  | 906 | 1,356 |  32 |   0 |
+| My Courses            | Desktop | 289 |   316 |   0 |   0 |
+| Explore Courses       | Mobile  | 907 | 1,582 |  29 |   0 |
+| Explore Courses       | Desktop | 267 |   392 |   0 |   0 |
+| Discussions           | Mobile  | 905 | 1,055 |  65 |   0 |
+| Discussions           | Desktop | 288 |   288 |   0 |   0 |
+| Learning player       | Mobile  | 907 | 1,207 |  28 |   0 |
+| Learning player       | Desktop | 297 |   312 |   0 |   0 |
+| Settings / Appearance | Mobile  | 926 | 1,060 |  65 |   0 |
+| Settings / Appearance | Desktop | 263 |   289 |   0 |   0 |
+| Settings / Profile    | Mobile  | 905 | 1,130 |  32 |   0 |
+| Settings / Profile    | Desktop | 285 |   285 |   0 |   0 |
+| Settings / Learning   | Mobile  | 925 | 1,062 |  53 |   0 |
+| Settings / Sidebar    | Mobile  | 911 | 1,061 |  65 |   0 |
 
 Settings tabs share the same prerendered shell, critical-CSS pipeline, adjacent
 tab preloading, and deferred hydration path. The profile, appearance, learning,
@@ -86,8 +86,8 @@ Best Practices.
 
 ### Initial rendering and mobile responsiveness
 
-- Prerendered all static routes while retaining an SPA fallback for dynamic
-  course and lesson slugs.
+- Prerendered static routes and known course and lesson URLs through
+  `dynamicPrerenderPaths`; the SPA fallback serves unknown dynamic URLs.
 - Inlined route-purged critical CSS and deferred the full application stylesheet.
 - Split non-active routes, settings tabs, and heavy secondary controls into lazy
   chunks.
@@ -115,10 +115,10 @@ JavaScript response required by a route to the first real route-specific DOM.
 This is separate from cold-navigation time, which includes network latency,
 parsing, CSS/font delivery, and browser paint scheduling.
 
-| Route | Before | Current median | Current range | 4× CPU |
-| --- | ---: | ---: | ---: | ---: |
-| Home | ~112 ms | **14.1 ms** | 13.0–14.7 ms | **96.8 ms** |
-| Settings / Sidebar | ~295 ms | **33.0 ms** | 31.5–35.6 ms | 281.8 ms |
+| Route              |  Before | Current median | Current range |      4× CPU |
+| ------------------ | ------: | -------------: | ------------: | ----------: |
+| Home               | ~112 ms |    **14.1 ms** |  13.0–14.7 ms | **96.8 ms** |
+| Settings / Sidebar | ~295 ms |    **33.0 ms** |  31.5–35.6 ms |    281.8 ms |
 
 The normal benchmark machine meets the requested sub-100 ms post-JavaScript
 execution target. A universal sub-100 ms guarantee on every low-end device is
@@ -127,11 +127,11 @@ threshold even though its Lighthouse/Core Web Vitals results are good.
 
 ## Bundle impact
 
-| Metric | Before | Optimized | Reduction |
-| --- | ---: | ---: | ---: |
-| Transformed modules | 4,760 | 441 | 90.7% |
-| Academy layout, raw | 500.13 KB | 79.66 KB | 84.1% |
-| Academy layout, gzip | 131.82 KB | 24.48 KB | 81.4% |
+| Metric               |    Before | Optimized | Reduction |
+| -------------------- | --------: | --------: | --------: |
+| Transformed modules  |     4,760 |       441 |     90.7% |
+| Academy layout, raw  | 500.13 KB |  79.66 KB |     84.1% |
+| Academy layout, gzip | 131.82 KB |  24.48 KB |     81.4% |
 
 Development mode intentionally serves source modules, source maps, and hot
 reload code. It is useful for developer experience but is not representative of

@@ -13,7 +13,6 @@ export const links: Route.LinksFunction = () => [
     imageSrcSet: `${hero512} 512w, ${hero640} 640w, ${hero800} 800w, ${hero1600} 1600w`,
     imageSizes:
       "(max-width: 820px) calc(100vw - 50px), (max-width: 1180px) 40vw, 430px",
-    fetchPriority: "high",
   },
 ];
 

@@ -43,13 +43,7 @@ export function useShortcutPlatformPreference(): ShortcutPlatformPreference {
 
 export function useShortcutPlatform(): ShortcutPlatform {
   const preference = useShortcutPlatformPreference();
-  const [platform, setPlatform] = useState<ShortcutPlatform>(() =>
-    resolveShortcutPlatform(preference, ""),
-  );
-
-  useEffect(() => {
-    setPlatform(resolveShortcutPlatform(preference));
-  }, [preference]);
-
-  return platform;
+  // Explicit preferences are authoritative as soon as they hydrate; system
+  // detection is only needed for the follow-system setting.
+  return resolveShortcutPlatform(preference);
 }

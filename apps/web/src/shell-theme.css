@@ -4897,6 +4897,18 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
 .settings-mini-surface--aurora {
   --mini-tone: #28d8c6;
 }
+.settings-mini-surface--brainwave {
+  --mini-tone: #0085ff;
+}
+.settings-mini-surface--lilac {
+  --mini-tone: #c18cff;
+}
+.settings-mini-surface--champagne {
+  --mini-tone: #e6c98a;
+}
+.settings-mini-surface--lime {
+  --mini-tone: #a3e635;
+}
 
 .settings-mini-surface--forced-light {
   --mini-base: color-mix(in srgb, white 96%, var(--mini-tone) 4%);
@@ -4998,6 +5010,30 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   --mini-panel: #15362e;
   --mini-line: #9fc9be;
   --mini-tone: #28d8c6;
+}
+.settings-mini-surface--forced-dark.settings-mini-surface--brainwave {
+  --mini-base: #202224;
+  --mini-panel: #3c4143;
+  --mini-line: #9ca4a8;
+  --mini-tone: #0085ff;
+}
+.settings-mini-surface--forced-dark.settings-mini-surface--lilac {
+  --mini-base: #1d1823;
+  --mini-panel: #3b3047;
+  --mini-line: #bea9c5;
+  --mini-tone: #c18cff;
+}
+.settings-mini-surface--forced-dark.settings-mini-surface--champagne {
+  --mini-base: #1d1b17;
+  --mini-panel: #3e392e;
+  --mini-line: #bdb19c;
+  --mini-tone: #e6c98a;
+}
+.settings-mini-surface--forced-dark.settings-mini-surface--lime {
+  --mini-base: #171d17;
+  --mini-panel: #333e32;
+  --mini-line: #a5b79d;
+  --mini-tone: #a3e635;
 }
 
 /* Existing miniature labels retained for the Sidebar and layout examples. */
