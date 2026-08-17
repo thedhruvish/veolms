@@ -5,8 +5,11 @@ import { join } from "node:path";
 
 import {
   LocalStorageAdapter,
+  S3StorageAdapter,
   ScratchWorkspaceManager,
+  createDualStorageAdapters,
 } from "../src/storage/index.ts";
+import { loadWorkerConfig } from "../src/config/index.ts";
 
 describe("Storage & Scratch Workspace Manager", () => {
   const testRoot = `/tmp/veolms-test-${Math.random().toString(36).substring(2, 8)}`;
@@ -65,5 +68,29 @@ describe("Storage & Scratch Workspace Manager", () => {
 
     // Clean up chunk
     await workspaceManager.cleanupChunkWorkspace("chunk-002");
+  });
+
+  it("should instantiate dual storage adapters for temporary and production buckets", () => {
+    const config = loadWorkerConfig({
+      TEMP_STORAGE_PATH: join(testRoot, "temp-storage"),
+      PROD_STORAGE_PATH: join(testRoot, "prod-storage"),
+    });
+
+    const { tempStorage, prodStorage } = createDualStorageAdapters(config);
+
+    assert.equal(tempStorage.driverType, "local");
+    assert.equal(prodStorage.driverType, "local");
+  });
+
+  it("should configure S3 storage adapter with credentials and bucket", () => {
+    const s3Adapter = new S3StorageAdapter({
+      bucket: "test-prod-bucket",
+      region: "ap-southeast-1",
+      accessKeyId: "test-key",
+      secretAccessKey: "test-secret",
+    });
+
+    assert.equal(s3Adapter.driverType, "s3");
+    assert.equal(s3Adapter.bucket, "test-prod-bucket");
   });
 });

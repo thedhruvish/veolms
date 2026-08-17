@@ -9,7 +9,9 @@ import type { ChunkExecutionResult } from "./types.ts";
 
 export interface ChunkRunnerContext {
   readonly config: MediaWorkerConfig;
-  readonly storage: StorageAdapter;
+  readonly storage?: StorageAdapter;
+  readonly tempStorage?: StorageAdapter;
+  readonly prodStorage?: StorageAdapter;
   readonly workspace: ScratchWorkspaceManager;
   readonly heartbeat: HeartbeatEmitter;
   readonly transcoder?: FluentFfmpegTranscoder;
@@ -17,18 +19,27 @@ export interface ChunkRunnerContext {
 
 /**
  * ChunkTranscodingRunner: Orchestrates end-to-end chunk lifecycle:
- * workspace provisioning, download, transcoding with live heartbeats, HLS upload, and cleanup.
+ * workspace provisioning, download from Temp Storage, transcoding with live heartbeats,
+ * HLS upload to Production Storage, and cleanup.
  */
 export class ChunkTranscodingRunner {
   private readonly config: MediaWorkerConfig;
-  private readonly storage: StorageAdapter;
+  private readonly tempStorage: StorageAdapter;
+  private readonly prodStorage: StorageAdapter;
   private readonly workspace: ScratchWorkspaceManager;
   private readonly heartbeat: HeartbeatEmitter;
   private readonly transcoder: FluentFfmpegTranscoder;
 
   constructor(context: ChunkRunnerContext) {
     this.config = context.config;
-    this.storage = context.storage;
+    this.tempStorage =
+      context.tempStorage ??
+      context.storage ??
+      (context as unknown as { tempStorage: StorageAdapter }).tempStorage;
+    this.prodStorage =
+      context.prodStorage ??
+      context.storage ??
+      (context as unknown as { prodStorage: StorageAdapter }).prodStorage;
     this.workspace = context.workspace;
     this.heartbeat = context.heartbeat;
     this.transcoder = context.transcoder ?? new FluentFfmpegTranscoder();
@@ -46,8 +57,8 @@ export class ChunkTranscodingRunner {
     const paths = await this.workspace.createChunkWorkspace(job.chunkId);
 
     try {
-      // 1. Download source chunk from storage to local input scratch folder
-      await this.storage.downloadFile(job.chunkKey, paths.sourceFilePath);
+      // 1. Download source chunk from Temporary Storage to local input scratch folder
+      await this.tempStorage.downloadFile(job.chunkKey, paths.sourceFilePath);
 
       // 2. Transcode with fluent-ffmpeg, streaming progress directly into HeartbeatEmitter
       const transcodeResult = await this.transcoder.transcodeChunk({
@@ -68,10 +79,10 @@ export class ChunkTranscodingRunner {
         },
       });
 
-      // 3. Upload generated HLS playlists and segments to destination storage
+      // 3. Upload generated HLS playlists and segments to Production Storage
       this.heartbeat.setState("UPLOADING", job.chunkId);
       const destinationPrefix = `videos/${job.videoId}/chunks/${job.chunkId}`;
-      const uploadedKeys = await this.storage.uploadDirectory(
+      const uploadedKeys = await this.prodStorage.uploadDirectory(
         paths.outputDir,
         destinationPrefix,
       );

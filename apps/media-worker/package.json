@@ -11,6 +11,7 @@
     "start": "node src/index.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1111.0",
     "@veolms/config": "workspace:*",
     "@veolms/contracts": "workspace:*",
     "@veolms/fleet-types": "workspace:*",

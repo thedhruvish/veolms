@@ -197,17 +197,21 @@ async function runInteractivePreSetup(): Promise<void> {
   const cwd = process.cwd();
   const fleetConfigPath = resolve(cwd, "apps/fleet-manager/fleet.config.json");
   const workerConfigPath = resolve(cwd, "apps/media-worker/worker.config.json");
-  const envLocalPath = resolve(cwd, ".env.local");
   const fleetEnvPath = resolve(cwd, "apps/fleet-manager/.env.local");
   const workerEnvPath = resolve(cwd, "apps/media-worker/.env.local");
 
-  // Read existing .env.local if present to preserve custom user credentials
+  // Read existing app-scoped .env.local if present to preserve custom user credentials
   let existingEnv: Record<string, string> = {};
   try {
-    const rawEnv = await readFile(envLocalPath, "utf-8");
+    const rawEnv = await readFile(fleetEnvPath, "utf-8");
     existingEnv = parseExistingEnv(rawEnv);
   } catch {
-    // No prior .env.local
+    try {
+      const rawEnv = await readFile(workerEnvPath, "utf-8");
+      existingEnv = parseExistingEnv(rawEnv);
+    } catch {
+      // No prior .env.local
+    }
   }
 
   // Load existing fleet.config.json if available
@@ -559,11 +563,7 @@ if (typeof process.loadEnvFile === "function") {
   try {
     process.loadEnvFile(resolve(process.cwd(), "apps/fleet-manager/.env.local"));
   } catch {
-    try {
-      process.loadEnvFile(resolve(process.cwd(), ".env.local"));
-    } catch {
-      // Fallback
-    }
+    // Fallback if environment variables already provided via process.env
   }
 }
 
@@ -617,7 +617,11 @@ void main();
     "6. 📝 Generating Plugin-Defined Environment Variables (.env.local)...",
   );
 
-  const existingDbUrl = existingEnv.DATABASE_URL || process.env.DATABASE_URL;
+  const rawDbUrl = existingEnv.DATABASE_URL || process.env.DATABASE_URL || "";
+  const existingDbUrl =
+    rawDbUrl.trim() !== "" && !rawDbUrl.includes("user:password@host")
+      ? rawDbUrl.trim()
+      : "postgresql://postgres:postgres@localhost:5432/veolms";
 
   // Call the plugin's own getEnvTemplate contract!
   const pluginEnvVars = selectedPlugin.getEnvTemplate({
@@ -647,16 +651,18 @@ void main();
   ];
 
   for (const [key, val] of Object.entries(pluginEnvVars)) {
-    const customValue = existingEnv[key] ?? val;
+    const existingVal = existingEnv[key];
+    const customValue =
+      existingVal !== undefined && existingVal.trim() !== ""
+        ? existingVal.trim()
+        : val;
     envFileLines.push(`${key}=${customValue}`);
   }
 
   const envContent = envFileLines.join("\n") + "\n";
-  await writeFile(envLocalPath, envContent, "utf-8");
   await writeFile(fleetEnvPath, envContent, "utf-8");
   await writeFile(workerEnvPath, envContent, "utf-8");
 
-  console.log(`   ├─ Written:                .env.local (Workspace Root) ✅`);
   console.log(`   ├─ Written:                apps/fleet-manager/.env.local ✅`);
   console.log(
     `   └─ Written:                apps/media-worker/.env.local ✅\n`,
