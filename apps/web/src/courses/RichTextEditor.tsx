@@ -549,8 +549,8 @@ export function RichTextEditor({
   // Render
   // -------------------------------------------------------------------------
   return (
-    <div className="course-wizard-editor relative border border-white/[0.08] rounded-[10px] overflow-visible bg-black/20 focus-within:border-[var(--accent)]">
-      <div className="course-wizard-editor__toolbar flex items-center flex-wrap gap-y-1.5 gap-x-1 border-b border-white/[0.08] px-2.5 py-2 bg-white/[0.02] rounded-t-[9px] max-[640px]:px-2 max-[640px]:py-1.5 max-[640px]:gap-y-1.25 max-[640px]:gap-x-0.5">
+    <div className="relative border border-white/[0.08] rounded-[10px] overflow-visible bg-black/20 focus-within:border-[var(--accent)]">
+      <div className="flex items-center flex-wrap gap-y-1.5 gap-x-1 border-b border-white/[0.08] px-2.5 py-2 bg-white/[0.02] rounded-t-[9px] max-[640px]:px-2 max-[640px]:py-1.5 max-[640px]:gap-y-1.25 max-[640px]:gap-x-0.5">
         {/* Heading / Format Selector */}
         <div className="course-wizard-editor__select relative inline-flex items-center shrink-0">
           <select
@@ -564,7 +564,7 @@ export function RichTextEditor({
           </select>
         </div>
 
-        <div className="course-wizard-editor__divider w-px h-[18px] mx-[3px] bg-white/10 shrink-0 max-[640px]:h-4 max-[640px]:mx-px" />
+        <div className="w-px h-[18px] mx-[3px] bg-white/10 shrink-0 max-[640px]:h-4 max-[640px]:mx-px" />
 
         {/* Bold & Italic */}
         <button
@@ -588,7 +588,7 @@ export function RichTextEditor({
           <TextItalic size={16} weight="bold" />
         </button>
 
-        <div className="course-wizard-editor__divider w-px h-[18px] mx-[3px] bg-white/10 shrink-0 max-[640px]:h-4 max-[640px]:mx-px" />
+        <div className="w-px h-[18px] mx-[3px] bg-white/10 shrink-0 max-[640px]:h-4 max-[640px]:mx-px" />
 
         {/* Lists & Blockquote */}
         <button
@@ -622,7 +622,7 @@ export function RichTextEditor({
           <Quotes size={16} />
         </button>
 
-        <div className="course-wizard-editor__divider w-px h-[18px] mx-[3px] bg-white/10 shrink-0 max-[640px]:h-4 max-[640px]:mx-px" />
+        <div className="w-px h-[18px] mx-[3px] bg-white/10 shrink-0 max-[640px]:h-4 max-[640px]:mx-px" />
 
         {/* Link Button & Popover */}
         <div className="course-wizard-emoji-popover-wrap relative inline-flex shrink-0">
@@ -751,8 +751,8 @@ export function RichTextEditor({
         maxLength={maxLength}
       />
 
-      <div className="course-wizard-editor__footer flex justify-end px-3.5 pt-1.5 pb-2.5">
-        <span className="course-wizard-char-count static text-[var(--muted)] text-[0.76rem]">
+      <div className="flex justify-end px-3.5 pt-1.5 pb-2.5">
+        <span className="static text-[var(--muted)] text-[0.76rem]">
           {value.length} / {maxLength}
         </span>
       </div>
