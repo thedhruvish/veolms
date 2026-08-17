@@ -1,5 +1,6 @@
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import postcss from "postcss";
 
 const collectPrerenderedPages = async (directory) => {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -34,37 +35,52 @@ const criticalSelectorHints = [
  * this small generated subset lets the prerender paint with the same geometry
  * before that stylesheet has finished downloading.
  */
+const isCriticalSelector = (selector) =>
+  selector.split(",").some((part) => {
+    const normalizedSelector = part.trim();
+    return (
+      normalizedSelector.startsWith(":root") ||
+      normalizedSelector === "*" ||
+      normalizedSelector === "html" ||
+      normalizedSelector === "body" ||
+      criticalSelectorHints.some((hint) => normalizedSelector.includes(hint))
+    );
+  });
+
+/**
+ * Retain shell rules wherever they occur in the stylesheet. PostCSS lets us
+ * clone only matching descendants while rebuilding their ancestor at-rules,
+ * so responsive `@media`/`@supports` geometry is preserved without pulling
+ * unrelated page styles into every prerendered document.
+ */
 const extractCriticalCss = (css) => {
-  const blocks = [];
-  let depth = 0;
-  let blockStart = 0;
+  const root = postcss.parse(css);
 
-  for (let index = 0; index < css.length; index += 1) {
-    const character = css[index];
-    if (character === "{") {
-      if (depth === 0) blockStart = css.lastIndexOf("}", index - 1) + 1;
-      depth += 1;
-      continue;
-    }
-    if (character !== "}") continue;
+  const selectCriticalNodes = (container) => {
+    const nodes = [];
 
-    depth -= 1;
-    if (depth !== 0) continue;
+    container.each((node) => {
+      if (node.type === "rule") {
+        if (isCriticalSelector(node.selector)) nodes.push(node.clone());
+        return;
+      }
 
-    const block = css.slice(blockStart, index + 1);
-    const header = block.slice(0, block.indexOf("{")).trim();
-    if (
-      header.startsWith(":root") ||
-      header === "*" ||
-      header === "html" ||
-      header === "body" ||
-      criticalSelectorHints.some((hint) => header.includes(hint))
-    ) {
-      blocks.push(block);
-    }
-  }
+      if (node.type === "atrule" && node.name.toLowerCase() === "font-face") {
+        nodes.push(node.clone());
+        return;
+      }
 
-  return blocks.join("");
+      if (!node.nodes) return;
+      const criticalChildren = selectCriticalNodes(node);
+      if (criticalChildren.length === 0) return;
+
+      nodes.push(node.clone({ nodes: criticalChildren }));
+    });
+
+    return nodes;
+  };
+
+  return postcss.root({ nodes: selectCriticalNodes(root) }).toString();
 };
 
 const getStylesheetHref = (html) =>
@@ -132,7 +148,7 @@ export async function optimizePrerenderedLanding({
     const hasStylesheet = /<link[^>]+rel="stylesheet"/i.test(pageHtml);
     const hasHydrationModule = /<script[^>]+type="module"/i.test(pageHtml);
     const hasCriticalCss =
-      /<style[^>]+data-critical-css[^>]*>[^<]+<\/style>/i.test(
+      /<style[^>]+data-critical-css[^>]*>[\s\S]*?\S[\s\S]*?<\/style>/i.test(
         optimizedPage.html,
       );
 
