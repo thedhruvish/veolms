@@ -33,6 +33,25 @@ const CURRICULUM_DEFAULT_WIDTH = 400;
 const CURRICULUM_MAX_WIDTH = 560;
 const CURRICULUM_SNAP_WIDTH = CURRICULUM_MIN_WIDTH / 2;
 
+const clampCurriculumWidth = (value: number) =>
+  Math.min(CURRICULUM_MAX_WIDTH, Math.max(CURRICULUM_MIN_WIDTH, value));
+
+const getInitialCurriculumWidth = () => {
+  if (typeof window === "undefined") return CURRICULUM_DEFAULT_WIDTH;
+
+  try {
+    const storedWidth = window.localStorage.getItem("veolms-curriculum-width");
+    if (storedWidth === null) return CURRICULUM_DEFAULT_WIDTH;
+
+    const savedWidth = Number(storedWidth);
+    return Number.isFinite(savedWidth)
+      ? clampCurriculumWidth(savedWidth)
+      : CURRICULUM_DEFAULT_WIDTH;
+  } catch {
+    return CURRICULUM_DEFAULT_WIDTH;
+  }
+};
+
 interface LearningWorkspaceProps {
   courseSlug: string | undefined;
   lessonId: number;
@@ -86,20 +105,12 @@ export function LearningWorkspace({
   const [lessonDrawer, setLessonDrawer] = useState(false);
   const [curriculumFocusRequest, setCurriculumFocusRequest] = useState(0);
   const [curriculumWidth, setCurriculumWidth] = useState(
-    CURRICULUM_DEFAULT_WIDTH,
+    getInitialCurriculumWidth,
   );
   useEffect(() => {
     try {
       setTheme(localStorage.getItem("veolms-theme") || "dark");
       setAcademyTheme(getInitialAcademyTheme());
-      const storedWidth = localStorage.getItem("veolms-curriculum-width");
-      if (storedWidth === null) return;
-      const saved = Number(storedWidth);
-      if (Number.isFinite(saved)) {
-        setCurriculumWidth(
-          Math.min(CURRICULUM_MAX_WIDTH, Math.max(CURRICULUM_MIN_WIDTH, saved)),
-        );
-      }
     } catch {
       // The deterministic defaults remain usable without browser storage.
     }
@@ -229,10 +240,7 @@ export function LearningWorkspace({
   }, [lessonDrawer]);
 
   const commitCurriculumWidth = useCallback((value: number) => {
-    const nextWidth = Math.min(
-      CURRICULUM_MAX_WIDTH,
-      Math.max(CURRICULUM_MIN_WIDTH, value),
-    );
+    const nextWidth = clampCurriculumWidth(value);
     setCurriculumWidth(nextWidth);
     try {
       localStorage.setItem(
