@@ -164,7 +164,7 @@ test("Escape leaves Settings for the previous non-settings destination", async (
   await expect(page).toHaveURL(/\/notifications$/);
 });
 
-test("leaving Settings restores the document scroll position", async ({
+test("leaving Settings restores the application scroll position", async ({
   page,
 }) => {
   await openApp(page, "/my-courses");

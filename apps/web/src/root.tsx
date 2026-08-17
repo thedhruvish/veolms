@@ -40,6 +40,7 @@ export function Layout({ children }: LayoutProps) {
       data-reading-mode-temperature="false"
       data-reading-mode-colors="full"
       data-page-tab-colors="follow-sidebar"
+      data-content-layout="framed"
       data-elevated-surfaces="true"
       data-sidebar-menu-elevation="false"
       suppressHydrationWarning

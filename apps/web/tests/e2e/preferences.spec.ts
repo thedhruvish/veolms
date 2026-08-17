@@ -5,7 +5,7 @@ test.beforeEach(async ({ page }) => {
   await installBaselineState(page);
 });
 
-test("framed and edge-to-edge layouts scroll with the document", async ({
+test("framed layout scrolls inside its main surface while edge-to-edge uses the document", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1133, height: 753 });
@@ -16,13 +16,29 @@ test("framed and edge-to-edge layouts scroll with the document", async ({
   await expect(root).toHaveAttribute("data-content-layout", "framed");
   await expect(page.locator(".courses-main-scrollport")).toHaveCount(0);
   await expect(mainSurface).toBeVisible();
-  await expect
-    .poll(() => page.evaluate(() => document.documentElement.scrollHeight))
-    .toBeGreaterThan(753);
+  const framedMetrics = await mainSurface.evaluate((main) => {
+    const bounds = main.getBoundingClientRect();
+    return {
+      bottomGap: window.innerHeight - bounds.bottom,
+      clientHeight: main.clientHeight,
+      overflowY: getComputedStyle(main).overflowY,
+      scrollHeight: main.scrollHeight,
+      top: bounds.top,
+    };
+  });
+  expect(framedMetrics.top).toBe(14);
+  expect(framedMetrics.bottomGap).toBe(14);
+  expect(framedMetrics.overflowY).toBe("auto");
+  expect(framedMetrics.scrollHeight).toBeGreaterThan(
+    framedMetrics.clientHeight,
+  );
 
   await page.evaluate(() => window.scrollTo(0, 420));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+
+  await mainSurface.evaluate((main) => main.scrollTo(0, 420));
   await expect
-    .poll(() => page.evaluate(() => window.scrollY))
+    .poll(() => mainSurface.evaluate((main) => main.scrollTop))
     .toBeGreaterThan(300);
 
   await page.evaluate(() => {
@@ -37,6 +53,7 @@ test("framed and edge-to-edge layouts scroll with the document", async ({
   await page.reload();
   await expect(root).toHaveAttribute("data-content-layout", "edge-to-edge");
   await expect(mainSurface).toBeVisible();
+  await expect(mainSurface).toHaveCSS("overflow-y", "visible");
 
   await page.evaluate(() => window.scrollTo(0, 420));
   await expect
