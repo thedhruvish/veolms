@@ -723,8 +723,20 @@
 }
 
 .learning-discussion {
+  --learning-panel-inline-start: 6px;
+  --learning-panel-inline-end: 6px;
   margin: 15px 0 0;
   padding: 0 6px 28px;
+}
+
+.learning-discussion__tab-panel {
+  margin-right: calc(-1 * var(--learning-panel-inline-end));
+  margin-left: calc(-1 * var(--learning-panel-inline-start));
+}
+
+.learning-discussion__tab-panel > .swipeable-tab-panel__layer {
+  padding-right: var(--learning-panel-inline-end);
+  padding-left: var(--learning-panel-inline-start);
 }
 
 .learning-discussion__search {
@@ -964,6 +976,11 @@
   .learning-workspace__lesson-heading {
     padding: 10px 6px;
   }
+
+  .learning-discussion {
+    --learning-panel-inline-start: 22px;
+    --learning-panel-inline-end: 16px;
+  }
 }
 
 @media (max-width: 640px) {
@@ -994,6 +1011,8 @@
   }
 
   .learning-discussion {
+    --learning-panel-inline-start: 12px;
+    --learning-panel-inline-end: 12px;
     margin-top: 12px;
     padding: 0 12px 22px;
   }

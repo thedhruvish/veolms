@@ -178,6 +178,23 @@ test("discussion content and lesson tools use the same adjacent swipe behavior",
 }) => {
   await openApp(page, "/discussions/q-and-a");
   const discussionPanel = page.locator("#discussion-panel");
+  const discussionMainBox = await page.locator(".courses-main").boundingBox();
+  const discussionPanelBox = await discussionPanel.boundingBox();
+  const discussionThreadBox = await discussionPanel
+    .locator(".discussion-thread")
+    .first()
+    .boundingBox();
+  expect(Math.abs(discussionPanelBox!.x - discussionMainBox!.x)).toBeLessThan(
+    1,
+  );
+  expect(
+    Math.abs(
+      discussionPanelBox!.x +
+        discussionPanelBox!.width -
+        (discussionMainBox!.x + discussionMainBox!.width),
+    ),
+  ).toBeLessThan(1);
+  expect(discussionThreadBox!.x - discussionPanelBox!.x).toBeGreaterThan(20);
   const finishDiscussionSwipe = await startTouchSwipe(
     page,
     discussionPanel,
@@ -198,6 +215,22 @@ test("discussion content and lesson tools use the same adjacent swipe behavior",
     "/learn/typescript-course/the-design-mindset?from=my-courses",
   );
   const lessonPanel = page.locator("#learning-discussion-tab-panel");
+  const lessonColumnBox = await page
+    .locator(".learning-workspace__lesson-column")
+    .boundingBox();
+  const lessonPanelBox = await lessonPanel.boundingBox();
+  const lessonComposerBox = await lessonPanel
+    .locator(".learning-comment-composer")
+    .boundingBox();
+  expect(Math.abs(lessonPanelBox!.x - lessonColumnBox!.x)).toBeLessThan(1);
+  expect(
+    Math.abs(
+      lessonPanelBox!.x +
+        lessonPanelBox!.width -
+        (lessonColumnBox!.x + lessonColumnBox!.width),
+    ),
+  ).toBeLessThan(1);
+  expect(lessonComposerBox!.x - lessonPanelBox!.x).toBeGreaterThanOrEqual(6);
   const finishLessonSwipe = await startTouchSwipe(page, lessonPanel, -190);
   await expect(lessonPanel.locator(".is-preview.is-next")).toContainText(
     "Your lesson notes",
@@ -207,6 +240,39 @@ test("discussion content and lesson tools use the same adjacent swipe behavior",
     "aria-selected",
     "true",
   );
+});
+
+test("discussion surfaces keep swipe clipping outside mobile content gutters", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  for (const [path, panelSelector, contentSelector] of [
+    ["/discussions/q-and-a", "#discussion-panel", ".discussion-thread"],
+    [
+      "/learn/typescript-course/career-opportunities?from=home",
+      "#learning-discussion-tab-panel",
+      ".learning-comment-composer",
+    ],
+  ] as const) {
+    await page.goto(path);
+    const panel = page.locator(panelSelector);
+    await expect(panel).toBeVisible({ timeout: 15_000 });
+    const mainBox = await page.locator(".courses-main").boundingBox();
+    const panelBox = await panel.boundingBox();
+    const contentBox = await panel
+      .locator(contentSelector)
+      .first()
+      .boundingBox();
+
+    expect(Math.abs(panelBox!.x - mainBox!.x), path).toBeLessThan(1);
+    expect(
+      Math.abs(panelBox!.x + panelBox!.width - (mainBox!.x + mainBox!.width)),
+      path,
+    ).toBeLessThan(1);
+    expect(contentBox!.x - panelBox!.x, path).toBeGreaterThanOrEqual(12);
+  }
 });
 
 test("a short slow swipe springs back and an edge swipe stays inside the tab panel", async ({
