@@ -136,7 +136,7 @@ export function AcademyPaletteMenu({
           tabIndex={item.id === activeTheme ? 0 : -1}
           className={item.id === activeTheme ? "is-selected" : ""}
           key={item.id}
-          title={`${item.name} — ${item.note}`}
+          title={item.name}
           data-theme-swatch={item.id}
           style={{ "--theme-swatch": item.preview } as CSSProperties}
           onClick={() => {

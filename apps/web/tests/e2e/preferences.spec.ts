@@ -336,6 +336,25 @@ test("theme menus use the available height before introducing overflow", async (
   await sidebar.getByRole("button", { name: "Expand navigation" }).click();
   await appearance.getByRole("button", { name: "Choose color theme" }).click();
   await assertPaletteFits(true);
+  await page.keyboard.press("Escape");
+
+  const modeControl = appearance.getByRole("button").nth(0);
+  await modeControl.click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await modeControl.click({ button: "right" });
+  const lightPaletteMaterial = await page
+    .getByRole("menu", { name: "Choose a color theme" })
+    .evaluate((menu) => {
+      const styles = getComputedStyle(menu);
+      return {
+        backgroundColor: styles.backgroundColor,
+        backgroundImage: styles.backgroundImage,
+        boxShadow: styles.boxShadow,
+      };
+    });
+  expect(lightPaletteMaterial.backgroundColor).not.toBe("rgb(36, 35, 33)");
+  expect(lightPaletteMaterial.backgroundImage).toBe("none");
+  expect(lightPaletteMaterial.boxShadow).not.toBe("none");
 });
 
 test("sidebar keyboard shortcut hints can be hidden without disabling shortcuts", async ({
@@ -893,6 +912,7 @@ test("theme picker keeps pointer choices open and makes keyboard previews revers
   const ocean = menu.getByRole("menuitemradio", { name: /Ocean Blue/ });
 
   await expect(graphite).toBeFocused();
+  await expect(graphite).toHaveAttribute("title", "Graphite Studio");
   const paletteMaterial = await graphite.evaluate((button) => {
     const swatch = button.querySelector("i");
     if (!swatch) throw new Error("Theme swatch surface is missing");
@@ -921,13 +941,13 @@ test("theme picker keeps pointer choices open and makes keyboard previews revers
       swatchTransform: swatchStyles.transform,
     };
   });
-  expect(paletteMaterial.menuWidth).toBeCloseTo(252, 0);
+  expect(paletteMaterial.menuWidth).toBeCloseTo(216, 0);
   expect(paletteMaterial.menuRadius).toBe(24);
   expect(paletteMaterial.gridGap).toBe(4);
   expect(paletteMaterial.buttonSquareDelta).toBeLessThan(0.5);
   expect(paletteMaterial.swatchSquareDelta).toBeLessThan(0.5);
-  expect(paletteMaterial.swatchSize).toBeGreaterThanOrEqual(39);
-  expect(paletteMaterial.swatchSize).toBeLessThanOrEqual(42);
+  expect(paletteMaterial.swatchSize).toBeGreaterThanOrEqual(35);
+  expect(paletteMaterial.swatchSize).toBeLessThanOrEqual(38);
   expect(paletteMaterial.menuShadowLayers).toBeGreaterThanOrEqual(4);
   expect(paletteMaterial.selectedBorderLayers).toBe(2);
   expect(paletteMaterial.selectedInsetLayers).toBe(2);
