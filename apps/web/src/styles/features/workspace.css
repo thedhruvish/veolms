@@ -354,6 +354,30 @@
   color: var(--text);
 }
 
+@media (min-width: 821px) {
+  .courses-main.student-surface-main:has(> .discussion-hub) {
+    padding-inline: 0;
+  }
+
+  .discussion-hub {
+    --discussion-page-inline-gutter: calc(25px + clamp(16px, 2.8vw, 38px));
+    padding-inline: 0;
+  }
+
+  .discussion-hub__header {
+    padding-inline: var(--discussion-page-inline-gutter);
+  }
+
+  .discussion-hub__tabs {
+    margin-right: var(--discussion-page-inline-gutter);
+    margin-left: var(--discussion-page-inline-gutter);
+  }
+
+  .discussion-hub > .swipeable-tab-panel > .swipeable-tab-panel__layer {
+    padding-inline: var(--discussion-page-inline-gutter);
+  }
+}
+
 /* Graphite Studio keeps discussion copy readable on the same raised neutral
    surfaces used by the student home cards. Accent color is reserved for
    selection, actions, and status—not the message-card fill. */
@@ -1039,6 +1063,19 @@
   }
   .discussion-mention time {
     grid-column: 2;
+  }
+}
+
+@media (max-width: 820px) {
+  .student-surface-main > .discussion-hub > .swipeable-tab-panel {
+    margin-inline: -15px;
+  }
+
+  .student-surface-main
+    > .discussion-hub
+    > .swipeable-tab-panel
+    > .swipeable-tab-panel__layer {
+    padding-inline: 15px;
   }
 }
 
