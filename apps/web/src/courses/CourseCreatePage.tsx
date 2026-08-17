@@ -3268,30 +3268,30 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
         typeof document !== "undefined" &&
         createPortal(
           <div
-            className="course-overview-preview-modal-overlay"
+            className="fixed inset-0 z-[1200] flex flex-col bg-black/80 backdrop-blur-xl [animation:deleteModalFadeIn_0.2s_ease-out] p-4 box-border max-[640px]:p-0"
             onClick={() => setIsPreviewModalOpen(false)}
             role="dialog"
             aria-modal="true"
             aria-label="Course Overview Preview"
           >
             <div
-              className="course-overview-preview-modal-card"
+              className="relative flex flex-col w-full max-w-[1380px] h-full max-h-[94vh] m-auto border border-[color-mix(in_srgb,var(--text)_14%,transparent)] rounded-[20px] bg-[color-mix(in_srgb,var(--surface)_24%,var(--canvas))] shadow-[0_24px_64px_rgba(0,0,0,0.6)] overflow-hidden [animation:deleteModalPopIn_0.22s_cubic-bezier(0.16,1,0.3,1)] max-[640px]:max-h-screen max-[640px]:h-screen max-[640px]:rounded-none max-[640px]:border-none"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Top Bar */}
-              <div className="course-overview-preview-modal-header">
-                <div className="course-overview-preview-modal-header__title">
-                  <div className="course-overview-preview-modal-header__title-text">
+              <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-[color-mix(in_srgb,var(--text)_10%,transparent)] bg-[var(--surface)] shrink-0 max-[640px]:px-3.5 max-[640px]:py-2.5">
+                <div className="flex items-center flex-wrap gap-x-3 gap-y-2 min-w-0 flex-1 max-[640px]:gap-1.5">
+                  <div className="inline-flex items-center gap-2 text-[0.92rem] font-bold text-[var(--text)] tracking-[-0.01em] whitespace-nowrap overflow-hidden text-ellipsis max-[640px]:text-[0.85rem]">
                     <Eye size={18} weight="bold" />
                     <span>Student Course Overview Preview</span>
                   </div>
-                  <span className="course-overview-preview-modal-badge">
+                  <span className="inline-flex items-center gap-1.25 px-2.25 py-0.75 rounded-full border border-[var(--accent-border,color-mix(in_srgb,var(--accent)_35%,transparent))] bg-[var(--accent-soft,color-mix(in_srgb,var(--accent)_15%,transparent))] text-[var(--accent-ink,var(--accent))] text-[0.7rem] font-[650] whitespace-nowrap shrink-0 max-[640px]:text-[0.66rem] max-[640px]:px-1.75 max-[640px]:py-0.5">
                     Live Preview (Read-Only)
                   </span>
                 </div>
                 <button
                   type="button"
-                  className="course-overview-preview-modal-close-btn"
+                  className="inline-flex items-center justify-center w-8 h-8 shrink-0 border border-[color-mix(in_srgb,var(--text)_12%,transparent)] rounded-lg bg-transparent text-[var(--text-secondary)] cursor-pointer transition-all duration-150 ease-out hover:border-[color-mix(in_srgb,var(--text)_24%,transparent)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
                   onClick={() => setIsPreviewModalOpen(false)}
                   aria-label="Close Preview"
                 >
@@ -3300,7 +3300,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
               </div>
 
               {/* Modal Body: Render authentic CourseOverviewPage */}
-              <div className="course-overview-preview-modal-body">
+              <div className="flex-1 min-h-0 overflow-y-auto p-0">
                 <CourseOverviewPage
                   customCourse={previewCourse}
                   customDescription={courseDescription}
