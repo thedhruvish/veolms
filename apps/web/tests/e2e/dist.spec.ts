@@ -5,7 +5,7 @@ test.beforeEach(async ({ page }) => {
   await installBaselineState(page);
 });
 
-test("first visible shell uses the persisted sidebar geometry", async ({
+test("first visible shell uses the persisted layout geometry", async ({
   page,
 }) => {
   await page.goto("/");
@@ -13,16 +13,33 @@ test("first visible shell uses the persisted sidebar geometry", async ({
   await page.evaluate(() => {
     window.localStorage.setItem("veolms-sidebar-mode", "expanded");
     window.localStorage.setItem("veolms-sidebar-width", "252");
+    window.localStorage.setItem("veolms-curriculum-width", "300");
   });
 
   await page.addInitScript(() => {
     const observer = new MutationObserver(() => {
       const app = document.querySelector<HTMLElement>(".courses-app");
-      if (!app) return;
+      const learningMain = document.querySelector<HTMLElement>(
+        ".learning-workspace__main",
+      );
 
-      document.documentElement.dataset.testFirstSidebarWidth =
-        app.style.getPropertyValue("--sidebar-expanded-width");
-      observer.disconnect();
+      if (app && !document.documentElement.dataset.testFirstSidebarWidth) {
+        document.documentElement.dataset.testFirstSidebarWidth =
+          app.style.getPropertyValue("--sidebar-expanded-width");
+      }
+      if (
+        learningMain &&
+        !document.documentElement.dataset.testFirstCurriculumWidth
+      ) {
+        document.documentElement.dataset.testFirstCurriculumWidth =
+          learningMain.style.getPropertyValue("--learning-curriculum-width");
+      }
+      if (
+        document.documentElement.dataset.testFirstSidebarWidth &&
+        document.documentElement.dataset.testFirstCurriculumWidth
+      ) {
+        observer.disconnect();
+      }
     });
     observer.observe(document, { childList: true, subtree: true });
   });
@@ -32,6 +49,10 @@ test("first visible shell uses the persisted sidebar geometry", async ({
   await expect(page.locator("html")).toHaveAttribute(
     "data-test-first-sidebar-width",
     "252px",
+  );
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-test-first-curriculum-width",
+    "300px",
   );
   await expect(page.locator("[data-app-loading]")).toHaveCount(0);
 });
