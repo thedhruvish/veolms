@@ -29,7 +29,7 @@
 }
 
 :root[data-high-contrast="true"][data-palette="brainwave"] {
-  --text: #fefefe;
-  --text-secondary: #d9dddf;
-  --muted: #969ea2;
+  --text: #ffffff;
+  --text-secondary: #f1f5f9;
+  --muted: #d5dde1;
 }

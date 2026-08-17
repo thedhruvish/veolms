@@ -309,7 +309,11 @@ test("mobile workspace routes share the Home page gutter", async ({ page }) => {
     await test.step(path, async () => {
       await page.goto(path);
       const wrapper = page.locator(selector);
-      await expect(wrapper).toHaveCSS("padding-top", "0px");
+      const preservesVerticalSpacing = path === "/settings/appearance";
+      await expect(wrapper).toHaveCSS(
+        "padding-top",
+        preservesVerticalSpacing ? "22px" : "0px",
+      );
       await expect(wrapper).toHaveCSS("padding-right", "0px");
       await expect(wrapper).toHaveCSS("padding-left", "0px");
 

@@ -991,7 +991,7 @@ export function CoursesPage({
       event.stopPropagation();
       setMobileMenuOpen(false);
       setMobilePaletteMenu(false);
-      setReadingModeMenu((current) => (current === "mobile" ? null : current));
+      setReadingModeMenu(null);
       setMobileSheetOffset(0);
     };
 

@@ -1,6 +1,7 @@
 import { CaretDown } from "@phosphor-icons/react/CaretDown";
 import { Check } from "@phosphor-icons/react/Check";
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -70,7 +71,7 @@ export function ThemedSelect<Value extends string>({
     : selectedLabel;
   const menuId = id ? `${id}-menu` : undefined;
 
-  const updatePosition = () => {
+  const updatePosition = useCallback(() => {
     const trigger = triggerRef.current;
     if (!trigger) return;
     const rect = trigger.getBoundingClientRect();
@@ -100,7 +101,7 @@ export function ThemedSelect<Value extends string>({
       maxHeight,
       origin: useAbove ? "bottom" : "top",
     });
-  };
+  }, [options.length]);
 
   const openMenu = (focusIndex = selectedIndex) => {
     if (disabled) return;
@@ -119,7 +120,7 @@ export function ThemedSelect<Value extends string>({
 
   useLayoutEffect(() => {
     if (open) updatePosition();
-  }, [open, options.length]);
+  }, [open, updatePosition]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -141,7 +142,7 @@ export function ThemedSelect<Value extends string>({
       window.removeEventListener("resize", reposition);
       window.removeEventListener("scroll", reposition, true);
     };
-  }, [open]);
+  }, [open, updatePosition]);
 
   const handleTriggerKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (["ArrowDown", "ArrowUp", "Enter", " "].includes(event.key)) {

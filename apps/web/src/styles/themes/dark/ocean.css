@@ -20,4 +20,8 @@
   --app-shell: #12151a;
   --main-surface: #1e242d;
   --surface-strong: #303843;
+  --card-surface: #282f39;
+  --card-surface-raised: #303843;
+  --card-surface-soft: #1e242d;
+  --card-surface-hover: #333d49;
 }
