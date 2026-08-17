@@ -153,6 +153,84 @@ export interface WebauthnChallengeTable {
   created_at: Generated<Date>;
 }
 
+export interface VideoJobTable {
+  id: string;
+  status: string;
+  source_key: string;
+  duration_seconds: number;
+  source_width: number;
+  source_height: number;
+  source_fps: number;
+  source_codec: string;
+  requested_qualities: string;
+  quality_complexity: number;
+  source_complexity: number;
+  chunk_duration_seconds: number;
+  chunk_count: number;
+  required_workers: number;
+  active_workers: Generated<number>;
+  completed_chunks: Generated<number>;
+  output_manifest_key: string | null;
+  error: string | null;
+  started_at: Date | null;
+  completed_at: Date | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export interface VideoChunkTable {
+  id: string;
+  video_id: string;
+  chunk_index: number;
+  start_seconds: number;
+  duration_seconds: number;
+  source_key: string;
+  status: string;
+  worker_id: string | null;
+  output_key: string | null;
+  retry_count: Generated<number>;
+  error: string | null;
+  started_at: Date | null;
+  completed_at: Date | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export interface WorkerTable {
+  id: string;
+  instance_id: string;
+  provider: string;
+  instance_type: string;
+  state: string;
+  current_job_id: string | null;
+  current_video_id: string | null;
+  current_chunk_id: string | null;
+  progress_percent: Generated<number>;
+  estimated_remaining_seconds: number | null;
+  fps: number | null;
+  last_heartbeat_at: Date | null;
+  idle_since: Date | null;
+  started_at: Generated<Date>;
+  terminated_at: Date | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export interface WorkerHeartbeatTable {
+  id: string;
+  worker_id: string;
+  job_id: string | null;
+  video_id: string | null;
+  chunk_id: string | null;
+  progress_percent: number;
+  fps: number | null;
+  frames: number | null;
+  estimated_remaining_seconds: number | null;
+  cpu_usage: number | null;
+  memory_usage: number | null;
+  created_at: Generated<Date>;
+}
+
 export interface Database {
   courses: CourseTable;
   academy: AcademyTable;
@@ -168,4 +246,8 @@ export interface Database {
   user_totp_credentials: UserTotpCredentialTable;
   mfa_backup_codes: MfaBackupCodeTable;
   webauthn_challenges: WebauthnChallengeTable;
+  video_jobs: VideoJobTable;
+  video_chunks: VideoChunkTable;
+  workers: WorkerTable;
+  worker_heartbeats: WorkerHeartbeatTable;
 }

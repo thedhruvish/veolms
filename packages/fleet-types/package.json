@@ -1,0 +1,22 @@
+{
+  "name": "@veolms/fleet-types",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./driver": "./src/driver.ts",
+    "./worker": "./src/worker.ts",
+    "./video": "./src/video.ts",
+    "./sizing": "./src/sizing.ts",
+    "./queue": "./src/queue.ts",
+    "./config": "./src/config.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "npm:@typescript/typescript6@^6.0.2"
+  }
+}
