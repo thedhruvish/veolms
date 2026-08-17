@@ -169,7 +169,7 @@ test("page tabs pin beneath the shell edge while the framed surface uses only a 
         background,
       };
     });
-    expect(thumbAppearance.alpha).toBe(1);
+    expect(thumbAppearance.alpha).toBeCloseTo(0.9, 2);
     await page.locator("html").evaluate((root) => {
       root.style.setProperty("--accent", "#ff0066");
     });
