@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
-import { RichTextEditor, RenderMarkdown } from "./RichTextEditor";
+import { useState, useEffect, useRef } from"react";
+import { createPortal } from"react-dom";
+import { RichTextEditor, RenderMarkdown } from"./RichTextEditor";
 import {
   ArrowLeft,
   ArrowRight,
@@ -48,23 +48,23 @@ import {
   UserPlus,
   Video,
   X,
-} from "@phosphor-icons/react";
-import type { ComponentType } from "react";
-import { ThemedSelect } from "../ThemedSelect";
-import type { NavigateTo } from "../routing/navigation";
+} from"@phosphor-icons/react";
+import type { ComponentType } from"react";
+import { ThemedSelect } from"../ThemedSelect";
+import type { NavigateTo } from"../routing/navigation";
 
-import { ConfirmDeleteModal } from "../ConfirmDeleteModal";
-import { CourseOverviewPage } from "./CourseOverviewPage";
-import type { CourseInclude, CourseOverviewPricingProps } from "./CourseOverviewPage";
-import type { Course, CourseLevel, CourseCategory } from "./catalogue";
-import type { CourseSection, Lesson } from "../learning/courseContent";
+import { ConfirmDeleteModal } from"../ConfirmDeleteModal";
+import { CourseOverviewPage } from"./CourseOverviewPage";
+import type { CourseInclude, CourseOverviewPricingProps } from"./CourseOverviewPage";
+import type { Course, CourseLevel, CourseCategory } from"./catalogue";
+import type { CourseSection, Lesson } from"../learning/courseContent";
 
 export type CourseWizardStepId =
-  "basics" | "curriculum" | "access-rules" | "pricing" | "extras" | "publish";
+"basics" |"curriculum" |"access-rules" |"pricing" |"extras" |"publish";
 
 type WizardStepIcon = ComponentType<{
   size?: number;
-  weight?: "bold" | "duotone" | "fill" | "regular";
+  weight?:"bold" |"duotone" |"fill" |"regular";
 }>;
 
 interface WizardStepDefinition {
@@ -74,12 +74,12 @@ interface WizardStepDefinition {
 }
 
 const WIZARD_STEPS: readonly WizardStepDefinition[] = [
-  { id: "basics", label: "Basics", Icon: BookOpen },
-  { id: "curriculum", label: "Curriculum", Icon: ListBullets },
-  { id: "access-rules", label: "Access Rules", Icon: LockKey },
-  { id: "pricing", label: "Pricing", Icon: Tag },
-  { id: "extras", label: "Extras", Icon: Sparkle },
-  { id: "publish", label: "Publish", Icon: Lightning },
+  { id:"basics", label:"Basics", Icon: BookOpen },
+  { id:"curriculum", label:"Curriculum", Icon: ListBullets },
+  { id:"access-rules", label:"Access Rules", Icon: LockKey },
+  { id:"pricing", label:"Pricing", Icon: Tag },
+  { id:"extras", label:"Extras", Icon: Sparkle },
+  { id:"publish", label:"Publish", Icon: Lightning },
 ];
 
 export interface CourseCreatePageProps {
@@ -88,8 +88,8 @@ export interface CourseCreatePageProps {
 
 export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   const [activeStep, setActiveStep] = useState<CourseWizardStepId>("basics");
-  const [slideDirection, setSlideDirection] = useState<"right" | "left">(
-    "right",
+  const [slideDirection, setSlideDirection] = useState<"right" |"left">(
+"right",
   );
 
   const [indicatorStyle, setIndicatorStyle] = useState<{
@@ -141,7 +141,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
         if (elLeft < nav.scrollLeft || elLeft + elWidth > nav.scrollLeft + navWidth) {
           nav.scrollTo({
             left: elLeft - navWidth / 2 + elWidth / 2,
-            behavior: "smooth",
+            behavior:"smooth",
           });
         }
       }
@@ -174,7 +174,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     e.stopPropagation();
     setThumbnail(null);
     if (thumbnailInputRef.current) {
-      thumbnailInputRef.current.value = "";
+      thumbnailInputRef.current.value ="";
     }
   };
 
@@ -196,7 +196,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     setVideoTrailer(null);
     setVideoTrailerName("");
     if (videoTrailerInputRef.current) {
-      videoTrailerInputRef.current.value = "";
+      videoTrailerInputRef.current.value ="";
     }
   };
 
@@ -204,24 +204,24 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   const [difficultyLevel, setDifficultyLevel] = useState("");
 
   const categoryOptions = [
-    ["", "Select a category"],
-    ["Development", "Development"],
-    ["Design", "Design"],
-    ["Database", "Database"],
-    ["Cloud", "Cloud"],
+    ["","Select a category"],
+    ["Development","Development"],
+    ["Design","Design"],
+    ["Database","Database"],
+    ["Cloud","Cloud"],
   ] as const;
 
   const difficultyOptions = [
-    ["", "Select difficulty level"],
-    ["Beginner", "Beginner"],
-    ["Intermediate", "Intermediate"],
-    ["Advanced", "Advanced"],
+    ["","Select difficulty level"],
+    ["Beginner","Beginner"],
+    ["Intermediate","Intermediate"],
+    ["Advanced","Advanced"],
   ] as const;
 
   const handleBack = () => {
     if (onNavigatePage) {
       onNavigatePage("courses");
-    } else if (typeof window !== "undefined") {
+    } else if (typeof window !=="undefined") {
       window.history.back();
     }
   };
@@ -230,7 +230,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   interface LessonResourceItem {
     id: string;
     name: string;
-    type: "PDF" | "TXT" | "DOC";
+    type:"PDF" |"TXT" |"DOC";
     size: string;
   }
 
@@ -238,7 +238,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     id: string;
     title: string;
     description: string;
-    contentType: "video" | "document";
+    contentType:"video" |"document";
     isExpanded: boolean;
     resources: LessonResourceItem[];
   }
@@ -252,9 +252,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   }
 
   // Access Rules interfaces
-  type AccessType = "everyone" | "restricted";
-  type AccessDurationMode = "lifetime" | "fixed" | "custom";
-  type DurationUnit = "Days" | "Weeks" | "Months" | "Years";
+  type AccessType ="everyone" |"restricted";
+  type AccessDurationMode ="lifetime" |"fixed" |"custom";
+  type DurationUnit ="Days" |"Weeks" |"Months" |"Years";
 
   interface AccessRequirement {
     id: string;
@@ -275,24 +275,24 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
   // Available prerequisite courses for dropdown
   const PREREQUISITE_COURSE_OPTIONS = [
-    { value: "node-fundamentals", label: "Node.js Fundamentals" },
-    { value: "js-basics", label: "JavaScript Basics & ES6+" },
-    { value: "react-core", label: "React Core Architecture" },
-    { value: "css-mastery", label: "Modern CSS & Responsive Web Design" },
+    { value:"node-fundamentals", label:"Node.js Fundamentals" },
+    { value:"js-basics", label:"JavaScript Basics & ES6+" },
+    { value:"react-core", label:"React Core Architecture" },
+    { value:"css-mastery", label:"Modern CSS & Responsive Web Design" },
   ];
 
   // Curriculum Step state
   const [sections, setSections] = useState<CurriculumSectionItem[]>([
     {
-      id: "section-1",
-      title: "Introduction to the Course",
+      id:"section-1",
+      title:"Introduction to the Course",
       isExpanded: true,
       lessons: [],
     },
   ]);
 
   // Pricing interfaces
-  type PricingType = "free" | "paid";
+  type PricingType ="free" |"paid";
 
   interface PricingState {
     pricingType: PricingType;
@@ -302,13 +302,13 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
   // Access Rules Step state
   const [accessRules, setAccessRules] = useState<AccessRulesState>({
-    accessType: "restricted",
-    requirements: [{ id: "req-1", courseId: "node-fundamentals" }],
-    durationMode: "lifetime",
+    accessType:"restricted",
+    requirements: [{ id:"req-1", courseId:"node-fundamentals" }],
+    durationMode:"lifetime",
     fixedDurationValue: 30,
-    fixedDurationUnit: "Days",
-    customStartDate: "2026-08-12",
-    customEndDate: "2026-09-12",
+    fixedDurationUnit:"Days",
+    customStartDate:"2026-08-12",
+    customEndDate:"2026-09-12",
     enableQA: true,
     enableComments: true,
   });
@@ -319,7 +319,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     text: string;
   }
 
-  type CertificateIssuanceType = "completion" | "percentage" | "custom";
+  type CertificateIssuanceType ="completion" |"percentage" |"custom";
 
   interface ExtrasState {
     inclusions: ExtrasInclusionItem[];
@@ -333,14 +333,14 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
   // Pricing Step state
   const [pricing, setPricing] = useState<PricingState>({
-    pricingType: "paid",
-    sellingPrice: "1999",
-    originalPrice: "2999",
+    pricingType:"paid",
+    sellingPrice:"1999",
+    originalPrice:"2999",
   });
 
   // Publish interfaces
-  type CourseVisibility = "public" | "private" | "unlisted";
-  type ScheduleOption = "now" | "later";
+  type CourseVisibility ="public" |"private" |"unlisted";
+  type ScheduleOption ="now" |"later";
 
   interface PublishState {
     visibility: CourseVisibility;
@@ -354,10 +354,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
   // Publish Step state
   const [publishSettings, setPublishSettings] = useState<PublishState>({
-    visibility: "public",
-    scheduleOption: "now",
-    scheduleDate: "2026-08-20",
-    scheduleTime: "10:00",
+    visibility:"public",
+    scheduleOption:"now",
+    scheduleDate:"2026-08-20",
+    scheduleTime:"10:00",
   });
 
   // Course Overview Live Full Preview Modal State
@@ -365,7 +365,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
   // Footer Action Loading States
   const [actionLoading, setActionLoading] = useState<
-    "preview" | "draft" | "save" | "publish" | null
+"preview" |"draft" |"save" |"publish" | null
   >(null);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -378,7 +378,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isPreviewModalOpen) {
+      if (e.key ==="Escape" && isPreviewModalOpen) {
         setIsPreviewModalOpen(false);
       }
     };
@@ -404,15 +404,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   // Extras Step state
   const [extras, setExtras] = useState<ExtrasState>({
     inclusions: [
-      { id: "inc-1", text: "Full lifetime access" },
-      { id: "inc-2", text: "Downloadable resources" },
-      { id: "inc-3", text: "Access on all devices" },
+      { id:"inc-1", text:"Full lifetime access" },
+      { id:"inc-2", text:"Downloadable resources" },
+      { id:"inc-3", text:"Access on all devices" },
     ],
     enableCertificate: true,
-    certificateTemplate: "purple-certificate",
-    issuanceType: "percentage",
+    certificateTemplate:"purple-certificate",
+    issuanceType:"percentage",
     minCompletionPercentage: 95,
-    customRuleText: "Complete all quizzes with > 80% score",
+    customRuleText:"Complete all quizzes with > 80% score",
     autoEmailCertificate: true,
   });
 
@@ -430,8 +430,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
       inclusions: [
         ...prev.inclusions,
         {
-          id: `inc-${Date.now()}`,
-          text: `New Inclusion ${prev.inclusions.length + 1}`,
+          id:`inc-${Date.now()}`,
+          text:`New Inclusion ${prev.inclusions.length + 1}`,
         },
       ],
     }));
@@ -533,9 +533,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
       requirements: [
         ...prev.requirements,
         {
-          id: `req-${Date.now()}`,
+          id:`req-${Date.now()}`,
           courseId:
-            PREREQUISITE_COURSE_OPTIONS[0]?.value || "node-fundamentals",
+            PREREQUISITE_COURSE_OPTIONS[0]?.value ||"node-fundamentals",
         },
       ],
     }));
@@ -615,19 +615,19 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     onConfirm: () => void;
   }>({
     isOpen: false,
-    title: "",
-    message: "",
+    title:"",
+    message:"",
     onConfirm: () => {},
   });
 
   // Section actions
   const handleAddSection = () => {
-    const newId = `section-${Date.now()}`;
+    const newId =`section-${Date.now()}`;
     setSections((prev) => [
       ...prev,
       {
         id: newId,
-        title: `Section ${prev.length + 1}`,
+        title:`Section ${prev.length + 1}`,
         isExpanded: true,
         isEditingTitle: true,
         lessons: [],
@@ -666,8 +666,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     if (!sec) return;
     setDeleteModalState({
       isOpen: true,
-      title: `Delete "${sec.title}"?`,
-      message: `Are you sure you want to delete "${sec.title}" and its ${sec.lessons.length} lessons? This action cannot be undone.`,
+      title:`Delete"${sec.title}"?`,
+      message:`Are you sure you want to delete"${sec.title}" and its ${sec.lessons.length} lessons? This action cannot be undone.`,
       onConfirm: () => {
         setSections((prev) => prev.filter((s) => s.id !== sectionId));
       },
@@ -700,7 +700,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
   // Lesson actions
   const handleAddLesson = (sectionId: string) => {
-    const newLessonId = `lesson-${Date.now()}`;
+    const newLessonId =`lesson-${Date.now()}`;
     setSections((prev) =>
       prev.map((sec) => {
         if (sec.id !== sectionId) return sec;
@@ -710,9 +710,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
             ...sec.lessons.map((l) => ({ ...l, isExpanded: false })),
             {
               id: newLessonId,
-              title: `New Lesson ${sec.lessons.length + 1}`,
-              description: "",
-              contentType: "video" as const,
+              title:`New Lesson ${sec.lessons.length + 1}`,
+              description:"",
+              contentType:"video" as const,
               isExpanded: true,
               resources: [],
             },
@@ -743,8 +743,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
     setDeleteModalState({
       isOpen: true,
-      title: `Delete "${les.title}"?`,
-      message: `Are you sure you want to delete lesson "${les.title}"? This action cannot be undone.`,
+      title:`Delete"${les.title}"?`,
+      message:`Are you sure you want to delete lesson"${les.title}"? This action cannot be undone.`,
       onConfirm: () => {
         setSections((prev) =>
           prev.map((s) => {
@@ -792,11 +792,11 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   };
 
   const handleAddLessonResource = (sectionId: string, lessonId: string) => {
-    const newResId = `res-${Date.now()}`;
+    const newResId =`res-${Date.now()}`;
     const sampleFiles = [
-      { name: "Lesson_Notes.pdf", type: "PDF" as const, size: "1.8 MB" },
-      { name: "Source_Code.txt", type: "TXT" as const, size: "850 B" },
-      { name: "Reference_Doc.pdf", type: "PDF" as const, size: "3.1 MB" },
+      { name:"Lesson_Notes.pdf", type:"PDF" as const, size:"1.8 MB" },
+      { name:"Source_Code.txt", type:"TXT" as const, size:"850 B" },
+      { name:"Reference_Doc.pdf", type:"PDF" as const, size:"3.1 MB" },
     ];
     const chosen = sampleFiles[Math.floor(Math.random() * sampleFiles.length)]!;
     setSections((prev) =>
@@ -894,56 +894,56 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   // Approximate course duration based on curriculum lessons
   const computedDuration =
     totalLessons === 0
-      ? "0h 0m"
+      ?"0h 0m"
       : totalLessons < 10
-        ? `${Math.floor(totalLessons * 12 / 60)}h ${(totalLessons * 12) % 60}m`
-        : `${Math.floor(totalLessons * 9 / 60)}h ${(totalLessons * 9) % 60}m`;
+        ?`${Math.floor(totalLessons * 12 / 60)}h ${(totalLessons * 12) % 60}m`
+        :`${Math.floor(totalLessons * 9 / 60)}h ${(totalLessons * 9) % 60}m`;
 
   // Student-facing Preview Object Adapter
   const previewCourse: Course = {
-    id: "preview-course",
-    title: courseTitle.trim() || "Course Title",
-    description: courseDescription.trim() || "This is a short description of your course.",
-    level: (difficultyLevel || "Beginner") as CourseLevel,
-    category: (category || "Development") as CourseCategory,
+    id:"preview-course",
+    title: courseTitle.trim() ||"Course Title",
+    description: courseDescription.trim() ||"This is a short description of your course.",
+    level: (difficultyLevel ||"Beginner") as CourseLevel,
+    category: (category ||"Development") as CourseCategory,
     sections: Math.max(1, totalSections),
     lectures: Math.max(1, totalLessons),
     progress: null,
     enrolled: false,
     duration: computedDuration,
     students: 0,
-    thumbnail: thumbnail || "/assets/instructor-poster.jpg",
+    thumbnail: thumbnail ||"/assets/instructor-poster.jpg",
   };
 
   const previewSections: CourseSection[] =
     sections.length > 0
       ? sections.map((sec, secIdx) => ({
           id: secIdx + 1,
-          title: sec.title.trim() || `Section ${secIdx + 1}`,
-          progress: `0/${sec.lessons.length}`,
+          title: sec.title.trim() ||`Section ${secIdx + 1}`,
+          progress:`0/${sec.lessons.length}`,
           lessons:
             sec.lessons.length > 0
               ? sec.lessons.map((les, lesIdx) => [
                   lesIdx + 1,
-                  les.title.trim() || `Lesson ${lesIdx + 1}`,
-                  "05:00",
-                  "todo",
+                  les.title.trim() ||`Lesson ${lesIdx + 1}`,
+"05:00",
+"todo",
                 ])
               : [
                   [
                     1,
-                    `Introduction to ${sec.title.trim() || `Section ${secIdx + 1}`}`,
-                    "05:00",
-                    "todo",
+`Introduction to ${sec.title.trim() ||`Section ${secIdx + 1}`}`,
+"05:00",
+"todo",
                   ],
                 ],
         }))
       : [
           {
             id: 1,
-            title: "Introduction",
-            progress: "0/1",
-            lessons: [[1, "Course Overview", "05:00", "todo"]],
+            title:"Introduction",
+            progress:"0/1",
+            lessons: [[1,"Course Overview","05:00","todo"]],
           },
         ];
 
@@ -951,7 +951,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     .map((inc) => inc.text.trim())
     .filter((text) => text.length > 0);
 
-  // If certificate toggle is enabled in Card 1, include "Certificate of completion"
+  // If certificate toggle is enabled in Card 1, include"Certificate of completion"
   const nonCertInclusions = rawInclusions.filter(
     (text) => !/certificate of completion/i.test(text),
   );
@@ -963,7 +963,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
   const previewIncludes: CourseInclude[] = [
     ...(extras.enableCertificate
-      ? [{ icon: Certificate, label: "Certificate of completion" }]
+      ? [{ icon: Certificate, label:"Certificate of completion" }]
       : []),
     ...nonCertInclusions.map((text) => ({
       icon: CheckCircle,
@@ -972,24 +972,24 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   ];
 
   const previewPricing: CourseOverviewPricingProps =
-    pricing.pricingType === "free"
-      ? { price: "Free" }
+    pricing.pricingType ==="free"
+      ? { price:"Free" }
       : {
           price: pricing.sellingPrice.trim()
-            ? `₹${pricing.sellingPrice.trim()}`
-            : "₹1,999",
+            ?`₹${pricing.sellingPrice.trim()}`
+            :"₹1,999",
           originalPrice: pricing.originalPrice.trim()
-            ? `₹${pricing.originalPrice.trim()}`
+            ?`₹${pricing.originalPrice.trim()}`
             : undefined,
           discount:
             pricing.originalPrice.trim() &&
             pricing.sellingPrice.trim() &&
-            parseFloat(pricing.originalPrice.replace(/,/g, "")) >
-              parseFloat(pricing.sellingPrice.replace(/,/g, ""))
-              ? `${Math.round(
-                  ((parseFloat(pricing.originalPrice.replace(/,/g, "")) -
-                    parseFloat(pricing.sellingPrice.replace(/,/g, ""))) /
-                    parseFloat(pricing.originalPrice.replace(/,/g, ""))) *
+            parseFloat(pricing.originalPrice.replace(/,/g,"")) >
+              parseFloat(pricing.sellingPrice.replace(/,/g,""))
+              ?`${Math.round(
+                  ((parseFloat(pricing.originalPrice.replace(/,/g,"")) -
+                    parseFloat(pricing.sellingPrice.replace(/,/g,""))) /
+                    parseFloat(pricing.originalPrice.replace(/,/g,""))) *
                     100,
                 )}% OFF`
               : undefined,
@@ -1000,11 +1000,11 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     courseTitle.trim().length > 0 && courseDescription.trim().length > 0;
   const isCurriculumValid = totalSections > 0;
   const isAccessRulesValid =
-    accessRules.accessType === "everyone" ||
+    accessRules.accessType ==="everyone" ||
     accessRules.requirements.length > 0;
   const isPricingValid =
-    pricing.pricingType === "free" ||
-    parseFloat(pricing.sellingPrice.replace(/,/g, "")) > 0;
+    pricing.pricingType ==="free" ||
+    parseFloat(pricing.sellingPrice.replace(/,/g,"")) > 0;
   const isExtrasValid = true;
 
   const isCourseReadyToPublish =
@@ -1046,19 +1046,19 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     if (!isCourseReadyToPublish) {
       if (!isBasicsValid)
         setPublishValidationError(
-          "Please fill out required Basic Information fields (Title and Description).",
+"Please fill out required Basic Information fields (Title and Description).",
         );
       else if (!isCurriculumValid)
         setPublishValidationError(
-          "Please add at least one Section to the Curriculum.",
+"Please add at least one Section to the Curriculum.",
         );
       else if (!isAccessRulesValid)
         setPublishValidationError(
-          "Please configure at least one prerequisite requirement or select Everyone.",
+"Please configure at least one prerequisite requirement or select Everyone.",
         );
       else if (!isPricingValid)
         setPublishValidationError(
-          "Please set a valid Selling Price for paid course.",
+"Please set a valid Selling Price for paid course.",
         );
       return;
     }
@@ -1070,46 +1070,50 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
       setIsPublished(true);
       setToastMessage(
         isPublished
-          ? "Course updated and published successfully!"
-          : "Course published successfully!",
+          ?"Course updated and published successfully!"
+          :"Course published successfully!",
       );
     }, 850);
   };
 
   return (
-    <div className="course-wizard-layout">
+    <div className="relative flex w-full h-[calc(100vh-28px)] max-h-[calc(100vh-28px)] flex-col p-0 text-[var(--text)] bg-[color-mix(in_srgb,var(--surface)_18%,var(--canvas))] box-border overflow-hidden max-[768px]:pb-0">
       {/* Wizard Header */}
-      <header className="course-wizard-header">
-        <div className="course-wizard-header__main">
+      <header className="relative shrink-0 p-[clamp(16px,2.2vw,24px)_clamp(16px,2.5vw,32px)_0] mb-5 max-[768px]:p-[16px_16px_0] max-[768px]:mb-2 max-[768px]:w-full max-[768px]:max-w-full max-[768px]:min-w-0 max-[768px]:box-border">
+        <div className="relative flex items-start mb-[18px] max-[768px]:block max-[768px]:mb-3">
           <button
             type="button"
-            className="course-wizard-back-btn"
+            className="absolute top-0 left-0 flex w-[38px] h-[38px] shrink-0 items-center justify-center border-none rounded-[10px] text-[var(--text)] bg-[var(--surface)] cursor-pointer transition-[background,color] duration-150 ease-out hover:bg-[var(--hover)] hover:text-white"
             onClick={handleBack}
             aria-label="Go back to courses"
           >
             <ArrowLeft size={18} weight="bold" />
           </button>
-          <div className="course-wizard-header__title-group">
-            <div className="course-wizard-header__title-row">
-              <h1>{isPublished ? "Edit Course" : "Create New Course"}</h1>
+          <div className="ml-12 mr-[clamp(280px,30vw,420px)] pt-0.5 max-[768px]:ml-12 max-[768px]:mr-0 max-[768px]:pt-0 max-[768px]:w-[calc(100%-48px)]">
+            <div className="flex items-center gap-2.5 flex-wrap max-[768px]:flex max-[768px]:items-center max-[768px]:gap-2 max-[768px]:flex-nowrap">
+              <h1 className="m-0 text-[var(--text)] text-[clamp(1.2rem,1.8vw,1.55rem)] font-bold tracking-[-0.015em] max-[768px]:text-[1.35rem] max-[768px]:font-bold max-[768px]:leading-[1.25]">{isPublished ?"Edit Course" :"Create New Course"}</h1>
               <span
-                className={`course-wizard-status-badge ${isPublished ? "is-published" : ""}`}
+                className={`inline-flex items-center rounded-md px-2 py-0.5 text-[0.7rem] font-bold uppercase tracking-[0.04em] ${
+                  isPublished
+                    ?"is-published border border-green-500/35 text-green-500 bg-green-500/[0.12]"
+                    :"border border-white/20 text-[var(--muted)] bg-white/[0.04]"
+                }`}
               >
-                {isPublished ? "Published" : "Draft"}
+                {isPublished ?"Published" :"Draft"}
               </span>
             </div>
-            <p>
-              {activeStep === "curriculum"
-                ? "Build your course structure by adding sections and lessons."
-                : activeStep === "access-rules"
-                  ? "Control who can access this course and how long their access lasts."
-                  : activeStep === "pricing"
-                    ? "Set how learners will purchase this course."
-                    : activeStep === "extras"
-                      ? "Add extra information and settings to enhance your course."
-                      : activeStep === "publish"
-                        ? "Review your course and publish it when you're ready."
-                        : "Add the essential details of your course. You can always edit these later."}
+            <p className="m-0 mt-1 text-[var(--muted)] text-[0.84rem] max-w-[620px] leading-[1.4]">
+              {activeStep ==="curriculum"
+                ?"Build your course structure by adding sections and lessons."
+                : activeStep ==="access-rules"
+                  ?"Control who can access this course and how long their access lasts."
+                  : activeStep ==="pricing"
+                    ?"Set how learners will purchase this course."
+                    : activeStep ==="extras"
+                      ?"Add extra information and settings to enhance your course."
+                      : activeStep ==="publish"
+                        ?"Review your course and publish it when you're ready."
+                        :"Add the essential details of your course. You can always edit these later."}
             </p>
           </div>
         </div>
@@ -1117,7 +1121,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
         {/* Wizard Steps Navigation */}
         <nav
           ref={stepsNavRef}
-          className="course-wizard-steps"
+          className="relative flex items-center gap-2 border-b border-white/[0.08] overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden max-[768px]:flex-row max-[768px]:flex-nowrap max-[768px]:w-full max-[768px]:max-w-full max-[768px]:min-w-0 max-[768px]:overflow-y-hidden max-[768px]:[touch-action:pan-x] max-[768px]:overscroll-x-contain max-[768px]:pt-1 max-[768px]:pb-2 max-[768px]:mb-3.5 max-[768px]:box-border"
           aria-label="Course creation steps"
           onMouseDown={handleNavMouseDown}
           onMouseLeave={handleNavMouseLeave}
@@ -1125,10 +1129,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
           onMouseMove={handleNavMouseMove}
         >
           <div
-            className="course-wizard-active-indicator"
+            className="absolute bottom-0 left-0 z-[3] h-[2.5px] rounded-[2px] bg-[var(--accent)] shadow-[0_0_10px_color-mix(in_srgb,var(--accent)_60%,transparent)] pointer-events-none transition-[transform,width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
             style={{
-              transform: `translateX(${indicatorStyle.left}px)`,
-              width: `${indicatorStyle.width}px`,
+              transform:`translateX(${indicatorStyle.left}px)`,
+              width:`${indicatorStyle.width}px`,
             }}
           />
           {WIZARD_STEPS.map((step, idx) => {
@@ -1141,7 +1145,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   tabRefs.current[step.id] = el;
                 }}
                 type="button"
-                className={`course-wizard-step-tab ${isActive ? "is-active" : ""}`}
+                className={`relative z-[2] inline-flex items-center gap-2 px-[18px] py-3 border-none bg-transparent text-[0.88rem] font-semibold whitespace-nowrap cursor-pointer transition-colors duration-250 ease-out hover:text-[var(--text-secondary)] shrink-0 max-[768px]:px-4 max-[768px]:py-2.5 max-[768px]:text-[0.82rem] ${
+                  isActive ?"is-active text-[var(--accent)]" :"text-[var(--muted)]"
+                }`}
                 onClick={() => {
                   const currentIdx = WIZARD_STEPS.findIndex(
                     (s) => s.id === activeStep,
@@ -1151,7 +1157,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   setActiveStep(step.id);
                 }}
               >
-                <Icon size={18} weight={isActive ? "fill" : "regular"} />
+                <Icon size={18} weight={isActive ?"fill" :"regular"} />
                 <span>{step.label}</span>
               </button>
             );
@@ -1161,25 +1167,25 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
       {/* Scrollable Step Content Region */}
       <div
-        className={`course-wizard-content slide-from-${slideDirection}`}
+        className={`flex-1 min-h-0 px-[clamp(16px,2.5vw,32px)] pb-6 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden will-change-[transform,opacity] max-[768px]:p-[0_16px_12px] slide-from-${slideDirection}`}
         key={activeStep}
       >
-        {activeStep === "basics" ? (
-          <div className="course-wizard-body">
+        {activeStep ==="basics" ? (
+          <div className="relative z-10 grid grid-cols-[minmax(0,1.8fr)_minmax(300px,1fr)] gap-6 items-start max-[1024px]:grid-cols-[minmax(0,1fr)] max-[768px]:grid-cols-[minmax(0,1fr)] max-[768px]:gap-[18px]">
             {/* Left Column: Form Sections */}
-            <div className="course-wizard-form-col">
+            <div className="flex flex-col gap-5">
               {/* Basic Information Section */}
-              <section className="course-wizard-card">
-                <div className="course-wizard-card__header">
-                  <h2>Basic Information</h2>
-                  <p>Add the essential details of your course.</p>
+              <section className="relative z-10 rounded-[14px] p-6 bg-[var(--surface)] shadow-[var(--card-shadow)] max-[768px]:p-4">
+                <div className="mb-4.5">
+                  <h2 className="m-0 text-[var(--text)] text-[1.18rem] font-[650] tracking-[-0.015em]">Basic Information</h2>
+                  <p className="m-0 mt-1 mb-5 text-[var(--muted)] text-[0.82rem]">Add the essential details of your course.</p>
                 </div>
 
-                <div className="course-wizard-form-group">
-                  <label htmlFor="course-title">
-                    Course Title <span className="req-star">*</span>
+                <div className="flex flex-col gap-2 mb-5">
+                  <label htmlFor="course-title" className="text-[var(--text-secondary)] text-[0.84rem] font-semibold">
+                    Course Title <span className="text-[#ff5252] ml-0.5">*</span>
                   </label>
-                  <div className="course-wizard-input-wrap">
+                  <div className="relative flex items-center">
                     <input
                       id="course-title"
                       type="text"
@@ -1187,16 +1193,17 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       placeholder="e.g. Complete Backend with Node.js"
                       value={courseTitle}
                       onChange={(e) => setCourseTitle(e.target.value)}
+                      className="w-full h-11 border border-white/[0.08] rounded-[10px] pl-3.5 pr-[70px] py-0 text-[var(--text)] bg-black/20 text-[0.88rem] outline-none transition-[border-color] duration-150 focus:border-[var(--accent)]"
                     />
-                    <span className="course-wizard-char-count">
+                    <span className="absolute right-3.5 text-[var(--muted)] text-[0.76rem] pointer-events-none">
                       {courseTitle.length} / 120
                     </span>
                   </div>
                 </div>
 
-                <div className="course-wizard-form-group">
-                  <label htmlFor="course-description">
-                    Course Description <span className="req-star">*</span>
+                <div className="flex flex-col gap-2 mb-5">
+                  <label htmlFor="course-description" className="text-[var(--text-secondary)] text-[0.84rem] font-semibold">
+                    Course Description <span className="text-[#ff5252] ml-0.5">*</span>
                   </label>
                   <RichTextEditor
                     id="course-description"
@@ -1207,50 +1214,50 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   />
                 </div>
 
-                <div className="course-wizard-form-row">
-                  <div className="course-wizard-form-group">
-                    <label id="category-label">
-                      Category <span className="req-star">*</span>
+                <div className="grid grid-cols-2 gap-4 max-[640px]:grid-cols-1">
+                  <div className="flex flex-col gap-2 mb-0">
+                    <label id="category-label" className="text-[var(--text-secondary)] text-[0.84rem] font-semibold">
+                      Category <span className="text-[#ff5252] ml-0.5">*</span>
                     </label>
                     <ThemedSelect
                       value={category}
                       onValueChange={setCategory}
                       options={categoryOptions}
                       ariaLabel="Select category"
-                      triggerClassName="course-wizard-select-trigger"
+                      triggerClassName="!w-full !h-11 !border !border-white/[0.08] !rounded-[10px] !px-3.5 !py-0 !text-[var(--text)] !bg-black/20 !text-[0.88rem]"
                     />
                   </div>
 
-                  <div className="course-wizard-form-group">
-                    <label id="difficulty-label">
-                      Difficulty Level <span className="req-star">*</span>
+                  <div className="flex flex-col gap-2 mb-0">
+                    <label id="difficulty-label" className="text-[var(--text-secondary)] text-[0.84rem] font-semibold">
+                      Difficulty Level <span className="text-[#ff5252] ml-0.5">*</span>
                     </label>
                     <ThemedSelect
                       value={difficultyLevel}
                       onValueChange={setDifficultyLevel}
                       options={difficultyOptions}
                       ariaLabel="Select difficulty level"
-                      triggerClassName="course-wizard-select-trigger"
+                      triggerClassName="!w-full !h-11 !border !border-white/[0.08] !rounded-[10px] !px-3.5 !py-0 !text-[var(--text)] !bg-black/20 !text-[0.88rem]"
                     />
                   </div>
                 </div>
               </section>
 
               {/* Course Media Section */}
-              <section className="course-wizard-card">
-                <div className="course-wizard-card__header">
-                  <h2>Course Media</h2>
-                  <p>Add media that best represents your course.</p>
+              <section className="relative z-10 rounded-[14px] p-6 bg-[var(--surface)] shadow-[var(--card-shadow)] max-[768px]:p-4">
+                <div className="mb-4.5">
+                  <h2 className="m-0 text-[var(--text)] text-[1.18rem] font-[650] tracking-[-0.015em]">Course Media</h2>
+                  <p className="m-0 mt-1 mb-5 text-[var(--muted)] text-[0.82rem]">Add media that best represents your course.</p>
                 </div>
 
-                <div className="course-wizard-media-grid">
+                <div className="grid grid-cols-2 gap-4 max-[640px]:grid-cols-1">
                   {/* Hidden Thumbnail File Input */}
                   <input
                     type="file"
                     ref={thumbnailInputRef}
                     onChange={handleThumbnailFileSelect}
                     accept="image/*"
-                    style={{ display: "none" }}
+                    style={{ display:"none" }}
                   />
 
                   {/* Hidden Video Trailer File Input */}
@@ -1259,35 +1266,35 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     ref={videoTrailerInputRef}
                     onChange={handleVideoTrailerFileSelect}
                     accept="video/*"
-                    style={{ display: "none" }}
+                    style={{ display:"none" }}
                   />
 
                   {/* Thumbnail Upload */}
-                  <div className="course-wizard-media-box">
-                    <h3>
-                      Thumbnail <span className="req-star">*</span>
+                  <div className="flex flex-col min-w-0">
+                    <h3 className="m-0 mb-1 text-[var(--text-secondary)] text-[0.86rem] font-semibold">
+                      Thumbnail <span className="text-[#ff5252] ml-0.5">*</span>
                     </h3>
-                    <p className="media-sub">
+                    <p className="m-0 mb-3 text-[var(--muted)] text-[0.78rem] min-h-[1.15rem]">
                       Upload a thumbnail for your course.
                     </p>
                     {thumbnail ? (
-                      <div className="course-wizard-media-dropzone course-wizard-media-dropzone--has-image">
+                      <div className="group relative flex flex-col items-center justify-center aspect-video w-full min-h-[175px] box-border border border-solid border-white/15 rounded-xl p-0 bg-black/15 text-center overflow-hidden">
                         <img
                           src={thumbnail}
                           alt="Course thumbnail preview"
-                          className="course-wizard-thumbnail-preview-img"
+                          className="w-full h-full object-cover block"
                         />
-                        <div className="course-wizard-thumbnail-overlay">
+                        <div className="absolute inset-0 flex items-center justify-center gap-2.5 p-3 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity duration-200 backdrop-blur-sm">
                           <button
                             type="button"
-                            className="course-wizard-btn-secondary"
+                            className="inline-flex items-center gap-1.5 border border-white/25 rounded-lg px-4 py-2 text-white bg-white/12 text-[0.82rem] font-semibold cursor-pointer backdrop-blur-md transition-[background,border-color,color] duration-150 hover:bg-[var(--accent)] hover:border-[var(--accent)] hover:text-[var(--on-accent,#ffffff)]"
                             onClick={triggerThumbnailUpload}
                           >
                             <ImageIcon size={15} /> Change Image
                           </button>
                           <button
                             type="button"
-                            className="course-wizard-btn-danger"
+                            className="inline-flex items-center gap-1.5 border border-red-500/40 rounded-lg px-3.5 py-2 text-red-400 bg-red-500/[0.18] text-[0.82rem] font-semibold cursor-pointer backdrop-blur-md transition-[background,border-color,color] duration-150 hover:bg-red-500 hover:border-red-500 hover:text-white"
                             onClick={handleRemoveThumbnail}
                             title="Remove Thumbnail"
                           >
@@ -1296,20 +1303,20 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                         </div>
                       </div>
                     ) : (
-                      <div className="course-wizard-media-dropzone">
-                        <div className="dropzone-icon">
+                      <div className="relative flex flex-col items-center justify-center aspect-video w-full min-h-[175px] box-border border border-dashed border-white/[0.12] rounded-xl p-4 bg-black/15 text-center overflow-hidden transition-[border-color,background-color] duration-180 ease-out">
+                        <div className="mb-2 text-[var(--accent)]">
                           <ImageIcon size={32} weight="light" />
                         </div>
-                        <div className="course-wizard-media-dropzone-actions">
+                        <div className="flex items-center justify-center gap-2.5 flex-wrap">
                           <button
                             type="button"
-                            className="course-wizard-btn-secondary"
+                            className="inline-flex items-center gap-1.5 border border-white/[0.12] rounded-lg px-4 py-2 text-[var(--text)] bg-white/[0.05] text-[0.82rem] font-semibold cursor-pointer transition-[background,border-color] duration-150 hover:bg-white/10 hover:border-white/20"
                             onClick={triggerThumbnailUpload}
                           >
                             <UploadSimple size={15} weight="bold" /> Upload
                           </button>
                         </div>
-                        <p className="dropzone-hint">
+                        <p className="m-0 mt-2 text-[var(--muted)] text-[0.74rem]">
                           Recommended: 1280x720px (16:9)
                         </p>
                       </div>
@@ -1317,29 +1324,29 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   </div>
 
                   {/* Video Trailer Upload */}
-                  <div className="course-wizard-media-box">
-                    <h3>Video Trailer (Optional)</h3>
-                    <p className="media-sub">
+                  <div className="flex flex-col min-w-0">
+                    <h3 className="m-0 mb-1 text-[var(--text-secondary)] text-[0.86rem] font-semibold">Video Trailer (Optional)</h3>
+                    <p className="m-0 mb-3 text-[var(--muted)] text-[0.78rem] min-h-[1.15rem]">
                       Add a trailer video to showcase your course.
                     </p>
                     {videoTrailer ? (
-                      <div className="course-wizard-media-dropzone course-wizard-media-dropzone--has-image">
+                      <div className="group relative flex flex-col items-center justify-center aspect-video w-full min-h-[175px] box-border border border-solid border-white/15 rounded-xl p-0 bg-black/15 text-center overflow-hidden">
                         <video
                           src={videoTrailer}
-                          className="course-wizard-thumbnail-preview-img"
+                          className="w-full h-full object-cover block"
                           controls
                         />
-                        <div className="course-wizard-thumbnail-overlay">
+                        <div className="absolute inset-0 flex items-center justify-center gap-2.5 p-3 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity duration-200 backdrop-blur-sm">
                           <button
                             type="button"
-                            className="course-wizard-btn-secondary"
+                            className="inline-flex items-center gap-1.5 border border-white/25 rounded-lg px-4 py-2 text-white bg-white/12 text-[0.82rem] font-semibold cursor-pointer backdrop-blur-md transition-[background,border-color,color] duration-150 hover:bg-[var(--accent)] hover:border-[var(--accent)] hover:text-[var(--on-accent,#ffffff)]"
                             onClick={triggerVideoTrailerUpload}
                           >
                             <PlayCircle size={15} /> Change Video
                           </button>
                           <button
                             type="button"
-                            className="course-wizard-btn-danger"
+                            className="inline-flex items-center gap-1.5 border border-red-500/40 rounded-lg px-3.5 py-2 text-red-400 bg-red-500/[0.18] text-[0.82rem] font-semibold cursor-pointer backdrop-blur-md transition-[background,border-color,color] duration-150 hover:bg-red-500 hover:border-red-500 hover:text-white"
                             onClick={handleRemoveVideoTrailer}
                             title="Remove Video Trailer"
                           >
@@ -1348,21 +1355,21 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                         </div>
                       </div>
                     ) : (
-                      <div className="course-wizard-media-dropzone">
-                        <div className="dropzone-icon">
+                      <div className="relative flex flex-col items-center justify-center aspect-video w-full min-h-[175px] box-border border border-dashed border-white/[0.12] rounded-xl p-4 bg-black/15 text-center overflow-hidden transition-[border-color,background-color] duration-180 ease-out">
+                        <div className="mb-2 text-[var(--accent)]">
                           <PlayCircle size={32} weight="light" />
                         </div>
-                        <div className="course-wizard-media-dropzone-actions">
+                        <div className="flex items-center justify-center gap-2.5 flex-wrap">
                           <button
                             type="button"
-                            className="course-wizard-btn-secondary"
+                            className="inline-flex items-center gap-1.5 border border-white/[0.12] rounded-lg px-4 py-2 text-[var(--text)] bg-white/[0.05] text-[0.82rem] font-semibold cursor-pointer transition-[background,border-color] duration-150 hover:bg-white/10 hover:border-white/20"
                             onClick={triggerVideoTrailerUpload}
                           >
                             <UploadSimple size={15} weight="bold" /> Upload
                           </button>
                           <button
                             type="button"
-                            className="course-wizard-btn-secondary"
+                            className="inline-flex items-center gap-1.5 border border-white/[0.12] rounded-lg px-4 py-2 text-[var(--text)] bg-white/[0.05] text-[0.82rem] font-semibold cursor-pointer transition-[background,border-color] duration-150 hover:bg-white/10 hover:border-white/20"
                             onClick={() => {
                               // Select from media action will be none for now
                             }}
@@ -1370,7 +1377,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                             Select from Media
                           </button>
                         </div>
-                        <p className="dropzone-hint">Recommended: 16:9 video</p>
+                        <p className="m-0 mt-2 text-[var(--muted)] text-[0.74rem]">Recommended: 16:9 video</p>
                       </div>
                     )}
                   </div>
@@ -1379,23 +1386,27 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
             </div>
 
             {/* Right Column: Live Course Preview */}
-            <div className="course-wizard-preview-col">
-              <section className="course-wizard-preview-card">
-                <h2>Course Preview</h2>
-                <p className="preview-sub">
+            <div className="">
+              <section className="rounded-[14px] p-5 bg-[var(--surface)] shadow-[var(--card-shadow)]">
+                <h2 className="m-0 text-[var(--text)] text-[1.1rem] font-[650]">Course Preview</h2>
+                <p className="m-0 mt-1 mb-4 text-[var(--muted)] text-[0.8rem]">
                   This is how your course will appear to students.
                 </p>
 
                 <div
-                  className={`course-preview-media ${!thumbnail ? "is-clickable" : ""}`}
+                  className={`relative aspect-video border border-dashed border-[color-mix(in_srgb,var(--text)_14%,transparent)] rounded-[10px] overflow-hidden bg-[color-mix(in_srgb,var(--canvas)_40%,var(--surface))] transition-[border-color,background-color] duration-180 ease-out ${
+                    !thumbnail
+                      ?"is-clickable cursor-pointer hover:border-[var(--accent)] hover:bg-[color-mix(in_srgb,var(--accent)_6%,var(--surface))]"
+                      :""
+                  }`}
                   onClick={!thumbnail ? triggerThumbnailUpload : undefined}
-                  title={!thumbnail ? "Click to upload thumbnail" : undefined}
-                  role={!thumbnail ? "button" : undefined}
+                  title={!thumbnail ?"Click to upload thumbnail" : undefined}
+                  role={!thumbnail ?"button" : undefined}
                   tabIndex={!thumbnail ? 0 : undefined}
                   onKeyDown={
                     !thumbnail
                       ? (e) => {
-                          if (e.key === "Enter" || e.key === " ") {
+                          if (e.key ==="Enter" || e.key ==="") {
                             triggerThumbnailUpload();
                           }
                         }
@@ -1403,53 +1414,55 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   }
                 >
                   {thumbnail ? (
-                    <div className="course-preview-media__image-wrap">
+                    <div className="relative w-full h-full">
                       <img
                         src={thumbnail}
                         alt="Course Thumbnail"
-                        className="course-preview-media__img"
+                        className="w-full h-full object-cover block"
                       />
                     </div>
                   ) : (
-                    <div className="course-preview-media__placeholder">
-                      <div className="course-preview-media__placeholder-icon">
+                    <div className="flex h-full flex-col items-center justify-center gap-2 text-[var(--muted)] text-[0.8rem]">
+                      <div className="flex items-center justify-center text-[var(--muted)] opacity-60">
                         <ImageIcon size={32} weight="light" />
                       </div>
-                      <span>Course thumbnail will appear here</span>
-                      <span className="course-preview-media__placeholder-cta">
+                      <span className="text-[var(--muted)] opacity-70">Course thumbnail will appear here</span>
+                      <span className="inline-block mt-0.5 rounded-md px-2 py-0.5 text-[0.72rem] font-semibold text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] transition-colors duration-150">
                         Click to upload
                       </span>
                     </div>
                   )}
                 </div>
 
-                <div className="course-preview-info">
-                  <h3 className="course-preview-title">
-                    {courseTitle.trim() ? courseTitle : "Course Title"}
+                <div className="mt-4">
+                  <h3 className="m-0 mb-2 text-[var(--text)] text-[1.15rem] font-bold leading-[1.3]">
+                    {courseTitle.trim() ? courseTitle :"Course Title"}
                   </h3>
 
                   {difficultyLevel && (
-                    <div className="course-preview-badge">
-                      <span>{difficultyLevel}</span>
+                    <div className="inline-block mb-3">
+                      <span className="rounded-md px-2.5 py-0.75 text-[#a78bfa] bg-[#8b68ff]/15 text-[0.74rem] font-semibold">
+                        {difficultyLevel}
+                      </span>
                     </div>
                   )}
 
-                  <div className="course-preview-meta">
-                    <span>
+                  <div className="flex items-center gap-3.5 border-b border-white/[0.08] pb-3.5 text-[var(--muted)] text-[0.8rem]">
+                    <span className="flex items-center gap-1.25">
                       <BookOpen size={15} /> {totalSections} Sections
                     </span>
-                    <span>
+                    <span className="flex items-center gap-1.25">
                       <BookOpen size={15} /> {totalLessons} Lessons
                     </span>
-                    <span>0h 0m</span>
+                    <span className="flex items-center gap-1.25">0h 0m</span>
                   </div>
 
-                  <div className="course-preview-about">
-                    <h4>About this course</h4>
+                  <div className="mt-3.5 min-w-0 max-w-full overflow-hidden [overflow-wrap:anywhere] break-words">
+                    <h4 className="m-0 mb-1.5 text-[var(--text-secondary)] text-[0.84rem] font-[650]">About this course</h4>
                     {courseDescription.trim() ? (
                       <RenderMarkdown content={courseDescription} />
                     ) : (
-                      <p>
+                      <p className="m-0 text-[var(--muted)] text-[0.82rem] leading-normal [overflow-wrap:anywhere] break-words">
                         This is a short description of your course. It will appear here on the course card.
                       </p>
                     )}
@@ -1458,21 +1471,21 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
               </section>
             </div>
           </div>
-        ) : activeStep === "curriculum" ? (
-          <div className="curriculum-container">
+        ) : activeStep ==="curriculum" ? (
+          <div className="flex flex-col gap-4 w-full">
             {/* Header row */}
-            <div className="curriculum-header-row">
-              <div className="curriculum-title-area">
-                <h2>Course Curriculum</h2>
-                <p>
+            <div className="flex items-center justify-between mb-2 max-[768px]:flex-col max-[768px]:items-start max-[768px]:gap-3">
+              <div className="">
+                <h2 className="m-0 text-[var(--text)] text-[1.25rem] font-bold tracking-[-0.015em]">Course Curriculum</h2>
+                <p className="m-0 mt-1 text-[var(--muted)] text-[0.85rem]">
                   Organize your course into sections and lessons. You can
                   reorder them anytime.
                 </p>
               </div>
-              <div className="curriculum-header-actions">
+              <div className="flex items-center gap-2.5">
                 <button
                   type="button"
-                  className="curriculum-add-section-btn"
+                  className="inline-flex items-center gap-1.5 border-none rounded-[9px] px-4 py-2 text-[var(--on-accent,#ffffff)] bg-[var(--accent)] text-[0.84rem] font-semibold cursor-pointer transition-colors duration-150 hover:bg-[var(--accent-hover,var(--accent))] max-[768px]:whitespace-nowrap max-[768px]:self-start"
                   onClick={handleAddSection}
                 >
                   <Plus size={16} weight="bold" /> Add Section
@@ -1484,7 +1497,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
             {sections.map((sec, secIndex) => (
               <div
                 key={sec.id}
-                className="curriculum-section-card"
+                className="border border-white/[0.07] rounded-[14px] bg-[var(--surface)] overflow-hidden transition-[border-color] duration-150"
                 draggable={dragEnabledSectionId === sec.id}
                 onDragStart={() => handleSectionDragStart(secIndex)}
                 onDragOver={(e) => handleSectionDragOver(e, secIndex)}
@@ -1492,14 +1505,13 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
               >
                 {/* Section Header */}
                 <div
-                  className="curriculum-section-header"
+                  className="flex items-center justify-between px-[18px] py-3.5 bg-white/[0.02] select-none cursor-pointer max-[768px]:flex-wrap max-[768px]:gap-2.5 max-[768px]:p-[12px_14px]"
                   onClick={() => handleToggleSectionExpand(sec.id)}
-                  style={{ cursor: "pointer" }}
                   title="Click to toggle section"
                 >
-                  <div className="curriculum-section-header__left">
+                  <div className="flex items-center gap-3 max-[768px]:flex-1 max-[768px]:w-full max-[768px]:min-w-0 max-[768px]:gap-2">
                     <span
-                      className="curriculum-drag-handle"
+                      className="flex items-center justify-center text-[var(--muted)] cursor-grab opacity-60 transition-opacity duration-150 hover:opacity-100"
                       title="Drag to reorder section"
                       onMouseEnter={() => setDragEnabledSectionId(sec.id)}
                       onMouseLeave={() => {
@@ -1513,14 +1525,14 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     >
                       <DotsSixVertical size={18} />
                     </span>
-                    <div className="curriculum-section-title-wrap">
-                      <span className="curriculum-section-tag">
+                    <div className="flex items-center gap-2.5 max-[768px]:flex-1 max-[768px]:min-w-0 max-[768px]:flex-wrap max-[768px]:gap-1.5">
+                      <span className="text-[var(--text)] text-[0.92rem] font-bold max-[768px]:whitespace-nowrap max-[768px]:shrink-0">
                         Section {secIndex + 1}
                       </span>
                       {sec.isEditingTitle ? (
                         <input
                           type="text"
-                          className="curriculum-section-edit-input"
+                          className="border border-[var(--accent)] rounded-md px-2 py-0.75 text-[var(--text)] bg-black/30 text-[0.9rem] font-semibold outline-none"
                           defaultValue={sec.title}
                           autoFocus
                           onClick={(e) => e.stopPropagation()}
@@ -1528,7 +1540,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                             handleSaveSectionTitle(sec.id, e.target.value)
                           }
                           onKeyDown={(e) => {
-                            if (e.key === "Enter") {
+                            if (e.key ==="Enter") {
                               handleSaveSectionTitle(
                                 sec.id,
                                 (e.target as HTMLInputElement).value,
@@ -1538,7 +1550,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                         />
                       ) : (
                         <span
-                          className="curriculum-section-title"
+                          className="text-[var(--text)] text-[0.92rem] font-semibold max-[768px]:break-words max-[768px]:min-w-0"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleStartEditSectionTitle(sec.id);
@@ -1548,15 +1560,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                           {sec.title}
                         </span>
                       )}
-                      <span className="curriculum-section-count">
+                      <span className="ml-1 text-[var(--accent)] text-[0.78rem] font-semibold">
                         {sec.lessons.length} Lessons
                       </span>
                     </div>
                   </div>
-                  <div className="curriculum-section-header__right">
+                  <div className="flex items-center gap-2 max-[768px]:w-full max-[768px]:justify-between max-[768px]:pt-2 max-[768px]:border-t max-[768px]:border-white/[0.06]">
                     <button
                       type="button"
-                      className="curriculum-icon-btn"
+                      className="inline-flex w-[34px] h-[34px] items-center justify-center border border-white/[0.08] rounded-lg text-[var(--muted)] bg-transparent cursor-pointer transition-[color,background] duration-150 hover:text-[var(--text)] hover:bg-white/[0.06]"
                       aria-label="Edit section title"
                       title="Edit section title"
                       onClick={(e) => {
@@ -1568,7 +1580,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     </button>
                     <button
                       type="button"
-                      className="curriculum-icon-btn curriculum-icon-btn--danger"
+                      className="inline-flex w-[34px] h-[34px] items-center justify-center border border-white/[0.08] rounded-lg text-[var(--muted)] bg-transparent cursor-pointer transition-[color,background] duration-150 hover:!text-[#ff5252] hover:!bg-red-500/10"
                       aria-label="Delete section"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -1579,11 +1591,11 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     </button>
                     <button
                       type="button"
-                      className={`curriculum-icon-btn curriculum-caret-btn ${
-                        sec.isExpanded ? "is-expanded" : ""
+                      className={`inline-flex w-[34px] h-[34px] items-center justify-center border border-white/[0.08] rounded-lg text-[var(--muted)] bg-transparent cursor-pointer transition-[color,background] duration-150 hover:text-[var(--text)] hover:bg-white/[0.06] [&>svg]:transition-transform [&>svg]:duration-280 [&>svg]:ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                        sec.isExpanded ?"is-expanded [&>svg]:rotate-180" :""
                       }`}
                       aria-label={
-                        sec.isExpanded ? "Collapse section" : "Expand section"
+                        sec.isExpanded ?"Collapse section" :"Expand section"
                       }
                       onClick={(e) => {
                         e.stopPropagation();
@@ -1597,16 +1609,20 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                 {/* Section Body with CSS expand transition */}
                 <div
-                  className={`curriculum-section-body-wrapper ${
-                    sec.isExpanded ? "is-open" : ""
+                  className={`grid transition-[grid-template-rows] duration-280 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                    sec.isExpanded ?"is-open grid-rows-[1fr]" :"grid-rows-[0fr]"
                   }`}
                 >
-                  <div className="curriculum-section-body">
-                    <div className="curriculum-lessons-list">
+                  <div
+                    className={`min-h-0 overflow-hidden border-t border-transparent transition-[padding,border-color] duration-280 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                      sec.isExpanded ?"px-4 pt-3 pb-4 border-t-white/[0.05]" :"px-4 py-0"
+                    }`}
+                  >
+                    <div className="flex flex-col gap-2.5">
                       {sec.lessons.map((les, lesIndex) => (
                         <div
                           key={les.id}
-                          className="curriculum-lesson-row"
+                          className="border border-white/[0.06] rounded-[10px] bg-black/[0.18] overflow-hidden"
                           draggable={dragEnabledLessonId === les.id}
                           onDragStart={() =>
                             handleLessonDragStart(sec.id, lesIndex)
@@ -1618,16 +1634,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                         >
                           {/* Lesson Header */}
                           <div
-                            className="curriculum-lesson-header"
+                            className="flex items-center justify-between px-4 py-3 cursor-pointer max-[768px]:flex-wrap max-[768px]:gap-2.5 max-[768px]:p-[10px_12px]"
                             onClick={() =>
                               handleToggleLessonExpand(sec.id, les.id)
                             }
-                            style={{ cursor: "pointer" }}
                             title="Click to toggle lesson editor"
                           >
-                            <div className="curriculum-lesson-header__left">
+                            <div className="flex items-center gap-3 max-[768px]:flex-1 max-[768px]:w-full max-[768px]:min-w-0 max-[768px]:gap-2">
                               <span
-                                className="curriculum-drag-handle"
+                                className="flex items-center justify-center text-[var(--muted)] cursor-grab opacity-60 transition-opacity duration-150 hover:opacity-100"
                                 title="Drag to reorder lesson"
                                 onMouseEnter={() => setDragEnabledLessonId(les.id)}
                                 onMouseLeave={() => {
@@ -1641,27 +1656,27 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                               >
                                 <DotsSixVertical size={18} />
                               </span>
-                              <span className="curriculum-lesson-num">
+                              <span className="inline-flex min-w-[24px] h-6 items-center justify-center rounded-md text-[var(--text)] bg-white/[0.06] text-[0.8rem] font-bold">
                                 {lesIndex + 1}
                               </span>
-                              <span className="curriculum-lesson-title">
+                              <span className="text-[var(--text)] text-[0.88rem] font-semibold max-[768px]:flex-1 max-[768px]:min-w-0 max-[768px]:break-words">
                                 {les.title}
                               </span>
                             </div>
-                            <div className="curriculum-lesson-header__right">
-                              {les.contentType === "video" ? (
-                                <span className="curriculum-type-badge">
+                            <div className="flex items-center gap-2.5 max-[768px]:w-full max-[768px]:justify-between max-[768px]:pt-2 max-[768px]:border-t max-[768px]:border-white/[0.06]">
+                              {les.contentType ==="video" ? (
+                                <span className="inline-flex items-center gap-1.25 border border-[color-mix(in_srgb,var(--accent)_30%,transparent)] rounded-md px-2 py-0.75 text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] text-[0.74rem] font-semibold">
                                   <PlayCircle size={14} weight="fill" /> Video
                                 </span>
                               ) : (
-                                <span className="curriculum-type-badge curriculum-type-badge--doc">
+                                <span className="inline-flex items-center gap-1.25 border border-purple-500/35 rounded-md px-2 py-0.75 text-purple-300 bg-purple-500/[0.12] text-[0.74rem] font-semibold">
                                   <FileText size={14} weight="fill" /> Document
                                   / PDF
                                 </span>
                               )}
                               <button
                                 type="button"
-                                className="curriculum-icon-btn curriculum-icon-btn--danger"
+                                className="inline-flex w-[34px] h-[34px] items-center justify-center border border-white/[0.08] rounded-lg text-[var(--muted)] bg-transparent cursor-pointer transition-[color,background] duration-150 hover:!text-[#ff5252] hover:!bg-red-500/10"
                                 aria-label="Delete lesson"
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -1672,13 +1687,13 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                               </button>
                               <button
                                 type="button"
-                                className={`curriculum-icon-btn curriculum-caret-btn ${
-                                  les.isExpanded ? "is-expanded" : ""
+                                className={`inline-flex w-[34px] h-[34px] items-center justify-center border border-white/[0.08] rounded-lg text-[var(--muted)] bg-transparent cursor-pointer transition-[color,background] duration-150 hover:text-[var(--text)] hover:bg-white/[0.06] [&>svg]:transition-transform [&>svg]:duration-280 [&>svg]:ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                                  les.isExpanded ?"is-expanded [&>svg]:rotate-180" :""
                                 }`}
                                 aria-label={
                                   les.isExpanded
-                                    ? "Collapse lesson editor"
-                                    : "Expand lesson editor"
+                                    ?"Collapse lesson editor"
+                                    :"Expand lesson editor"
                                 }
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -1692,23 +1707,27 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                           {/* Expanded Lesson Editor with CSS transition */}
                           <div
-                            className={`curriculum-lesson-editor-wrapper ${
-                              les.isExpanded ? "is-open" : ""
+                            className={`grid transition-[grid-template-rows] duration-280 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                              les.isExpanded ?"is-open grid-rows-[1fr]" :"grid-rows-[0fr]"
                             }`}
                             draggable={false}
                             onMouseDown={(e) => e.stopPropagation()}
                           >
-                            <div className="curriculum-lesson-editor">
-                              <div className="curriculum-editor-grid">
+                            <div
+                              className={`min-h-0 overflow-hidden border-t border-transparent bg-black/[0.24] transition-[padding,border-color] duration-280 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                                les.isExpanded ?"px-5 pt-4 pb-5 border-t-white/[0.06] max-[768px]:p-[14px_12px_16px]" :"px-5 py-0 max-[768px]:p-0"
+                              }`}
+                            >
+                              <div className="grid grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-6 max-[1024px]:grid-cols-1 max-[768px]:gap-3.5">
                                 {/* Left column */}
-                                <div className="curriculum-editor-left">
+                                <div className="flex flex-col gap-4.5">
                                   {/* Lesson Title */}
-                                  <div className="course-wizard-form-group">
-                                    <label htmlFor={`les-title-${les.id}`}>
-                                      Lesson Title{" "}
-                                      <span className="req-star">*</span>
+                                  <div className="flex flex-col gap-2 mb-5">
+                                    <label htmlFor={`les-title-${les.id}`} className="text-[var(--text-secondary)] text-[0.84rem] font-semibold">
+                                      Lesson Title{""}
+                                      <span className="text-[#ff5252] ml-0.5">*</span>
                                     </label>
-                                    <div className="course-wizard-input-wrap">
+                                    <div className="relative flex items-center">
                                       <input
                                         id={`les-title-${les.id}`}
                                         type="text"
@@ -1720,16 +1739,17 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                           })
                                         }
                                         placeholder="e.g. Introduction to React Hooks"
+                                        className="w-full h-11 border border-white/[0.08] rounded-[10px] pl-3.5 pr-[70px] py-0 text-[var(--text)] bg-black/20 text-[0.88rem] outline-none transition-[border-color] duration-150 focus:border-[var(--accent)]"
                                       />
-                                      <span className="course-wizard-char-count">
+                                      <span className="absolute right-3.5 text-[var(--muted)] text-[0.76rem] pointer-events-none">
                                         {les.title.length} / 120
                                       </span>
                                     </div>
                                   </div>
 
                                   {/* Lesson Description Rich Editor */}
-                                  <div className="course-wizard-form-group">
-                                    <label id={`les-desc-label-${les.id}`}>
+                                  <div className="flex flex-col gap-2 mb-5">
+                                    <label id={`les-desc-label-${les.id}`} className="text-[var(--text-secondary)] text-[0.84rem] font-semibold">
                                       Lesson Description
                                     </label>
                                     <RichTextEditor
@@ -1746,69 +1766,69 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                 </div>
 
                                 {/* Right column */}
-                                <div className="curriculum-editor-right">
+                                <div className="flex flex-col gap-4.5">
                                   {/* Content Type Selector */}
-                                  <div className="course-wizard-form-group">
-                                    <label>
-                                      Content Type{" "}
-                                      <span className="req-star">*</span>
+                                  <div className="flex flex-col gap-2 mb-5">
+                                    <label className="text-[var(--text-secondary)] text-[0.84rem] font-semibold">
+                                      Content Type{""}
+                                      <span className="text-[#ff5252] ml-0.5">*</span>
                                     </label>
-                                    <div className="curriculum-type-grid">
+                                    <div className="grid grid-cols-2 gap-3 max-[640px]:grid-cols-1">
                                       <div
-                                        className={`curriculum-type-card ${
-                                          les.contentType === "video"
-                                            ? "is-selected"
-                                            : ""
+                                        className={`relative flex items-center gap-3 border rounded-[10px] px-3.5 py-3 text-left cursor-pointer transition-[border-color,background-color] duration-150 ease-out hover:bg-white/[0.05] ${
+                                          les.contentType ==="video"
+                                            ?"is-selected border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)]"
+                                            :"border-white/10 bg-white/[0.02]"
                                         }`}
                                         onClick={() =>
                                           handleUpdateLesson(sec.id, les.id, {
-                                            contentType: "video",
+                                            contentType:"video",
                                           })
                                         }
                                       >
-                                        <div className="curriculum-type-card__radio">
-                                          {les.contentType === "video" && (
-                                            <div className="curriculum-type-card__radio-inner" />
+                                        <div className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] ${les.contentType ==="video" ?"border-[var(--accent)]" :"border-[var(--muted)]"}`}>
+                                          {les.contentType ==="video" && (
+                                            <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                                           )}
                                         </div>
-                                        <div className="curriculum-type-card__icon">
+                                        <div className="flex items-center justify-center text-[var(--accent)] mt-px">
                                           <Video size={18} weight="fill" />
                                         </div>
-                                        <div className="curriculum-type-card__info">
-                                          <span className="curriculum-type-card__title">
+                                        <div className="flex flex-col gap-0.5">
+                                          <span className="text-[var(--text)] text-[0.86rem] font-bold leading-[18px]">
                                             Video
                                           </span>
-                                          <span className="curriculum-type-card__desc">
+                                          <span className="text-[var(--muted)] text-[0.75rem]">
                                             Upload or select a video
                                           </span>
                                         </div>
                                       </div>
 
                                       <div
-                                        className={`curriculum-type-card ${
-                                          les.contentType === "document"
-                                            ? "is-selected"
-                                            : ""
+                                        className={`relative flex items-center gap-3 border rounded-[10px] px-3.5 py-3 text-left cursor-pointer transition-[border-color,background-color] duration-150 ease-out hover:bg-white/[0.05] ${
+                                          les.contentType ==="document"
+                                            ?"is-selected border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)]"
+                                            :"border-white/10 bg-white/[0.02]"
                                         }`}
                                         onClick={() =>
                                           handleUpdateLesson(sec.id, les.id, {
-                                            contentType: "document",
+                                            contentType:"document",
                                           })
                                         }
                                       >
-                                        <div className="curriculum-type-card__radio">
-                                          {les.contentType === "document" && (
-                                            <div className="curriculum-type-card__radio-inner" />
+                                        <div className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] ${les.contentType ==="document" ?"border-[var(--accent)]" :"border-[var(--muted)]"}`}>
+                                          {les.contentType ==="document" && (
+                                            <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                                           )}
                                         </div>
-                                        <div className="curriculum-type-card__icon">
+                                        <div className="flex items-center justify-center text-[var(--accent)] mt-px">
                                           <FileText size={18} weight="fill" />
                                         </div>
-                                        <div className="curriculum-type-card__info">
-                                          <span className="curriculum-type-card__title">
+                                        <div className="flex flex-col gap-0.5">
+                                          <span className="text-[var(--text)] text-[0.86rem] font-bold leading-[18px]">
                                             Document / PDF
                                           </span>
-                                          <span className="curriculum-type-card__desc">
+                                          <span className="text-[var(--muted)] text-[0.75rem]">
                                             Upload PDF or document
                                           </span>
                                         </div>
@@ -1817,43 +1837,43 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                   </div>
 
                                   {/* Content Source Controls (Video or Document) */}
-                                  <div className="course-wizard-form-group">
-                                    <label>
-                                      {les.contentType === "video"
-                                        ? "Video Source"
-                                        : "Document / PDF Source"}{" "}
-                                      <span className="req-star">*</span>
+                                  <div className="flex flex-col gap-2 mb-5">
+                                    <label className="text-[var(--text-secondary)] text-[0.84rem] font-semibold">
+                                      {les.contentType ==="video"
+                                        ?"Video Source"
+                                        :"Document / PDF Source"}{""}
+                                        <span className="text-[#ff5252] ml-0.5">*</span>
                                     </label>
-                                    <div className="curriculum-source-actions">
+                                    <div className="flex items-center gap-2.5 max-[768px]:w-full max-[768px]:flex max-[768px]:gap-2">
                                       <button
                                         type="button"
-                                        className="curriculum-upload-btn-primary"
+                                        className="inline-flex items-center gap-1.5 border-none rounded-lg px-3.5 py-2 text-[var(--on-accent,#ffffff)] bg-[var(--accent)] text-[0.8rem] font-semibold cursor-pointer shadow-[0_2px_8px_var(--accent-shadow)] transition-[background,box-shadow,opacity] duration-150 hover:bg-[var(--accent-hover,var(--accent))] hover:shadow-[0_3px_12px_var(--accent-shadow)] max-[768px]:flex-1 max-[768px]:h-9 max-[768px]:px-2.5 max-[768px]:text-[0.78rem] max-[768px]:justify-center max-[768px]:whitespace-nowrap max-[768px]:box-border"
                                       >
-                                        <UploadSimple size={16} weight="bold" />{" "}
+                                        <UploadSimple size={16} weight="bold" />{""}
                                         Upload New
                                       </button>
                                       <button
                                         type="button"
-                                        className="curriculum-upload-btn-secondary"
+                                        className="inline-flex items-center gap-1.5 border border-white/[0.12] rounded-lg px-3.5 py-2 text-[var(--text)] bg-white/[0.05] text-[0.8rem] font-semibold cursor-pointer transition-colors duration-150 hover:bg-white/10 max-[768px]:flex-1 max-[768px]:h-9 max-[768px]:px-2.5 max-[768px]:text-[0.78rem] max-[768px]:justify-center max-[768px]:whitespace-nowrap max-[768px]:box-border"
                                       >
-                                        {les.contentType === "video" ? (
+                                        {les.contentType ==="video" ? (
                                           <PlayCircle size={16} />
                                         ) : (
                                           <FileText size={16} />
-                                        )}{" "}
+                                        )}{""}
                                         Select from Media
                                       </button>
                                     </div>
                                   </div>
 
                                   {/* Lesson Resources Table */}
-                                  <div className="course-wizard-form-group">
-                                    <div className="curriculum-resources-header">
-                                      <label>Lesson Resources</label>
-                                      <div className="curriculum-source-actions">
+                                  <div className="flex flex-col gap-2 mb-5">
+                                    <div className="flex items-center justify-between mb-2 max-[768px]:flex-col max-[768px]:items-start max-[768px]:gap-2.5">
+                                      <label className="flex items-center gap-1.5 text-[var(--text-secondary)] text-[0.84rem] font-semibold">Lesson Resources</label>
+                                      <div className="flex items-center gap-2.5 max-[768px]:w-full max-[768px]:flex max-[768px]:gap-2">
                                         <button
                                           type="button"
-                                          className="curriculum-upload-btn-primary"
+                                          className="inline-flex items-center gap-1.5 border-none rounded-lg px-3.5 py-2 text-[var(--on-accent,#ffffff)] bg-[var(--accent)] text-[0.8rem] font-semibold cursor-pointer shadow-[0_2px_8px_var(--accent-shadow)] transition-[background,box-shadow,opacity] duration-150 hover:bg-[var(--accent-hover,var(--accent))] hover:shadow-[0_3px_12px_var(--accent-shadow)] max-[768px]:flex-1 max-[768px]:h-9 max-[768px]:px-2.5 max-[768px]:text-[0.78rem] max-[768px]:justify-center max-[768px]:whitespace-nowrap max-[768px]:box-border"
                                           onClick={() =>
                                             handleAddLessonResource(
                                               sec.id,
@@ -1864,12 +1884,12 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                           <UploadSimple
                                             size={16}
                                             weight="bold"
-                                          />{" "}
+                                          />{""}
                                           Upload New
                                         </button>
                                         <button
                                           type="button"
-                                          className="curriculum-upload-btn-secondary"
+                                          className="inline-flex items-center gap-1.5 border border-white/[0.12] rounded-lg px-3.5 py-2 text-[var(--text)] bg-white/[0.05] text-[0.8rem] font-semibold cursor-pointer transition-colors duration-150 hover:bg-white/10 max-[768px]:flex-1 max-[768px]:h-9 max-[768px]:px-2.5 max-[768px]:text-[0.78rem] max-[768px]:justify-center max-[768px]:whitespace-nowrap max-[768px]:box-border"
                                           onClick={() =>
                                             handleAddLessonResource(
                                               sec.id,
@@ -1884,20 +1904,20 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                     </div>
 
                                     {les.resources.length > 0 ? (
-                                      <table className="curriculum-resources-table">
+                                      <table className="w-full border border-white/[0.12] rounded-[10px] border-separate border-spacing-0 overflow-hidden bg-black/10 max-[768px]:block max-[768px]:w-full max-[768px]:overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden max-[768px]:rounded-lg">
                                         <thead>
                                           <tr>
-                                            <th>File Name</th>
-                                            <th>Type</th>
-                                            <th>Size</th>
-                                            <th>Actions</th>
+                                            <th className="px-3.5 py-2 text-[var(--muted)] bg-white/[0.03] text-[0.74rem] font-semibold text-left border-b border-white/[0.08] max-[768px]:p-[8px_10px] max-[768px]:text-[0.76rem] max-[768px]:whitespace-nowrap">File Name</th>
+                                            <th className="px-3.5 py-2 text-[var(--muted)] bg-white/[0.03] text-[0.74rem] font-semibold text-left border-b border-white/[0.08] max-[768px]:p-[8px_10px] max-[768px]:text-[0.76rem] max-[768px]:whitespace-nowrap">Type</th>
+                                            <th className="px-3.5 py-2 text-[var(--muted)] bg-white/[0.03] text-[0.74rem] font-semibold text-left border-b border-white/[0.08] max-[768px]:p-[8px_10px] max-[768px]:text-[0.76rem] max-[768px]:whitespace-nowrap">Size</th>
+                                            <th className="px-3.5 py-2 text-[var(--muted)] bg-white/[0.03] text-[0.74rem] font-semibold text-left border-b border-white/[0.08] max-[768px]:p-[8px_10px] max-[768px]:text-[0.76rem] max-[768px]:whitespace-nowrap">Actions</th>
                                           </tr>
                                         </thead>
                                         <tbody>
                                           {les.resources.map((res) => (
                                             <tr key={res.id}>
-                                              <td>
-                                                <div className="curriculum-file-cell">
+                                              <td className="px-3.5 py-2.5 text-[var(--text)] text-[0.8rem] border-b border-white/[0.06] last:border-b-0 max-[768px]:p-[8px_10px] max-[768px]:text-[0.76rem] max-[768px]:whitespace-nowrap">
+                                                <div className="flex items-center gap-2 font-semibold [&>svg]:text-red-500">
                                                   <FileText
                                                     size={16}
                                                     weight="fill"
@@ -1905,12 +1925,12 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                                   <span>{res.name}</span>
                                                 </div>
                                               </td>
-                                              <td>{res.type}</td>
-                                              <td>{res.size}</td>
-                                              <td>
+                                              <td className="px-3.5 py-2.5 text-[var(--text)] text-[0.8rem] border-b border-white/[0.06] last:border-b-0 max-[768px]:p-[8px_10px] max-[768px]:text-[0.76rem] max-[768px]:whitespace-nowrap">{res.type}</td>
+                                              <td className="px-3.5 py-2.5 text-[var(--text)] text-[0.8rem] border-b border-white/[0.06] last:border-b-0 max-[768px]:p-[8px_10px] max-[768px]:text-[0.76rem] max-[768px]:whitespace-nowrap">{res.size}</td>
+                                              <td className="px-3.5 py-2.5 text-[var(--text)] text-[0.8rem] border-b border-white/[0.06] last:border-b-0 max-[768px]:p-[8px_10px] max-[768px]:text-[0.76rem] max-[768px]:whitespace-nowrap">
                                                 <button
                                                   type="button"
-                                                  className="curriculum-icon-btn curriculum-icon-btn--danger"
+                                                  className="inline-flex w-[34px] h-[34px] items-center justify-center border border-white/[0.08] rounded-lg text-[var(--muted)] bg-transparent cursor-pointer transition-[color,background] duration-150 hover:!text-[#ff5252] hover:!bg-red-500/10"
                                                   onClick={() =>
                                                     handleRemoveLessonResource(
                                                       sec.id,
@@ -1928,16 +1948,16 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                         </tbody>
                                       </table>
                                     ) : (
-                                      <p className="media-sub">
+                                      <p className="m-0 mb-3 text-[var(--muted)] text-[0.78rem] min-h-[1.15rem]">
                                         No resources added to this lesson yet.
                                       </p>
                                     )}
                                   </div>
 
-                                  <div className="curriculum-editor-save-row">
+                                  <div className="flex justify-end mt-4">
                                     <button
                                       type="button"
-                                      className="curriculum-save-lesson-btn"
+                                      className="border-none bg-transparent text-[var(--accent)] text-[0.84rem] font-semibold cursor-pointer hover:underline"
                                       onClick={() =>
                                         handleSaveLesson(sec.id, les.id)
                                       }
@@ -1954,10 +1974,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     </div>
 
                     {/* Add Lesson Action */}
-                    <div className="curriculum-add-lesson-row">
+                    <div className="mt-3.5">
                       <button
                         type="button"
-                        className="curriculum-add-lesson-btn"
+                        className="inline-flex items-center gap-1.5 border-none bg-transparent text-[var(--muted)] text-[0.84rem] font-semibold cursor-pointer transition-colors duration-150 hover:text-[var(--text)]"
                         onClick={() => handleAddLesson(sec.id)}
                       >
                         <Plus size={16} weight="bold" /> Add Lesson
@@ -1968,33 +1988,37 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
               </div>
             ))}
           </div>
-        ) : activeStep === "access-rules" ? (
-          <div className="access-rules-container">
+        ) : activeStep ==="access-rules" ? (
+          <div className="flex w-full flex-col gap-5">
             {/* Top Grid: 1. Who can access & 2. Access duration */}
-            <div className="access-rules-top-grid">
+            <div className="grid grid-cols-2 gap-5 max-[768px]:grid-cols-1 max-[768px]:gap-3.5">
               {/* Card 1: Who can access this course? */}
-              <div className="access-rules-card">
-                <div className="access-rules-card__header">
-                  <h3>1. Who can access this course?</h3>
-                  <p>Choose who is allowed to access this course.</p>
+              <div className="flex flex-col border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
+                <div className="mb-4.5">
+                  <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">1. Who can access this course?</h3>
+                  <p className="m-0 text-[var(--muted)] text-[0.83rem]">Choose who is allowed to access this course.</p>
                 </div>
 
-                <div className="access-rules-options-group">
+                <div className="flex flex-col gap-3">
                   {/* Radio option: Everyone */}
                   <label
-                    className={`access-rules-radio-option ${
-                      accessRules.accessType === "everyone" ? "is-selected" : ""
+                    className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
+                      accessRules.accessType ==="everyone"
+                        ?"is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
+                        :"border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
                     }`}
                     onClick={() => handleAccessTypeChange("everyone")}
                   >
-                    <div className="access-rules-radio-circle">
-                      {accessRules.accessType === "everyone" && (
-                        <div className="access-rules-radio-dot" />
+                    <div className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
+                      accessRules.accessType ==="everyone" ?"border-[var(--accent)]" :"border-[var(--muted)]"
+                    }`}>
+                      {accessRules.accessType ==="everyone" && (
+                        <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                       )}
                     </div>
-                    <div className="access-rules-radio-text">
-                      <strong>Everyone</strong>
-                      <p>
+                    <div className="flex flex-1 flex-col gap-0.75">
+                      <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">Everyone</strong>
+                      <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
                         Anyone with access to the platform can access this
                         course.
                       </p>
@@ -2003,21 +2027,23 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                   {/* Radio option: Restricted access */}
                   <label
-                    className={`access-rules-radio-option ${
-                      accessRules.accessType === "restricted"
-                        ? "is-selected"
-                        : ""
+                    className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
+                      accessRules.accessType ==="restricted"
+                        ?"is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
+                        :"border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
                     }`}
                     onClick={() => handleAccessTypeChange("restricted")}
                   >
-                    <div className="access-rules-radio-circle">
-                      {accessRules.accessType === "restricted" && (
-                        <div className="access-rules-radio-dot" />
+                    <div className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
+                      accessRules.accessType ==="restricted" ?"border-[var(--accent)]" :"border-[var(--muted)]"
+                    }`}>
+                      {accessRules.accessType ==="restricted" && (
+                        <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                       )}
                     </div>
-                    <div className="access-rules-radio-text">
-                      <strong>Restricted access</strong>
-                      <p>
+                    <div className="flex flex-1 flex-col gap-0.75">
+                      <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">Restricted access</strong>
+                      <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
                         Only users who meet the selected requirements can access
                         this course.
                       </p>
@@ -2026,16 +2052,16 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                 </div>
 
                 {/* Conditional Requirements Box */}
-                {accessRules.accessType === "restricted" && (
-                  <div className="access-rules-req-box">
-                    <div className="access-rules-req-header">
-                      <label>Access requirement</label>
-                      <p>Users must have access to:</p>
+                {accessRules.accessType ==="restricted" && (
+                  <div className="flex flex-col gap-3 mt-3.5 border border-white/[0.06] rounded-[10px] p-3.5 bg-black/[0.16]">
+                    <div className="flex flex-col gap-0.5">
+                      <label className="block mb-0.5 text-[var(--text)] text-[0.84rem] font-bold">Access requirement</label>
+                      <p className="m-0 text-[var(--muted)] text-[0.78rem]">Users must have access to:</p>
                     </div>
 
-                    <div className="access-rules-req-list">
+                    <div className="flex flex-col gap-2">
                       {accessRules.requirements.map((req) => (
-                        <div key={req.id} className="access-rules-req-row">
+                        <div key={req.id} className="flex items-center gap-2">
                           <ThemedSelect
                             value={req.courseId}
                             onValueChange={(val) =>
@@ -2046,12 +2072,12 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                               c.label,
                             ])}
                             ariaLabel="Select prerequisite course requirement"
-                            triggerClassName="course-wizard-select-trigger access-rules-req-select"
+                            triggerClassName="flex-1 min-w-0"
                           />
                           {accessRules.requirements.length > 1 && (
                             <button
                               type="button"
-                              className="curriculum-icon-btn curriculum-icon-btn--danger"
+                              className="inline-flex w-[34px] h-[34px] items-center justify-center border border-white/[0.08] rounded-lg text-[var(--muted)] bg-transparent cursor-pointer transition-[color,background] duration-150 hover:!text-[#ff5252] hover:!bg-red-500/10"
                               aria-label="Remove requirement"
                               title="Remove requirement"
                               onClick={() => handleRemoveRequirement(req.id)}
@@ -2065,7 +2091,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                     <button
                       type="button"
-                      className="access-rules-add-req-btn"
+                      className="inline-flex self-start items-center gap-1.5 mt-1 border-none rounded-md px-2.5 py-1.5 text-[var(--accent)] bg-transparent text-[0.82rem] font-semibold cursor-pointer transition-colors duration-150 hover:bg-[color-mix(in_srgb,var(--accent)_12%,transparent)]"
                       onClick={handleAddRequirement}
                     >
                       <Plus size={15} weight="bold" /> Add another requirement
@@ -2075,60 +2101,66 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
               </div>
 
               {/* Card 2: Access duration */}
-              <div className="access-rules-card">
-                <div className="access-rules-card__header">
-                  <h3>2. Access duration</h3>
-                  <p>Set how long learners can access this course.</p>
+              <div className="flex flex-col border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
+                <div className="mb-4.5">
+                  <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">2. Access duration</h3>
+                  <p className="m-0 text-[var(--muted)] text-[0.83rem]">Set how long learners can access this course.</p>
                 </div>
 
-                <div className="access-rules-options-group">
+                <div className="flex flex-col gap-3">
                   {/* Option 1: Lifetime access */}
                   <div
-                    className={`access-rules-radio-option ${
-                      accessRules.durationMode === "lifetime"
-                        ? "is-selected"
-                        : ""
+                    className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
+                      accessRules.durationMode ==="lifetime"
+                        ?"is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
+                        :"border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
                     }`}
                     onClick={() => handleDurationModeChange("lifetime")}
                   >
-                    <div className="access-rules-radio-circle">
-                      {accessRules.durationMode === "lifetime" && (
-                        <div className="access-rules-radio-dot" />
+                    <div className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
+                      accessRules.durationMode ==="lifetime" ?"border-[var(--accent)]" :"border-[var(--muted)]"
+                    }`}>
+                      {accessRules.durationMode ==="lifetime" && (
+                        <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                       )}
                     </div>
-                    <div className="access-rules-radio-text">
-                      <strong>Lifetime access</strong>
-                      <p>Learners can access this course forever.</p>
+                    <div className="flex flex-1 flex-col gap-0.75">
+                      <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">Lifetime access</strong>
+                      <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">Learners can access this course forever.</p>
                     </div>
                   </div>
 
                   {/* Option 2: Fixed duration */}
                   <div
-                    className={`access-rules-radio-option ${
-                      accessRules.durationMode === "fixed" ? "is-selected" : ""
+                    className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
+                      accessRules.durationMode ==="fixed"
+                        ?"is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
+                        :"border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
                     }`}
                     onClick={() => handleDurationModeChange("fixed")}
                   >
-                    <div className="access-rules-radio-circle">
-                      {accessRules.durationMode === "fixed" && (
-                        <div className="access-rules-radio-dot" />
+                    <div className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
+                      accessRules.durationMode ==="fixed" ?"border-[var(--accent)]" :"border-[var(--muted)]"
+                    }`}>
+                      {accessRules.durationMode ==="fixed" && (
+                        <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                       )}
                     </div>
-                    <div className="access-rules-radio-text">
-                      <strong>Fixed duration</strong>
-                      <p>
+                    <div className="flex flex-1 flex-col gap-0.75">
+                      <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">Fixed duration</strong>
+                      <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
                         Set a duration for how long learners can access this
                         course.
                       </p>
 
-                      {accessRules.durationMode === "fixed" && (
+                      {accessRules.durationMode ==="fixed" && (
                         <div
-                          className="access-rules-fixed-inputs"
+                          className="flex items-center gap-2.5 mt-2.5"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <input
                             type="number"
-                            className="access-rules-number-input"
+                            className="w-[76px] border border-white/[0.12] rounded-lg px-3 py-1.75 text-[var(--text)] bg-black/25 text-[0.86rem] font-semibold outline-none transition-[border-color] duration-150 focus:border-[var(--accent)]"
                             min={1}
                             value={accessRules.fixedDurationValue}
                             onChange={(e) =>
@@ -2143,13 +2175,13 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                               handleFixedDurationUnitChange(val as DurationUnit)
                             }
                             options={[
-                              ["Days", "Days"],
-                              ["Weeks", "Weeks"],
-                              ["Months", "Months"],
-                              ["Years", "Years"],
+                              ["Days","Days"],
+                              ["Weeks","Weeks"],
+                              ["Months","Months"],
+                              ["Years","Years"],
                             ]}
                             ariaLabel="Select duration unit"
-                            triggerClassName="course-wizard-select-trigger access-rules-unit-select"
+                            triggerClassName="min-w-[120px]"
                           />
                         </div>
                       )}
@@ -2158,30 +2190,34 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                   {/* Option 3: Custom expiration */}
                   <div
-                    className={`access-rules-radio-option ${
-                      accessRules.durationMode === "custom" ? "is-selected" : ""
+                    className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
+                      accessRules.durationMode ==="custom"
+                        ?"is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
+                        :"border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
                     }`}
                     onClick={() => handleDurationModeChange("custom")}
                   >
-                    <div className="access-rules-radio-circle">
-                      {accessRules.durationMode === "custom" && (
-                        <div className="access-rules-radio-dot" />
+                    <div className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
+                      accessRules.durationMode ==="custom" ?"border-[var(--accent)]" :"border-[var(--muted)]"
+                    }`}>
+                      {accessRules.durationMode ==="custom" && (
+                        <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                       )}
                     </div>
-                    <div className="access-rules-radio-text">
-                      <strong>Custom expiration</strong>
-                      <p>Set a specific start and end date for access.</p>
+                    <div className="flex flex-1 flex-col gap-0.75">
+                      <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">Custom expiration</strong>
+                      <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">Set a specific start and end date for access.</p>
 
-                      {accessRules.durationMode === "custom" && (
+                      {accessRules.durationMode ==="custom" && (
                         <div
-                          className="access-rules-dates-row"
+                          className="flex items-center gap-3.5 mt-3 max-[768px]:flex-col max-[768px]:items-stretch"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <div className="access-rules-date-group">
-                            <label>Start date</label>
+                          <div className="flex flex-col gap-1">
+                            <label className="text-[var(--muted)] text-[0.76rem] font-semibold">Start date</label>
                             <input
                               type="date"
-                              className="access-rules-date-input"
+                              className="border border-white/[0.12] rounded-lg px-3 py-1.75 text-[var(--text)] bg-black/25 font-inherit text-[0.84rem] font-medium outline-none transition-[border-color] duration-150 focus:border-[var(--accent)] [color-scheme:dark]"
                               value={accessRules.customStartDate}
                               onChange={(e) =>
                                 handleCustomStartDateChange(e.target.value)
@@ -2189,15 +2225,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                             />
                           </div>
 
-                          <div className="access-rules-date-arrow">
+                          <div className="flex items-center justify-center mt-4.5 text-[var(--muted)] max-[768px]:mt-0 max-[768px]:rotate-90">
                             <ArrowRight size={18} />
                           </div>
 
-                          <div className="access-rules-date-group">
-                            <label>End date</label>
+                          <div className="flex flex-col gap-1">
+                            <label className="text-[var(--muted)] text-[0.76rem] font-semibold">End date</label>
                             <input
                               type="date"
-                              className="access-rules-date-input"
+                              className="border border-white/[0.12] rounded-lg px-3 py-1.75 text-[var(--text)] bg-black/25 font-inherit text-[0.84rem] font-medium outline-none transition-[border-color] duration-150 focus:border-[var(--accent)] [color-scheme:dark]"
                               value={accessRules.customEndDate}
                               onChange={(e) =>
                                 handleCustomEndDateChange(e.target.value)
@@ -2213,92 +2249,100 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
             </div>
 
             {/* Bottom Card: 3. Learner interactions */}
-            <div className="access-rules-card access-rules-card--full">
-              <div className="access-rules-card__header">
-                <h3>3. Learner interactions</h3>
-                <p>Manage how learners can interact within this course.</p>
+            <div className="flex flex-col border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)] w-full">
+              <div className="mb-4.5">
+                <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">3. Learner interactions</h3>
+                <p className="m-0 text-[var(--muted)] text-[0.83rem]">Manage how learners can interact within this course.</p>
               </div>
 
-              <div className="access-rules-toggles-list">
+              <div className="flex flex-col gap-3">
                 {/* Toggle 1: Q&A */}
-                <div className="access-rules-toggle-row">
-                  <div className="access-rules-toggle-info">
-                    <div className="access-rules-toggle-icon">
+                <div className="flex items-center justify-between border border-white/[0.08] rounded-xl px-4.5 py-3.5 bg-white/[0.02]">
+                  <div className="flex items-center gap-3.5">
+                    <div className="flex w-[38px] h-[38px] items-center justify-center rounded-[10px] text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)]">
                       <Question size={20} weight="bold" />
                     </div>
                     <div>
-                      <strong>Q&A</strong>
-                      <p>Allow learners to ask questions about lessons.</p>
+                      <strong className="block mb-0.5 text-[var(--text)] text-[0.9rem] font-[650]">Q&A</strong>
+                      <p className="m-0 text-[var(--muted)] text-[0.8rem]">Allow learners to ask questions about lessons.</p>
                     </div>
                   </div>
                   <button
                     type="button"
-                    className={`access-rules-switch ${
-                      accessRules.enableQA ? "is-active" : ""
+                    className={`relative w-11 h-6 shrink-0 border-none rounded-full p-0.5 cursor-pointer transition-colors duration-200 ${
+                      accessRules.enableQA ?"is-active bg-[var(--accent)]" :"bg-white/16"
                     }`}
                     onClick={handleToggleQA}
                     role="switch"
                     aria-checked={accessRules.enableQA}
                     aria-label="Toggle Q&A"
                   >
-                    <div className="access-rules-switch-thumb" />
+                    <div className={`w-5 h-5 rounded-full bg-white shadow-[0_2px_5px_rgba(0,0,0,0.3)] transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                      accessRules.enableQA ?"translate-x-5" :"translate-x-0"
+                    }`} />
                   </button>
                 </div>
 
                 {/* Toggle 2: Comments */}
-                <div className="access-rules-toggle-row">
-                  <div className="access-rules-toggle-info">
-                    <div className="access-rules-toggle-icon">
+                <div className="flex items-center justify-between border border-white/[0.08] rounded-xl px-4.5 py-3.5 bg-white/[0.02]">
+                  <div className="flex items-center gap-3.5">
+                    <div className="flex w-[38px] h-[38px] items-center justify-center rounded-[10px] text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)]">
                       <ChatCircleText size={20} weight="fill" />
                     </div>
                     <div>
-                      <strong>Comments</strong>
-                      <p>Allow learners to comment on course content.</p>
+                      <strong className="block mb-0.5 text-[var(--text)] text-[0.9rem] font-[650]">Comments</strong>
+                      <p className="m-0 text-[var(--muted)] text-[0.8rem]">Allow learners to comment on course content.</p>
                     </div>
                   </div>
                   <button
                     type="button"
-                    className={`access-rules-switch ${
-                      accessRules.enableComments ? "is-active" : ""
+                    className={`relative w-11 h-6 shrink-0 border-none rounded-full p-0.5 cursor-pointer transition-colors duration-200 ${
+                      accessRules.enableComments ?"is-active" :""
                     }`}
                     onClick={handleToggleComments}
                     role="switch"
                     aria-checked={accessRules.enableComments}
                     aria-label="Toggle Comments"
                   >
-                    <div className="access-rules-switch-thumb" />
+                    <div className={`w-5 h-5 rounded-full bg-white shadow-[0_2px_5px_rgba(0,0,0,0.3)] transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                      accessRules.enableComments ?"translate-x-5" :"translate-x-0"
+                    }`} />
                   </button>
                 </div>
               </div>
             </div>
           </div>
-        ) : activeStep === "pricing" ? (
-          <div className="pricing-container">
+        ) : activeStep ==="pricing" ? (
+          <div className="flex w-full flex-col gap-5">
             {/* Top 2-Column Grid: 1. Course pricing & 2. Price details */}
-            <div className="pricing-top-grid">
+            <div className="grid grid-cols-2 gap-5 max-[768px]:grid-cols-1 max-[768px]:gap-3.5">
               {/* Card 1: Course pricing */}
-              <div className="pricing-card">
-                <div className="pricing-card__header">
-                  <h3>1. Course pricing</h3>
-                  <p>Choose how you want to sell this course.</p>
+              <div className="flex flex-col border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)] transition-opacity duration-200">
+                <div className="mb-4.5">
+                  <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">1. Course pricing</h3>
+                  <p className="m-0 text-[var(--muted)] text-[0.83rem]">Choose how you want to sell this course.</p>
                 </div>
 
-                <div className="pricing-options-group">
+                <div className="flex flex-col gap-3">
                   {/* Radio Option: Free */}
                   <div
-                    className={`pricing-radio-option ${
-                      pricing.pricingType === "free" ? "is-selected" : ""
+                    className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
+                      pricing.pricingType ==="free"
+                        ?"is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
+                        :"border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
                     }`}
                     onClick={() => handlePricingTypeChange("free")}
                   >
-                    <div className="pricing-radio-circle">
-                      {pricing.pricingType === "free" && (
-                        <div className="pricing-radio-dot" />
+                    <div className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
+                      pricing.pricingType ==="free" ?"border-[var(--accent)]" :"border-[var(--muted)]"
+                    }`}>
+                      {pricing.pricingType ==="free" && (
+                        <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                       )}
                     </div>
-                    <div className="pricing-radio-text">
-                      <strong>Free</strong>
-                      <p>
+                    <div className="flex flex-1 flex-col gap-0.75">
+                      <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">Free</strong>
+                      <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
                         Anyone who can access the course can enroll for free.
                       </p>
                     </div>
@@ -2306,19 +2350,23 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                   {/* Radio Option: Paid */}
                   <div
-                    className={`pricing-radio-option ${
-                      pricing.pricingType === "paid" ? "is-selected" : ""
+                    className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
+                      pricing.pricingType ==="paid"
+                        ?"is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
+                        :"border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
                     }`}
                     onClick={() => handlePricingTypeChange("paid")}
                   >
-                    <div className="pricing-radio-circle">
-                      {pricing.pricingType === "paid" && (
-                        <div className="pricing-radio-dot" />
+                    <div className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
+                      pricing.pricingType ==="paid" ?"border-[var(--accent)]" :"border-[var(--muted)]"
+                    }`}>
+                      {pricing.pricingType ==="paid" && (
+                        <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                       )}
                     </div>
-                    <div className="pricing-radio-text">
-                      <strong>Paid</strong>
-                      <p>Learners must purchase the course to get access.</p>
+                    <div className="flex flex-1 flex-col gap-0.75">
+                      <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">Paid</strong>
+                      <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">Learners must purchase the course to get access.</p>
                     </div>
                   </div>
                 </div>
@@ -2326,56 +2374,58 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
               {/* Card 2: Price details */}
               <div
-                className={`pricing-card ${
-                  pricing.pricingType === "free" ? "is-disabled" : ""
+                className={`flex flex-col border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)] transition-opacity duration-200 ${
+                  pricing.pricingType ==="free" ?"is-disabled opacity-55 pointer-events-none" :""
                 }`}
               >
-                <div className="pricing-card__header">
-                  <h3>2. Price details</h3>
-                  <p>Set the pricing for your course.</p>
+                <div className="mb-4.5">
+                  <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">2. Price details</h3>
+                  <p className="m-0 text-[var(--muted)] text-[0.83rem]">Set the pricing for your course.</p>
                 </div>
 
-                <div className="pricing-fields-group">
+                <div className="flex flex-col gap-1.75">
                   {/* Selling Price Field */}
-                  <div className="course-wizard-form-group">
-                    <label htmlFor="selling-price">
-                      Selling price <span className="req-star">*</span>
+                  <div className="flex flex-col gap-2 mb-5">
+                    <label htmlFor="selling-price" className="text-[var(--text-secondary)] text-[0.84rem] font-semibold">
+                      Selling price <span className="text-[#ff5252] ml-0.5">*</span>
                     </label>
-                    <div className="pricing-input-prefix-wrap">
-                      <span className="pricing-currency-prefix">₹</span>
+                    <div className="relative flex items-center w-full">
+                      <span className="absolute left-3.5 text-[var(--muted)] text-[0.9rem] font-semibold pointer-events-none">₹</span>
                       <input
                         id="selling-price"
                         type="text"
-                        disabled={pricing.pricingType === "free"}
+                        disabled={pricing.pricingType ==="free"}
                         value={pricing.sellingPrice}
                         onChange={(e) =>
                           handleSellingPriceChange(e.target.value)
                         }
                         placeholder="1,999"
+                        className="w-full border border-white/10 rounded-[10px] py-2.5 pr-3.5 pl-8 text-[var(--text)] bg-black/[0.22] text-[0.9rem] font-semibold outline-none transition-[border-color] duration-150 focus:border-[var(--accent)] disabled:opacity-60"
                       />
                     </div>
-                    <p className="pricing-input-hint">
+                    <p className="m-0 mt-1 text-[var(--muted)] text-[0.78rem]">
                       This is the price learners will pay.
                     </p>
                   </div>
 
                   {/* Original Price Field */}
-                  <div className="course-wizard-form-group">
-                    <label htmlFor="original-price">Original price</label>
-                    <div className="pricing-input-prefix-wrap">
-                      <span className="pricing-currency-prefix">₹</span>
+                  <div className="flex flex-col gap-2 mb-5">
+                    <label htmlFor="original-price" className="text-[var(--text-secondary)] text-[0.84rem] font-semibold">Original price</label>
+                    <div className="relative flex items-center w-full">
+                      <span className="absolute left-3.5 text-[var(--muted)] text-[0.9rem] font-semibold pointer-events-none">₹</span>
                       <input
                         id="original-price"
                         type="text"
-                        disabled={pricing.pricingType === "free"}
+                        disabled={pricing.pricingType ==="free"}
                         value={pricing.originalPrice}
                         onChange={(e) =>
                           handleOriginalPriceChange(e.target.value)
                         }
                         placeholder="2,999"
+                        className="w-full border border-white/10 rounded-[10px] py-2.5 pr-3.5 pl-8 text-[var(--text)] bg-black/[0.22] text-[0.9rem] font-semibold outline-none transition-[border-color] duration-150 focus:border-[var(--accent)] disabled:opacity-60"
                       />
                     </div>
-                    <p className="pricing-input-hint">
+                    <p className="m-0 mt-1 text-[var(--muted)] text-[0.78rem]">
                       Enter original price to show discount.
                     </p>
                   </div>
@@ -2383,10 +2433,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   {/* Dynamic Discount Calculation Badge */}
                   {(() => {
                     const sell = parseFloat(
-                      pricing.sellingPrice.replace(/,/g, ""),
+                      pricing.sellingPrice.replace(/,/g,""),
                     );
                     const orig = parseFloat(
-                      pricing.originalPrice.replace(/,/g, ""),
+                      pricing.originalPrice.replace(/,/g,""),
                     );
                     let discountPercent = 0;
                     let isValidDiscount = false;
@@ -2404,22 +2454,22 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     }
 
                     return (
-                      <div className="pricing-discount-row">
+                      <div className="flex items-center gap-3 mt-0.5">
                         <div
-                          className={`pricing-discount-badge ${
-                            isValidDiscount && pricing.pricingType === "paid"
-                              ? "is-active"
-                              : ""
+                          className={`inline-flex items-center gap-1.5 border rounded-lg px-3 py-1.5 text-[0.82rem] font-bold transition-[border-color,background-color,color] duration-150 ease-out ${
+                            isValidDiscount && pricing.pricingType ==="paid"
+                              ?"is-active border-green-500/40 text-green-500 bg-green-500/[0.12]"
+                              :"border-white/[0.12] text-[var(--muted)] bg-white/[0.04]"
                           }`}
                         >
                           <Tag size={15} weight="bold" />
                           <span>
-                            {isValidDiscount && pricing.pricingType === "paid"
-                              ? `${discountPercent}% OFF`
-                              : "0% OFF"}
+                            {isValidDiscount && pricing.pricingType ==="paid"
+                              ?`${discountPercent}% OFF`
+                              :"0% OFF"}
                           </span>
                         </div>
-                        <span className="pricing-discount-label">
+                        <span className="text-[var(--muted)] text-[0.8rem]">
                           Discount is calculated automatically.
                         </span>
                       </div>
@@ -2430,14 +2480,14 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
             </div>
 
             {/* Bottom Card: Coupons Banner */}
-            <div className="pricing-coupons-card">
-              <div className="pricing-coupons-left">
-                <div className="pricing-coupons-icon">
+            <div className="flex items-center justify-between border border-white/[0.08] rounded-[14px] px-5.5 py-4 bg-[var(--surface)] shadow-[var(--card-shadow)] max-[768px]:flex-col max-[768px]:items-start max-[768px]:gap-3.5">
+              <div className="flex items-center gap-3.5">
+                <div className="flex w-[38px] h-[38px] items-center justify-center rounded-[10px] text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] shrink-0">
                   <Info size={20} weight="bold" />
                 </div>
                 <div>
-                  <strong>Coupons</strong>
-                  <p>
+                  <strong className="block mb-0.5 text-[var(--text)] text-[0.92rem] font-[650]">Coupons</strong>
+                  <p className="m-0 text-[var(--muted)] text-[0.82rem]">
                     Create and manage coupon codes separately from the Coupons
                     section.
                   </p>
@@ -2446,7 +2496,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
               <button
                 type="button"
-                className="pricing-coupons-btn"
+                className="inline-flex items-center gap-1.5 border-none rounded-[9px] px-4.5 py-2.25 text-[var(--on-accent,#ffffff)] bg-[var(--accent)] text-[0.84rem] font-semibold cursor-pointer shadow-[0_2px_8px_var(--accent-shadow)] transition-[background,box-shadow,opacity] duration-150 hover:bg-[var(--accent-hover,var(--accent))] hover:shadow-[0_4px_12px_var(--accent-shadow)] max-[768px]:w-full max-[768px]:justify-center"
                 onClick={() => {
                   if (onNavigatePage) {
                     onNavigatePage("settings");
@@ -2457,89 +2507,93 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
               </button>
             </div>
           </div>
-        ) : activeStep === "extras" ? (
-          <div className="extras-container">
+        ) : activeStep ==="extras" ? (
+          <div className="flex w-full flex-col gap-5">
             {/* Top 2-Column Grid: 1. Certificates & 2. This course includes */}
-            <div className="extras-top-grid">
+            <div className="grid grid-cols-2 items-start gap-5 max-[768px]:grid-cols-1 max-[768px]:gap-3.5">
               {/* Card 1: Certificates */}
-              <div className="extras-card">
-                <div className="extras-card__header">
-                  <h3>1. Certificates</h3>
-                  <p>
+              <div className="flex flex-col h-fit border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
+                <div className="mb-4.5">
+                  <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">1. Certificates</h3>
+                  <p className="m-0 text-[var(--muted)] text-[0.83rem]">
                     Configure how certificates will be issued for this course.
                   </p>
                 </div>
 
                 {/* Enable Certificate Toggle Row */}
-                <div className="extras-cert-toggle-row">
+                <div className="flex items-center justify-between border border-white/[0.08] rounded-xl px-4.5 py-3.5 bg-white/[0.02] mb-4.5">
                   <div>
-                    <strong>Enable certificate</strong>
-                    <p>Issue certificates to learners on course completion.</p>
+                    <strong className="block mb-0.5 text-[var(--text)] text-[0.9rem] font-[650]">Enable certificate</strong>
+                    <p className="m-0 text-[var(--muted)] text-[0.8rem]">Issue certificates to learners on course completion.</p>
                   </div>
                   <button
                     type="button"
-                    className={`access-rules-switch ${
-                      extras.enableCertificate ? "is-active" : ""
+                    className={`relative w-11 h-6 shrink-0 border-none rounded-full p-0.5 cursor-pointer transition-colors duration-200 ${
+                      extras.enableCertificate ?"is-active bg-[var(--accent)]" :"bg-white/16"
                     }`}
                     onClick={handleToggleCertificate}
                     role="switch"
                     aria-checked={extras.enableCertificate}
                     aria-label="Toggle certificate"
                   >
-                    <div className="access-rules-switch-thumb" />
+                    <div className={`w-5 h-5 rounded-full bg-white shadow-[0_2px_5px_rgba(0,0,0,0.3)] transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                      extras.enableCertificate ?"translate-x-5" :"translate-x-0"
+                    }`} />
                   </button>
                 </div>
 
                 {/* Certificate Configuration Controls */}
                 <div
-                  className={`extras-cert-controls ${
-                    !extras.enableCertificate ? "is-disabled" : ""
+                  className={`flex flex-col gap-4.5 transition-opacity duration-200 ${
+                    !extras.enableCertificate ?"is-disabled opacity-50 pointer-events-none" :""
                   }`}
                 >
                   {/* Template Selector */}
-                  <div className="course-wizard-form-group">
-                    <label>Certificate template</label>
-                    <p className="extras-control-sub">
+                  <div className="flex flex-col gap-2 mb-5">
+                    <label className="text-[var(--text-secondary)] text-[0.84rem] font-semibold">Certificate template</label>
+                    <p className="m-0 mt-0.5 mb-2 text-[var(--muted)] text-[0.78rem]">
                       Choose a layout for your certificate.
                     </p>
                     <ThemedSelect
                       value={extras.certificateTemplate}
                       onValueChange={handleCertificateTemplateChange}
                       options={[
-                        ["purple-certificate", "Modern Purple Certificate"],
-                        ["blue-certificate", "Classic Blue Certificate"],
-                        ["dark-certificate", "Minimal Dark Certificate"],
+                        ["purple-certificate","Modern Purple Certificate"],
+                        ["blue-certificate","Classic Blue Certificate"],
+                        ["dark-certificate","Minimal Dark Certificate"],
                       ]}
                       ariaLabel="Select certificate template"
-                      triggerClassName="course-wizard-select-trigger"
+                      triggerClassName=""
                     />
                   </div>
 
                   {/* Certificate Issuance Options */}
-                  <div className="course-wizard-form-group">
-                    <label>Certificate issuance</label>
-                    <p className="extras-control-sub">
+                  <div className="flex flex-col gap-2 mb-5">
+                    <label className="text-[var(--text-secondary)] text-[0.84rem] font-semibold">Certificate issuance</label>
+                    <p className="m-0 mt-0.5 mb-2 text-[var(--muted)] text-[0.78rem]">
                       Choose when the certificate should be issued.
                     </p>
 
-                    <div className="extras-issuance-options">
+                    <div className="flex flex-col gap-2.5">
                       {/* Option 1: On course completion */}
                       <div
-                        className={`access-rules-radio-option ${
-                          extras.issuanceType === "completion"
-                            ? "is-selected"
-                            : ""
+                        className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
+                          extras.issuanceType ==="completion"
+                            ?"is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
+                            :"border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
                         }`}
                         onClick={() => handleIssuanceTypeChange("completion")}
                       >
-                        <div className="access-rules-radio-circle">
-                          {extras.issuanceType === "completion" && (
-                            <div className="access-rules-radio-dot" />
+                        <div className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
+                          extras.issuanceType ==="completion" ?"border-[var(--accent)]" :"border-[var(--muted)]"
+                        }`}>
+                          {extras.issuanceType ==="completion" && (
+                            <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                           )}
                         </div>
-                        <div className="access-rules-radio-text">
-                          <strong>On course completion</strong>
-                          <p>
+                        <div className="flex flex-1 flex-col gap-0.75">
+                          <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">On course completion</strong>
+                          <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
                             Issue certificate when the learner completes all
                             lessons.
                           </p>
@@ -2548,29 +2602,31 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                       {/* Option 2: Minimum completion percentage */}
                       <div
-                        className={`access-rules-radio-option ${
-                          extras.issuanceType === "percentage"
-                            ? "is-selected"
-                            : ""
+                        className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
+                          extras.issuanceType ==="percentage"
+                            ?"is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
+                            :"border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
                         }`}
                         onClick={() => handleIssuanceTypeChange("percentage")}
                       >
-                        <div className="access-rules-radio-circle">
-                          {extras.issuanceType === "percentage" && (
-                            <div className="access-rules-radio-dot" />
+                        <div className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
+                          extras.issuanceType ==="percentage" ?"border-[var(--accent)]" :"border-[var(--muted)]"
+                        }`}>
+                          {extras.issuanceType ==="percentage" && (
+                            <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                           )}
                         </div>
-                        <div className="access-rules-radio-text">
-                          <div className="extras-percentage-header">
-                            <strong>Minimum completion percentage</strong>
-                            {extras.issuanceType === "percentage" && (
+                        <div className="flex flex-1 flex-col gap-0.75">
+                          <div className="flex items-center justify-between w-full">
+                            <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">Minimum completion percentage</strong>
+                            {extras.issuanceType ==="percentage" && (
                               <div
-                                className="extras-percentage-input-wrap"
+                                className="flex items-center gap-1.5"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <input
                                   type="number"
-                                  className="access-rules-number-input"
+                                  className="w-[76px] border border-white/[0.12] rounded-lg px-3 py-1.75 text-[var(--text)] bg-black/25 text-[0.86rem] font-semibold outline-none transition-[border-color] duration-150 focus:border-[var(--accent)]"
                                   min={1}
                                   max={100}
                                   value={extras.minCompletionPercentage}
@@ -2580,11 +2636,11 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                     )
                                   }
                                 />
-                                <span className="extras-percent-symbol">%</span>
+                                <span className="text-[var(--text)] text-[0.86rem] font-bold">%</span>
                               </div>
                             )}
                           </div>
-                          <p>
+                          <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
                             Issue certificate when learner reaches the selected
                             percentage.
                           </p>
@@ -2593,31 +2649,35 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                       {/* Option 3: Custom rule */}
                       <div
-                        className={`access-rules-radio-option ${
-                          extras.issuanceType === "custom" ? "is-selected" : ""
+                        className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
+                          extras.issuanceType ==="custom"
+                            ?"is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
+                            :"border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
                         }`}
                         onClick={() => handleIssuanceTypeChange("custom")}
                       >
-                        <div className="access-rules-radio-circle">
-                          {extras.issuanceType === "custom" && (
-                            <div className="access-rules-radio-dot" />
+                        <div className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
+                          extras.issuanceType ==="custom" ?"border-[var(--accent)]" :"border-[var(--muted)]"
+                        }`}>
+                          {extras.issuanceType ==="custom" && (
+                            <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                           )}
                         </div>
-                        <div className="access-rules-radio-text">
-                          <strong>Custom rule</strong>
-                          <p>
+                        <div className="flex flex-1 flex-col gap-0.75">
+                          <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">Custom rule</strong>
+                          <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
                             Define your own custom rule for certificate
                             issuance.
                           </p>
 
-                          {extras.issuanceType === "custom" && (
+                          {extras.issuanceType ==="custom" && (
                             <div
-                              className="extras-custom-rule-input-wrap"
+                              className="mt-2 w-full"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <input
                                 type="text"
-                                className="extras-custom-rule-input"
+                                className="w-full border border-white/[0.12] rounded-lg px-3 py-1.75 text-[var(--text)] bg-black/25 text-[0.84rem] outline-none transition-[border-color] duration-150 focus:border-[var(--accent)]"
                                 value={extras.customRuleText}
                                 onChange={(e) =>
                                   handleCustomRuleTextChange(e.target.value)
@@ -2632,89 +2692,91 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   </div>
 
                   {/* Delivery Toggle Row */}
-                  <div className="extras-delivery-toggle-row">
+                  <div className="flex items-center justify-between border-t border-white/[0.06] pt-3.5">
                     <div>
-                      <strong>Delivery</strong>
-                      <p>Automatically email the certificate to learners.</p>
+                      <strong className="block mb-0.5 text-[var(--text)] text-[0.88rem] font-[650]">Delivery</strong>
+                      <p className="m-0 text-[var(--muted)] text-[0.78rem]">Automatically email the certificate to learners.</p>
                     </div>
                     <button
                       type="button"
-                      className={`access-rules-switch ${
-                        extras.autoEmailCertificate ? "is-active" : ""
+                      className={`relative w-11 h-6 shrink-0 border-none rounded-full p-0.5 cursor-pointer transition-colors duration-200 ${
+                        extras.autoEmailCertificate ?"is-active bg-[var(--accent)]" :"bg-white/16"
                       }`}
                       onClick={handleToggleAutoEmailCertificate}
                       role="switch"
                       aria-checked={extras.autoEmailCertificate}
                       aria-label="Toggle certificate delivery"
                     >
-                      <div className="access-rules-switch-thumb" />
+                      <div className={`w-5 h-5 rounded-full bg-white shadow-[0_2px_5px_rgba(0,0,0,0.3)] transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                        extras.autoEmailCertificate ?"translate-x-5" :"translate-x-0"
+                      }`} />
                     </button>
                   </div>
                 </div>
               </div>
 
               {/* Card 2: This course includes */}
-              <div className="extras-card">
-                <div className="extras-card__header">
-                  <h3>2. This course includes</h3>
-                  <p>These details are calculated from your curriculum.</p>
+              <div className="flex flex-col h-fit border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
+                <div className="mb-4.5">
+                  <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">2. This course includes</h3>
+                  <p className="m-0 text-[var(--muted)] text-[0.83rem]">These details are calculated from your curriculum.</p>
                 </div>
 
                 {/* Derived Live Stats Summary Grid */}
-                <div className="extras-stats-grid">
-                  <div className="extras-stat-box">
-                    <div className="extras-stat-icon">
+                <div className="grid grid-cols-3 gap-3 mb-6 max-[1024px]:grid-cols-1 max-[768px]:grid-cols-1 max-[768px]:gap-2.5">
+                  <div className="flex items-center gap-3 border border-white/[0.06] rounded-xl px-3 py-3.5 bg-black/[0.18] max-[768px]:p-[12px_14px] max-[768px]:gap-3.5">
+                    <div className="flex w-9 h-9 shrink-0 items-center justify-center rounded-[10px] text-indigo-500 bg-indigo-500/[0.14] max-[768px]:w-10 max-[768px]:h-10">
                       <BookOpen size={20} weight="fill" />
                     </div>
-                    <div className="extras-stat-info">
-                      <strong>{totalSections}</strong>
-                      <span>Sections</span>
+                    <div className="flex flex-col">
+                      <strong className="text-[var(--text)] text-base font-[750] leading-[1.2] max-[768px]:text-[1.05rem]">{totalSections}</strong>
+                      <span className="text-[var(--muted)] text-[0.74rem] font-medium max-[768px]:text-[0.8rem] max-[768px]:whitespace-nowrap">Sections</span>
                     </div>
                   </div>
 
-                  <div className="extras-stat-box">
-                    <div className="extras-stat-icon extras-stat-icon--purple">
+                  <div className="flex items-center gap-3 border border-white/[0.06] rounded-xl px-3 py-3.5 bg-black/[0.18] max-[768px]:p-[12px_14px] max-[768px]:gap-3.5">
+                    <div className="flex w-9 h-9 shrink-0 items-center justify-center rounded-[10px] text-purple-500 bg-purple-500/[0.14] max-[768px]:w-10 max-[768px]:h-10">
                       <PlayCircle size={20} weight="fill" />
                     </div>
-                    <div className="extras-stat-info">
-                      <strong>{totalLessons}</strong>
-                      <span>Lessons</span>
+                    <div className="flex flex-col">
+                      <strong className="text-[var(--text)] text-base font-[750] leading-[1.2] max-[768px]:text-[1.05rem]">{totalLessons}</strong>
+                      <span className="text-[var(--muted)] text-[0.74rem] font-medium max-[768px]:text-[0.8rem] max-[768px]:whitespace-nowrap">Lessons</span>
                     </div>
                   </div>
 
-                  <div className="extras-stat-box">
-                    <div className="extras-stat-icon extras-stat-icon--blue">
+                  <div className="flex items-center gap-3 border border-white/[0.06] rounded-xl px-3 py-3.5 bg-black/[0.18] max-[768px]:p-[12px_14px] max-[768px]:gap-3.5">
+                    <div className="flex w-9 h-9 shrink-0 items-center justify-center rounded-[10px] text-blue-500 bg-blue-500/[0.14] max-[768px]:w-10 max-[768px]:h-10">
                       <Clock size={20} weight="bold" />
                     </div>
-                    <div className="extras-stat-info">
-                      <strong>9h 24m</strong>
-                      <span>Content length</span>
+                    <div className="flex flex-col">
+                      <strong className="text-[var(--text)] text-base font-[750] leading-[1.2] max-[768px]:text-[1.05rem]">9h 24m</strong>
+                      <span className="text-[var(--muted)] text-[0.74rem] font-medium max-[768px]:text-[0.8rem] max-[768px]:whitespace-nowrap">Content length</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Additional Inclusions Section */}
-                <div className="extras-inclusions-section">
-                  <div className="extras-inclusions-header">
-                    <h4>Additional inclusions</h4>
-                    <p>
+                <div className="flex flex-col gap-3">
+                  <div className="mb-2">
+                    <h4 className="m-0 mb-0.5 text-[var(--text)] text-[0.9rem] font-bold">Additional inclusions</h4>
+                    <p className="m-0 text-[var(--muted)] text-[0.78rem]">
                       Add any additional benefits your learners will get with
                       this course.
                     </p>
                   </div>
 
-                  <div className="extras-inclusions-list">
+                  <div className="flex flex-col gap-2">
                     {extras.inclusions.map((item, incIndex) => (
                       <div
                         key={item.id}
-                        className="extras-inclusion-row"
+                        className="flex items-center gap-2.5 border border-white/[0.07] rounded-[10px] px-3 py-2 bg-black/[0.16]"
                         draggable={dragEnabledInclusionId === item.id}
                         onDragStart={() => handleInclusionDragStart(incIndex)}
                         onDragOver={(e) => handleInclusionDragOver(e, incIndex)}
                         onDragEnd={handleInclusionDragEnd}
                       >
                         <span
-                          className="curriculum-drag-handle"
+                          className="flex items-center justify-center text-[var(--muted)] cursor-grab opacity-60 transition-opacity duration-150 hover:opacity-100"
                           title="Drag to reorder inclusion"
                           onMouseEnter={() => setDragEnabledInclusionId(item.id)}
                           onMouseLeave={() => {
@@ -2731,7 +2793,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                         </span>
                         <input
                           type="text"
-                          className="extras-inclusion-input"
+                          className="flex-1 border-none text-[var(--text)] bg-transparent text-[0.86rem] font-medium outline-none"
                           value={item.text}
                           onChange={(e) =>
                             handleUpdateInclusionText(item.id, e.target.value)
@@ -2740,7 +2802,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                         />
                         <button
                           type="button"
-                          className="curriculum-icon-btn curriculum-icon-btn--danger"
+                          className="inline-flex w-[34px] h-[34px] items-center justify-center border border-white/[0.08] rounded-lg text-[var(--muted)] bg-transparent cursor-pointer transition-[color,background] duration-150 hover:!text-[#ff5252] hover:!bg-red-500/10"
                           aria-label="Remove inclusion"
                           title="Remove inclusion"
                           onClick={() => handleDeleteInclusion(item.id)}
@@ -2753,7 +2815,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                   <button
                     type="button"
-                    className="extras-add-inclusion-btn"
+                    className="inline-flex self-start items-center gap-1.5 mt-1 border border-dashed border-white/15 rounded-[9px] px-4 py-2.5 w-full justify-center text-[var(--accent)] bg-white/[0.015] text-[0.84rem] font-semibold cursor-pointer transition-[border-color,background-color] duration-150 ease-out hover:border-[var(--accent)] hover:bg-[color-mix(in_srgb,var(--accent)_8%,transparent)]"
                     onClick={handleAddInclusion}
                   >
                     <Plus size={15} weight="bold" /> Add inclusion
@@ -2762,37 +2824,41 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
               </div>
             </div>
           </div>
-        ) : activeStep === "publish" ? (
-          <div className="publish-container">
+        ) : activeStep ==="publish" ? (
+          <div className="flex w-full flex-col gap-5">
             {/* Top 2-Column Grid: 1. Publish settings & 2. Final checklist */}
-            <div className="publish-top-grid">
+            <div className="grid grid-cols-2 items-start gap-5 max-[768px]:grid-cols-1 max-[768px]:gap-3.5">
               {/* Card 1: Publish settings */}
-              <div className="publish-card">
-                <div className="publish-card__header">
-                  <h3>1. Publish settings</h3>
-                  <p>Choose when and how your course becomes visible.</p>
+              <div className="flex flex-col h-fit border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
+                <div className="mb-4.5">
+                  <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">1. Publish settings</h3>
+                  <p className="m-0 text-[var(--muted)] text-[0.83rem]">Choose when and how your course becomes visible.</p>
                 </div>
 
                 {/* Informational Course Status Display */}
-                <div className="publish-form-group">
-                  <label>Course status</label>
-                  <div className="publish-status-display">
+                <div className="flex flex-col gap-1.5 mb-4.5">
+                  <label className="text-[var(--text)] text-[0.86rem] font-[650]">Course status</label>
+                  <div className="flex items-center mt-0.5">
                     <span
-                      className={`publish-status-tag ${isPublished ? "is-published" : "is-draft"}`}
+                      className={`inline-flex items-center rounded-md px-2.5 py-1 text-[0.8rem] font-bold uppercase tracking-[0.04em] ${
+                        isPublished
+                          ?"is-published border border-green-500/35 text-green-500 bg-green-500/[0.12]"
+                          :"is-draft border border-white/15 text-[var(--muted)] bg-white/[0.04]"
+                      }`}
                     >
-                      {isPublished ? "Published" : "Draft"}
+                      {isPublished ?"Published" :"Draft"}
                     </span>
                   </div>
-                  <p className="publish-status-hint">
+                  <p className="m-0 mt-1 text-[var(--muted)] text-[0.78rem] leading-[1.4]">
                     {isPublished
-                      ? "Your course is currently published and visible to students according to your settings."
-                      : "Your course is currently a draft and hasn't been published yet."}
+                      ?"Your course is currently published and visible to students according to your settings."
+                      :"Your course is currently a draft and hasn't been published yet."}
                   </p>
                 </div>
 
                 {/* Course visibility select */}
-                <div className="publish-form-group">
-                  <label>Course visibility</label>
+                <div className="flex flex-col gap-1.5 mb-4.5">
+                  <label className="text-[var(--text)] text-[0.86rem] font-[650]">Course visibility</label>
                   <ThemedSelect
                     value={publishSettings.visibility}
                     onValueChange={(val) =>
@@ -2803,89 +2869,93 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     }
                     options={[
                       [
-                        "public",
-                        "Public — Anyone on the platform can discover and enroll in this course.",
+"public",
+"Public — Anyone on the platform can discover and enroll in this course.",
                       ],
                       [
-                        "private",
-                        "Private — Only invited students can access this course.",
+"private",
+"Private — Only invited students can access this course.",
                       ],
                       [
-                        "unlisted",
-                        "Unlisted — Only users with a direct link can view this course.",
+"unlisted",
+"Unlisted — Only users with a direct link can view this course.",
                       ],
                     ]}
                     ariaLabel="Select course visibility"
-                    triggerClassName="course-wizard-select-trigger"
+                    triggerClassName=""
                   />
                 </div>
 
                 {/* Publish on radio options */}
-                <div className="publish-form-group">
-                  <label>Publish on</label>
+                <div className="flex flex-col gap-1.5 mb-4.5">
+                  <label className="text-[var(--text)] text-[0.86rem] font-[650]">Publish on</label>
 
-                  <div className="publish-options-group">
+                  <div className="flex flex-col gap-2.5">
                     {/* Option 1: Publish now */}
                     <div
-                      className={`access-rules-radio-option ${
-                        publishSettings.scheduleOption === "now"
-                          ? "is-selected"
-                          : ""
+                      className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
+                        publishSettings.scheduleOption ==="now"
+                          ?"is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
+                          :"border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
                       }`}
                       onClick={() =>
                         setPublishSettings((prev) => ({
                           ...prev,
-                          scheduleOption: "now",
+                          scheduleOption:"now",
                         }))
                       }
                     >
-                      <div className="access-rules-radio-circle">
-                        {publishSettings.scheduleOption === "now" && (
-                          <div className="access-rules-radio-dot" />
+                      <div className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
+                        publishSettings.scheduleOption ==="now" ?"border-[var(--accent)]" :"border-[var(--muted)]"
+                      }`}>
+                        {publishSettings.scheduleOption ==="now" && (
+                          <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                         )}
                       </div>
-                      <div className="access-rules-radio-text">
-                        <strong>Publish now</strong>
-                        <p>Make this course live immediately.</p>
+                      <div className="flex flex-1 flex-col gap-0.75">
+                        <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">Publish now</strong>
+                        <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">Make this course live immediately.</p>
                       </div>
                     </div>
 
                     {/* Option 2: Schedule for later */}
                     <div
-                      className={`access-rules-radio-option ${
-                        publishSettings.scheduleOption === "later"
-                          ? "is-selected"
-                          : ""
+                      className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
+                        publishSettings.scheduleOption ==="later"
+                          ?"is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
+                          :"border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
                       }`}
                       onClick={() =>
                         setPublishSettings((prev) => ({
                           ...prev,
-                          scheduleOption: "later",
+                          scheduleOption:"later",
                         }))
                       }
                     >
-                      <div className="access-rules-radio-circle">
-                        {publishSettings.scheduleOption === "later" && (
-                          <div className="access-rules-radio-dot" />
+                      <div className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
+                        publishSettings.scheduleOption ==="later" ?"border-[var(--accent)]" :"border-[var(--muted)]"
+                      }`}>
+                        {publishSettings.scheduleOption ==="later" && (
+                          <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                         )}
                       </div>
-                      <div className="access-rules-radio-text">
-                        <strong>Schedule for later</strong>
-                        <p>Choose a future date and time to publish.</p>
+                      <div className="flex flex-1 flex-col gap-0.75">
+                        <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">Schedule for later</strong>
+                        <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">Choose a future date and time to publish.</p>
 
-                        {publishSettings.scheduleOption === "later" && (
+                        {publishSettings.scheduleOption ==="later" && (
                           <div
-                            className="publish-schedule-inputs-row"
+                            className="flex items-center gap-2.5 mt-2.5 max-[640px]:flex-col max-[640px]:items-stretch"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <div className="publish-date-input-wrap">
+                            <div className="relative flex items-center flex-1">
                               <Calendar
                                 size={16}
-                                className="publish-input-icon"
+                                className="absolute left-2.5 text-[var(--muted)] pointer-events-none"
                               />
                               <input
                                 type="date"
-                                className="access-rules-date-input"
+                                className="w-full border border-white/[0.12] rounded-lg py-1.75 pr-3 pl-8 text-[var(--text)] bg-black/25 font-inherit text-[0.84rem] font-medium outline-none transition-[border-color] duration-150 focus:border-[var(--accent)] [color-scheme:dark]"
                                 value={publishSettings.scheduleDate}
                                 onChange={(e) =>
                                   setPublishSettings((prev) => ({
@@ -2895,11 +2965,11 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                 }
                               />
                             </div>
-                            <div className="publish-date-input-wrap">
-                              <Clock size={16} className="publish-input-icon" />
+                            <div className="relative flex items-center flex-1">
+                              <Clock size={16} className="absolute left-2.5 text-[var(--muted)] pointer-events-none" />
                               <input
                                 type="time"
-                                className="access-rules-date-input"
+                                className="w-full border border-white/[0.12] rounded-lg py-1.75 pr-3 pl-8 text-[var(--text)] bg-black/25 font-inherit text-[0.84rem] font-medium outline-none transition-[border-color] duration-150 focus:border-[var(--accent)] [color-scheme:dark]"
                                 value={publishSettings.scheduleTime}
                                 onChange={(e) =>
                                   setPublishSettings((prev) => ({
@@ -2917,9 +2987,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                 </div>
 
                 {/* Access rules informational banner */}
-                <div className="publish-info-box">
-                  <Info size={18} weight="bold" className="publish-info-icon" />
-                  <p>
+                <div className="flex items-start gap-2.5 border border-white/[0.06] rounded-[10px] p-3 px-3.5 bg-black/[0.16] mt-1">
+                  <Info size={18} weight="bold" className="shrink-0 mt-0.5 text-[var(--accent)]" />
+                  <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
                     Students will only see this course if they meet the access
                     rules you have configured.
                   </p>
@@ -2927,49 +2997,49 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
               </div>
 
               {/* Card 2: Final checklist & Ready-to-publish */}
-              <div className="publish-card">
-                <div className="publish-card__header">
-                  <h3>2. Final checklist</h3>
-                  <p>Make sure everything is ready to go live.</p>
+              <div className="flex flex-col h-fit border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
+                <div className="mb-4.5">
+                  <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">2. Final checklist</h3>
+                  <p className="m-0 text-[var(--muted)] text-[0.83rem]">Make sure everything is ready to go live.</p>
                 </div>
 
                 {/* Checklist items list */}
-                <div className="publish-checklist-list">
+                <div className="flex flex-col gap-2 mb-5">
                   {/* Checklist Item: Basics */}
                   <div
-                    className="publish-checklist-row"
+                    className="flex items-center justify-between border border-white/[0.07] rounded-[10px] px-4 py-3 bg-white/[0.02] cursor-pointer transition-[border-color,background-color] duration-150 ease-out hover:border-[color-mix(in_srgb,var(--accent)_40%,transparent)] hover:bg-white/[0.04]"
                     onClick={() => setActiveStep("basics")}
                   >
-                    <div className="publish-checklist-left">
+                    <div className="flex items-center gap-3">
                       <CheckCircle
                         size={20}
                         weight="fill"
-                        className={isBasicsValid ? "is-valid" : "is-invalid"}
+                        className={isBasicsValid ?"is-valid text-green-500" :"is-invalid text-red-500"}
                       />
-                      <strong>Basics</strong>
+                      <strong className="text-[var(--text)] text-[0.9rem] font-[650]">Basics</strong>
                     </div>
-                    <div className="publish-checklist-right">
-                      <span>{isBasicsValid ? "Completed" : "Incomplete"}</span>
+                    <div className="flex items-center gap-2 text-[var(--muted)] text-[0.82rem]">
+                      <span>{isBasicsValid ?"Completed" :"Incomplete"}</span>
                       <CaretRight size={16} />
                     </div>
                   </div>
 
                   {/* Checklist Item: Curriculum */}
                   <div
-                    className="publish-checklist-row"
+                    className="flex items-center justify-between border border-white/[0.07] rounded-[10px] px-4 py-3 bg-white/[0.02] cursor-pointer transition-[border-color,background-color] duration-150 ease-out hover:border-[color-mix(in_srgb,var(--accent)_40%,transparent)] hover:bg-white/[0.04]"
                     onClick={() => setActiveStep("curriculum")}
                   >
-                    <div className="publish-checklist-left">
+                    <div className="flex items-center gap-3">
                       <CheckCircle
                         size={20}
                         weight="fill"
                         className={
-                          isCurriculumValid ? "is-valid" : "is-invalid"
+                          isCurriculumValid ?"is-valid text-green-500" :"is-invalid text-red-500"
                         }
                       />
-                      <strong>Curriculum</strong>
+                      <strong className="text-[var(--text)] text-[0.9rem] font-[650]">Curriculum</strong>
                     </div>
-                    <div className="publish-checklist-right">
+                    <div className="flex items-center gap-2 text-[var(--muted)] text-[0.82rem]">
                       <span>
                         {totalSections} Sections, {totalLessons} Lessons
                       </span>
@@ -2979,24 +3049,24 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                   {/* Checklist Item: Access Rules */}
                   <div
-                    className="publish-checklist-row"
+                    className="flex items-center justify-between border border-white/[0.07] rounded-[10px] px-4 py-3 bg-white/[0.02] cursor-pointer transition-[border-color,background-color] duration-150 ease-out hover:border-[color-mix(in_srgb,var(--accent)_40%,transparent)] hover:bg-white/[0.04]"
                     onClick={() => setActiveStep("access-rules")}
                   >
-                    <div className="publish-checklist-left">
+                    <div className="flex items-center gap-3">
                       <CheckCircle
                         size={20}
                         weight="fill"
                         className={
-                          isAccessRulesValid ? "is-valid" : "is-invalid"
+                          isAccessRulesValid ?"is-valid text-green-500" :"is-invalid text-red-500"
                         }
                       />
-                      <strong>Access Rules</strong>
+                      <strong className="text-[var(--text)] text-[0.9rem] font-[650]">Access Rules</strong>
                     </div>
-                    <div className="publish-checklist-right">
+                    <div className="flex items-center gap-2 text-[var(--muted)] text-[0.82rem]">
                       <span>
-                        {accessRules.accessType === "everyone"
-                          ? "Everyone"
-                          : "Restricted Access"}
+                        {accessRules.accessType ==="everyone"
+                          ?"Everyone"
+                          :"Restricted Access"}
                       </span>
                       <CaretRight size={16} />
                     </div>
@@ -3004,22 +3074,22 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                   {/* Checklist Item: Pricing */}
                   <div
-                    className="publish-checklist-row"
+                    className="flex items-center justify-between border border-white/[0.07] rounded-[10px] px-4 py-3 bg-white/[0.02] cursor-pointer transition-[border-color,background-color] duration-150 ease-out hover:border-[color-mix(in_srgb,var(--accent)_40%,transparent)] hover:bg-white/[0.04]"
                     onClick={() => setActiveStep("pricing")}
                   >
-                    <div className="publish-checklist-left">
+                    <div className="flex items-center gap-3">
                       <CheckCircle
                         size={20}
                         weight="fill"
-                        className={isPricingValid ? "is-valid" : "is-invalid"}
+                        className={isPricingValid ?"is-valid text-green-500" :"is-invalid text-red-500"}
                       />
-                      <strong>Pricing</strong>
+                      <strong className="text-[var(--text)] text-[0.9rem] font-[650]">Pricing</strong>
                     </div>
-                    <div className="publish-checklist-right">
+                    <div className="flex items-center gap-2 text-[var(--muted)] text-[0.82rem]">
                       <span>
-                        {pricing.pricingType === "free"
-                          ? "Free"
-                          : `₹${pricing.sellingPrice}`}
+                        {pricing.pricingType ==="free"
+                          ?"Free"
+                          :`₹${pricing.sellingPrice}`}
                       </span>
                       <CaretRight size={16} />
                     </div>
@@ -3027,22 +3097,22 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                   {/* Checklist Item: Extras */}
                   <div
-                    className="publish-checklist-row"
+                    className="flex items-center justify-between border border-white/[0.07] rounded-[10px] px-4 py-3 bg-white/[0.02] cursor-pointer transition-[border-color,background-color] duration-150 ease-out hover:border-[color-mix(in_srgb,var(--accent)_40%,transparent)] hover:bg-white/[0.04]"
                     onClick={() => setActiveStep("extras")}
                   >
-                    <div className="publish-checklist-left">
+                    <div className="flex items-center gap-3">
                       <CheckCircle
                         size={20}
                         weight="fill"
-                        className={isExtrasValid ? "is-valid" : "is-invalid"}
+                        className={isExtrasValid ?"is-valid text-green-500" :"is-invalid text-red-500"}
                       />
-                      <strong>Extras</strong>
+                      <strong className="text-[var(--text)] text-[0.9rem] font-[650]">Extras</strong>
                     </div>
-                    <div className="publish-checklist-right">
+                    <div className="flex items-center gap-2 text-[var(--muted)] text-[0.82rem]">
                       <span>
                         {extras.enableCertificate
-                          ? "Certificate Enabled"
-                          : "Disabled"}
+                          ?"Certificate Enabled"
+                          :"Disabled"}
                       </span>
                       <CaretRight size={16} />
                     </div>
@@ -3051,26 +3121,26 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                 {/* Ready-to-publish State Box */}
                 {isCourseReadyToPublish ? (
-                  <div className="publish-ready-box">
-                    <div className="publish-ready-icon">
+                  <div className="flex items-center gap-4 border border-[color-mix(in_srgb,var(--accent)_30%,transparent)] rounded-xl px-4.5 py-4 bg-[color-mix(in_srgb,var(--accent)_8%,var(--surface))]">
+                    <div className="flex w-[42px] h-[42px] shrink-0 items-center justify-center rounded-xl text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_18%,transparent)]">
                       <BookOpen size={24} weight="fill" />
                     </div>
                     <div>
-                      <strong>Your course is ready to be published!</strong>
-                      <p>
+                      <strong className="block mb-0.75 text-[var(--text)] text-[0.94rem] font-bold">Your course is ready to be published!</strong>
+                      <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
                         Once published, students can see and enroll in this
                         course according to your settings.
                       </p>
                     </div>
                   </div>
                 ) : (
-                  <div className="publish-unready-box">
-                    <div className="publish-unready-icon">
+                  <div className="flex items-center gap-4 border border-red-500/30 rounded-xl px-4.5 py-4 bg-red-500/[0.08]">
+                    <div className="flex w-[42px] h-[42px] shrink-0 items-center justify-center rounded-xl text-red-500 bg-red-500/16">
                       <Info size={24} weight="bold" />
                     </div>
                     <div>
-                      <strong>Course needs attention</strong>
-                      <p>
+                      <strong className="block mb-0.75 text-[var(--text)] text-[0.94rem] font-bold">Course needs attention</strong>
+                      <p className="m-0 text-[var(--muted)] text-[0.8rem]">
                         Please fix incomplete sections highlighted above before
                         publishing.
                       </p>
@@ -3081,18 +3151,18 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
             </div>
 
             {/* Bottom Card 3: What happens after publishing? */}
-            <div className="publish-after-card">
-              <h3>3. What happens after publishing?</h3>
+            <div className="flex flex-col border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
+              <h3 className="m-0 mb-4.5 text-[var(--text)] text-[1.05rem] font-bold">3. What happens after publishing?</h3>
 
-              <div className="publish-after-grid">
+              <div className="grid grid-cols-4 gap-4 max-[1024px]:grid-cols-2 max-[640px]:grid-cols-1">
                 {/* Feature 1: Visible to students */}
-                <div className="publish-after-item">
-                  <div className="publish-after-icon">
+                <div className="flex flex-col gap-3 border border-white/[0.06] rounded-xl p-4 bg-black/[0.16]">
+                  <div className="flex w-10 h-10 items-center justify-center rounded-[10px] text-indigo-500 bg-indigo-500/[0.14]">
                     <Eye size={22} weight="bold" />
                   </div>
                   <div>
-                    <strong>Visible to students</strong>
-                    <p>
+                    <strong className="block mb-1 text-[var(--text)] text-[0.9rem] font-[650]">Visible to students</strong>
+                    <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
                       Students will be able to discover your course on the
                       platform.
                     </p>
@@ -3100,13 +3170,13 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                 </div>
 
                 {/* Feature 2: Enrollment starts */}
-                <div className="publish-after-item">
-                  <div className="publish-after-icon publish-after-icon--purple">
+                <div className="flex flex-col gap-3 border border-white/[0.06] rounded-xl p-4 bg-black/[0.16]">
+                  <div className="flex w-10 h-10 items-center justify-center rounded-[10px] text-purple-500 bg-purple-500/[0.14]">
                     <UserPlus size={22} weight="bold" />
                   </div>
                   <div>
-                    <strong>Enrollment starts</strong>
-                    <p>
+                    <strong className="block mb-1 text-[var(--text)] text-[0.9rem] font-[650]">Enrollment starts</strong>
+                    <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
                       Students who meet the access rules can enroll in your
                       course.
                     </p>
@@ -3114,13 +3184,13 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                 </div>
 
                 {/* Feature 3: Track performance */}
-                <div className="publish-after-item">
-                  <div className="publish-after-icon publish-after-icon--blue">
+                <div className="flex flex-col gap-3 border border-white/[0.06] rounded-xl p-4 bg-black/[0.16]">
+                  <div className="flex w-10 h-10 items-center justify-center rounded-[10px] text-blue-500 bg-blue-500/[0.14]">
                     <PlayCircle size={22} weight="fill" />
                   </div>
                   <div>
-                    <strong>Track performance</strong>
-                    <p>
+                    <strong className="block mb-1 text-[var(--text)] text-[0.9rem] font-[650]">Track performance</strong>
+                    <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
                       Monitor enrollments, progress, and engagement in
                       real-time.
                     </p>
@@ -3128,24 +3198,24 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                 </div>
 
                 {/* Feature 4: Earn with every sale */}
-                <div className="publish-after-item">
-                  <div className="publish-after-icon publish-after-icon--pink">
+                <div className="flex flex-col gap-3 border border-white/[0.06] rounded-xl p-4 bg-black/[0.16]">
+                  <div className="flex w-10 h-10 items-center justify-center rounded-[10px] text-pink-500 bg-pink-500/[0.14]">
                     <ChartBar size={22} weight="bold" />
                   </div>
                   <div>
-                    <strong>Earn with every sale</strong>
-                    <p>Get paid for every successful enrollment.</p>
+                    <strong className="block mb-1 text-[var(--text)] text-[0.9rem] font-[650]">Earn with every sale</strong>
+                    <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">Get paid for every successful enrollment.</p>
                   </div>
                 </div>
               </div>
             </div>
           </div>
         ) : (
-          <div className="course-wizard-body">
-            <section className="course-wizard-card">
-              <div className="course-wizard-card__header">
-                <h2>{WIZARD_STEPS.find((s) => s.id === activeStep)?.label}</h2>
-                <p>This section will allow configuring course {activeStep}.</p>
+          <div className="relative z-10 grid grid-cols-[minmax(0,1.8fr)_minmax(300px,1fr)] gap-6 items-start max-[1024px]:grid-cols-[minmax(0,1fr)] max-[768px]:grid-cols-[minmax(0,1fr)] max-[768px]:gap-[18px]">
+            <section className="relative z-10 rounded-[14px] p-6 bg-[var(--surface)] shadow-[var(--card-shadow)] max-[768px]:p-4">
+              <div className="mb-4.5">
+                <h2 className="m-0 text-[var(--text)] text-[1.18rem] font-[650] tracking-[-0.015em]">{WIZARD_STEPS.find((s) => s.id === activeStep)?.label}</h2>
+                <p className="m-0 mt-1 mb-5 text-[var(--muted)] text-[0.82rem]">This section will allow configuring course {activeStep}.</p>
               </div>
             </section>
           </div>
@@ -3153,24 +3223,24 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
       </div>
 
       {/* Persistent Shared Action Bar */}
-      <footer className="course-wizard-footer">
-        {publishValidationError && activeStep === "publish" && (
-          <div className="publish-footer-error-banner">
+      <footer className="absolute top-[clamp(16px,2.2vw,24px)] right-[clamp(16px,2.5vw,32px)] z-30 flex items-center justify-end border-none rounded-none p-0 bg-transparent shadow-none opacity-100 pointer-events-auto shrink-0 max-[768px]:static max-[768px]:p-[12px_16px_calc(50px+env(safe-area-inset-bottom))_16px] max-[768px]:m-0 max-[768px]:w-full max-[768px]:box-border">
+        {publishValidationError && activeStep ==="publish" && (
+          <div className="flex items-center gap-2.5 mr-auto border border-red-400/35 rounded-[10px] px-4 py-2 text-red-400 bg-red-500/[0.12] backdrop-blur-[12px] shadow-[0_4px_16px_rgba(239,68,68,0.15)] text-[0.84rem] font-semibold animate-[bannerSlideUp_0.3s_cubic-bezier(0.16,1,0.3,1)] max-[768px]:fixed max-[768px]:top-[calc(14px+env(safe-area-inset-top))] max-[768px]:left-4 max-[768px]:right-4 max-[768px]:z-[100] max-[768px]:w-auto max-[768px]:m-0 max-[768px]:p-[12px_16px] max-[768px]:bg-[color-mix(in_srgb,#1a0f12_92%,var(--surface))] max-[768px]:border max-[768px]:border-red-400/45 max-[768px]:rounded-xl max-[768px]:shadow-[0_8px_30px_rgba(0,0,0,0.5),0_0_15px_rgba(239,68,68,0.2)] max-[768px]:backdrop-blur-[16px] max-[768px]:text-[0.82rem] max-[768px]:leading-[1.35] max-[768px]:animate-[bannerSlideDown_0.3s_cubic-bezier(0.16,1,0.3,1)]">
             <Info size={16} weight="bold" />
             <span>{publishValidationError}</span>
           </div>
         )}
-        <div className="course-wizard-footer__actions">
+        <div className="flex items-center gap-2.5 max-[768px]:flex max-[768px]:flex-nowrap max-[768px]:w-full">
           {/* Preview Button */}
           <button
             type="button"
-            className="course-wizard-btn-ghost"
+            className="inline-flex items-center gap-1.5 border border-white/[0.12] rounded-[9px] px-4 py-2 text-[var(--text)] bg-[var(--surface)] text-[0.84rem] font-semibold cursor-pointer transition-[border-color,background] duration-150 ease-out hover:border-white/25 hover:bg-white/[0.06] disabled:opacity-60 max-[768px]:flex-1 max-[768px]:h-9 max-[768px]:flex max-[768px]:items-center max-[768px]:justify-center max-[768px]:px-2 max-[768px]:text-[0.78rem] max-[768px]:font-semibold max-[768px]:rounded-lg max-[768px]:whitespace-nowrap max-[768px]:box-border"
             onClick={handlePreviewAction}
             disabled={actionLoading !== null}
           >
-            {actionLoading === "preview" ? (
+            {actionLoading ==="preview" ? (
               <>
-                <CircleNotch size={16} className="course-wizard-spinner" />
+                <CircleNotch size={16} className="animate-spin text-[var(--accent)]" />
                 <span>Opening...</span>
               </>
             ) : (
@@ -3184,13 +3254,13 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
           {/* Save Draft Button */}
           <button
             type="button"
-            className="course-wizard-btn-draft"
+            className="inline-flex items-center gap-1.5 border border-white/[0.12] rounded-[9px] px-4 py-2 text-[var(--text)] bg-[var(--surface)] text-[0.84rem] font-semibold cursor-pointer transition-[border-color,background] duration-150 ease-out hover:border-white/25 hover:bg-white/[0.06] disabled:opacity-60 max-[768px]:flex-1 max-[768px]:h-9 max-[768px]:flex max-[768px]:items-center max-[768px]:justify-center max-[768px]:px-2 max-[768px]:text-[0.78rem] max-[768px]:font-semibold max-[768px]:rounded-lg max-[768px]:whitespace-nowrap max-[768px]:box-border"
             onClick={handleSaveDraftAction}
             disabled={actionLoading !== null}
           >
-            {actionLoading === "draft" ? (
+            {actionLoading ==="draft" ? (
               <>
-                <CircleNotch size={16} className="course-wizard-spinner" />
+                <CircleNotch size={16} className="animate-spin text-[var(--accent)]" />
                 <span>Saving Draft...</span>
               </>
             ) : (
@@ -3204,27 +3274,27 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
           {/* Save Changes / Publish Course Primary Button */}
           <button
             type="button"
-            className="course-wizard-btn-primary"
+            className="inline-flex items-center gap-1.5 border-none rounded-[9px] px-5 py-2 text-[var(--on-accent,#ffffff)] bg-[var(--accent)] text-[0.84rem] font-semibold cursor-pointer shadow-[0_2px_8px_var(--accent-shadow)] transition-[background,box-shadow,opacity] duration-150 ease-out hover:bg-[var(--accent-hover,var(--accent))] hover:shadow-[0_4px_14px_var(--accent-shadow)] disabled:opacity-60 max-[768px]:flex-1 max-[768px]:h-9 max-[768px]:flex max-[768px]:items-center max-[768px]:justify-center max-[768px]:px-2 max-[768px]:text-[0.78rem] max-[768px]:font-semibold max-[768px]:rounded-lg max-[768px]:whitespace-nowrap max-[768px]:box-border"
             disabled={actionLoading !== null}
             onClick={
-              activeStep === "publish"
+              activeStep ==="publish"
                 ? handleFinalPublishCourse
                 : handleSaveChangesAction
             }
           >
-            {actionLoading === "publish" ? (
+            {actionLoading ==="publish" ? (
               <>
-                <CircleNotch size={16} className="course-wizard-spinner" />
-                <span>{isPublished ? "Updating..." : "Publishing..."}</span>
+                <CircleNotch size={16} className="animate-spin text-[var(--accent)]" />
+                <span>{isPublished ?"Updating..." :"Publishing..."}</span>
               </>
-            ) : actionLoading === "save" ? (
+            ) : actionLoading ==="save" ? (
               <>
-                <CircleNotch size={16} className="course-wizard-spinner" />
+                <CircleNotch size={16} className="animate-spin text-[var(--accent)]" />
                 <span>Saving Changes...</span>
               </>
             ) : (
               <>
-                {activeStep === "publish" ? (
+                {activeStep ==="publish" ? (
                   isPublished ? (
                     <>
                       <CheckCircle size={16} />
@@ -3247,8 +3317,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
       {/* Floating Action Feedback Toast */}
       {toastMessage && (
-        <div className="course-wizard-toast" role="status" aria-live="polite">
-          <CheckCircle size={18} weight="fill" />
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 border border-[color-mix(in_srgb,var(--accent)_45%,transparent)] rounded-xl px-4.5 py-3 text-[var(--text)] bg-[var(--surface)] shadow-[0_8px_30px_rgba(0,0,0,0.35)] text-[0.86rem] font-semibold animate-[toastPopIn_0.3s_cubic-bezier(0.16,1,0.3,1)]" role="status" aria-live="polite">
+          <CheckCircle size={18} weight="fill" className="text-[var(--accent)]" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -3265,7 +3335,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
       {/* Realistic Student-Facing Course Overview Full Preview Modal */}
       {isPreviewModalOpen &&
-        typeof document !== "undefined" &&
+        typeof document !=="undefined" &&
         createPortal(
           <div
             className="fixed inset-0 z-[1200] flex flex-col bg-black/80 backdrop-blur-xl [animation:deleteModalFadeIn_0.2s_ease-out] p-4 box-border max-[640px]:p-0"
