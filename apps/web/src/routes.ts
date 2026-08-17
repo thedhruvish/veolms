@@ -2,12 +2,13 @@ import type { RouteConfig } from "@react-router/dev/routes";
 import { index, layout, route } from "@react-router/dev/routes";
 
 const marker = "routes/academy-marker.tsx";
+const homeMarker = "routes/home-marker.tsx";
 
 export default [
   layout("routes/academy-layout.tsx", { id: "academy-layout" }, [
-    index(marker, { id: "home" }),
-    route("home", marker, { id: "home-alias", caseSensitive: true }),
-    route("dashboard", marker, { id: "dashboard", caseSensitive: true }),
+    index(homeMarker, { id: "home" }),
+    route("home", homeMarker, { id: "home-alias", caseSensitive: true }),
+    route("dashboard", homeMarker, { id: "dashboard", caseSensitive: true }),
     route("my-courses", marker, { id: "my-courses", caseSensitive: true }),
     route("explore-courses", marker, {
       id: "explore-courses",

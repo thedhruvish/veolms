@@ -31,7 +31,7 @@ const PROFILE_DEFAULTS: Readonly<Record<ProfileRole, ProfileIdentity>> = {
   student: {
     displayName: "Ashi Singh",
     email: "ashi.singh@example.com",
-    avatarDataUrl: "/assets/sofia-avatar.jpg",
+    avatarDataUrl: "/assets/sofia-avatar-160.webp",
     username: "ashisingh",
     bio: "Computer science student and aspiring developer.\nBuilding projects, sharing learnings, and helping others grow.",
     mobileNumber: "+91 98765 43210",
@@ -49,7 +49,7 @@ const PROFILE_DEFAULTS: Readonly<Record<ProfileRole, ProfileIdentity>> = {
   creator: {
     displayName: "Anurag Singh",
     email: "anurag.singh@example.com",
-    avatarDataUrl: "/assets/ethan-avatar.jpg",
+    avatarDataUrl: "/assets/ethan-avatar-160.webp",
     username: "anuragdev",
     bio: "Instructor, builder, and lifelong learner.\nSharing practical lessons for the next generation of developers.",
     mobileNumber: "+91 98765 43210",
@@ -208,6 +208,10 @@ export const getProfileIdentity = (role: ProfileRole): ProfileIdentity => {
     return { ...defaults };
   }
 };
+
+export const getDefaultProfileIdentity = (
+  role: ProfileRole,
+): ProfileIdentity => ({ ...PROFILE_DEFAULTS[role] });
 
 export const saveProfilePreferences = (
   role: ProfileRole,

@@ -1,22 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
-import {
-  CaretLeft,
-  CaretRight,
-  Check,
-  ClosedCaptioning,
-  CornersOut,
-  Gauge,
-  GearSix,
-  Monitor,
-  Pause,
-  PictureInPicture,
-  Play,
-  Rectangle,
-  Sparkle,
-  SpeakerHigh,
-  SpeakerSlash,
-} from "@phosphor-icons/react";
+import { CaretLeft } from "@phosphor-icons/react/CaretLeft";
+import { CaretRight } from "@phosphor-icons/react/CaretRight";
+import { Check } from "@phosphor-icons/react/Check";
+import { ClosedCaptioning } from "@phosphor-icons/react/ClosedCaptioning";
+import { CornersOut } from "@phosphor-icons/react/CornersOut";
+import { Gauge } from "@phosphor-icons/react/Gauge";
+import { GearSix } from "@phosphor-icons/react/GearSix";
+import { Monitor } from "@phosphor-icons/react/Monitor";
+import { Pause } from "@phosphor-icons/react/Pause";
+import { PictureInPicture } from "@phosphor-icons/react/PictureInPicture";
+import { Play } from "@phosphor-icons/react/Play";
+import { Rectangle } from "@phosphor-icons/react/Rectangle";
+import { Sparkle } from "@phosphor-icons/react/Sparkle";
+import { SpeakerHigh } from "@phosphor-icons/react/SpeakerHigh";
+import { SpeakerSlash } from "@phosphor-icons/react/SpeakerSlash";
 import { AppSlider } from "./AppSlider";
 import { isEditingShortcutTarget } from "./keyboardShortcuts";
 import type { CourseVideo } from "./learning/courseContent";
@@ -88,6 +86,7 @@ function SwitchVisual({ checked }: SwitchVisualProps) {
 interface VideoPlayerProps {
   media: CourseVideo;
   lessonTitle: string;
+  posterSrc?: string;
   theaterMode: boolean;
   onTheaterToggle: () => void;
   autoPlayOnMediaChange?: boolean;
@@ -96,6 +95,7 @@ interface VideoPlayerProps {
 export function VideoPlayer({
   media,
   lessonTitle,
+  posterSrc,
   theaterMode,
   onTheaterToggle,
   autoPlayOnMediaChange = false,
@@ -114,7 +114,8 @@ export function VideoPlayer({
   const shortcutHandlerRef = useRef<(event: KeyboardEvent) => void>(() => {});
 
   const [playing, setPlaying] = useState(false);
-  const [muted, setMuted] = useState(getInitialMuted);
+  const [muted, setMuted] = useState(false);
+  const [mutedPreferenceReady, setMutedPreferenceReady] = useState(false);
   const [volume, setVolume] = useState(1);
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
@@ -126,7 +127,9 @@ export function VideoPlayer({
   const [controlsVisible, setControlsVisible] = useState(true);
   const [hud, setHud] = useState("");
   const [mediaError, setMediaError] = useState(false);
-  const [ambient, setAmbient] = useState(getAmbientDefault);
+  // The server cannot read the saved device preference. Start from the same
+  // deterministic value on both sides, then restore it after hydration.
+  const [ambient, setAmbient] = useState(false);
 
   const showHud = (message: string) => {
     window.clearTimeout(hudTimerRef.current);
@@ -346,13 +349,19 @@ export function VideoPlayer({
   }, [volume]);
 
   useEffect(() => {
+    setMuted(getInitialMuted());
+    setMutedPreferenceReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mutedPreferenceReady) return;
     if (videoRef.current) videoRef.current.muted = muted;
     try {
       window.localStorage.setItem(PLAYER_MUTED_STORAGE_KEY, String(muted));
     } catch {
       // Playback controls should remain available when browser storage is unavailable.
     }
-  }, [muted]);
+  }, [muted, mutedPreferenceReady]);
 
   useEffect(() => {
     const syncMutedPreference = (event: StorageEvent) => {
@@ -364,12 +373,8 @@ export function VideoPlayer({
   }, []);
 
   useEffect(() => {
-    try {
-      localStorage.setItem("veolms-player-ambient", ambient ? "on" : "off");
-    } catch {
-      // Ambient mode remains available when browser storage is unavailable.
-    }
-  }, [ambient]);
+    setAmbient(getAmbientDefault());
+  }, []);
 
   useEffect(
     () => () => {
@@ -587,7 +592,8 @@ export function VideoPlayer({
         <video
           ref={videoRef}
           className="size-full object-contain"
-          preload="metadata"
+          preload="none"
+          poster={posterSrc}
           src={media.src}
           muted={muted}
           onLoadedMetadata={(event) => {
@@ -803,7 +809,20 @@ export function VideoPlayer({
                         <button
                           type="button"
                           aria-pressed={ambient}
-                          onClick={() => setAmbient((current) => !current)}
+                          onClick={() =>
+                            setAmbient((current) => {
+                              const next = !current;
+                              try {
+                                localStorage.setItem(
+                                  "veolms-player-ambient",
+                                  next ? "on" : "off",
+                                );
+                              } catch {
+                                // Ambient mode remains available when browser storage is unavailable.
+                              }
+                              return next;
+                            })
+                          }
                           className="player-menu-row"
                         >
                           <span className="flex min-w-0 items-center gap-3">

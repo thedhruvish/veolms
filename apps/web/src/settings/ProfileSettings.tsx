@@ -1,20 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
+import { At } from "@phosphor-icons/react/At";
+import { Camera } from "@phosphor-icons/react/Camera";
+import { Check } from "@phosphor-icons/react/Check";
+import { CheckCircle } from "@phosphor-icons/react/CheckCircle";
+import { EnvelopeSimple } from "@phosphor-icons/react/EnvelopeSimple";
+import { GithubLogo } from "@phosphor-icons/react/GithubLogo";
+import { Globe } from "@phosphor-icons/react/Globe";
+import { LinkedinLogo } from "@phosphor-icons/react/LinkedinLogo";
+import { Phone } from "@phosphor-icons/react/Phone";
+import { SealCheck } from "@phosphor-icons/react/SealCheck";
+import { ShieldWarning } from "@phosphor-icons/react/ShieldWarning";
+import { X } from "@phosphor-icons/react/X";
 import {
-  At,
-  Camera,
-  Check,
-  CheckCircle,
-  EnvelopeSimple,
-  GithubLogo,
-  Globe,
-  LinkedinLogo,
-  Phone,
-  SealCheck,
-  ShieldWarning,
-  X,
-} from "@phosphor-icons/react";
-import {
+  getDefaultProfileIdentity,
   getProfileIdentity,
   saveProfilePreferences,
 } from "./profilePreferences";
@@ -126,7 +125,11 @@ export function ProfileSettings({
   role = "student",
   onProfileSaved,
 }: ProfileSettingsProps) {
-  const initialIdentity = useMemo(() => getProfileIdentity(role), [role]);
+  const initializedRoleRef = useRef(role);
+  const initialIdentity = useMemo(
+    () => getDefaultProfileIdentity(role),
+    [role],
+  );
   const [savedProfile, setSavedProfile] = useState<EditableProfile>(() =>
     toEditableProfile(initialIdentity),
   );
@@ -156,6 +159,10 @@ export function ProfileSettings({
   const showAvatar = Boolean(draftProfile.avatarDataUrl) && !avatarFailed;
 
   useEffect(() => {
+    // Restore browser-local identity only after hydration. The server cannot
+    // read this value, so using it in the initializer produced React #418 on
+    // every profile that had previously been edited.
+    initializedRoleRef.current = role;
     const identity = getProfileIdentity(role);
     const editableProfile = toEditableProfile(identity);
     setSavedProfile(editableProfile);
@@ -352,6 +359,8 @@ export function ProfileSettings({
         <img
           src={draftProfile.avatarDataUrl ?? undefined}
           alt=""
+          width={160}
+          height={160}
           onError={() => setAvatarFailed(true)}
         />
       ) : (
@@ -543,7 +552,7 @@ export function ProfileSettings({
                 {draftProfile.bio.length} / 160
               </small>
             </div>
-            <div className="settings-profile__field-grid">
+            <div className="settings-profile__field-grid settings-profile__field-grid--contact">
               <div className="settings-profile__field">
                 <div className="settings-profile__field-heading">
                   <label htmlFor="profile-email">Email address</label>
@@ -751,17 +760,18 @@ export function ProfileSettings({
         </div>
       </div>
 
-      <dialog
-        ref={mobileVisibilityDialogRef}
-        className="settings-profile__privacy-dialog"
-        aria-modal="true"
-        aria-labelledby="mobile-visibility-dialog-title"
-        aria-describedby="mobile-visibility-dialog-description"
-        onCancel={(event) => {
-          event.preventDefault();
-          closeMobileVisibilityPrompt();
-        }}
-      >
+      {mobileVisibilityPromptOpen && (
+        <dialog
+          ref={mobileVisibilityDialogRef}
+          className="settings-profile__privacy-dialog"
+          aria-modal="true"
+          aria-labelledby="mobile-visibility-dialog-title"
+          aria-describedby="mobile-visibility-dialog-description"
+          onCancel={(event) => {
+            event.preventDefault();
+            closeMobileVisibilityPrompt();
+          }}
+        >
         <button
           type="button"
           className="settings-profile__privacy-dialog-close"
@@ -818,7 +828,8 @@ export function ProfileSettings({
             I understand, keep private
           </button>
         </div>
-      </dialog>
+        </dialog>
+      )}
     </section>
   );
 }

@@ -1,4 +1,4 @@
-import { ArrowLeft } from "@phosphor-icons/react";
+import { ArrowLeft } from "@phosphor-icons/react/ArrowLeft";
 import {
   useCallback,
   useEffect,
@@ -15,7 +15,11 @@ import { SidebarToggleIcon } from "../shell/SidebarToggleIcon";
 import { isEditingShortcutTarget } from "../keyboardShortcuts";
 import { useShortcutPlatform } from "../useShortcutPlatform";
 import { VideoPlayer as YouTubeVideoPlayer } from "../VideoPlayer";
-import { getInitialAcademyTheme, persistAcademyTheme } from "../themes";
+import {
+  DEFAULT_ACADEMY_THEME,
+  getInitialAcademyTheme,
+  persistAcademyTheme,
+} from "../themes";
 import { courseVideos, lessonsById, lessonVideoMap } from "./courseContent";
 import { Curriculum } from "./Curriculum";
 import { getCourseThumbnail, getCourseTitle } from "./courseMetadata";
@@ -67,34 +71,52 @@ export function LearningWorkspace({
   onNavigateBack,
 }: LearningWorkspaceProps) {
   const lessonStorageKey = `veolms-last-lesson-${encodeURIComponent(courseSlug || "default")}`;
-  const [theme] = useState(() => {
-    try {
-      return localStorage.getItem("veolms-theme") || "dark";
-    } catch {
-      return "dark";
-    }
-  });
+  const [theme, setTheme] = useState("dark");
   const shortcutPlatform = useShortcutPlatform();
-  const [academyTheme] = useState(getInitialAcademyTheme);
+  const [academyTheme, setAcademyTheme] = useState(DEFAULT_ACADEMY_THEME);
   const [selectedLesson, setSelectedLesson] = useState(lessonId);
   const [autoPlayOnLessonChange, setAutoPlayOnLessonChange] = useState(false);
-  const courseTitle = getCourseTitle(courseSlug);
+  const [courseTitle, setCourseTitle] = useState(() =>
+    getCourseTitle(courseSlug),
+  );
   const coursePersistenceKey = encodeURIComponent(courseSlug || "default");
   const discussionPersistenceKey = `${coursePersistenceKey}-lesson-${selectedLesson}`;
   const [lessonDrawer, setLessonDrawer] = useState(false);
   const [curriculumFocusRequest, setCurriculumFocusRequest] = useState(0);
-  const [curriculumWidth, setCurriculumWidth] = useState(() => {
+  const [curriculumWidth, setCurriculumWidth] = useState(
+    CURRICULUM_DEFAULT_WIDTH,
+  );
+  useEffect(() => {
     try {
+      setTheme(localStorage.getItem("veolms-theme") || "dark");
+      setAcademyTheme(getInitialAcademyTheme());
       const storedWidth = localStorage.getItem("veolms-curriculum-width");
-      if (storedWidth === null) return CURRICULUM_DEFAULT_WIDTH;
+      if (storedWidth === null) return;
       const saved = Number(storedWidth);
-      return Number.isFinite(saved)
-        ? Math.min(CURRICULUM_MAX_WIDTH, Math.max(CURRICULUM_MIN_WIDTH, saved))
-        : CURRICULUM_DEFAULT_WIDTH;
+      if (Number.isFinite(saved)) {
+        setCurriculumWidth(
+          Math.min(CURRICULUM_MAX_WIDTH, Math.max(CURRICULUM_MIN_WIDTH, saved)),
+        );
+      }
     } catch {
-      return CURRICULUM_DEFAULT_WIDTH;
+      // The deterministic defaults remain usable without browser storage.
     }
-  });
+  }, []);
+
+  useEffect(() => {
+    if (courseSlug) {
+      setCourseTitle(getCourseTitle(courseSlug));
+      return;
+    }
+    try {
+      const storedTitle = window.localStorage.getItem(
+        "veolms-current-course-title",
+      );
+      if (storedTitle) setCourseTitle(storedTitle);
+    } catch {
+      // Keep the deterministic title when storage is unavailable.
+    }
+  }, [courseSlug]);
   const [curriculumCollapsed, setCurriculumCollapsed] = useState(false);
   const [curriculumResizing, setCurriculumResizing] = useState(false);
   const [curriculumResizePreviewWidth, setCurriculumResizePreviewWidth] =
@@ -481,6 +503,12 @@ export function LearningWorkspace({
     <div
       className={`learning-workspace ${theaterMode ? "is-theater" : ""} ${curriculumResizing ? "is-curriculum-resizing" : ""}`}
     >
+      <link
+        rel="preload"
+        as="image"
+        href={courseThumbnail}
+        fetchPriority="high"
+      />
       <main
         className={`learning-workspace__main ${curriculumCollapsed ? "is-curriculum-collapsed" : ""}`}
         inert={lessonDrawer ? true : undefined}
@@ -541,6 +569,7 @@ export function LearningWorkspace({
             <YouTubeVideoPlayer
               media={lessonVideoMap[selectedLesson] || courseVideos[0]!}
               lessonTitle={currentLesson[1]}
+              posterSrc={courseThumbnail}
               theaterMode={theaterMode}
               onTheaterToggle={toggleTheaterMode}
               autoPlayOnMediaChange={autoPlayOnLessonChange}
@@ -551,7 +580,7 @@ export function LearningWorkspace({
             ref={lessonTriggerRef}
             type="button"
             className="learning-workspace__lesson-heading"
-            aria-label="Open course lessons"
+            aria-label={`Open course lessons for ${currentLesson[1]}`}
             aria-expanded={lessonDrawer}
             onClick={openLessonDrawer}
           >

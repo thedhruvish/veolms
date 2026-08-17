@@ -1,5 +1,8 @@
 import type { ComponentType, CSSProperties } from "react";
-import { BookOpen, Heart, House, UsersThree } from "@phosphor-icons/react";
+import { BookOpen } from "@phosphor-icons/react/BookOpen";
+import { Heart } from "@phosphor-icons/react/Heart";
+import { House } from "@phosphor-icons/react/House";
+import { UsersThree } from "@phosphor-icons/react/UsersThree";
 
 type PreviewIcon = ComponentType<{ size?: number; weight?: "duotone" }>;
 type MiniSurfacePreviewMode = "normal" | "dark" | "light" | "device";
