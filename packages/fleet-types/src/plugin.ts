@@ -1,3 +1,8 @@
+import type {
+  InfraProvisionOptions,
+  InfraProvisionResult,
+} from "./infra.ts";
+
 export interface PluginEnvVarDefinition {
   readonly key: string;
   readonly description: string;
@@ -20,4 +25,11 @@ export interface FleetPluginManifest {
     isHardwareAccelerated?: boolean;
   }) => Record<string, string>;
   readonly envVars: readonly PluginEnvVarDefinition[];
+  /**
+   * Optional automated infrastructure provisioner for the plugin
+   * (e.g. S3 buckets, IAM, security groups, local folders, container verification).
+   */
+  readonly provisionInfra?: (
+    options: InfraProvisionOptions,
+  ) => Promise<InfraProvisionResult>;
 }

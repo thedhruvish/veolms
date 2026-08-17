@@ -153,24 +153,39 @@ fi`
       ],
     });
 
-    const res = await this.ec2Client.send(runCmd);
-    const instance = res.Instances?.[0];
-    const instanceId = instance?.InstanceId || `i-mock-${spec.workerId}`;
+    try {
+      const res = await this.ec2Client.send(runCmd);
+      const instance = res.Instances?.[0];
+      const instanceId = instance?.InstanceId || `i-mock-${spec.workerId}`;
 
-    this.workerInstanceMap.set(spec.workerId, instanceId);
+      this.workerInstanceMap.set(spec.workerId, instanceId);
 
-    return {
-      workerId: spec.workerId,
-      instanceId,
-      provider: this.providerType,
-      state: "PROVISIONING",
-      launchedAt: new Date(),
-      metadata: {
+      return {
+        workerId: spec.workerId,
         instanceId,
-        instanceType,
-        privateIp: instance?.PrivateIpAddress,
-      },
-    };
+        provider: this.providerType,
+        state: "PROVISIONING",
+        launchedAt: new Date(),
+        metadata: {
+          instanceId,
+          instanceType,
+          privateIp: instance?.PrivateIpAddress,
+        },
+      };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        msg.includes("Credentials") ||
+        msg.includes("AuthFailure") ||
+        msg.includes("UnauthorizedOperation") ||
+        msg.includes("AccessDenied")
+      ) {
+        throw new Error(
+          `AWS EC2 Launch Failed: Authentication or IAM Permission Error.\n👉 Please run 'aws configure' or attach an IAM Role (Instance Profile).\nDetails: ${msg}`,
+        );
+      }
+      throw err;
+    }
   }
 
   /**

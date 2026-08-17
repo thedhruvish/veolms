@@ -30,4 +30,13 @@ export const simulatorPluginManifest: FleetPluginManifest = {
     SIMULATOR_CHUNK_DURATION_SECONDS: "6",
     SIMULATOR_SIMULATE_FAILURES: "false",
   }),
+  provisionInfra: async (options) => {
+    const action = options.action || "setup";
+    return {
+      provider: "simulator",
+      action,
+      success: true,
+      message: `Virtual in-memory simulator infrastructure (${action}) completed.`,
+    };
+  },
 };

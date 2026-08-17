@@ -796,12 +796,15 @@ void main();
   console.log("=".repeat(78));
   console.log("\nNext Steps:");
   console.log(
-    "  1. Start Fleet Manager:        pnpm --filter @veolms/fleet-manager start",
+    "  1. Provision Cloud/Local Infra: pnpm run fleet:infra",
   );
   console.log(
-    "  2. Start Media Worker:         pnpm --filter @veolms/media-worker start",
+    "  2. Start Fleet Manager:        pnpm --filter @veolms/fleet-manager start",
   );
-  console.log("  3. Re-configure Fleet:         pnpm run fleet:pre:setup\n");
+  console.log(
+    "  3. Start Media Worker:         pnpm --filter @veolms/media-worker start",
+  );
+  console.log("  4. Re-configure Fleet:         pnpm run fleet:pre:setup\n");
 }
 
 void runInteractivePreSetup();

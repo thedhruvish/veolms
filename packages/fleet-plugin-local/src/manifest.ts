@@ -64,4 +64,83 @@ export const localPluginManifest: FleetPluginManifest = {
     }
     return env;
   },
+  provisionInfra: async (options) => {
+    const action = options.action || "setup";
+    const { mkdir, rm, access } = await import("node:fs/promises");
+    const { resolve } = await import("node:path");
+
+    const storagePath = resolve(
+      process.cwd(),
+      options.prodStoragePath || options.tempStoragePath || "./s3-bucket",
+    );
+    const tempStoragePath = resolve(
+      process.cwd(),
+      options.tempStoragePath || "./s3-bucket/temp",
+    );
+
+    // 1. DESTROY
+    if (action === "destroy") {
+      await rm(tempStoragePath, { recursive: true, force: true });
+      await rm(storagePath, { recursive: true, force: true });
+      return {
+        provider: "local",
+        action: "destroy",
+        success: true,
+        message: `Local directories removed: ${storagePath} and ${tempStoragePath}`,
+      };
+    }
+
+    // 2. STATUS
+    if (action === "status") {
+      let prodOk = false;
+      let tempOk = false;
+      try {
+        await access(storagePath);
+        prodOk = true;
+      } catch {
+        prodOk = false;
+      }
+      try {
+        await access(tempStoragePath);
+        tempOk = true;
+      } catch {
+        tempOk = false;
+      }
+
+      return {
+        provider: "local",
+        action: "status",
+        success: prodOk && tempOk,
+        message:
+          prodOk && tempOk
+            ? "Local storage infrastructure is ready."
+            : "Local storage folders are missing.",
+        details: {
+          storagePath: prodOk ? "Exists ✅" : "Missing ❌",
+          tempStoragePath: tempOk ? "Exists ✅" : "Missing ❌",
+        },
+      };
+    }
+
+    // 3. REINSTALL
+    if (action === "reinstall") {
+      await rm(tempStoragePath, { recursive: true, force: true });
+      await rm(storagePath, { recursive: true, force: true });
+    }
+
+    // 4. SETUP
+    await mkdir(storagePath, { recursive: true });
+    await mkdir(tempStoragePath, { recursive: true });
+
+    return {
+      provider: "local",
+      action,
+      success: true,
+      message: `Local directories created: ${storagePath} and ${tempStoragePath}`,
+      details: {
+        storagePath,
+        tempStoragePath,
+      },
+    };
+  },
 };

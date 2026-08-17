@@ -24,6 +24,7 @@
     "compose:up": "docker compose up -d",
     "compose:down": "docker compose down",
     "fleet:pre:setup": "node scripts/fleet-pre-setup.ts",
+    "fleet:infra": "node scripts/fleet-infra.ts",
     "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm build"
   },
   "devDependencies": {
