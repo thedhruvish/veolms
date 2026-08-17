@@ -1,5 +1,9 @@
 import { useLayoutEffect, useRef } from "react";
-import type { RefObject } from "react";
+import type {
+  KeyboardEvent as ReactKeyboardEvent,
+  PointerEvent as ReactPointerEvent,
+  RefObject,
+} from "react";
 
 const TRACK_INSET = 8;
 const MINIMUM_THUMB_HEIGHT = 40;
@@ -8,8 +12,18 @@ type FloatingScrollbarProps = {
   scrollportRef: RefObject<HTMLElement | null>;
 };
 
+type ScrollbarDrag = {
+  pointerId: number;
+  startClientY: number;
+  startScrollTop: number;
+};
+
+const clamp = (value: number, minimum: number, maximum: number) =>
+  Math.min(maximum, Math.max(minimum, value));
+
 export function FloatingScrollbar({ scrollportRef }: FloatingScrollbarProps) {
   const scrollbarRef = useRef<HTMLSpanElement>(null);
+  const dragRef = useRef<ScrollbarDrag | null>(null);
 
   useLayoutEffect(() => {
     const scrollport = scrollportRef.current;
@@ -27,7 +41,12 @@ export function FloatingScrollbar({ scrollportRef }: FloatingScrollbarProps) {
         scrollport.scrollHeight > scrollport.clientHeight + 1;
 
       scrollbar.classList.toggle("is-visible", canScroll);
-      if (!canScroll) return;
+      scrollbar.tabIndex = canScroll ? 0 : -1;
+      if (!canScroll) {
+        scrollbar.setAttribute("aria-valuemax", "0");
+        scrollbar.setAttribute("aria-valuenow", "0");
+        return;
+      }
 
       const scrollportRect = scrollport.getBoundingClientRect();
       const trackHeight = Math.max(0, scrollportRect.height - TRACK_INSET * 2);
@@ -45,6 +64,15 @@ export function FloatingScrollbar({ scrollportRef }: FloatingScrollbarProps) {
       );
       const thumbOffset =
         maximumThumbOffset * (scrollport.scrollTop / maximumScrollOffset);
+
+      scrollbar.setAttribute(
+        "aria-valuemax",
+        String(Math.round(maximumScrollOffset)),
+      );
+      scrollbar.setAttribute(
+        "aria-valuenow",
+        String(Math.round(scrollport.scrollTop)),
+      );
 
       scrollbar.style.setProperty(
         "--floating-scrollbar-top",
@@ -105,8 +133,134 @@ export function FloatingScrollbar({ scrollportRef }: FloatingScrollbarProps) {
     };
   }, [scrollportRef]);
 
+  const beginDrag = (event: ReactPointerEvent<HTMLSpanElement>) => {
+    if (
+      event.button !== 0 ||
+      !event.currentTarget.classList.contains("is-visible")
+    ) {
+      return;
+    }
+
+    const scrollport = scrollportRef.current;
+    const thumb = event.currentTarget.querySelector<HTMLElement>(
+      ".floating-scrollbar__thumb",
+    );
+    if (!scrollport || !thumb) return;
+
+    const trackRect = event.currentTarget.getBoundingClientRect();
+    const thumbRect = thumb.getBoundingClientRect();
+    const maximumThumbOffset = Math.max(0, trackRect.height - thumbRect.height);
+    const maximumScrollOffset = Math.max(
+      0,
+      scrollport.scrollHeight - scrollport.clientHeight,
+    );
+    const clickedThumb =
+      event.clientY >= thumbRect.top && event.clientY <= thumbRect.bottom;
+    let startScrollTop = scrollport.scrollTop;
+
+    if (!clickedThumb && maximumThumbOffset > 0) {
+      const requestedThumbOffset = clamp(
+        event.clientY - trackRect.top - thumbRect.height / 2,
+        0,
+        maximumThumbOffset,
+      );
+      startScrollTop =
+        (requestedThumbOffset / maximumThumbOffset) * maximumScrollOffset;
+      scrollport.scrollTop = startScrollTop;
+    }
+
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startClientY: event.clientY,
+      startScrollTop,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.currentTarget.classList.add("is-dragging");
+    event.preventDefault();
+  };
+
+  const dragThumb = (event: ReactPointerEvent<HTMLSpanElement>) => {
+    const drag = dragRef.current;
+    const scrollport = scrollportRef.current;
+    const thumb = event.currentTarget.querySelector<HTMLElement>(
+      ".floating-scrollbar__thumb",
+    );
+    if (!drag || drag.pointerId !== event.pointerId || !scrollport || !thumb) {
+      return;
+    }
+
+    const maximumThumbOffset = Math.max(
+      1,
+      event.currentTarget.clientHeight - thumb.getBoundingClientRect().height,
+    );
+    const maximumScrollOffset = Math.max(
+      0,
+      scrollport.scrollHeight - scrollport.clientHeight,
+    );
+    scrollport.scrollTop = clamp(
+      drag.startScrollTop +
+        ((event.clientY - drag.startClientY) / maximumThumbOffset) *
+          maximumScrollOffset,
+      0,
+      maximumScrollOffset,
+    );
+  };
+
+  const endDrag = (event: ReactPointerEvent<HTMLSpanElement>) => {
+    if (dragRef.current?.pointerId !== event.pointerId) return;
+    dragRef.current = null;
+    event.currentTarget.classList.remove("is-dragging");
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLSpanElement>) => {
+    const scrollport = scrollportRef.current;
+    if (!scrollport) return;
+
+    const lineStep = Math.max(40, scrollport.clientHeight * 0.08);
+    const pageStep = scrollport.clientHeight * 0.9;
+    const maximumScrollOffset = Math.max(
+      0,
+      scrollport.scrollHeight - scrollport.clientHeight,
+    );
+    const nextScrollTop = {
+      ArrowDown: scrollport.scrollTop + lineStep,
+      ArrowUp: scrollport.scrollTop - lineStep,
+      End: maximumScrollOffset,
+      Home: 0,
+      PageDown: scrollport.scrollTop + pageStep,
+      PageUp: scrollport.scrollTop - pageStep,
+    }[event.key];
+
+    if (nextScrollTop === undefined) return;
+    scrollport.scrollTop = clamp(nextScrollTop, 0, maximumScrollOffset);
+    event.preventDefault();
+  };
+
   return (
-    <span ref={scrollbarRef} className="floating-scrollbar" aria-hidden="true">
+    <span
+      ref={scrollbarRef}
+      className="floating-scrollbar"
+      role="scrollbar"
+      aria-label="Page scroll position"
+      aria-controls="courses-main-scrollport"
+      aria-orientation="vertical"
+      aria-valuemin={0}
+      aria-valuemax={0}
+      aria-valuenow={0}
+      tabIndex={-1}
+      onPointerDown={beginDrag}
+      onPointerMove={dragThumb}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+      onLostPointerCapture={(event) => {
+        dragRef.current = null;
+        event.currentTarget.classList.remove("is-dragging");
+      }}
+      onKeyDown={handleKeyDown}
+    >
       <span className="floating-scrollbar__thumb" />
     </span>
   );
