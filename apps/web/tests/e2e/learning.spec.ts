@@ -314,6 +314,9 @@ test("curriculum rail double-click expands and its shortcut toggles the content 
 test("player edge control collapses and expands course content with shortcut help", async ({
   page,
 }) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem("veolms-theme", "light");
+  });
   await openApp(page, "/learn/typescript-course/the-design-mindset");
 
   const playerWrap = page.locator(".learning-workspace__player-wrap");
@@ -335,7 +338,12 @@ test("player edge control collapses and expands course content with shortcut hel
     collapse.locator("[data-sidebar-toggle-direction]"),
   ).toHaveAttribute("data-sidebar-toggle-direction", "right");
   await expect(tooltip).toBeHidden();
+  await expect(collapse).toHaveCSS("opacity", "0");
+  await expect(collapse).toHaveCSS("pointer-events", "none");
   await playerWrap.hover();
+  await expect(collapse).toHaveCSS("opacity", "1");
+  await expect(collapse).toHaveCSS("pointer-events", "auto");
+  await expect(collapse).toHaveCSS("color", "rgb(255, 255, 255)");
 
   const [wrapBox, backBox, collapseBox] = await Promise.all([
     playerWrap.boundingBox(),
