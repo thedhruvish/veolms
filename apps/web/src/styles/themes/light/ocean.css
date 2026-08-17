@@ -1,0 +1,34 @@
+/* ocean palette — light mode. */
+:root[data-theme="light"][data-palette="ocean"] {
+  --canvas: #f3f6ff;
+  --header: #ffffff;
+  --surface: #ffffff;
+  --hover: #eaf0ff;
+  --selected: #dee7ff;
+  --track: #dde4f4;
+  --border: #cfd9ef;
+  --border-strong: #aabbdc;
+  --text: #111827;
+  --text-secondary: #334155;
+  --muted: #5f6f87;
+  --accent: #3154c8;
+  --accent-hover: #2945a6;
+  --accent-soft: rgba(49, 84, 200, 0.12);
+  --accent-border: rgba(49, 84, 200, 0.3);
+  --accent-shadow: rgba(49, 84, 200, 0.16);
+  --on-accent: #ffffff;
+}
+
+:root[data-theme="light"][data-palette="ocean"] {
+  --app-shell: #dfe5ed;
+  --main-surface: #f2f6fa;
+  --canvas: #e9eef4;
+  --header: #e4eaf0;
+  --surface: #fbfdff;
+  --surface-strong: #e9eff6;
+  --hover: #e1e8f1;
+  --selected: #dbe5f7;
+  --track: #d9e1eb;
+  --border: transparent;
+  --border-strong: transparent;
+}
