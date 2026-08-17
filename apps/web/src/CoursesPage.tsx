@@ -49,7 +49,9 @@ import type {
   CourseSort,
 } from "./courses/catalogue";
 import { AcademyPaletteMenu } from "./shell/AcademyPaletteMenu";
+import { FloatingScrollbar } from "./shell/FloatingScrollbar";
 import { SidebarToggleIcon } from "./shell/SidebarToggleIcon";
+import { AppLoadingScreen } from "./bootstrap/AppLoadingScreen";
 import {
   getDefaultNavigationOrder,
   getInitialNavigationOrder,
@@ -225,7 +227,6 @@ type MobileDrag = MobilePointerDrag | MobileTouchDrag;
 
 interface SidebarTooltip {
   label: string;
-  shortcutGroups: readonly (readonly string[])[];
   active: boolean;
   top: number;
   left: number;
@@ -443,9 +444,8 @@ export function CoursesPage({
   >(null);
   const [navigationDropTarget, setNavigationDropTarget] =
     useState<NavigationDropTarget | null>(null);
-  // Keep the server snapshot and the browser's first hydration render
-  // identical. The effect below applies viewport/input capabilities as soon as
-  // hydration completes, avoiding a discarded prerender on mobile.
+  // Browser-only input capabilities are applied after startup so the loading
+  // boundary remains deterministic across the build and the first client pass.
   const [compactNavigation, setCompactNavigation] = useState(false);
   const [coarseNavigationInput, setCoarseNavigationInput] = useState(false);
   const [edgeSidebarOpen, setEdgeSidebarOpen] = useState(false);
@@ -463,7 +463,7 @@ export function CoursesPage({
     PAGE_TAB_COLORS_DEFAULT,
   );
   const sidebarHeaderLayout =
-    sidebarPreferences.headerLayout === "inline" ? "inline" : "fixed";
+    sidebarPreferences.headerLayout === "fixed" ? "fixed" : "inline";
   const selectedSidebarDockItems = normalizeSidebarDockItems(
     sidebarPreferences.dockItems,
   );
@@ -552,6 +552,7 @@ export function CoursesPage({
   const mobileAppearanceModeTriggerRef = useRef<HTMLButtonElement>(null);
   const mobilePaletteTriggerRef = useRef<HTMLButtonElement>(null);
   const navigationRef = useRef<HTMLElement>(null);
+  const mainScrollportRef = useRef<HTMLElement>(null);
   const mobileBottomNavRef = useRef<HTMLElement>(null);
   const mobileMoreRef = useRef<HTMLButtonElement>(null);
   const mobileSheetRef = useRef<HTMLElement>(null);
@@ -700,7 +701,7 @@ export function CoursesPage({
     document.documentElement.dataset.contentLayout =
       next.contentLayout || "framed";
     document.documentElement.dataset.sidebarHeaderLayout =
-      next.headerLayout === "inline" ? "inline" : "fixed";
+      next.headerLayout === "fixed" ? "fixed" : "inline";
     document.documentElement.dataset.collapsedTooltips = String(
       next.showCollapsedLabels !== false,
     );
@@ -981,11 +982,26 @@ export function CoursesPage({
       }
     };
 
+    const dismissOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+
+      // Handle this at capture time so Settings' page-level Escape shortcut
+      // cannot navigate away while it dismisses the mobile navigation sheet.
+      event.preventDefault();
+      event.stopPropagation();
+      setMobileMenuOpen(false);
+      setMobilePaletteMenu(false);
+      setReadingModeMenu(null);
+      setMobileSheetOffset(0);
+    };
+
     document.addEventListener("keydown", keepFocusInside);
+    document.addEventListener("keydown", dismissOnEscape, true);
     return () => {
       window.clearTimeout(focusTimer);
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", keepFocusInside);
+      document.removeEventListener("keydown", dismissOnEscape, true);
     };
   }, [mobileMenuOpen]);
 
@@ -1869,7 +1885,6 @@ export function CoursesPage({
       ReactMouseEvent<HTMLButtonElement> | ReactFocusEvent<HTMLButtonElement>,
     label: string,
     active: boolean,
-    shortcutGroups: readonly (readonly string[])[] = [],
     showWhenExpanded = false,
     preferenceControlled = true,
   ) => {
@@ -1884,7 +1899,6 @@ export function CoursesPage({
     const rect = event.currentTarget.getBoundingClientRect();
     const nextTooltip: SidebarTooltip = {
       label,
-      shortcutGroups: showKeyboardShortcuts ? shortcutGroups : [],
       active,
       top: rect.top + rect.height / 2,
       // The tooltip coordinate starts at the SVG tip; its flexible body
@@ -2093,7 +2107,6 @@ export function CoursesPage({
   const endSidebarResize = (event: PointerPositionEvent, cancelled = false) => {
     const resize = sidebarResizeRef.current;
     if (!resize || resize.pointerId !== event.pointerId) return;
-    if (resize.active && !cancelled) moveSidebarResize(event);
     sidebarResizeRef.current = null;
     try {
       resize.handle?.releasePointerCapture?.(resize.pointerId);
@@ -2112,7 +2125,7 @@ export function CoursesPage({
       return;
     }
 
-    const totalDistance = event.clientX - resize.startX;
+    const totalDistance = resize.lastX - resize.startX;
     const finishedAt = event.timeStamp || performance.now();
     const averageVelocity =
       totalDistance / Math.max(1, finishedAt - resize.startedAt);
@@ -2344,6 +2357,8 @@ export function CoursesPage({
     setMobileSheetOffset(0);
   };
 
+  if (!storedPreferencesReady) return <AppLoadingScreen />;
+
   return (
     <div
       className={sidebarClassName}
@@ -2539,25 +2554,11 @@ export function CoursesPage({
                       );
                     }}
                     onMouseEnter={(event) =>
-                      showSidebarTooltip(
-                        event,
-                        displayLabel,
-                        active,
-                        label === "Settings"
-                          ? [settingsShortcutKeys]
-                          : [[String(navigationIndex + 1)]],
-                      )
+                      showSidebarTooltip(event, displayLabel, active)
                     }
                     onMouseLeave={hideCollapsedNavigationTooltip}
                     onFocus={(event) =>
-                      showSidebarTooltip(
-                        event,
-                        displayLabel,
-                        active,
-                        label === "Settings"
-                          ? [settingsShortcutKeys]
-                          : [[String(navigationIndex + 1)]],
-                      )
+                      showSidebarTooltip(event, displayLabel, active)
                     }
                     onBlur={hideCollapsedNavigationTooltip}
                   >
@@ -2924,18 +2925,13 @@ export function CoursesPage({
             <span className="sidebar-nav-tooltip__label">
               {sidebarTooltip.label}
             </span>
-            {sidebarTooltip.shortcutGroups.length > 0 && (
-              <span className="sidebar-nav-tooltip__shortcuts">
-                {sidebarTooltip.shortcutGroups.map((keys, index) => (
-                  <ShortcutKeys key={`tooltip-shortcut-${index}`} keys={keys} />
-                ))}
-              </span>
-            )}
           </span>
         </div>
       )}
 
       <main
+        id="courses-main-scrollport"
+        ref={mainScrollportRef}
         className={`courses-main ${renderMain ? "courses-main--learning" : page !== "explore-courses" ? "student-surface-main" : ""}${!renderMain && page === "settings" ? " courses-main--settings" : ""}`}
       >
         <>
@@ -3026,6 +3022,8 @@ export function CoursesPage({
           )}
         </>
       </main>
+
+      <FloatingScrollbar scrollportRef={mainScrollportRef} />
 
       {compactNavigation && (
         <nav
