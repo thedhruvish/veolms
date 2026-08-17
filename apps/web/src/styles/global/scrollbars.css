@@ -4,12 +4,8 @@
 :root {
   --scrollbar-thumb-size: 6px;
   --scrollbar-track-block-inset: 8px;
-  --scrollbar-thumb-color: color-mix(in srgb, var(--accent) 58%, transparent);
-  --scrollbar-thumb-hover-color: color-mix(
-    in srgb,
-    var(--accent) 74%,
-    transparent
-  );
+  --scrollbar-thumb-color: var(--accent);
+  --scrollbar-thumb-hover-color: var(--accent-hover, var(--accent));
 }
 
 html,

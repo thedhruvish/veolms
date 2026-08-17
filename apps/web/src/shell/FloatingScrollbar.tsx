@@ -126,14 +126,34 @@ export function FloatingScrollbar({
       }
     };
 
+    // A scrollport can move without resizing when navigation or the sidebar
+    // changes the surrounding layout. Observe and listen through that chain so
+    // the fixed thumb follows the panel before the user scrolls it.
+    const layoutAncestors: HTMLElement[] = [];
+    for (
+      let ancestor = scrollport.parentElement;
+      ancestor;
+      ancestor = ancestor.parentElement
+    ) {
+      layoutAncestors.push(ancestor);
+    }
+
     scrollport.addEventListener("scroll", scheduleSync, { passive: true });
+    layoutAncestors.forEach((ancestor) =>
+      ancestor.addEventListener("scroll", scheduleSync, { passive: true }),
+    );
     window.addEventListener("resize", scheduleSync);
+    window.addEventListener("pageshow", scheduleSync);
+    document.addEventListener("transitionrun", scheduleSync, true);
+    document.addEventListener("transitioncancel", scheduleSync, true);
+    document.addEventListener("transitionend", scheduleSync, true);
 
     const resizeObserver =
       typeof ResizeObserver === "undefined"
         ? null
         : new ResizeObserver(scheduleSync);
     resizeObserver?.observe(scrollport);
+    layoutAncestors.forEach((ancestor) => resizeObserver?.observe(ancestor));
     Array.from(scrollport.children).forEach((child) =>
       resizeObserver?.observe(child),
     );
@@ -151,7 +171,14 @@ export function FloatingScrollbar({
     return () => {
       if (animationFrame !== 0) window.cancelAnimationFrame(animationFrame);
       scrollport.removeEventListener("scroll", scheduleSync);
+      layoutAncestors.forEach((ancestor) =>
+        ancestor.removeEventListener("scroll", scheduleSync),
+      );
       window.removeEventListener("resize", scheduleSync);
+      window.removeEventListener("pageshow", scheduleSync);
+      document.removeEventListener("transitionrun", scheduleSync, true);
+      document.removeEventListener("transitioncancel", scheduleSync, true);
+      document.removeEventListener("transitionend", scheduleSync, true);
       resizeObserver?.disconnect();
       contentObserver.disconnect();
     };
