@@ -1,3 +1,4 @@
+import "./styles/features/student-learning.css";
 import { ArrowRight } from "@phosphor-icons/react/ArrowRight";
 import { BookOpen } from "@phosphor-icons/react/BookOpen";
 import { ChartLineUp } from "@phosphor-icons/react/ChartLineUp";
@@ -16,19 +17,14 @@ import typescriptInstructorHero512 from "./assets/learning-thumbnails/typescript
 import typescriptInstructorHero640 from "./assets/learning-thumbnails/typescript-instructor-hero-640.webp";
 import typescriptInstructorHero800 from "./assets/learning-thumbnails/typescript-instructor-hero-800.webp";
 import typescriptInstructorHero from "./assets/learning-thumbnails/typescript-instructor-hero.webp";
-import type { LearningCourse } from "./StudentPages";
+import { ProgressBar } from "./student-learning/components/ProgressBar";
+import { SectionHeader } from "./student-learning/components/SectionHeader";
+import type { LearningCourse } from "./student-learning/types";
 
 interface StudentHomeProps {
   onOpenCourse: (course: LearningCourse) => void;
   onNavigatePage: (page: string) => void;
   studentName?: string;
-}
-
-interface SectionHeaderProps {
-  icon: typeof BookOpen;
-  title: string;
-  action?: string;
-  onAction?: () => void;
 }
 
 const currentCourse: LearningCourse = {
@@ -89,34 +85,6 @@ const progressMetrics = [
   },
   { value: "7", label: "Day Streak", icon: ChartLineUp, tone: "gold" },
 ];
-
-function SectionHeader({
-  icon: Icon,
-  title,
-  action,
-  onAction,
-}: SectionHeaderProps) {
-  return (
-    <div className="dashboard-section-heading">
-      <h2>
-        <Icon size={19} weight="duotone" /> {title}
-      </h2>
-      {action && (
-        <button type="button" onClick={onAction}>
-          {action} <ArrowRight size={17} />
-        </button>
-      )}
-    </div>
-  );
-}
-
-function ProgressBar({ value }: { value: number }) {
-  return (
-    <span className="learning-progress-track" aria-hidden="true">
-      <span style={{ width: `${value}%` }} />
-    </span>
-  );
-}
 
 export function StudentHome({
   onOpenCourse,

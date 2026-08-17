@@ -1,0 +1,69 @@
+/* champagne theme tokens. Keep this file free of component selectors. */
+:root[data-palette="champagne"] {
+  --canvas: #1d1b17;
+  --header: #1c1a16;
+  --surface: #343027;
+  --hover: #464034;
+  --selected: #4c422d;
+  --track: #26231d;
+  --border: #4a4438;
+  --border-strong: #6d624d;
+  --text: #fffaf0;
+  --text-secondary: #eee4d0;
+  --muted: #bdb19c;
+  --accent: #e6c98a;
+  --accent-hover: #f0d8a2;
+  --accent-soft: rgba(230, 201, 138, 0.16);
+  --accent-border: rgba(230, 201, 138, 0.42);
+  --accent-shadow: rgba(169, 130, 53, 0.25);
+  --on-accent: #241c0d;
+}
+
+:root[data-theme="light"][data-palette="champagne"] {
+  --canvas: #f3eee4;
+  --header: #eee8dc;
+  --surface: #fffdf9;
+  --hover: #ece2d0;
+  --selected: #f2e3bd;
+  --track: #e5dccb;
+  --border: #ddd0ba;
+  --border-strong: #b9a584;
+  --text: #261f15;
+  --text-secondary: #554b3c;
+  --muted: #766b5a;
+  --accent: #896312;
+  --accent-hover: #735109;
+  --accent-soft: rgba(137, 99, 18, 0.12);
+  --accent-border: rgba(137, 99, 18, 0.3);
+  --accent-shadow: rgba(115, 81, 9, 0.16);
+  --on-accent: #ffffff;
+}
+
+:root[data-palette="champagne"] {
+  --app-shell: #171613;
+  --main-surface: #28251f;
+  --canvas: #1d1b17;
+  --header: #1c1a16;
+  --surface: #343027;
+  --surface-strong: #3e392e;
+  --hover: #464034;
+  --selected: #4c422d;
+  --track: #26231d;
+  --border: transparent;
+  --border-strong: transparent;
+  --text: #fffaf0;
+  --text-secondary: #eee4d0;
+  --muted: #bdb19c;
+  --accent: #e6c98a;
+  --accent-hover: #f0d8a2;
+  --accent-soft: rgba(230, 201, 138, 0.16);
+  --accent-border: rgba(230, 201, 138, 0.42);
+  --accent-shadow: rgba(169, 130, 53, 0.25);
+  --on-accent: #241c0d;
+  --on-accent-glyph: #241c0d;
+  --card-surface: #343027;
+  --card-surface-raised: #3e392e;
+  --card-surface-soft: #24211b;
+  --card-surface-hover: #403a2f;
+  --card-shadow: 0 16px 34px rgba(17, 13, 6, 0.27);
+}

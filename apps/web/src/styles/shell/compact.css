@@ -1,0 +1,187 @@
+/* Light shells keep the same spectrum navigation, but deepen its ink and
+   selection materials so the rail stays as crisp as the dark appearance. */
+
+
+
+
+
+
+
+
+
+
+
+
+
+.courses-app--collapsed .courses-sidebar {
+  padding-inline: 10px;
+  padding-bottom: 8px;
+}
+
+.courses-app--collapsed .courses-sidebar__brand {
+  min-height: 36px;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 0;
+  padding: 0;
+}
+
+.courses-app--collapsed .courses-logo-clip {
+  display: none;
+}
+
+/* In compact mode the optional brand mark occupies the rail by itself. The
+   expand affordance stays quiet until the rail is hovered or focused, keeping
+   the P readable without competing with the navigation icons. */
+
+
+
+
+
+
+
+/* Treat the compact mark and expand control as one visual slot. Hovering or
+   keyboard focus swaps the P for the action instead of stacking both marks. */
+
+
+.courses-app--collapsed .courses-nav {
+  align-items: stretch;
+  /* The expanded brand is 38px tall while the compact brand slot is 36px.
+     This offset keeps the navigation's content box on the identical pixel row
+     in both states while preserving the permanent rail fade. */
+  margin: -4px -10px 0;
+  min-height: 0;
+  padding: 16px 14px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    transparent 0,
+    #000 16px,
+    #000 calc(100% - 16px),
+    transparent 100%
+  ) !important;
+  mask-image: linear-gradient(
+    180deg,
+    transparent 0,
+    #000 16px,
+    #000 calc(100% - 16px),
+    transparent 100%
+  ) !important;
+}
+
+.courses-app--collapsed .courses-nav::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.courses-app--collapsed .courses-nav button {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 15px;
+  padding: 0 0 0 12.5px;
+  overflow: visible;
+}
+
+.courses-app--collapsed .courses-nav button > .courses-nav__text,
+.courses-app--collapsed .courses-nav button > b,
+.courses-app--collapsed .courses-nav button > .courses-nav__shortcut {
+  display: none;
+}
+
+.courses-app--collapsed .courses-profile__button {
+  height: 57px;
+  min-height: 57px;
+  gap: 0;
+  justify-content: flex-start;
+  padding: 7px;
+}
+
+.courses-app--collapsed .courses-profile__button > .shell-profile-avatar,
+.courses-app--collapsed .courses-profile__button img {
+  width: 43px;
+  height: 43px;
+}
+
+.courses-app--collapsed .courses-profile__button > .shell-profile-avatar {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.courses-app--collapsed .courses-profile {
+  margin-top: 6px;
+}
+
+.courses-app--collapsed .sidebar-appearance {
+  margin-top: 6px;
+}
+
+.courses-app--collapsed .sidebar-appearance {
+  align-items: center;
+  flex-direction: column;
+  padding: 8px;
+}
+
+.courses-app--collapsed .sidebar-appearance > button {
+  display: inline-flex;
+  width: 42px;
+  flex: 0 0 38px;
+}
+
+.courses-app--collapsed .sidebar-palette-wrap {
+  width: 42px;
+  flex: 0 0 38px;
+}
+
+.courses-app--collapsed .sidebar-palette-menu {
+  right: auto;
+  bottom: -9px;
+  left: calc(100% + 2px);
+}
+
+.courses-app--collapsed
+  .sidebar-palette-menu--dock-attached.sidebar-palette-menu--collapsed {
+  top: auto;
+  bottom: calc(
+    -5px +
+      (var(--sidebar-dock-count, 1) - var(--palette-menu-dock-index, 0) - 1) *
+      42px
+  );
+}
+
+.courses-app--hidden .courses-sidebar {
+  top: 14px;
+  bottom: 14px;
+  left: 14px;
+  width: 252px;
+  height: auto;
+  border-radius: 14px;
+  padding-inline: 14px;
+  background: var(--app-shell);
+}
+
+.courses-app--hidden.courses-app--edge-open .courses-sidebar {
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.38);
+}
+
+.courses-search,
+.course-select,
+.learning-search,
+.learning-select,
+.learning-filter-tabs button,
+.enrollment-tabs {
+  border-color: transparent;
+  background: var(--surface);
+}
+
+.courses-search:focus-within,
+.course-select:focus-within,
+.learning-search:focus-within,
+.learning-select:focus-within {
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 10px 24px color-mix(in srgb, var(--accent-shadow) 42%, transparent);
+}

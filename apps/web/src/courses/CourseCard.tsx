@@ -1,3 +1,4 @@
+import "../styles/features/courses.css";
 import { Clock } from "@phosphor-icons/react/Clock";
 import { DotsThree } from "@phosphor-icons/react/DotsThree";
 import { Heart } from "@phosphor-icons/react/Heart";

@@ -1,0 +1,69 @@
+/* barbie theme tokens. Keep this file free of component selectors. */
+:root[data-palette="barbie"] {
+  --canvas: #160711;
+  --header: #12060e;
+  --surface: #260e1c;
+  --hover: #36142a;
+  --selected: #57203f;
+  --track: #311129;
+  --border: #4b1d39;
+  --border-strong: #75305a;
+  --text: #fff7fc;
+  --text-secondary: #ffdae9;
+  --muted: #d8a7c3;
+  --accent: #ec4d9b;
+  --accent-hover: #dd3b8c;
+  --accent-soft: rgba(236, 77, 155, 0.17);
+  --accent-border: rgba(236, 77, 155, 0.44);
+  --accent-shadow: rgba(190, 35, 117, 0.27);
+  --on-accent: #32051d;
+}
+
+:root[data-theme="light"][data-palette="barbie"] {
+  --canvas: #fff0f8;
+  --header: #fffdfd;
+  --surface: #ffffff;
+  --hover: #ffe4f2;
+  --selected: #ffd7eb;
+  --track: #f2d9e7;
+  --border: #ecc7db;
+  --border-strong: #d89abf;
+  --text: #2d0b21;
+  --text-secondary: #63334e;
+  --muted: #895d76;
+  --accent: #be216d;
+  --accent-hover: #a9195c;
+  --accent-soft: rgba(190, 33, 109, 0.12);
+  --accent-border: rgba(190, 33, 109, 0.3);
+  --accent-shadow: rgba(169, 25, 92, 0.17);
+  --on-accent: #ffffff;
+}
+
+:root[data-palette="barbie"] {
+  --app-shell: #1a0714;
+  --main-surface: #2a0e20;
+  --canvas: #1b0915;
+  --header: #200a18;
+  --surface: #351326;
+  --surface-strong: #431a31;
+  --hover: #55203e;
+  --selected: #642343;
+  --track: #29101f;
+  --border: transparent;
+  --border-strong: transparent;
+  --text: #fff7fc;
+  --text-secondary: #ffdae9;
+  --muted: #d8a7c3;
+  --accent: #ec4d9b;
+  --accent-hover: #dd3b8c;
+  --accent-soft: rgba(236, 77, 155, 0.17);
+  --accent-border: rgba(236, 77, 155, 0.44);
+  --accent-shadow: rgba(190, 35, 117, 0.27);
+  --on-accent: #280317;
+  --on-accent-glyph: #280317;
+  --card-surface: #351326;
+  --card-surface-raised: #431a31;
+  --card-surface-soft: #270e1d;
+  --card-surface-hover: #461a34;
+  --card-shadow: 0 16px 34px rgba(58, 2, 35, 0.3);
+}

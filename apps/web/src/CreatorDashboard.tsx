@@ -1,3 +1,4 @@
+import "./styles/features/creator-dashboard.css";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { ArrowDownRight } from "@phosphor-icons/react/ArrowDownRight";

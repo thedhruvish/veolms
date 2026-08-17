@@ -1,0 +1,54 @@
+/* grove theme tokens. Keep this file free of component selectors. */
+:root[data-palette="grove"] {
+  --canvas: #07100b;
+  --header: #060e09;
+  --surface: #0d1912;
+  --hover: #13251a;
+  --selected: #123d24;
+  --track: #13291c;
+  --border: #1d3a29;
+  --border-strong: #315b43;
+  --text: #f3fff8;
+  --text-secondary: #d8eee2;
+  --muted: #9fbea9;
+  --accent: #4dda85;
+  --accent-hover: #3dcb75;
+  --accent-soft: rgba(77, 218, 133, 0.16);
+  --accent-border: rgba(77, 218, 133, 0.42);
+  --accent-shadow: rgba(77, 218, 133, 0.22);
+  --on-accent: #052012;
+}
+
+:root[data-theme="light"][data-palette="grove"] {
+  --canvas: #f1faf5;
+  --header: #fcfffd;
+  --surface: #ffffff;
+  --hover: #e6f5ec;
+  --selected: #d8f2e2;
+  --track: #d9e8df;
+  --border: #cadfd2;
+  --border-strong: #9fbea9;
+  --text: #111e16;
+  --text-secondary: #36483d;
+  --muted: #586b5e;
+  --accent: #167343;
+  --accent-hover: #105e35;
+  --accent-soft: rgba(22, 115, 67, 0.12);
+  --accent-border: rgba(22, 115, 67, 0.3);
+  --accent-shadow: rgba(22, 115, 67, 0.16);
+  --on-accent: #ffffff;
+}
+
+:root[data-palette="grove"] {
+  --app-shell: #121713;
+  --main-surface: #1e2821;
+  --canvas: #171d18;
+  --header: #161c17;
+  --surface: #28332b;
+  --surface-strong: #303c33;
+  --hover: #334136;
+  --selected: #294434;
+  --track: #1d271f;
+  --border: transparent;
+  --border-strong: transparent;
+}

@@ -1,0 +1,70 @@
+/* brainwave theme tokens. Keep this file free of component selectors. */
+:root[data-palette="brainwave"] {
+  --canvas: #202224;
+  --header: #242627;
+  --surface: #343839;
+  --hover: #3b3f40;
+  --selected: #323337;
+  --track: #151718;
+  --border: #343839;
+  --border-strong: #4b5153;
+  --text: #fefefe;
+  --text-secondary: #d9dddf;
+  --muted: #969ea2;
+  --accent: #0085ff;
+  --accent-hover: #2c9bff;
+  --accent-soft: rgba(0, 133, 255, 0.16);
+  --accent-border: rgba(0, 133, 255, 0.42);
+  --accent-shadow: rgba(0, 117, 224, 0.3);
+  --on-accent: #071829;
+}
+
+:root[data-theme="light"][data-palette="brainwave"] {
+  --canvas: #edf2f5;
+  --header: #e7edf1;
+  --surface: #ffffff;
+  --hover: #dce7ef;
+  --selected: #d7eaff;
+  --track: #d8e0e6;
+  --border: #cad5dc;
+  --border-strong: #9eafb9;
+  --text: #12171c;
+  --text-secondary: #37444d;
+  --muted: #5e6d77;
+  --accent: #0085ff;
+  --accent-hover: #0074df;
+  --accent-soft: rgba(0, 133, 255, 0.12);
+  --accent-border: rgba(0, 133, 255, 0.3);
+  --accent-shadow: rgba(0, 103, 197, 0.18);
+  --on-accent: #071829;
+}
+
+:root[data-palette="brainwave"] {
+  --app-shell: #151718;
+  --main-surface: #242627;
+  --canvas: #202224;
+  --header: #242627;
+  --surface: #343839;
+  --surface-strong: #3c4143;
+  --hover: #3b3f40;
+  --selected: #323337;
+  --track: #151718;
+  --progress-track: #45494a;
+  --border: transparent;
+  --border-strong: transparent;
+  --text: #fefefe;
+  --text-secondary: #d9dddf;
+  --muted: #969ea2;
+  --accent: #0085ff;
+  --accent-hover: #2c9bff;
+  --accent-soft: rgba(0, 133, 255, 0.16);
+  --accent-border: rgba(0, 133, 255, 0.42);
+  --accent-shadow: rgba(0, 117, 224, 0.3);
+  --on-accent: #071829;
+  --on-accent-glyph: #071829;
+  --card-surface: #343839;
+  --card-surface-raised: #3c4143;
+  --card-surface-soft: #232526;
+  --card-surface-hover: #3a3f41;
+  --card-shadow: 0 16px 34px rgba(0, 2, 5, 0.28);
+}

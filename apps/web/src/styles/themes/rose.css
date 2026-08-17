@@ -1,0 +1,54 @@
+/* rose theme tokens. Keep this file free of component selectors. */
+:root[data-palette="rose"] {
+  --canvas: #13080d;
+  --header: #10070b;
+  --surface: #1d0e14;
+  --hover: #2a151e;
+  --selected: #4b172a;
+  --track: #321521;
+  --border: #40202c;
+  --border-strong: #633043;
+  --text: #fff5f8;
+  --text-secondary: #f0d9e1;
+  --muted: #c2a0ad;
+  --accent: #fb6f92;
+  --accent-hover: #ec5d82;
+  --accent-soft: rgba(251, 111, 146, 0.16);
+  --accent-border: rgba(251, 111, 146, 0.42);
+  --accent-shadow: rgba(251, 111, 146, 0.22);
+  --on-accent: #2b0712;
+}
+
+:root[data-theme="light"][data-palette="rose"] {
+  --canvas: #fff4f7;
+  --header: #fffdfd;
+  --surface: #ffffff;
+  --hover: #ffe9ef;
+  --selected: #ffdce7;
+  --track: #f1dce3;
+  --border: #e7cbd4;
+  --border-strong: #c89dac;
+  --text: #251218;
+  --text-secondary: #4d303a;
+  --muted: #735963;
+  --accent: #b81748;
+  --accent-hover: #99113b;
+  --accent-soft: rgba(184, 23, 72, 0.12);
+  --accent-border: rgba(184, 23, 72, 0.3);
+  --accent-shadow: rgba(184, 23, 72, 0.16);
+  --on-accent: #ffffff;
+}
+
+:root[data-palette="rose"] {
+  --app-shell: #181315;
+  --main-surface: #291f23;
+  --canvas: #1e181a;
+  --header: #1c1719;
+  --surface: #34292d;
+  --surface-strong: #3d3035;
+  --hover: #42343a;
+  --selected: #4d2d39;
+  --track: #271e21;
+  --border: transparent;
+  --border-strong: transparent;
+}
