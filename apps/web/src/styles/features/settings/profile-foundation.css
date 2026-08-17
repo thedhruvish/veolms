@@ -500,6 +500,7 @@
   border-radius: 11px;
   padding: 12px;
   background: color-mix(in srgb, var(--accent) 7%, var(--surface-strong));
+  box-shadow: var(--card-shadow);
 }
 
 .settings-profile__verification-panel > div {

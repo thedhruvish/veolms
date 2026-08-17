@@ -120,19 +120,6 @@
   --card-floating-shadow: none;
 }
 
-.learning-comment-composer,
-.learning-comment-card,
-.settings-profile__preview-card,
-.settings-profile__verification-panel {
-  box-shadow: var(--card-shadow);
-}
-
-.learning-comment-composer:focus-within {
-  box-shadow:
-    inset 0 0 0 1px var(--accent),
-    0 0 0 3px color-mix(in srgb, var(--accent) 11%, transparent);
-}
-
 :root[data-sidebar-menu-elevation="true"] {
   --sidebar-menu-depth-shadow:
     inset 0 1px 0 color-mix(in srgb, var(--text) 5%, transparent),

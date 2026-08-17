@@ -1138,22 +1138,23 @@
 
 .settings-icon-preview {
   display: grid;
-  width: 126px;
-  height: 88px;
+  width: 100%;
+  height: 100%;
   flex: 0 0 auto;
-  align-content: center;
-  gap: 5px;
-  border-radius: 7px;
-  padding: 10px 11px;
+  align-content: start;
+  gap: 8px;
+  border-radius: 12px;
+  padding: 12px 10px;
   color: var(--accent-ink, var(--accent));
-  background: color-mix(in srgb, var(--canvas) 90%, var(--accent) 10%);
+  background: color-mix(in srgb, var(--canvas) 91%, var(--accent) 9%);
 }
 
 .settings-icon-preview > span {
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr);
+  min-height: 23px;
+  grid-template-columns: 22px minmax(0, 1fr);
   align-items: center;
-  gap: 8px;
+  gap: 9px;
 }
 
 .settings-icon-preview > span > i {
@@ -1326,22 +1327,6 @@
   max-width: 23ch;
   font-size: 0.83rem;
   line-height: 1.45;
-}
-
-.settings-icon-preview {
-  width: 100%;
-  height: 100%;
-  align-content: start;
-  gap: 8px;
-  border-radius: 12px;
-  padding: 12px 10px;
-  background: color-mix(in srgb, var(--canvas) 91%, var(--accent) 9%);
-}
-
-.settings-icon-preview > span {
-  grid-template-columns: 22px minmax(0, 1fr);
-  min-height: 23px;
-  gap: 9px;
 }
 
 .settings-icon-preview > span > svg {
@@ -1787,4 +1772,15 @@
 .settings-placeholder {
   min-height: 420px;
   margin-top: 14px;
+}
+
+@media (max-width: 820px) {
+  .courses-main.student-surface-main.courses-main--settings {
+    padding-inline: 15px;
+  }
+
+  .student-surface-main > .settings-page {
+    --settings-page-inline-gutter: 0px;
+    padding: 0;
+  }
 }

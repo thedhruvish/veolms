@@ -86,15 +86,14 @@ export const getInitialSidebarPreferences = (): SidebarPreferences => {
     const hasCurrentHeaderDefault =
       localStorage.getItem("veolms-sidebar-header-default-version") ===
       SIDEBAR_HEADER_DEFAULT_VERSION;
-    const usedPreviousHeaderDefault =
-      storedPreferences.headerLayout === undefined ||
-      storedPreferences.headerLayout === "fixed";
+    // There was no header-layout version marker before the inline default was
+    // introduced, so an existing "fixed" value cannot be distinguished from a
+    // deliberate user choice. Preserve explicit values and migrate only a
+    // missing preference to the new fallback.
+    const needsHeaderDefaultMigration =
+      !hasCurrentHeaderDefault && storedPreferences.headerLayout === undefined;
     preferences.headerLayout =
-      !hasCurrentHeaderDefault && usedPreviousHeaderDefault
-        ? "inline"
-        : storedPreferences.headerLayout === "fixed"
-          ? "fixed"
-          : "inline";
+      storedPreferences.headerLayout === "fixed" ? "fixed" : "inline";
     preferences.elevateMenus =
       storedPreferences.elevateMenus === true ||
       (storedPreferences.elevateMenus === undefined &&
@@ -108,20 +107,20 @@ export const getInitialSidebarPreferences = (): SidebarPreferences => {
     const hasCurrentDockDefault =
       localStorage.getItem("veolms-sidebar-dock-default-version") ===
       SIDEBAR_DOCK_DEFAULT_VERSION;
-    const usedPreviousDefault =
-      storedPreferences.dockItems === undefined ||
+    const usesKnownLegacyDockDefault =
+      localStorage.getItem("veolms-sidebar-dock-default-version") ===
+        "four-controls-v1" &&
       JSON.stringify(storedPreferences.dockItems) ===
-        JSON.stringify(["appearance", "theme", "reading-mode", "fullscreen"]) ||
-      JSON.stringify(storedPreferences.dockItems) ===
-        JSON.stringify(["appearance", "theme", "fullscreen"]);
-    preferences.dockItems =
+        JSON.stringify(["appearance", "theme", "reading-mode", "fullscreen"]);
+    const needsDockDefaultMigration =
       !hasCurrentDockDefault &&
-      usedPreviousDefault &&
-      storedPreferences.showThemeIcon !== false
+      (storedPreferences.dockItems === undefined || usesKnownLegacyDockDefault);
+    preferences.dockItems =
+      needsDockDefaultMigration && storedPreferences.showThemeIcon !== false
         ? [...SIDEBAR_DOCK_DEFAULT_ITEMS]
         : legacyDockItems;
     preferences.dockOrder =
-      !hasCurrentDockDefault && usedPreviousDefault
+      needsDockDefaultMigration
         ? [...SIDEBAR_DOCK_DEFAULT_ORDER]
         : normalizeSidebarDockOrder(
             storedPreferences.dockOrder ?? storedPreferences.dockItems,

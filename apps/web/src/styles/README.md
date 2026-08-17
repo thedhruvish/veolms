@@ -12,6 +12,13 @@ cascade order used before the modular split.
   by multiple palettes.
 - `global/` contains app-wide behavior that must remain late in the cascade.
 
-All modules are intentionally imported globally for now. Do not move imports into
-React components or reorder the entrypoints without visual-regression coverage;
-the existing UI relies on the established cascade.
+The existing modules are intentionally assembled into one application stylesheet
+for now. Do not reorder those entrypoints without visual-regression coverage:
+the current UI relies on the established cascade.
+
+New work is Tailwind-first and feature-owned. Add exceptional CSS only when
+Tailwind cannot express the required browser behavior, keep it beside its
+component or feature, import it from that owner, and document the browser
+constraint. Global CSS is reserved for resets, theme tokens, and shared browser
+workarounds; existing global rules are legacy code and should be moved only as
+part of a focused, visually verified migration.

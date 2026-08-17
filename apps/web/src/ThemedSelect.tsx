@@ -65,6 +65,9 @@ export function ThemedSelect<Value extends string>({
     options.findIndex(([optionValue]) => optionValue === value),
   );
   const selectedLabel = options[selectedIndex]?.[1] ?? value;
+  const triggerLabel = ariaLabel
+    ? `${ariaLabel}: ${selectedLabel}`
+    : selectedLabel;
   const menuId = id ? `${id}-menu` : undefined;
 
   const updatePosition = () => {
@@ -179,7 +182,7 @@ export function ThemedSelect<Value extends string>({
         type="button"
         id={id}
         className={joinClasses("themed-select__trigger", triggerClassName)}
-        aria-label={ariaLabel}
+        aria-label={triggerLabel}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={menuId}

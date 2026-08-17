@@ -1,6 +1,10 @@
+:root {
+  --sidebar-expanded-width: 300px;
+}
+
 .courses-app {
   --shell-frame-block-space: 22px;
-  grid-template-columns: 252px minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-expanded-width) minmax(0, 1fr);
   gap: 0;
   padding: 12px 12px 10px 0;
   background:
@@ -106,7 +110,7 @@
      scrollport itself paint behind descendants, so the shell overlay restores
      the continuous rounded highlight without taking up layout space. */
   :root[data-content-layout="framed"] .courses-app {
-    --main-surface-inline-start: var(--sidebar-expanded-width, 252px);
+    --main-surface-inline-start: var(--sidebar-expanded-width);
     position: relative;
   }
 

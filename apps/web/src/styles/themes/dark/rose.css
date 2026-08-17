@@ -1,13 +1,13 @@
 /* rose palette — dark mode. */
 :root[data-palette="rose"] {
-  --canvas: #13080d;
-  --header: #10070b;
-  --surface: #1d0e14;
-  --hover: #2a151e;
-  --selected: #4b172a;
-  --track: #321521;
-  --border: #40202c;
-  --border-strong: #633043;
+  --canvas: #1e181a;
+  --header: #1c1719;
+  --surface: #34292d;
+  --hover: #42343a;
+  --selected: #4d2d39;
+  --track: #271e21;
+  --border: transparent;
+  --border-strong: transparent;
   --text: #fff5f8;
   --text-secondary: #f0d9e1;
   --muted: #c2a0ad;
@@ -17,18 +17,11 @@
   --accent-border: rgba(251, 111, 146, 0.42);
   --accent-shadow: rgba(251, 111, 146, 0.22);
   --on-accent: #2b0712;
-}
-
-:root[data-palette="rose"] {
   --app-shell: #181315;
   --main-surface: #291f23;
-  --canvas: #1e181a;
-  --header: #1c1719;
-  --surface: #34292d;
   --surface-strong: #3d3035;
-  --hover: #42343a;
-  --selected: #4d2d39;
-  --track: #271e21;
-  --border: transparent;
-  --border-strong: transparent;
+  --card-surface: #34292d;
+  --card-surface-raised: #3d3035;
+  --card-surface-soft: #251c20;
+  --card-surface-hover: #43343a;
 }

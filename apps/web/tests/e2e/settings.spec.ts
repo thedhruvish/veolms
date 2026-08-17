@@ -6,6 +6,7 @@ import {
   openApp,
   revealDeferredAppearanceSettings,
   setApplicationScrollTop,
+  updateSidebarPreferences,
 } from "./support.ts";
 
 test.beforeEach(async ({ page }) => {
@@ -139,6 +140,11 @@ test("Escape leaves Settings for the previous non-settings destination", async (
   page,
 }) => {
   await openApp(page, "/notifications");
+  const dockItems = ["appearance", "theme", "reading-mode", "fullscreen"];
+  await updateSidebarPreferences(page, "/notifications", {
+    dockItems,
+    dockOrder: dockItems,
+  });
   await page.getByRole("button", { name: "Settings" }).click();
   await expect(page).toHaveURL(/\/settings\/profile$/);
 
@@ -149,9 +155,8 @@ test("Escape leaves Settings for the previous non-settings destination", async (
     .getByRole("group", {
       name: "Appearance controls",
     })
-    .getByRole("button")
-    .first();
-  await paletteTrigger.click({ button: "right" });
+    .getByRole("button", { name: "Choose color theme" });
+  await paletteTrigger.click();
   await expect(
     page.getByRole("menu", { name: "Choose a color theme" }),
   ).toBeVisible();

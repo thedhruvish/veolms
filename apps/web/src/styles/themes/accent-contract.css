@@ -20,3 +20,23 @@
 :root[data-theme="dark"][data-palette="signal"] {
   --accent-ink: #ed5972;
 }
+
+:root[data-theme="dark"][data-palette="barbie"] {
+  --accent-ink: #f071b4;
+}
+
+:root[data-theme="dark"][data-palette="brainwave"] {
+  --accent-ink: #3ca4ff;
+}
+
+:root[data-theme="dark"][data-palette="violet"] {
+  --accent-ink: #f0a27a;
+}
+
+:root[data-theme="light"][data-palette="lime"] {
+  --accent-ink: #3d6604;
+}
+
+:root[data-theme="light"][data-palette="violet"] {
+  --accent-ink: #914525;
+}

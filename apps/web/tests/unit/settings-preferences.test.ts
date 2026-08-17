@@ -15,6 +15,11 @@ import {
   readPageTabColors,
 } from "../../src/settings/settingsPreferences.js";
 
+const runSurfaceDepthBootstrap = () => {
+  // biome-ignore lint/security/noGlobalEval: Execute the generated inline bootstrap in JSDOM.
+  window.eval(getSurfaceDepthBootstrapScript());
+};
+
 describe("surface depth preference", () => {
   it("defaults to enabled and respects an explicit stored opt-out", () => {
     expect(readElevatedSurfaces()).toBe(true);
@@ -39,7 +44,7 @@ describe("page tab color preferences", () => {
       }),
     );
 
-    window.eval(getSurfaceDepthBootstrapScript());
+    runSurfaceDepthBootstrap();
 
     expect(document.documentElement.dataset.pageTabColors).toBe("multicolor");
     expect(document.documentElement.dataset.sidebarIconStyle).toBe(
@@ -56,14 +61,13 @@ describe("page tab color preferences", () => {
     expect(normalizePageTabColors(null)).toBe("follow-sidebar");
   });
 
-  it("preserves a fixed header after the new default migration is current", () => {
-    localStorage.setItem("veolms-sidebar-header-default-version", "inline-v1");
+  it("preserves an explicitly fixed header without a version marker", () => {
     localStorage.setItem(
       "veolms-sidebar-preferences",
       JSON.stringify({ headerLayout: "fixed" }),
     );
 
-    window.eval(getSurfaceDepthBootstrapScript());
+    runSurfaceDepthBootstrap();
 
     expect(document.documentElement.dataset.sidebarHeaderLayout).toBe("fixed");
   });

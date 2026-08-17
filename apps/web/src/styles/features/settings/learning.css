@@ -159,11 +159,6 @@
 .settings-learning-toggle-row:has(.settings-toggle:not(:disabled)) {
   cursor: pointer;
 }
-.settings-toggle:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
 .settings-learning-reminder-fields {
   min-width: 0;
   margin: 6px 0 0;
@@ -179,7 +174,6 @@
   width: 1px;
   height: 1px;
   overflow: hidden;
-  clip: rect(0 0 0 0);
   clip-path: inset(50%);
   white-space: nowrap;
 }
