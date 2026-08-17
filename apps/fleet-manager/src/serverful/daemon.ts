@@ -8,6 +8,7 @@ import type { QueueAdapter } from "../core/queues/types.ts";
 import type { ServerfulDaemonConfig } from "./config.ts";
 import { createCloudDriver } from "./factory.ts";
 import { createWorkerApiServer } from "./server.ts";
+import type { CloudDriver } from "@veolms/fleet-types";
 
 /**
  * FleetDaemon: Main long-running service host managing the HTTP API server,
@@ -25,11 +26,12 @@ export class FleetDaemon {
   constructor(
     config: ServerfulDaemonConfig,
     customQueueAdapter?: QueueAdapter,
+    customDriver?: CloudDriver,
   ) {
     this.config = config;
 
     const database = createDatabase(config.databaseUrl);
-    const driver = createCloudDriver(config.driverType);
+    const driver = customDriver ?? createCloudDriver(config.driverType);
     const queueAdapter = customQueueAdapter ?? new InMemoryQueueAdapter();
 
     this.context = {
@@ -65,15 +67,17 @@ export class FleetDaemon {
     });
 
     // 3. Start background coordination loop
+    this.isRunning = true;
     this.intervalTimer = setInterval(async () => {
+      if (!this.isRunning) return;
       try {
         await this.coordinator.runCoordinationCycle();
       } catch (err) {
-        console.error("Error in fleet coordination cycle:", err);
+        if (this.isRunning) {
+          console.error("Error in fleet coordination cycle:", err);
+        }
       }
     }, this.config.coordinationIntervalMs);
-
-    this.isRunning = true;
   }
 
   /**
@@ -83,6 +87,7 @@ export class FleetDaemon {
     if (!this.isRunning) {
       return;
     }
+    this.isRunning = false;
 
     // 1. Clear background loop
     if (this.intervalTimer) {

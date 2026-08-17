@@ -48,18 +48,28 @@ export class MediaWorkerDaemon {
       heartbeat: this.heartbeat,
     });
 
-    if (options.queue) {
-      this.consumer = new QueueJobConsumer({
-        config: this.config,
-        queue: options.queue,
-        runner: this.runner,
-        client: this.client,
-        pollIntervalMs: options.pollIntervalMs,
-        onShutdownRequested: async () => {
-          await this.stop();
-        },
-      });
-    }
+    const queueAdapter: WorkerQueueAdapterLike = options.queue ?? {
+      fetchNextJob: async () => {
+        return this.client.fetchNextJob(this.config.workerId);
+      },
+      completeJob: async (_queue, jobId) => {
+        return this.client.completeChunk(this.config.workerId, jobId);
+      },
+      failJob: async (_queue, jobId, error) => {
+        return this.client.failChunk(this.config.workerId, jobId, error);
+      },
+    };
+
+    this.consumer = new QueueJobConsumer({
+      config: this.config,
+      queue: queueAdapter,
+      runner: this.runner,
+      client: this.client,
+      pollIntervalMs: options.pollIntervalMs ?? 1000,
+      onShutdownRequested: async () => {
+        await this.stop();
+      },
+    });
   }
 
   /**

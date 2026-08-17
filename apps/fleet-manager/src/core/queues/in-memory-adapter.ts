@@ -119,7 +119,14 @@ export class InMemoryQueueAdapter implements QueueAdapter {
 
   async completeJob(queue: QueueName, jobId: string): Promise<void> {
     const list = this.getQueueList(queue);
-    const job = list.find((j) => j.id === jobId);
+    const job = list.find(
+      (j) =>
+        j.id === jobId ||
+        (j.data &&
+          typeof j.data === "object" &&
+          "chunkId" in j.data &&
+          j.data.chunkId === jobId),
+    );
     if (job) {
       job.state = "completed";
       job.completedOn = new Date();
@@ -132,7 +139,14 @@ export class InMemoryQueueAdapter implements QueueAdapter {
     errorMessage: string,
   ): Promise<void> {
     const list = this.getQueueList(queue);
-    const job = list.find((j) => j.id === jobId);
+    const job = list.find(
+      (j) =>
+        j.id === jobId ||
+        (j.data &&
+          typeof j.data === "object" &&
+          "chunkId" in j.data &&
+          j.data.chunkId === jobId),
+    );
     if (job) {
       job.retryCount += 1;
       job.errorMessage = errorMessage;

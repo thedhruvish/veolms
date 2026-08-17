@@ -8,7 +8,12 @@ export * from "./daemon/index.ts";
 import { MediaWorkerDaemon } from "./daemon/daemon.ts";
 
 // If launched directly from command line, start daemon and bind signal handlers
-if (process.argv[1] && process.argv[1].endsWith("src/index.ts")) {
+if (
+  process.argv[1] &&
+  (process.argv[1].endsWith("index.ts") ||
+    process.argv[1].endsWith("index.js") ||
+    process.argv[1].includes("media-worker"))
+) {
   const daemon = new MediaWorkerDaemon();
   daemon.setupSignalHandlers();
   void daemon.start().then(() => {

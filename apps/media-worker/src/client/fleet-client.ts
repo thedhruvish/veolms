@@ -111,4 +111,70 @@ export class FleetApiClient {
       };
     }
   }
+
+  /**
+   * Fetches the next available chunk encoding job from the Fleet Manager.
+   */
+  async fetchNextJob<T extends object>(
+    workerId: string,
+  ): Promise<{ readonly id: string; readonly data: T } | null> {
+    try {
+      const res = await fetch(
+        `${this.baseUrl}/api/v1/workers/${workerId}/next-job`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+
+      if (!res.ok) {
+        return null;
+      }
+
+      const body = (await res.json()) as {
+        job: { id: string; data: T } | null;
+      };
+      return body.job ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Reports chunk completion to the Fleet Manager.
+   */
+  async completeChunk(
+    workerId: string,
+    chunkId: string,
+    outputKey?: string,
+  ): Promise<void> {
+    try {
+      await fetch(`${this.baseUrl}/api/v1/workers/${workerId}/complete-chunk`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chunkId, outputKey }),
+      });
+    } catch {
+      // Ignore network errors
+    }
+  }
+
+  /**
+   * Reports chunk failure to the Fleet Manager.
+   */
+  async failChunk(
+    workerId: string,
+    chunkId: string,
+    errorMessage: string,
+  ): Promise<void> {
+    try {
+      await fetch(`${this.baseUrl}/api/v1/workers/${workerId}/fail-chunk`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chunkId, error: errorMessage }),
+      });
+    } catch {
+      // Ignore network errors
+    }
+  }
 }

@@ -1,0 +1,27 @@
+FROM node:24-bullseye-slim
+
+# 1. Install FFmpeg and system dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ffmpeg \
+    ca-certificates \
+    procps \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# 2. Copy workspace manifests and built node_modules
+COPY package.json pnpm-workspace.yaml tsconfig.base.json ./
+COPY packages ./packages
+
+ARG CACHEBUST=1
+COPY apps/media-worker ./apps/media-worker
+
+# 3. Environment configuration
+ENV NODE_ENV=production
+ENV PROVIDER=local_podman
+ENV STORAGE_BASE_PATH=/app/s3-bucket
+ENV SCRATCH_DIR=/tmp/scratch-media-worker
+
+# 4. Start the media worker daemon
+CMD ["node", "apps/media-worker/src/index.ts"]

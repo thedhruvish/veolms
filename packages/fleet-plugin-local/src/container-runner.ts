@@ -51,6 +51,12 @@ export class ContainerWorkerRunner {
 
     const args: string[] = ["run", "-d", "--name", containerName];
 
+    // Configure network mode (defaults to host on Linux for seamless host daemon access)
+    const networkMode = options.networkMode ?? "host";
+    if (networkMode) {
+      args.push("--network", networkMode);
+    }
+
     // Inject required environment variables
     const envVars: Record<string, string> = {
       ...options.environment,

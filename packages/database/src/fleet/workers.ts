@@ -81,7 +81,7 @@ export async function registerWorker(
       terminated_at: null,
     })
     .onConflict((oc) =>
-      oc.column("instance_id").doUpdateSet({
+      oc.column("id").doUpdateSet({
         state: "REGISTERING",
         last_heartbeat_at: sql<Date>`CURRENT_TIMESTAMP`,
         updated_at: sql<Date>`CURRENT_TIMESTAMP`,

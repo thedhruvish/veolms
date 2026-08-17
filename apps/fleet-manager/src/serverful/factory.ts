@@ -6,6 +6,9 @@ export interface DriverFactoryOptions {
   readonly workerScriptPath?: string;
   readonly containerImage?: string;
   readonly containerBinaryPath?: string;
+  readonly volumeMounts?: readonly string[];
+  readonly networkMode?: string;
+  readonly environment?: Readonly<Record<string, string>>;
   readonly bootDelayMs?: number;
 }
 
@@ -29,6 +32,9 @@ export function createCloudDriver(
       runnerMode: "podman",
       containerImage: options.containerImage,
       containerBinaryPath: options.containerBinaryPath ?? "podman",
+      volumeMounts: options.volumeMounts,
+      networkMode: options.networkMode,
+      environment: options.environment,
     });
   }
 
@@ -37,6 +43,9 @@ export function createCloudDriver(
       runnerMode: "docker",
       containerImage: options.containerImage,
       containerBinaryPath: options.containerBinaryPath ?? "docker",
+      volumeMounts: options.volumeMounts,
+      networkMode: options.networkMode,
+      environment: options.environment,
     });
   }
 

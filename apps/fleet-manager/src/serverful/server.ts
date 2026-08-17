@@ -5,7 +5,9 @@ import {
   type ServerResponse,
 } from "node:http";
 import type {
+  ChunkEncodingJobPayload,
   NoWorkSignalPayload,
+  VideoQuality,
   WorkerHeartbeatPayload,
   WorkerRegistrationPayload,
 } from "@veolms/fleet-types";
@@ -106,6 +108,275 @@ export function createWorkerApiServer(coordinator: FleetCoordinator): Server {
           ...body,
           workerId,
         });
+        sendJson(res, 200, { success: true });
+        return;
+      }
+
+      // Worker Fetch Next Chunk Job: POST /api/v1/workers/:id/next-job
+      const nextJobMatch = pathname.match(
+        /^\/api\/v1\/workers\/([^/]+)\/next-job$/,
+      );
+      if (method === "POST" && nextJobMatch && nextJobMatch[1]) {
+        const workerId = nextJobMatch[1];
+        let queueJob =
+          await coordinator.context.queueAdapter.fetchNextJob<ChunkEncodingJobPayload>(
+            "video-chunk-encoding",
+          );
+
+        // Fallback: Query Neon Postgres video_chunks directly if queue adapter has no item
+        if (!queueJob) {
+          try {
+            const dbChunk = await coordinator.context.database
+              .selectFrom("video_chunks")
+              .innerJoin("video_jobs", "video_jobs.id", "video_chunks.video_id")
+              .select([
+                "video_chunks.id as chunkId",
+                "video_chunks.video_id as videoId",
+                "video_chunks.chunk_index as chunkIndex",
+                "video_chunks.source_key as chunkKey",
+                "video_chunks.start_seconds as startSeconds",
+                "video_chunks.duration_seconds as durationSeconds",
+                "video_jobs.requested_qualities as requestedQualities",
+              ])
+              .where("video_chunks.status", "=", "PENDING")
+              .where("video_jobs.status", "in", ["PENDING", "ENCODING"])
+              .orderBy("video_chunks.chunk_index", "asc")
+              .limit(1)
+              .executeTakeFirst();
+
+            if (dbChunk) {
+              const qualities: readonly VideoQuality[] =
+                typeof dbChunk.requestedQualities === "string"
+                  ? (JSON.parse(
+                      dbChunk.requestedQualities,
+                    ) as readonly VideoQuality[])
+                  : (dbChunk.requestedQualities as readonly VideoQuality[]);
+
+              queueJob = {
+                id: dbChunk.chunkId,
+                name: "video-chunk-encoding",
+                state: "active",
+                retryCount: 0,
+                createdOn: new Date(),
+                data: {
+                  jobId: dbChunk.videoId,
+                  videoId: dbChunk.videoId,
+                  chunkId: dbChunk.chunkId,
+                  chunkIndex: dbChunk.chunkIndex,
+                  chunkKey: dbChunk.chunkKey,
+                  startSeconds: Number(dbChunk.startSeconds),
+                  durationSeconds: Number(dbChunk.durationSeconds),
+                  requestedQualities: qualities,
+                },
+              };
+            }
+          } catch {
+            // Ignore DB error
+          }
+        }
+
+        if (queueJob) {
+          // Update DB state
+          try {
+            await coordinator.context.database
+              .updateTable("video_chunks")
+              .set({
+                worker_id: workerId,
+                status: "PROCESSING",
+                started_at: new Date(),
+                updated_at: new Date(),
+              })
+              .where("id", "=", queueJob.data.chunkId)
+              .execute();
+
+            await coordinator.context.database
+              .updateTable("workers")
+              .set({
+                state: "PROCESSING",
+                current_job_id: queueJob.data.jobId,
+                current_video_id: queueJob.data.videoId,
+                current_chunk_id: queueJob.data.chunkId,
+                progress_percent: 0,
+                updated_at: new Date(),
+              })
+              .where("id", "=", workerId)
+              .execute();
+          } catch {
+            // Ignore if DB update fails
+          }
+
+          sendJson(res, 200, { job: queueJob });
+          return;
+        }
+
+        sendJson(res, 200, { job: null });
+        return;
+      }
+
+      // Worker Complete Chunk: POST /api/v1/workers/:id/complete-chunk
+      const completeChunkMatch = pathname.match(
+        /^\/api\/v1\/workers\/([^/]+)\/complete-chunk$/,
+      );
+      if (method === "POST" && completeChunkMatch && completeChunkMatch[1]) {
+        const workerId = completeChunkMatch[1];
+        const body = await parseBody<{
+          chunkId: string;
+          outputKey?: string;
+        }>(req);
+
+        console.log(
+          `[Fleet Control Plane] Received chunk completion from worker ${workerId} for chunk ${body.chunkId}`,
+        );
+
+        const isUuid =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+            body.chunkId,
+          );
+        let targetChunkId = body.chunkId;
+
+        if (!isUuid && "getQueueList" in coordinator.context.queueAdapter) {
+          const inMemAdapter = coordinator.context.queueAdapter as {
+            getQueueList: (
+              q: string,
+            ) => Array<{ id: string; data?: { chunkId?: string } }>;
+          };
+          const list = inMemAdapter.getQueueList("video-chunk-encoding");
+          const found = list.find((j) => j.id === body.chunkId);
+          if (found?.data?.chunkId) {
+            targetChunkId = found.data.chunkId;
+          }
+        }
+
+        await coordinator.context.queueAdapter.completeJob(
+          "video-chunk-encoding",
+          body.chunkId,
+        );
+
+        try {
+          const isTargetUuid =
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+              targetChunkId,
+            );
+
+          if (isTargetUuid) {
+            await coordinator.context.database
+              .updateTable("video_chunks")
+              .set({
+                status: "COMPLETED",
+                output_key: body.outputKey ?? null,
+                completed_at: new Date(),
+                updated_at: new Date(),
+              })
+              .where("id", "=", targetChunkId)
+              .execute();
+
+            const chunkRow = await coordinator.context.database
+              .selectFrom("video_chunks")
+              .select("video_id")
+              .where("id", "=", targetChunkId)
+              .executeTakeFirst();
+
+            if (chunkRow?.video_id) {
+              await coordinator.context.database
+                .updateTable("video_jobs")
+                .set((eb) => ({
+                  completed_chunks: eb("completed_chunks", "+", 1),
+                  status: "ENCODING",
+                  updated_at: new Date(),
+                }))
+                .where("id", "=", chunkRow.video_id)
+                .execute();
+            }
+          }
+
+          await coordinator.context.database
+            .updateTable("workers")
+            .set({
+              state: "IDLE",
+              current_chunk_id: null,
+              progress_percent: 100,
+              updated_at: new Date(),
+            })
+            .where("id", "=", workerId)
+            .execute();
+        } catch (err: unknown) {
+          console.error(
+            `[Fleet Control Plane] DB error on completeChunk:`,
+            err,
+          );
+        }
+
+        sendJson(res, 200, { success: true });
+        return;
+      }
+
+      // Worker Fail Chunk: POST /api/v1/workers/:id/fail-chunk
+      const failChunkMatch = pathname.match(
+        /^\/api\/v1\/workers\/([^/]+)\/fail-chunk$/,
+      );
+      if (method === "POST" && failChunkMatch && failChunkMatch[1]) {
+        const workerId = failChunkMatch[1];
+        const body = await parseBody<{
+          chunkId: string;
+          error?: string;
+        }>(req);
+
+        let targetChunkId = body.chunkId;
+        const isUuid =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+            body.chunkId,
+          );
+
+        if (!isUuid && "getQueueList" in coordinator.context.queueAdapter) {
+          const inMemAdapter = coordinator.context.queueAdapter as {
+            getQueueList: (
+              q: string,
+            ) => Array<{ id: string; data?: { chunkId?: string } }>;
+          };
+          const list = inMemAdapter.getQueueList("video-chunk-encoding");
+          const found = list.find((j) => j.id === body.chunkId);
+          if (found?.data?.chunkId) {
+            targetChunkId = found.data.chunkId;
+          }
+        }
+
+        await coordinator.context.queueAdapter.failJob(
+          "video-chunk-encoding",
+          body.chunkId,
+          body.error ?? "Chunk transcoding failed",
+        );
+
+        try {
+          const isTargetUuid =
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+              targetChunkId,
+            );
+
+          if (isTargetUuid) {
+            await coordinator.context.database
+              .updateTable("video_chunks")
+              .set({
+                status: "FAILED",
+                error: body.error ?? "Transcoding failed",
+                updated_at: new Date(),
+              })
+              .where("id", "=", targetChunkId)
+              .execute();
+          }
+
+          await coordinator.context.database
+            .updateTable("workers")
+            .set({
+              state: "IDLE",
+              current_chunk_id: null,
+              updated_at: new Date(),
+            })
+            .where("id", "=", workerId)
+            .execute();
+        } catch {
+          // Ignore
+        }
+
         sendJson(res, 200, { success: true });
         return;
       }

@@ -58,6 +58,12 @@ export interface LocalDriverOptions {
   readonly volumeMounts?: readonly string[];
 
   /**
+   * Container network mode (e.g. "host", "bridge", "slirp4netns").
+   * Default: "host" for local podman/docker to seamlessly access host ports.
+   */
+  readonly networkMode?: string;
+
+  /**
    * Grace period in ms before SIGKILL / force-kill is sent to unresponsive instances.
    * Default: 5000ms
    */
@@ -91,6 +97,7 @@ export const DEFAULT_LOCAL_DRIVER_OPTIONS: Required<
     | "cwd"
     | "environment"
     | "volumeMounts"
+    | "networkMode"
     | "onLog"
     | "onExit"
   >
