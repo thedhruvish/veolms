@@ -150,7 +150,9 @@ async function syncPluginDependencies(
     }
 
     if (packagesToRemove.length > 0) {
-      console.log(`   🧹 Pruning unused plugin dependencies: ${packagesToRemove.join(", ")}...`);
+      console.log(
+        `   🧹 Pruning unused plugin dependencies: ${packagesToRemove.join(", ")}...`,
+      );
       try {
         await execFileAsync("pnpm", [
           "--filter",
@@ -164,7 +166,9 @@ async function syncPluginDependencies(
     }
 
     if (packagesToAdd.length > 0) {
-      console.log(`   📦 Installing selected plugin [${selectedPackageName}] into apps/fleet-manager...`);
+      console.log(
+        `   📦 Installing selected plugin [${selectedPackageName}] into apps/fleet-manager...`,
+      );
       await execFileAsync("pnpm", [
         "--filter",
         "@veolms/fleet-manager",
@@ -173,7 +177,9 @@ async function syncPluginDependencies(
       ]);
       console.log(`   └─ Dependency Installed: ${selectedPackageName} ✅`);
     } else {
-      console.log(`   ├─ Plugin Dependency [${selectedPackageName}]: Verified in apps/fleet-manager ✅`);
+      console.log(
+        `   ├─ Plugin Dependency [${selectedPackageName}]: Verified in apps/fleet-manager ✅`,
+      );
     }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -183,7 +189,9 @@ async function syncPluginDependencies(
 
 async function runInteractivePreSetup(): Promise<void> {
   console.log("\n" + "=".repeat(78));
-  console.log("  🚀 VeoLMS Plugin-Driven Provider & Environment Configuration Wizard");
+  console.log(
+    "  🚀 VeoLMS Plugin-Driven Provider & Environment Configuration Wizard",
+  );
   console.log("=".repeat(78));
 
   const cwd = process.cwd();
@@ -211,7 +219,8 @@ async function runInteractivePreSetup(): Promise<void> {
     // No prior config
   }
 
-  const isInteractive = process.stdin.isTTY && !process.argv.includes("--non-interactive");
+  const isInteractive =
+    process.stdin.isTTY && !process.argv.includes("--non-interactive");
 
   let selectedProvider = existingConfig.provider ?? "local";
   let selectedRunner = existingConfig.runner?.type ?? "process";
@@ -245,31 +254,37 @@ async function runInteractivePreSetup(): Promise<void> {
         defaultProviderIdx >= 0 ? String(defaultProviderIdx + 1) : "1",
       );
 
-      const activeManifest = PLUGIN_REGISTRY[selectedProvider] ?? localPluginManifest;
+      const activeManifest =
+        PLUGIN_REGISTRY[selectedProvider] ?? localPluginManifest;
 
       // 2. Choose Runner Type (from the plugin's supported modes)
       if (activeManifest.supportedRunnerModes.length > 1) {
-        const runnerOptions = activeManifest.supportedRunnerModes.map((mode) => {
-          if (mode === "process") {
-            return {
-              label: "Bare-Metal Host Process (Fastest, zero-container overhead, native Node.js)",
-              value: "process",
-            };
-          }
-          if (mode === "podman") {
-            return {
-              label: "Podman Container        (Rootless, isolated container execution)",
-              value: "podman",
-            };
-          }
-          if (mode === "docker") {
-            return {
-              label: "Docker Container        (Standard Docker daemon container execution)",
-              value: "docker",
-            };
-          }
-          return { label: mode, value: mode };
-        });
+        const runnerOptions = activeManifest.supportedRunnerModes.map(
+          (mode) => {
+            if (mode === "process") {
+              return {
+                label:
+                  "Bare-Metal Host Process (Fastest, zero-container overhead, native Node.js)",
+                value: "process",
+              };
+            }
+            if (mode === "podman") {
+              return {
+                label:
+                  "Podman Container        (Rootless, isolated container execution)",
+                value: "podman",
+              };
+            }
+            if (mode === "docker") {
+              return {
+                label:
+                  "Docker Container        (Standard Docker daemon container execution)",
+                value: "docker",
+              };
+            }
+            return { label: mode, value: mode };
+          },
+        );
 
         const defaultRunnerIdx = runnerOptions.findIndex(
           (r) => r.value === selectedRunner,
@@ -290,11 +305,13 @@ async function runInteractivePreSetup(): Promise<void> {
         "Select Control Plane Architecture:",
         [
           {
-            label: "Serverful   - Long-running HTTP API Daemon + Coordination Scheduler (Port 4000)",
+            label:
+              "Serverful   - Long-running HTTP API Daemon + Coordination Scheduler (Port 4000)",
             value: "serverful",
           },
           {
-            label: "Serverless  - Event-driven Lambda / SQS batch worker execution",
+            label:
+              "Serverless  - Event-driven Lambda / SQS batch worker execution",
             value: "serverless",
           },
         ],
@@ -305,10 +322,13 @@ async function runInteractivePreSetup(): Promise<void> {
       rl.close();
     }
   } else {
-    console.log("ℹ️ Running in non-interactive mode. Using configuration from apps/fleet-manager/fleet.config.json.");
+    console.log(
+      "ℹ️ Running in non-interactive mode. Using configuration from apps/fleet-manager/fleet.config.json.",
+    );
   }
 
-  const selectedPlugin = PLUGIN_REGISTRY[selectedProvider] ?? localPluginManifest;
+  const selectedPlugin =
+    PLUGIN_REGISTRY[selectedProvider] ?? localPluginManifest;
 
   // =========================================================================
   // STEP 2: Plugin Dependency Verification
@@ -326,8 +346,14 @@ async function runInteractivePreSetup(): Promise<void> {
   // =========================================================================
   // STEP 3: Save updated apps/fleet-manager/fleet.config.json & worker.config.json
   // =========================================================================
-  const prodStorageDir = resolve(cwd, existingEnv.STORAGE_BASE_PATH || "s3-bucket");
-  const tempStorageDir = resolve(cwd, existingEnv.TEMP_STORAGE_PATH || "s3-bucket/temp");
+  const prodStorageDir = resolve(
+    cwd,
+    existingEnv.STORAGE_BASE_PATH || "s3-bucket",
+  );
+  const tempStorageDir = resolve(
+    cwd,
+    existingEnv.TEMP_STORAGE_PATH || "s3-bucket/temp",
+  );
 
   const fleetConfig: FleetConfig = {
     provider: selectedProvider,
@@ -335,7 +361,8 @@ async function runInteractivePreSetup(): Promise<void> {
     runner: {
       type: selectedRunner,
       containerEngine: selectedRunner === "docker" ? "docker" : "podman",
-      containerImage: existingEnv.CONTAINER_IMAGE || "localhost/veolms-media-worker:latest",
+      containerImage:
+        existingEnv.CONTAINER_IMAGE || "localhost/veolms-media-worker:latest",
       maxWorkersPerVideo: 4,
       maxTotalWorkers: 10,
       idleTimeoutSeconds: 10,
@@ -384,11 +411,21 @@ async function runInteractivePreSetup(): Promise<void> {
   );
 
   console.log("\n2. 🔍 Selected Architecture Configuration:");
-  console.log(`   ├─ Plugin:                 \x1b[32m${selectedPlugin.name}\x1b[0m (${selectedPlugin.packageName})`);
-  console.log(`   ├─ Runner Type:            \x1b[32m${fleetConfig.runner.type}\x1b[0m`);
-  console.log(`   ├─ Control Plane:          \x1b[32m${fleetConfig.executionMode}\x1b[0m`);
-  console.log(`   ├─ Fleet Config File:      apps/fleet-manager/fleet.config.json ✅`);
-  console.log(`   └─ Worker Config File:     apps/media-worker/worker.config.json ✅\n`);
+  console.log(
+    `   ├─ Plugin:                 \x1b[32m${selectedPlugin.name}\x1b[0m (${selectedPlugin.packageName})`,
+  );
+  console.log(
+    `   ├─ Runner Type:            \x1b[32m${fleetConfig.runner.type}\x1b[0m`,
+  );
+  console.log(
+    `   ├─ Control Plane:          \x1b[32m${fleetConfig.executionMode}\x1b[0m`,
+  );
+  console.log(
+    `   ├─ Fleet Config File:      apps/fleet-manager/fleet.config.json ✅`,
+  );
+  console.log(
+    `   └─ Worker Config File:     apps/media-worker/worker.config.json ✅\n`,
+  );
 
   // =========================================================================
   // STEP 4: System Binaries & Hardware Audit
@@ -399,9 +436,13 @@ async function runInteractivePreSetup(): Promise<void> {
 
   const ffmpegVersion = await checkSystemBinary("ffmpeg", ["-version"]);
   if (ffmpegVersion) {
-    console.log(`   ├─ FFmpeg Binary:          ${ffmpegVersion.substring(0, 30)} ✅`);
+    console.log(
+      `   ├─ FFmpeg Binary:          ${ffmpegVersion.substring(0, 30)} ✅`,
+    );
   } else {
-    console.log(`   ├─ FFmpeg Binary:          NOT FOUND ❌ (Please install ffmpeg)`);
+    console.log(
+      `   ├─ FFmpeg Binary:          NOT FOUND ❌ (Please install ffmpeg)`,
+    );
   }
 
   const hwInfo = await detectHardwareEncoder();
@@ -416,7 +457,9 @@ async function runInteractivePreSetup(): Promise<void> {
     const dockerVer = await checkSystemBinary("docker", ["--version"]);
     console.log(`   └─ Docker Engine:          ${dockerVer ?? "NOT FOUND ⚠️"}`);
   } else {
-    console.log(`   └─ Runner Engine:          Native Host Child Processes (No container engine required) ✅`);
+    console.log(
+      `   └─ Runner Engine:          Native Host Child Processes (No container engine required) ✅`,
+    );
   }
   console.log();
 
@@ -427,7 +470,9 @@ async function runInteractivePreSetup(): Promise<void> {
   // =========================================================================
   // STEP 5: Generate Dynamic Driver Factory (driver-instance.ts)
   // =========================================================================
-  console.log("4. ⚙️  Generating Dynamic Driver Factory (driver-instance.ts)...");
+  console.log(
+    "4. ⚙️  Generating Dynamic Driver Factory (driver-instance.ts)...",
+  );
   const driverInstancePath = resolve(
     cwd,
     "apps/fleet-manager/src/serverful/driver-instance.ts",
@@ -479,7 +524,9 @@ export function createConfiguredDriver(): CloudDriver {
   }
 
   await writeFile(driverInstancePath, driverContent, "utf-8");
-  console.log(`   └─ Driver Generated:       apps/fleet-manager/src/serverful/driver-instance.ts ✅\n`);
+  console.log(
+    `   └─ Driver Generated:       apps/fleet-manager/src/serverful/driver-instance.ts ✅\n`,
+  );
 
   // =========================================================================
   // STEP 6: Generate Fleet Manager Main Entrypoint (index.ts)
@@ -559,16 +606,18 @@ void main();
   }
 
   await writeFile(mainIndexPath, mainIndexContent, "utf-8");
-  console.log(`   └─ Main Entrypoint Generated: apps/fleet-manager/src/index.ts ✅\n`);
+  console.log(
+    `   └─ Main Entrypoint Generated: apps/fleet-manager/src/index.ts ✅\n`,
+  );
 
   // =========================================================================
   // STEP 7: Generate Plugin-Defined .env.local File
   // =========================================================================
-  console.log("6. 📝 Generating Plugin-Defined Environment Variables (.env.local)...");
+  console.log(
+    "6. 📝 Generating Plugin-Defined Environment Variables (.env.local)...",
+  );
 
-  const existingDbUrl =
-    existingEnv.DATABASE_URL ||
-    process.env.DATABASE_URL
+  const existingDbUrl = existingEnv.DATABASE_URL || process.env.DATABASE_URL;
 
   // Call the plugin's own getEnvTemplate contract!
   const pluginEnvVars = selectedPlugin.getEnvTemplate({
@@ -609,7 +658,9 @@ void main();
 
   console.log(`   ├─ Written:                .env.local (Workspace Root) ✅`);
   console.log(`   ├─ Written:                apps/fleet-manager/.env.local ✅`);
-  console.log(`   └─ Written:                apps/media-worker/.env.local ✅\n`);
+  console.log(
+    `   └─ Written:                apps/media-worker/.env.local ✅\n`,
+  );
 
   // =========================================================================
   // STEP 8: Run Workspace Dependency Sync (pnpm install)
@@ -629,20 +680,32 @@ void main();
   console.log("8. 🧪 Pre-Flight Database Health Check:");
   try {
     const db = createDatabase(existingDbUrl);
-    const result = await db.selectFrom("video_jobs").select("id").limit(1).execute();
+    const result = await db
+      .selectFrom("video_jobs")
+      .select("id")
+      .limit(1)
+      .execute();
     await db.destroy();
-    console.log(`   └─ Database Connection:    Active & Verified (${result.length} sample rows read) ✅\n`);
+    console.log(
+      `   └─ Database Connection:    Active & Verified (${result.length} sample rows read) ✅\n`,
+    );
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.log(`   └─ Database Connection:    Notice/Warning: ${msg} (Check credentials in .env.local) ⚠️\n`);
+    console.log(
+      `   └─ Database Connection:    Notice/Warning: ${msg} (Check credentials in .env.local) ⚠️\n`,
+    );
   }
 
   console.log("=".repeat(78));
   console.log("🎉 Plugin Environment Setup Completed Successfully!");
   console.log("=".repeat(78));
   console.log("\nNext Steps:");
-  console.log("  1. Start Fleet Manager:        pnpm --filter @veolms/fleet-manager start");
-  console.log("  2. Start Media Worker:         pnpm --filter @veolms/media-worker start");
+  console.log(
+    "  1. Start Fleet Manager:        pnpm --filter @veolms/fleet-manager start",
+  );
+  console.log(
+    "  2. Start Media Worker:         pnpm --filter @veolms/media-worker start",
+  );
   console.log("  3. Re-configure Fleet:         pnpm run fleet:pre:setup\n");
 }
 

@@ -274,7 +274,8 @@ export class ManifestFinalizerCoordinator {
             for (const subEntry of subEntries) {
               if (
                 subEntry.isFile() &&
-                (subEntry.name.endsWith(".mp4") || subEntry.name.endsWith(".tmp"))
+                (subEntry.name.endsWith(".mp4") ||
+                  subEntry.name.endsWith(".tmp"))
               ) {
                 await unlink(join(subDir, subEntry.name)).catch(() => {});
                 prunedCount += 1;

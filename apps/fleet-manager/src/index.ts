@@ -5,7 +5,9 @@ import { DEFAULT_FLEET_CONFIG } from "@veolms/fleet-types";
 
 if (typeof process.loadEnvFile === "function") {
   try {
-    process.loadEnvFile(resolve(process.cwd(), "apps/fleet-manager/.env.local"));
+    process.loadEnvFile(
+      resolve(process.cwd(), "apps/fleet-manager/.env.local"),
+    );
   } catch {
     try {
       process.loadEnvFile(resolve(process.cwd(), ".env.local"));
@@ -18,13 +20,16 @@ if (typeof process.loadEnvFile === "function") {
 async function main(): Promise<void> {
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) {
-    console.error("❌ Error: DATABASE_URL is not set in environment or .env.local");
+    console.error(
+      "❌ Error: DATABASE_URL is not set in environment or .env.local",
+    );
     process.exit(1);
   }
 
   const port = parseInt(process.env.PORT || "4000", 10);
   const host = process.env.HOST || "127.0.0.1";
-  const managerApiUrl = process.env.FLEET_MANAGER_API_URL || `http://${host}:${port}`;
+  const managerApiUrl =
+    process.env.FLEET_MANAGER_API_URL || `http://${host}:${port}`;
 
   const daemon = new FleetDaemon({
     host,

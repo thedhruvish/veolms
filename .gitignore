@@ -4,5 +4,15 @@ node_modules/
 build/
 .react-router/
 .env
+.env.local
+.env.*.local
+apps/*/.env.local
+packages/*/.env.local
+apps/fleet-manager/fleet.config.json
+apps/media-worker/worker.config.json
 *.log
 .DS_Store
+s3-bucket/
+.scratch-media-worker/
+.tmp/
+*.mp4

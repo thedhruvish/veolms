@@ -105,7 +105,8 @@ export class FluentFfmpegTranscoder {
                 `-bufsize ${rendition.bufSizeKbps}k`,
               ];
 
-        cmd.outputOptions(videoOptions)
+        cmd
+          .outputOptions(videoOptions)
           .audioCodec("aac")
           .outputOptions([
             `-b:a ${rendition.audioBitrateKbps}k`,

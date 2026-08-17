@@ -11,6 +11,7 @@ export default [
       "**/build/**",
       "**/.react-router/**",
       "**/.turbo/**",
+      "**/s3-bucket/**",
       "pnpm-lock.yaml",
     ],
   },
