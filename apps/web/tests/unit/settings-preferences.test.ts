@@ -32,7 +32,11 @@ describe("page tab color preferences", () => {
     localStorage.setItem(PAGE_TAB_COLORS_KEY, "multicolor");
     localStorage.setItem(
       "veolms-sidebar-preferences",
-      JSON.stringify({ iconStyle: "multicolor", elevateMenus: true }),
+      JSON.stringify({
+        iconStyle: "multicolor",
+        elevateMenus: true,
+        contentLayout: "edge-to-edge",
+      }),
     );
 
     window.eval(getSurfaceDepthBootstrapScript());
@@ -42,6 +46,7 @@ describe("page tab color preferences", () => {
       "multicolor",
     );
     expect(document.documentElement.dataset.sidebarMenuElevation).toBe("true");
+    expect(document.documentElement.dataset.contentLayout).toBe("edge-to-edge");
   });
 
   it("defaults missing and unsupported values to following the sidebar", () => {

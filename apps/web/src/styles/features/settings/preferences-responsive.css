@@ -54,6 +54,7 @@
   font-size: 125%;
 }
 :root[data-compact-layout="true"] .courses-app {
+  --shell-frame-block-space: 16px;
   padding-top: 8px;
   padding-bottom: 8px;
 }

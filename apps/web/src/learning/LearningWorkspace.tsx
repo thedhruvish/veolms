@@ -12,6 +12,7 @@ import type {
   PointerEvent as ReactPointerEvent,
 } from "react";
 import { SidebarToggleIcon } from "../shell/SidebarToggleIcon";
+import { scrollApplicationTo } from "../shell/applicationScroll";
 import { isEditingShortcutTarget } from "../keyboardShortcuts";
 import { useShortcutPlatform } from "../useShortcutPlatform";
 import { VideoPlayer as YouTubeVideoPlayer } from "../VideoPlayer";
@@ -157,7 +158,7 @@ export function LearningWorkspace({
 
     if (nextMode) {
       window.requestAnimationFrame(() => {
-        window.scrollTo({
+        scrollApplicationTo({
           top: 0,
           behavior: window.matchMedia("(prefers-reduced-motion: reduce)")
             .matches

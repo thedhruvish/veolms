@@ -66,18 +66,24 @@ export async function openApp(page: Page, path = "/") {
 }
 
 export async function getApplicationScrollTop(page: Page) {
-  return page.evaluate(() => window.scrollY);
+  return page.evaluate(() => {
+    const main = document.querySelector<HTMLElement>("main.courses-main");
+    return main && getComputedStyle(main).overflowY === "auto"
+      ? main.scrollTop
+      : window.scrollY;
+  });
 }
 
 export async function setApplicationScrollTop(page: Page, top: number) {
-  await page.evaluate(
-    (scrollTop) =>
-      window.scrollTo({
-        top: scrollTop,
-        behavior: "instant" as ScrollBehavior,
-      }),
-    top,
-  );
+  await page.evaluate((scrollTop) => {
+    const main = document.querySelector<HTMLElement>("main.courses-main");
+    const scrollTarget =
+      main && getComputedStyle(main).overflowY === "auto" ? main : window;
+    scrollTarget.scrollTo({
+      top: scrollTop,
+      behavior: "instant" as ScrollBehavior,
+    });
+  }, top);
 }
 
 export async function expectStoredValue(

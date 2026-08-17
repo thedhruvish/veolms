@@ -184,7 +184,7 @@ export const getSurfaceDepthBootstrapScript = (): string =>
     PAGE_TAB_COLORS_DEFAULT,
   )}}catch{root.dataset.pageTabColors=${JSON.stringify(
     PAGE_TAB_COLORS_DEFAULT,
-  )}}try{const sidebar=JSON.parse(localStorage.getItem("veolms-sidebar-preferences")||"{}");root.dataset.sidebarMenuElevation=String(sidebar.elevateMenus===true||(sidebar.elevateMenus===undefined&&sidebar.alwaysElevateMenus===true));root.dataset.sidebarIconStyle=sidebar.iconStyle==="multicolor"?"multicolor":"monochrome"}catch{root.dataset.sidebarIconStyle="monochrome"}})();`;
+  )}}try{const sidebar=JSON.parse(localStorage.getItem("veolms-sidebar-preferences")||"{}");root.dataset.sidebarMenuElevation=String(sidebar.elevateMenus===true||(sidebar.elevateMenus===undefined&&sidebar.alwaysElevateMenus===true));root.dataset.sidebarIconStyle=sidebar.iconStyle==="multicolor"?"multicolor":"monochrome";root.dataset.contentLayout=sidebar.contentLayout==="edge-to-edge"?"edge-to-edge":"framed"}catch{root.dataset.sidebarIconStyle="monochrome";root.dataset.contentLayout="framed"}})();`;
 
 export const readPageTabColors = (): PageTabColors =>
   normalizePageTabColors(
