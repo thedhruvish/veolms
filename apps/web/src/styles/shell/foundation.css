@@ -1,8 +1,8 @@
 .courses-app {
-  --shell-frame-block-space: 28px;
+  --shell-frame-block-space: 22px;
   grid-template-columns: 252px minmax(0, 1fr);
   gap: 0;
-  padding: 14px 14px 14px 0;
+  padding: 12px 12px 10px 0;
   background:
     radial-gradient(
       circle at 16% 2%,
@@ -30,16 +30,16 @@
 
 .courses-sidebar {
   position: sticky;
-  top: 14px;
+  top: 12px;
   z-index: 50;
-  height: calc(100vh - 28px);
+  height: calc(100vh - 22px);
   border-radius: 0;
-  padding: 12px 14px 14px;
+  padding: 12px 14px 0;
   background: transparent;
 }
 
 .courses-main {
-  min-height: calc(100vh - 28px);
+  min-height: calc(100vh - 22px);
   border-radius: 18px;
   background: var(--main-surface);
   box-shadow: var(--card-shadow);
@@ -123,9 +123,9 @@
     content: "";
     position: absolute;
     z-index: 46;
-    top: 14px;
-    right: 14px;
-    bottom: 14px;
+    top: 12px;
+    right: 12px;
+    bottom: 10px;
     left: var(--main-surface-inline-start);
     border-radius: 18px;
     pointer-events: none;

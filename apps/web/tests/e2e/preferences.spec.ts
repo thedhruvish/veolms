@@ -18,16 +18,25 @@ test("framed layout scrolls inside its main surface while edge-to-edge uses the 
   await expect(mainSurface).toBeVisible();
   const framedMetrics = await mainSurface.evaluate((main) => {
     const bounds = main.getBoundingClientRect();
+    const dockBounds = document
+      .querySelector(".sidebar-appearance")
+      ?.getBoundingClientRect();
     return {
       bottomGap: window.innerHeight - bounds.bottom,
       clientHeight: main.clientHeight,
+      dockBottomDelta: dockBounds
+        ? Math.abs(dockBounds.bottom - bounds.bottom)
+        : Number.POSITIVE_INFINITY,
       overflowY: getComputedStyle(main).overflowY,
+      rightGap: window.innerWidth - bounds.right,
       scrollHeight: main.scrollHeight,
       top: bounds.top,
     };
   });
-  expect(framedMetrics.top).toBe(14);
-  expect(framedMetrics.bottomGap).toBe(14);
+  expect(framedMetrics.top).toBe(12);
+  expect(framedMetrics.rightGap).toBe(12);
+  expect(framedMetrics.bottomGap).toBe(10);
+  expect(framedMetrics.dockBottomDelta).toBeLessThan(0.5);
   expect(framedMetrics.overflowY).toBe("auto");
   expect(framedMetrics.scrollHeight).toBeGreaterThan(
     framedMetrics.clientHeight,

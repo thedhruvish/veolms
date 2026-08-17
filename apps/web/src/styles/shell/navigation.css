@@ -719,7 +719,7 @@
 
 .courses-app--collapsed .courses-sidebar {
   padding-inline: 10px;
-  padding-bottom: 8px;
+  padding-bottom: 0;
 }
 
 .courses-app--collapsed .courses-sidebar__brand {
