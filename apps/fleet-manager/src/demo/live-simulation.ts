@@ -97,7 +97,6 @@ async function runLiveSimulation(): Promise<void> {
   // Formula A & B Sizing calculation
   const plan1 = calculateFullWorkloadPlan({
     videoId: "video-101",
-    durationSeconds: 3600,
     sourceMetadata: {
       width: 1920,
       height: 1080,
@@ -202,7 +201,6 @@ async function runLiveSimulation(): Promise<void> {
 
   const plan2 = calculateFullWorkloadPlan({
     videoId: "video-202",
-    durationSeconds: 5400, // 90 min video
     sourceMetadata: {
       width: 1920,
       height: 1080,
@@ -264,7 +262,6 @@ async function runLiveSimulation(): Promise<void> {
 
   const plan3 = calculateFullWorkloadPlan({
     videoId: "video-303",
-    durationSeconds: 5400,
     sourceMetadata: {
       width: 1920,
       height: 1080,
@@ -300,7 +297,7 @@ async function runLiveSimulation(): Promise<void> {
     const wInstance = driver.getWorkerInstance(`worker-${i + 1}`);
     if (wInstance) {
       (wInstance as unknown as { progressPercent: number }).progressPercent = 100;
-      wInstance.transitionState("IDLE");
+      (wInstance as unknown as { state: string }).state = "IDLE";
     }
   }
 

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
   getReusableCapacity,
   listActiveVideoJobs,
@@ -90,7 +91,7 @@ export class FleetScaler {
 
       // Provision missing workers
       for (let i = 0; i < allocation.workersToLaunch; i++) {
-        const workerId = `worker-${Math.random().toString(36).substring(2, 9)}`;
+        const workerId = randomUUID();
 
         const launchResult = await this.context.driver.launchWorker({
           workerId,

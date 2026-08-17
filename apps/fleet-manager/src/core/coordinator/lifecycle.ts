@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
   findExpiredWorkers,
   findIdleWorkersPastTimeout,
@@ -48,7 +49,7 @@ export class WorkerLifecycleManager {
    * Records a periodic progress heartbeat from an active or idle worker.
    */
   async handleWorkerHeartbeat(payload: WorkerHeartbeatPayload): Promise<void> {
-    const heartbeatId = `hb-${Math.random().toString(36).substring(2, 11)}`;
+    const heartbeatId = randomUUID();
 
     await recordWorkerHeartbeat(this.context.database, {
       ...payload,
