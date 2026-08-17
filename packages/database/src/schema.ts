@@ -2,7 +2,8 @@ import type { Generated } from "kysely";
 
 export type CourseStatus = "draft" | "published" | "archived";
 export type OtpIdentifierType = "email" | "phone";
-export type OtpPurpose = "login" | "registration" | "email_verification" | "phone_verification";
+export type OtpPurpose =
+  "login" | "registration" | "email_verification" | "phone_verification";
 
 export interface CourseTable {
   id: string;

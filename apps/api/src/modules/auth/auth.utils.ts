@@ -1,8 +1,6 @@
 import crypto from "node:crypto";
 import { config } from "../../config.ts";
 
-
-
 // 2. Token Hashing (SHA-256 for secure session storage and verification tokens)
 export function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
@@ -11,7 +9,6 @@ export function hashToken(token: string): string {
 export function generateRandomToken(): string {
   return crypto.randomBytes(32).toString("hex");
 }
-
 
 export function generatePkce(): { verifier: string; challenge: string } {
   const verifier = crypto.randomBytes(32).toString("base64url");
