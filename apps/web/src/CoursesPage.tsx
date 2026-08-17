@@ -51,6 +51,7 @@ import type {
 import { AcademyPaletteMenu } from "./shell/AcademyPaletteMenu";
 import { FloatingScrollbar } from "./shell/FloatingScrollbar";
 import { SidebarToggleIcon } from "./shell/SidebarToggleIcon";
+import { AppLoadingScreen } from "./bootstrap/AppLoadingScreen";
 import {
   getDefaultNavigationOrder,
   getInitialNavigationOrder,
@@ -443,9 +444,8 @@ export function CoursesPage({
   >(null);
   const [navigationDropTarget, setNavigationDropTarget] =
     useState<NavigationDropTarget | null>(null);
-  // Keep the server snapshot and the browser's first hydration render
-  // identical. The effect below applies viewport/input capabilities as soon as
-  // hydration completes, avoiding a discarded prerender on mobile.
+  // Browser-only input capabilities are applied after startup so the loading
+  // boundary remains deterministic across the build and the first client pass.
   const [compactNavigation, setCompactNavigation] = useState(false);
   const [coarseNavigationInput, setCoarseNavigationInput] = useState(false);
   const [edgeSidebarOpen, setEdgeSidebarOpen] = useState(false);
@@ -2342,6 +2342,8 @@ export function CoursesPage({
     }
     setMobileSheetOffset(0);
   };
+
+  if (!storedPreferencesReady) return <AppLoadingScreen />;
 
   return (
     <div
