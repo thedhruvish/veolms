@@ -36,7 +36,7 @@ import { Users } from "@phosphor-icons/react/Users";
 import logoDarkSvg from "./assets/procodrr-logo-dark.svg?raw";
 import { StudentHome } from "./StudentHome";
 import { MyCoursesPage, type LearningCourse } from "./StudentPages";
-import { SettingsPage as AsyncSettingsPage } from "./SettingsPage";
+import { SettingsPage } from "./SettingsPage";
 import { CourseCatalogue } from "./courses/CourseCatalogue";
 import { PlaceholderPage } from "./courses/PlaceholderPage";
 import { WorkspacePage } from "./workspace/WorkspacePages";
@@ -488,14 +488,9 @@ export function CoursesPage({
     if (page === "explore-courses")
       return role === "creator" ? "Courses" : "Explore Courses";
     if (requestedSection) return requestedSection;
-    if (typeof window === "undefined")
-      return role === "creator" ? "Courses" : "Explore Courses";
-    const storedSection = sessionStorage.getItem("veolms-course-section");
-    if (role === "student" && storedSection === "Courses")
-      return "Explore Courses";
-    return (
-      storedSection || (role === "creator" ? "Courses" : "Explore Courses")
-    );
+    // Restore the session-persisted section in the effect below. Keeping the
+    // initializer deterministic avoids a server/client hydration mismatch.
+    return role === "creator" ? "Courses" : "Explore Courses";
   });
   const [enrollmentFilter, setEnrollmentFilter] =
     useState<CourseEnrollmentFilter>("all");
@@ -589,41 +584,41 @@ export function CoursesPage({
     sidebarPreferences.showKeyboardShortcuts !== false;
 
   useEffect(() => {
-    const storedRole = localStorage.getItem("veolms-role");
-    setRole(storedRole === "creator" ? "creator" : "student");
-    setSavedShellProfiles({
-      student: getStoredProfilePreferences("student"),
-      creator: getStoredProfilePreferences("creator"),
-    });
-
-    const storedSidebarMode = localStorage.getItem("veolms-sidebar-mode");
-    setSidebarMode(
-      isSidebarMode(storedSidebarMode)
-        ? storedSidebarMode
-        : localStorage.getItem("veolms-sidebar-collapsed") === "true"
-          ? "collapsed"
-          : "expanded",
-    );
-    setSidebarWidth(getInitialSidebarWidth());
-    setNavigationOrders({
-      student: getInitialNavigationOrder("student"),
-      creator: getInitialNavigationOrder("creator"),
-    });
-
-    const storedTheme = localStorage.getItem("veolms-theme");
-    setTheme(
-      storedTheme === "light" ||
-        storedTheme === "dark" ||
-        storedTheme === "device"
-        ? storedTheme
-        : "dark",
-    );
-    setAcademyTheme(getInitialAcademyTheme());
-    setSidebarPreferences(getInitialSidebarPreferences());
-    setPageTabColors(readPageTabColors());
-    setReadingModePreferences(readReadingModePreferences());
-
     try {
+      const storedRole = localStorage.getItem("veolms-role");
+      setRole(storedRole === "creator" ? "creator" : "student");
+      setSavedShellProfiles({
+        student: getStoredProfilePreferences("student"),
+        creator: getStoredProfilePreferences("creator"),
+      });
+
+      const storedSidebarMode = localStorage.getItem("veolms-sidebar-mode");
+      setSidebarMode(
+        isSidebarMode(storedSidebarMode)
+          ? storedSidebarMode
+          : localStorage.getItem("veolms-sidebar-collapsed") === "true"
+            ? "collapsed"
+            : "expanded",
+      );
+      setSidebarWidth(getInitialSidebarWidth());
+      setNavigationOrders({
+        student: getInitialNavigationOrder("student"),
+        creator: getInitialNavigationOrder("creator"),
+      });
+
+      const storedTheme = localStorage.getItem("veolms-theme");
+      setTheme(
+        storedTheme === "light" ||
+          storedTheme === "dark" ||
+          storedTheme === "device"
+          ? storedTheme
+          : "dark",
+      );
+      setAcademyTheme(getInitialAcademyTheme());
+      setSidebarPreferences(getInitialSidebarPreferences());
+      setPageTabColors(readPageTabColors());
+      setReadingModePreferences(readReadingModePreferences());
+
       const storedWishlist: unknown = JSON.parse(
         localStorage.getItem("veolms-wishlist") || "[]",
       );
@@ -637,10 +632,11 @@ export function CoursesPage({
         ),
       );
     } catch {
+      // Deterministic defaults remain usable when storage is unavailable.
       setWishlisted(new Set());
+    } finally {
+      setStoredPreferencesReady(true);
     }
-
-    setStoredPreferencesReady(true);
   }, []);
 
   useEffect(
@@ -2928,6 +2924,13 @@ export function CoursesPage({
             <span className="sidebar-nav-tooltip__label">
               {sidebarTooltip.label}
             </span>
+            {sidebarTooltip.shortcutGroups.length > 0 && (
+              <span className="sidebar-nav-tooltip__shortcuts">
+                {sidebarTooltip.shortcutGroups.map((keys, index) => (
+                  <ShortcutKeys key={`tooltip-shortcut-${index}`} keys={keys} />
+                ))}
+              </span>
+            )}
           </span>
         </div>
       )}
@@ -2939,87 +2942,87 @@ export function CoursesPage({
           {renderMain ? (
             renderMain()
           ) : role === "creator" && page === "home" ? (
-          <CreatorDashboard
-            onNavigatePage={onNavigatePage}
-            setNotice={setNotice}
-            academyTheme={academyTheme}
-          />
-        ) : role === "student" && page === "home" ? (
-          <StudentHome
-            onOpenCourse={onOpenCourse}
-            onNavigatePage={onNavigatePage}
-            studentName={shellProfileDisplayName}
-          />
-        ) : role === "student" && page === "my-courses" ? (
-          <MyCoursesPage
-            onOpenCourse={onOpenCourse}
-            wishlisted={wishlisted}
-            onWishlist={toggleWishlist}
-            setNotice={setNotice}
-          />
-        ) : page === "settings" ? (
-          <AsyncSettingsPage
-            tab={settingsTab}
-            role={role}
-            onNavigatePage={onNavigatePage}
-            onExitSettings={onExitSettings}
-            onProfileSaved={(profile) => {
-              setSavedShellProfiles((current) => ({
-                ...current,
-                [role]: profile,
-              }));
-            }}
-            theme={theme}
-            onThemeChange={setTheme}
-            academyTheme={academyTheme}
-            onAcademyThemeChange={setAcademyTheme}
-            pageTabColors={pageTabColors}
-            onPageTabColorsChange={setPageTabColors}
-            sidebarPreferences={sidebarPreferences}
-            onSidebarPreferencesChange={setSidebarPreferences}
-            sidebarMode={sidebarMode}
-            onSidebarModeChange={setSidebarMode}
-          />
-        ) : page === "workspace" ? (
-          <WorkspacePage
-            section={requestedSection || activeSection}
-            role={role}
-            discussionTab={discussionTab}
-            onNavigatePage={onNavigatePage}
-            setNotice={setNotice}
-            onSignOut={() => {
-              localStorage.removeItem("veolms-role");
-              sessionStorage.removeItem("veolms-course-section");
-              setRole("student");
-            }}
-          />
-        ) : page === "placeholder" ? (
-          <PlaceholderPage
-            section={requestedSection || activeSection}
-            role={role}
-          />
-        ) : (
-          <CourseCatalogue
-            activeSection={activeSection}
-            role={role}
-            wishlisted={wishlisted}
-            enrollmentFilter={enrollmentFilter}
-            onEnrollmentFilterChange={setEnrollmentFilter}
-            search={search}
-            onSearchChange={setSearch}
-            sort={sort}
-            onSortChange={setSort}
-            category={category}
-            onCategoryChange={setCategory}
-            visibleCourses={visibleCourses}
-            onWishlist={toggleWishlist}
-            onOpenCourse={onOpenCourse}
-            courseMenu={courseMenu}
-            setCourseMenu={setCourseMenu}
-            setNotice={setNotice}
-            onNavigatePage={onNavigatePage}
-            onResetCatalogue={resetCatalogue}
-          />
+            <CreatorDashboard
+              onNavigatePage={onNavigatePage}
+              setNotice={setNotice}
+              academyTheme={academyTheme}
+            />
+          ) : role === "student" && page === "home" ? (
+            <StudentHome
+              onOpenCourse={onOpenCourse}
+              onNavigatePage={onNavigatePage}
+              studentName={shellProfileDisplayName}
+            />
+          ) : role === "student" && page === "my-courses" ? (
+            <MyCoursesPage
+              onOpenCourse={onOpenCourse}
+              wishlisted={wishlisted}
+              onWishlist={toggleWishlist}
+              setNotice={setNotice}
+            />
+          ) : page === "settings" ? (
+            <SettingsPage
+              tab={settingsTab}
+              role={role}
+              onNavigatePage={onNavigatePage}
+              onExitSettings={onExitSettings}
+              onProfileSaved={(profile) => {
+                setSavedShellProfiles((current) => ({
+                  ...current,
+                  [role]: profile,
+                }));
+              }}
+              theme={theme}
+              onThemeChange={setTheme}
+              academyTheme={academyTheme}
+              onAcademyThemeChange={setAcademyTheme}
+              pageTabColors={pageTabColors}
+              onPageTabColorsChange={setPageTabColors}
+              sidebarPreferences={sidebarPreferences}
+              onSidebarPreferencesChange={setSidebarPreferences}
+              sidebarMode={sidebarMode}
+              onSidebarModeChange={setSidebarMode}
+            />
+          ) : page === "workspace" ? (
+            <WorkspacePage
+              section={requestedSection || activeSection}
+              role={role}
+              discussionTab={discussionTab}
+              onNavigatePage={onNavigatePage}
+              setNotice={setNotice}
+              onSignOut={() => {
+                localStorage.removeItem("veolms-role");
+                sessionStorage.removeItem("veolms-course-section");
+                setRole("student");
+              }}
+            />
+          ) : page === "placeholder" ? (
+            <PlaceholderPage
+              section={requestedSection || activeSection}
+              role={role}
+            />
+          ) : (
+            <CourseCatalogue
+              activeSection={activeSection}
+              role={role}
+              wishlisted={wishlisted}
+              enrollmentFilter={enrollmentFilter}
+              onEnrollmentFilterChange={setEnrollmentFilter}
+              search={search}
+              onSearchChange={setSearch}
+              sort={sort}
+              onSortChange={setSort}
+              category={category}
+              onCategoryChange={setCategory}
+              visibleCourses={visibleCourses}
+              onWishlist={toggleWishlist}
+              onOpenCourse={onOpenCourse}
+              courseMenu={courseMenu}
+              setCourseMenu={setCourseMenu}
+              setNotice={setNotice}
+              onNavigatePage={onNavigatePage}
+              onResetCatalogue={resetCatalogue}
+            />
           )}
         </>
       </main>

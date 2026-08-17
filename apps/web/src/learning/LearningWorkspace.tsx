@@ -76,7 +76,9 @@ export function LearningWorkspace({
   const [academyTheme, setAcademyTheme] = useState(DEFAULT_ACADEMY_THEME);
   const [selectedLesson, setSelectedLesson] = useState(lessonId);
   const [autoPlayOnLessonChange, setAutoPlayOnLessonChange] = useState(false);
-  const courseTitle = getCourseTitle(courseSlug);
+  const [courseTitle, setCourseTitle] = useState(() =>
+    getCourseTitle(courseSlug),
+  );
   const coursePersistenceKey = encodeURIComponent(courseSlug || "default");
   const discussionPersistenceKey = `${coursePersistenceKey}-lesson-${selectedLesson}`;
   const [lessonDrawer, setLessonDrawer] = useState(false);
@@ -93,16 +95,28 @@ export function LearningWorkspace({
       const saved = Number(storedWidth);
       if (Number.isFinite(saved)) {
         setCurriculumWidth(
-          Math.min(
-            CURRICULUM_MAX_WIDTH,
-            Math.max(CURRICULUM_MIN_WIDTH, saved),
-          ),
+          Math.min(CURRICULUM_MAX_WIDTH, Math.max(CURRICULUM_MIN_WIDTH, saved)),
         );
       }
     } catch {
       // The deterministic defaults remain usable without browser storage.
     }
   }, []);
+
+  useEffect(() => {
+    if (courseSlug) {
+      setCourseTitle(getCourseTitle(courseSlug));
+      return;
+    }
+    try {
+      const storedTitle = window.localStorage.getItem(
+        "veolms-current-course-title",
+      );
+      if (storedTitle) setCourseTitle(storedTitle);
+    } catch {
+      // Keep the deterministic title when storage is unavailable.
+    }
+  }, [courseSlug]);
   const [curriculumCollapsed, setCurriculumCollapsed] = useState(false);
   const [curriculumResizing, setCurriculumResizing] = useState(false);
   const [curriculumResizePreviewWidth, setCurriculumResizePreviewWidth] =

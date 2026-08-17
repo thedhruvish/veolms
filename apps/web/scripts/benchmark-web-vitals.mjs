@@ -89,6 +89,7 @@ for (const route of routes) {
       window.__veolmsVitals = {
         cls: 0,
         interactionLatency: 0,
+        interactionId: 0,
         interactionStart: 0,
         lcp: 0,
         longTaskCount: 0,
@@ -114,20 +115,78 @@ for (const route of routes) {
         }
       }).observe({ type: "longtask", buffered: true });
 
+      const interactionEntries = new Map();
+      let pendingInteractionStart = 0;
+      let pendingInteractionEnd = 0;
+      const eventTimingTypes = PerformanceObserver.supportedEntryTypes || [];
+      if (eventTimingTypes.includes("event")) {
+        new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) {
+            if (!entry.interactionId) continue;
+            const previous = interactionEntries.get(entry.interactionId);
+            interactionEntries.set(entry.interactionId, {
+              startTime: Math.min(
+                previous?.startTime ?? entry.startTime,
+                entry.startTime,
+              ),
+              duration: Math.max(previous?.duration ?? 0, entry.duration),
+            });
+            if (
+              pendingInteractionStart > 0 &&
+              entry.startTime >= pendingInteractionStart - 50 &&
+              (pendingInteractionEnd === 0 ||
+                entry.startTime <= pendingInteractionEnd + 500)
+            ) {
+              const currentId = window.__veolmsVitals.interactionId;
+              const current = currentId
+                ? interactionEntries.get(currentId)
+                : undefined;
+              if (!current || entry.startTime >= current.startTime) {
+                window.__veolmsVitals.interactionId = entry.interactionId;
+                window.__veolmsVitals.interactionLatency = Math.max(
+                  0,
+                  entry.duration,
+                );
+              }
+            }
+          }
+        }).observe({ type: "event", durationThreshold: 16, buffered: true });
+      }
+
       addEventListener(
         "pointerdown",
         () => {
           window.__veolmsVitals.interactionStart = performance.now();
+          window.__veolmsVitals.interactionId = 0;
+          window.__veolmsVitals.interactionLatency = 0;
+          pendingInteractionStart = window.__veolmsVitals.interactionStart;
+          pendingInteractionEnd = 0;
         },
         { capture: true },
       );
       addEventListener(
         "pointerup",
         () => {
+          pendingInteractionEnd = performance.now();
           requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-              window.__veolmsVitals.interactionLatency =
-                performance.now() - window.__veolmsVitals.interactionStart;
+              const candidate = [...interactionEntries.entries()]
+                .filter(
+                  ([, value]) =>
+                    value.startTime >= pendingInteractionStart - 50 &&
+                    value.startTime <= performance.now() + 500,
+                )
+                .sort(
+                  ([, left], [, right]) => right.startTime - left.startTime,
+                )[0];
+              if (candidate) {
+                const [interactionId, value] = candidate;
+                window.__veolmsVitals.interactionId = interactionId;
+                window.__veolmsVitals.interactionLatency = Math.max(
+                  0,
+                  value.duration,
+                );
+              }
             });
           });
         },
@@ -202,7 +261,10 @@ for (const route of routes) {
 
   const numericKeys = Object.keys(samples[0]);
   const medians = Object.fromEntries(
-    numericKeys.map((key) => [key, round(median(samples.map((item) => item[key])))]),
+    numericKeys.map((key) => [
+      key,
+      round(median(samples.map((item) => item[key]))),
+    ]),
   );
   results.push({ ...route, medians, samples });
 }
@@ -215,7 +277,9 @@ const report = {
   profile: {
     cpuSlowdown,
     device: "412x915 @2x, Android mobile emulation",
-    network: throttleNetwork ? "1.6 Mbps down, 750 Kbps up, 150 ms RTT" : "unthrottled",
+    network: throttleNetwork
+      ? "1.6 Mbps down, 750 Kbps up, 150 ms RTT"
+      : "unthrottled",
     samplesPerRoute,
   },
   routes: results,

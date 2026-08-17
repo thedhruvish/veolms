@@ -2,8 +2,8 @@
 
 ## Source of truth
 
-- Reference: `C:/Users/anura/AppData/Local/Temp/codex-clipboard-d3d39b6e-9418-4093-8c22-956778c014a9.png`
-- Implemented view: `C:/Users/anura/AppData/Local/Temp/veolms-theme-menu-implementation.png`
+- Reference: supplied theme palette reference
+- Implemented view: captured locally during design QA
 - Reference dimensions: 1254 × 1254 px
 - Implementation capture: 879 × 678 CSS px at 1.35 device-pixel ratio
 - Captured state: `/explore-courses`, collapsed desktop sidebar, dark mode, Copper Slate selected, theme menu open

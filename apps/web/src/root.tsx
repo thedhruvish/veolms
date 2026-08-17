@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Links, Meta, Outlet, Scripts } from "react-router";
 import { fullAppStylesheet } from "./appStylesheet";
 import manropeFontUrl from "./assets/fonts/manrope-core.woff2?url";
-import procodrrLogo from "./assets/procodrr-logo-dark.svg";
+import procodrrLogoMark from "./assets/procodrr-logo-mark.svg";
 import { ReadingModeEffects } from "./reading-mode/ReadingModeEffects";
 import { getReadingModeBootstrapScript } from "./reading-mode/readingModePreferences";
 import { getSurfaceDepthBootstrapScript } from "./settings/settingsPreferences";
@@ -51,7 +51,7 @@ export function Layout({ children }: LayoutProps) {
           content="width=device-width, initial-scale=1.0, viewport-fit=cover"
         />
         <meta name="theme-color" content="#151718" />
-        <link rel="icon" type="image/svg+xml" href={procodrrLogo} />
+        <link rel="icon" type="image/svg+xml" href={procodrrLogoMark} />
         <link
           rel="preload"
           href={manropeFontUrl}

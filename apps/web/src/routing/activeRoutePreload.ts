@@ -1,9 +1,5 @@
 export type ShellRouteModuleKey =
-  | "my-courses"
-  | "settings"
-  | "catalogue"
-  | "placeholder"
-  | "workspace";
+  "my-courses" | "settings" | "catalogue" | "placeholder" | "workspace";
 
 const routeModuleCache = new Map<ShellRouteModuleKey, unknown>();
 const routeModulePromises = new Map<ShellRouteModuleKey, Promise<unknown>>();
@@ -21,25 +17,31 @@ export function loadShellRouteModule<Module>(
 
   let pending = routeModulePromises.get(key) as Promise<Module> | undefined;
   if (!pending) {
-    pending = loader().then((module) => {
-      routeModuleCache.set(key, module);
-      return module;
-    });
+    pending = loader().then(
+      (module) => {
+        routeModuleCache.set(key, module);
+        routeModulePromises.delete(key);
+        return module;
+      },
+      (error: unknown) => {
+        routeModulePromises.delete(key);
+        throw error;
+      },
+    );
     routeModulePromises.set(key, pending);
   }
   return pending;
 }
 
 /**
- * Fetch the one split route needed by the prerendered document before React
- * hydrates it. This keeps the server HTML visible without forcing every route
- * implementation into the initial browser bundle.
+ * Optionally fetch the route module needed by a prerendered document before
+ * hydration. The current shell keeps route imports eager for immediate
+ * interactivity; callers that opt into route-level loading still get cached,
+ * retryable imports through this helper.
  */
 export async function preloadActiveRouteForHydration(pathname: string) {
   if (pathname.startsWith("/settings")) {
-    await loadShellRouteModule("settings", () =>
-      import("../SettingsPage"),
-    );
+    await loadShellRouteModule("settings", () => import("../SettingsPage"));
     return;
   }
 
@@ -49,29 +51,33 @@ export async function preloadActiveRouteForHydration(pathname: string) {
   }
 
   if (pathname === "/explore-courses" || pathname === "/wishlist") {
-    await loadShellRouteModule("catalogue", () =>
-      import("../courses/CourseCatalogue"),
+    await loadShellRouteModule(
+      "catalogue",
+      () => import("../courses/CourseCatalogue"),
     );
     return;
   }
 
   if (pathname === "/courses/create") {
-    await loadShellRouteModule("placeholder", () =>
-      import("../courses/PlaceholderPage"),
+    await loadShellRouteModule(
+      "placeholder",
+      () => import("../courses/PlaceholderPage"),
     );
     return;
   }
 
   if (pathname === "/discussions" || pathname.startsWith("/discussions/")) {
-    await loadShellRouteModule("workspace", () =>
-      import("../workspace/WorkspacePages"),
+    await loadShellRouteModule(
+      "workspace",
+      () => import("../workspace/WorkspacePages"),
     );
     return;
   }
 
   if (pathname === "/logout") {
-    await loadShellRouteModule("workspace", () =>
-      import("../workspace/WorkspacePages"),
+    await loadShellRouteModule(
+      "workspace",
+      () => import("../workspace/WorkspacePages"),
     );
     return;
   }
@@ -83,8 +89,9 @@ export async function preloadActiveRouteForHydration(pathname: string) {
     !pathname.startsWith("/learn/") &&
     !pathname.startsWith("/courses/")
   ) {
-    await loadShellRouteModule("placeholder", () =>
-      import("../courses/PlaceholderPage"),
+    await loadShellRouteModule(
+      "placeholder",
+      () => import("../courses/PlaceholderPage"),
     );
   }
 }
