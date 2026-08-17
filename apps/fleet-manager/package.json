@@ -11,7 +11,9 @@
   "dependencies": {
     "@veolms/config": "workspace:*",
     "@veolms/database": "workspace:*",
-    "@veolms/fleet-types": "workspace:*"
+    "@veolms/fleet-plugin-simulator": "workspace:*",
+    "@veolms/fleet-types": "workspace:*",
+    "kysely": "catalog:"
   },
   "devDependencies": {
     "@types/node": "^24.10.13",
