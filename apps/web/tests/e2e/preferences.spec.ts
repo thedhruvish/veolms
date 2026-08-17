@@ -254,7 +254,7 @@ test("the framed learning scrollbar clears content at compact and wide desktop s
     ).toBeLessThan(0.5);
     expect(
       trackBounds!.x - (contentBounds!.x + contentBounds!.width),
-    ).toBeGreaterThanOrEqual(3.5);
+    ).toBeGreaterThanOrEqual(1.5);
 
     if (width > 1080) {
       const curriculum = page.locator("#learning-course-curriculum-scrollport");

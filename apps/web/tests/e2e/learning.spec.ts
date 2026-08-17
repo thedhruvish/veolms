@@ -24,37 +24,56 @@ test("desktop discussion preserves card elevation to the lesson frame edges", as
     const panel = document.querySelector<HTMLElement>(
       "#learning-discussion-tab-panel",
     );
+    const curriculum = document.querySelector<HTMLElement>(
+      ".learning-workspace__curriculum-column",
+    );
     const card = document.querySelector<HTMLElement>(
       ".learning-comment-composer",
     );
-    if (!main || !lesson || !panel || !card) {
+    if (!main || !lesson || !panel || !curriculum || !card) {
       throw new Error("Learning discussion layout targets missing");
     }
 
     const mainRect = main.getBoundingClientRect();
     const lessonRect = lesson.getBoundingClientRect();
     const panelRect = panel.getBoundingClientRect();
+    const curriculumRect = curriculum.getBoundingClientRect();
     const cardRect = card.getBoundingClientRect();
     const mainStyle = getComputedStyle(main);
+    const curriculumStyle = getComputedStyle(curriculum);
     return {
       mainLeft: mainRect.left,
+      mainRight: mainRect.right,
       lessonRight: lessonRect.right,
       panelLeft: panelRect.left,
       panelRight: panelRect.right,
+      curriculumLeft: curriculumRect.left,
+      curriculumRight: curriculumRect.right,
+      curriculumTop: Number.parseFloat(curriculumStyle.top),
+      curriculumHeight: curriculumRect.height,
       cardLeft: cardRect.left,
       cardRight: cardRect.right,
+      mainColumnGap: Number.parseFloat(mainStyle.columnGap),
+      mainPaddingTop: Number.parseFloat(mainStyle.paddingTop),
       mainPaddingLeft: Number.parseFloat(mainStyle.paddingLeft),
       mainPaddingRight: Number.parseFloat(mainStyle.paddingRight),
+      mainPaddingBottom: Number.parseFloat(mainStyle.paddingBottom),
       panelOverflowX: getComputedStyle(panel).overflowX,
     };
   });
 
   expect(geometry.panelOverflowX).toBe("clip");
+  expect(geometry.mainColumnGap).toBe(10);
+  expect(geometry.mainPaddingTop).toBe(12);
+  expect(geometry.mainPaddingRight).toBe(14);
+  expect(geometry.mainPaddingBottom).toBe(12);
+  expect(geometry.mainPaddingLeft).toBe(12);
+  expect(geometry.curriculumTop).toBe(12);
+  expect(geometry.curriculumHeight).toBeCloseTo(678 - 24, 0);
+  expect(geometry.mainRight - geometry.curriculumRight).toBeCloseTo(14, 0);
+  expect(geometry.curriculumLeft - geometry.lessonRight).toBeCloseTo(10, 0);
   expect(geometry.panelLeft).toBeCloseTo(geometry.mainLeft, 0);
-  expect(geometry.panelRight).toBeCloseTo(
-    geometry.lessonRight + geometry.mainPaddingRight,
-    0,
-  );
+  expect(geometry.panelRight).toBeCloseTo(geometry.curriculumLeft, 0);
   expect(geometry.cardLeft - geometry.panelLeft).toBeGreaterThanOrEqual(
     geometry.mainPaddingLeft,
   );
