@@ -7,7 +7,9 @@ cascade order used before the modular split.
 - `base/` contains global tokens, resets, and shared controls.
 - `features/` contains page- and feature-owned rules.
 - `shell/` contains navigation, shell controls, cards, and responsive shell rules.
-- `themes/` contains theme declarations grouped by their original cascade stage.
+- `themes/dark/` and `themes/light/` contain one CSS file per palette.
+- `themes/contracts.css` and `themes/accent-contract.css` contain behavior shared
+  by multiple palettes.
 - `global/` contains app-wide behavior that must remain late in the cascade.
 
 All modules are intentionally imported globally for now. Do not move imports into

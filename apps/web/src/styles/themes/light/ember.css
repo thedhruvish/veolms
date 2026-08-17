@@ -1,0 +1,34 @@
+/* ember palette — light mode. */
+:root[data-theme="light"][data-palette="ember"] {
+  --canvas: #fff7f0;
+  --header: #fffdfb;
+  --surface: #ffffff;
+  --hover: #fff0e3;
+  --selected: #ffe5d0;
+  --track: #f0ded1;
+  --border: #ead5c4;
+  --border-strong: #c9a991;
+  --text: #211811;
+  --text-secondary: #46362c;
+  --muted: #6d594a;
+  --accent: #b84308;
+  --accent-hover: #9f3604;
+  --accent-soft: rgba(184, 67, 8, 0.12);
+  --accent-border: rgba(184, 67, 8, 0.3);
+  --accent-shadow: rgba(184, 67, 8, 0.16);
+  --on-accent: #ffffff;
+}
+
+:root[data-theme="light"][data-palette="ember"] {
+  --app-shell: #ebe4df;
+  --main-surface: #fbf5f1;
+  --canvas: #f3ece7;
+  --header: #eee7e2;
+  --surface: #fffdfb;
+  --surface-strong: #f7ede6;
+  --hover: #f2e6de;
+  --selected: #f6dfcf;
+  --track: #e8ddd5;
+  --border: transparent;
+  --border-strong: transparent;
+}
