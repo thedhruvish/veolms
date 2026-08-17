@@ -1,16 +1,20 @@
 {
-  "name": "@veolms/fleet-manager",
+  "name": "@veolms/fleet-plugin-simulator",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./driver": "./src/driver.ts",
+    "./instance": "./src/instance.ts",
+    "./options": "./src/options.ts"
+  },
   "scripts": {
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "test": "node --test tests/**/*.test.ts",
-    "start": "node src/index.ts"
+    "test": "node --test tests/**/*.test.ts"
   },
   "dependencies": {
-    "@veolms/config": "workspace:*",
-    "@veolms/database": "workspace:*",
     "@veolms/fleet-types": "workspace:*"
   },
   "devDependencies": {

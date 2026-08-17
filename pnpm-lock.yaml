@@ -109,7 +109,24 @@ importers:
         specifier: ^13.1.3
         version: 13.1.3
 
-  apps/fleet-manager: {}
+  apps/fleet-manager:
+    dependencies:
+      '@veolms/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@veolms/database':
+        specifier: workspace:*
+        version: link:../../packages/database
+      '@veolms/fleet-types':
+        specifier: workspace:*
+        version: link:../../packages/fleet-types
+    devDependencies:
+      '@types/node':
+        specifier: ^24.10.13
+        version: 24.13.3
+      typescript:
+        specifier: npm:@typescript/typescript6@^6.0.2
+        version: '@typescript/typescript6@6.0.2'
 
   apps/media-worker: {}
 
@@ -213,6 +230,32 @@ importers:
       '@types/pg':
         specifier: 8.15.5
         version: 8.15.5
+
+  packages/fleet-plugin-local:
+    dependencies:
+      '@veolms/fleet-types':
+        specifier: workspace:*
+        version: link:../fleet-types
+    devDependencies:
+      '@types/node':
+        specifier: ^24.10.13
+        version: 24.13.3
+      typescript:
+        specifier: npm:@typescript/typescript6@^6.0.2
+        version: '@typescript/typescript6@6.0.2'
+
+  packages/fleet-plugin-simulator:
+    dependencies:
+      '@veolms/fleet-types':
+        specifier: workspace:*
+        version: link:../fleet-types
+    devDependencies:
+      '@types/node':
+        specifier: ^24.10.13
+        version: 24.13.3
+      typescript:
+        specifier: npm:@typescript/typescript6@^6.0.2
+        version: '@typescript/typescript6@6.0.2'
 
   packages/fleet-types:
     devDependencies:
