@@ -1,3 +1,130 @@
+.courses-sidebar__label {
+  margin: 12px 14px 10px;
+  opacity: 0.72;
+}
+
+.courses-nav {
+  gap: 4px;
+  margin: 5px -14px -5px;
+  padding: 5px 14px;
+  overflow-x: visible;
+  scrollbar-width: none;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.courses-nav::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.courses-nav.has-scroll-top {
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    transparent 0,
+    #000 26px,
+    #000 100%
+  );
+  mask-image: linear-gradient(180deg, transparent 0, #000 26px, #000 100%);
+}
+
+.courses-nav.has-scroll-bottom {
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    #000 0,
+    #000 calc(100% - 26px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    180deg,
+    #000 0,
+    #000 calc(100% - 26px),
+    transparent 100%
+  );
+}
+
+.courses-nav.has-scroll-top.has-scroll-bottom {
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    transparent 0,
+    #000 26px,
+    #000 calc(100% - 26px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    180deg,
+    transparent 0,
+    #000 26px,
+    #000 calc(100% - 26px),
+    transparent 100%
+  );
+}
+
+.courses-nav button {
+  min-height: 47px;
+  border-radius: 10px;
+  padding-inline: 14px;
+  box-shadow: none;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.courses-nav button:hover {
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  box-shadow: none;
+}
+
+.courses-nav button.is-active {
+  background: var(--sidebar-menu-active-background);
+  box-shadow: var(--sidebar-menu-active-shadow);
+}
+
+.courses-nav button > svg {
+  color: var(--nav-icon-color);
+  filter: drop-shadow(
+    0 0 10px color-mix(in srgb, var(--nav-icon-color) 22%, transparent)
+  );
+}
+
+.courses-nav__resume-indicator {
+  position: absolute;
+  z-index: 1;
+  top: var(--resume-indicator-top, 3px);
+  left: var(--resume-indicator-left, 2px);
+  display: inline-grid;
+  width: 14px;
+  min-width: 14px;
+  max-width: 14px;
+  height: 14px;
+  min-height: 14px;
+  max-height: 14px;
+  aspect-ratio: 1;
+  flex: 0 0 14px;
+  place-items: center;
+  box-sizing: border-box;
+  border-radius: 50%;
+  color: var(--on-accent);
+  background: var(--accent);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--surface) 92%, transparent),
+    0 3px 9px color-mix(in srgb, var(--accent-shadow) 52%, transparent);
+  font-style: normal;
+  line-height: 0;
+  pointer-events: none;
+}
+
+:root[data-theme="light"] .courses-nav__resume-indicator {
+  box-shadow: 0 3px 9px
+    color-mix(in srgb, var(--accent-shadow) 52%, transparent);
+}
+
 /* Phosphor navigation glyphs use different painted bounds inside the same
    256px viewBox. Normalize the resume badge optically against the approved
    GraduationCap relationship instead of aligning only their SVG boxes. */
@@ -577,4 +704,351 @@
   > i {
   transform: translateY(0) scale(0.99);
   transition-duration: 80ms;
+}
+
+/* Light shells keep the same spectrum navigation, but deepen its ink and
+   selection materials so the rail stays as crisp as the dark appearance. */
+:root[data-theme="light"] .sidebar-collapse {
+  color: var(--text-secondary);
+  background: transparent;
+  box-shadow: none;
+  transition:
+    background-color 150ms ease,
+    box-shadow 150ms ease,
+    color 150ms ease;
+}
+
+:root[data-theme="light"] .sidebar-collapse:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--selected) 68%, var(--surface));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--text) 6%, transparent),
+    0 8px 20px color-mix(in srgb, var(--accent-shadow) 34%, transparent);
+}
+
+:root[data-theme="light"] .courses-nav button {
+  color: var(--sidebar-nav-text);
+  font-weight: 560;
+}
+
+:root[data-theme="light"] .courses-nav button:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--selected) 68%, var(--surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+:root[data-theme="light"] .courses-nav button.is-active {
+  color: var(--text);
+  background: var(--sidebar-menu-active-background);
+  box-shadow: var(--sidebar-menu-active-shadow);
+}
+
+:root[data-theme="light"] .courses-nav button.is-active .courses-nav__text {
+  font-weight: 680;
+  letter-spacing: -0.01em;
+}
+
+:root[data-theme="light"] .courses-nav button > svg {
+  /* Keep the per-item spectrum saturated on pale rails; the previous blend
+     with the rail ink washed the icons out in every light palette. */
+  color: color-mix(
+    in srgb,
+    var(--nav-icon-color) 88%,
+    var(--sidebar-icon-ink) 12%
+  );
+  filter: drop-shadow(
+      0 1px 2px color-mix(in srgb, var(--nav-icon-color) 34%, transparent)
+    )
+    drop-shadow(
+      0 0 5px color-mix(in srgb, var(--nav-icon-color) 18%, transparent)
+    );
+}
+
+:root[data-theme="light"] .courses-nav button.is-active > svg {
+  color: color-mix(
+    in srgb,
+    var(--nav-icon-color) 94%,
+    var(--sidebar-icon-ink) 6%
+  );
+  filter: drop-shadow(
+      0 1px 2px color-mix(in srgb, var(--nav-icon-color) 42%, transparent)
+    )
+    drop-shadow(
+      0 0 7px color-mix(in srgb, var(--nav-icon-color) 26%, transparent)
+    );
+}
+
+:root[data-theme="light"] .courses-profile__button {
+  background: var(--sidebar-control-surface);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 72%, transparent),
+    inset 1px 0 0 color-mix(in srgb, white 42%, transparent),
+    0 9px 22px color-mix(in srgb, var(--text) 10%, transparent),
+    0 2px 9px color-mix(in srgb, var(--accent-shadow) 18%, transparent);
+}
+
+:root[data-theme="light"] .courses-profile__button small,
+:root[data-theme="light"] .sidebar-appearance > button,
+:root[data-theme="light"] .sidebar-palette-trigger {
+  color: var(--text-secondary);
+}
+
+:root[data-theme="light"] .sidebar-appearance {
+  background: var(--sidebar-control-surface);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 72%, transparent),
+    inset 1px 0 0 color-mix(in srgb, white 42%, transparent),
+    0 9px 22px color-mix(in srgb, var(--text) 10%, transparent),
+    0 2px 9px color-mix(in srgb, var(--accent-shadow) 18%, transparent);
+}
+
+:root[data-theme="light"] .sidebar-appearance > button.is-active,
+:root[data-theme="light"] .sidebar-palette-trigger[aria-pressed="true"] {
+  color: var(--text);
+  background: var(--sidebar-menu-active-background);
+  box-shadow: var(--sidebar-menu-active-shadow);
+}
+
+.courses-app--collapsed .courses-sidebar {
+  padding-inline: 10px;
+  padding-bottom: 8px;
+}
+
+.courses-app--collapsed .courses-sidebar__brand {
+  min-height: 36px;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 0;
+  padding: 0;
+}
+
+.courses-app--collapsed .courses-logo-clip {
+  display: none;
+}
+
+/* In compact mode the optional brand mark occupies the rail by itself. The
+   expand affordance stays quiet until the rail is hovered or focused, keeping
+   the P readable without competing with the navigation icons. */
+:root[data-collapsed-sidebar-logo="true"]
+  .courses-app--collapsed
+  .courses-sidebar__brand {
+  position: relative;
+}
+
+:root[data-collapsed-sidebar-logo="false"]
+  .courses-app--collapsed
+  .courses-logo-clip {
+  display: none !important;
+}
+
+:root[data-collapsed-sidebar-logo="true"]
+  .courses-app--collapsed
+  .courses-logo-clip {
+  display: block;
+  position: absolute;
+  /* The visible P sits high and fractionally left inside the full wordmark's
+     viewBox. Offset the clipping window so the rendered glyph—not merely its
+     box—shares the expand button's optical center. */
+  top: 3px;
+  left: calc(50% + 3.4px);
+  width: 21px;
+  max-width: 21px;
+  height: 36px;
+  overflow: hidden;
+  opacity: 1;
+  clip-path: inset(0 0 0 0);
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition: none;
+}
+
+:root[data-collapsed-sidebar-logo="true"]
+  .courses-app--collapsed
+  .courses-logo-clip
+  svg {
+  width: 156px;
+  max-width: none;
+  height: 38px;
+}
+
+:root[data-collapsed-sidebar-logo="true"]
+  .courses-app--collapsed
+  .sidebar-collapse {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  right: auto;
+  z-index: 1;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition: opacity 150ms ease;
+}
+
+:root[data-collapsed-sidebar-logo="true"]
+  .courses-app--collapsed
+  .courses-sidebar:hover
+  .sidebar-collapse,
+:root[data-collapsed-sidebar-logo="true"]
+  .courses-app--collapsed
+  .courses-sidebar:focus-within
+  .sidebar-collapse {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Treat the compact mark and expand control as one visual slot. Hovering or
+   keyboard focus swaps the P for the action instead of stacking both marks. */
+:root[data-collapsed-sidebar-logo="true"]
+  .courses-app--collapsed
+  .courses-sidebar:hover
+  .courses-logo-clip,
+:root[data-collapsed-sidebar-logo="true"]
+  .courses-app--collapsed
+  .courses-sidebar:focus-within
+  .courses-logo-clip {
+  opacity: 0;
+  clip-path: inset(0 50% 0 50%);
+}
+
+.courses-app--collapsed .courses-nav {
+  align-items: stretch;
+  /* The expanded brand is 38px tall while the compact brand slot is 36px.
+     This offset keeps the navigation's content box on the identical pixel row
+     in both states while preserving the permanent rail fade. */
+  margin: -4px -10px 0;
+  min-height: 0;
+  padding: 16px 14px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    transparent 0,
+    #000 16px,
+    #000 calc(100% - 16px),
+    transparent 100%
+  ) !important;
+  mask-image: linear-gradient(
+    180deg,
+    transparent 0,
+    #000 16px,
+    #000 calc(100% - 16px),
+    transparent 100%
+  ) !important;
+}
+
+.courses-app--collapsed .courses-nav::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.courses-app--collapsed .courses-nav button {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 15px;
+  padding: 0 0 0 12.5px;
+  overflow: visible;
+}
+
+.courses-app--collapsed .courses-nav button > .courses-nav__text,
+.courses-app--collapsed .courses-nav button > b,
+.courses-app--collapsed .courses-nav button > .courses-nav__shortcut {
+  display: none;
+}
+
+.courses-app--collapsed .courses-profile__button {
+  height: 57px;
+  min-height: 57px;
+  gap: 0;
+  justify-content: flex-start;
+  padding: 7px;
+}
+
+.courses-app--collapsed .courses-profile__button > .shell-profile-avatar,
+.courses-app--collapsed .courses-profile__button img {
+  width: 43px;
+  height: 43px;
+}
+
+.courses-app--collapsed .courses-profile__button > .shell-profile-avatar {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.courses-app--collapsed .courses-profile {
+  margin-top: 6px;
+}
+
+.courses-app--collapsed .sidebar-appearance {
+  margin-top: 6px;
+}
+
+.courses-app--collapsed .sidebar-appearance {
+  align-items: center;
+  flex-direction: column;
+  padding: 8px;
+}
+
+.courses-app--collapsed .sidebar-appearance > button {
+  display: inline-flex;
+  width: 42px;
+  flex: 0 0 38px;
+}
+
+.courses-app--collapsed .sidebar-palette-wrap {
+  width: 42px;
+  flex: 0 0 38px;
+}
+
+.courses-app--collapsed .sidebar-palette-menu {
+  right: auto;
+  bottom: -9px;
+  left: calc(100% + 2px);
+}
+
+.courses-app--collapsed
+  .sidebar-palette-menu--dock-attached.sidebar-palette-menu--collapsed {
+  top: auto;
+  bottom: calc(
+    -5px +
+      (var(--sidebar-dock-count, 1) - var(--palette-menu-dock-index, 0) - 1) *
+      42px
+  );
+}
+
+.courses-app--hidden .courses-sidebar {
+  top: 14px;
+  bottom: 14px;
+  left: 14px;
+  width: 252px;
+  height: auto;
+  border-radius: 14px;
+  padding-inline: 14px;
+  background: var(--app-shell);
+}
+
+.courses-app--hidden.courses-app--edge-open .courses-sidebar {
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.38);
+}
+
+.courses-search,
+.course-select,
+.learning-search,
+.learning-select,
+.learning-filter-tabs button,
+.enrollment-tabs {
+  border-color: transparent;
+  background: var(--surface);
+}
+
+.courses-search:focus-within,
+.course-select:focus-within,
+.learning-search:focus-within,
+.learning-select:focus-within {
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 10px 24px color-mix(in srgb, var(--accent-shadow) 42%, transparent);
 }

@@ -177,13 +177,37 @@
   --page-tab-tone: #ff6684;
 }
 
+:root[data-theme="light"] .page-tabs [data-page-tab-tone="blue"] {
+  --page-tab-tone: #1769aa;
+}
+:root[data-theme="light"] .page-tabs [data-page-tab-tone="violet"] {
+  --page-tab-tone: #6741b8;
+}
+:root[data-theme="light"] .page-tabs [data-page-tab-tone="cyan"] {
+  --page-tab-tone: #0b6d79;
+}
+:root[data-theme="light"] .page-tabs [data-page-tab-tone="green"] {
+  --page-tab-tone: #14763f;
+}
+:root[data-theme="light"] .page-tabs [data-page-tab-tone="gold"] {
+  --page-tab-tone: #7b5b00;
+}
+:root[data-theme="light"] .page-tabs [data-page-tab-tone="orange"] {
+  --page-tab-tone: #9a4d00;
+}
+:root[data-theme="light"] .page-tabs [data-page-tab-tone="rose"] {
+  --page-tab-tone: #b82b52;
+}
 
-
-
-
-
-
-
+:root[data-page-tab-colors="multicolor"]
+  .page-tabs
+  [role="tab"][data-page-tab-tone],
+:root[data-page-tab-colors="follow-sidebar"][data-sidebar-icon-style="multicolor"]
+  .page-tabs
+  [role="tab"][data-page-tab-tone] {
+  --page-tab-active-ink: var(--page-tab-tone);
+  --page-tab-active-indicator: var(--page-tab-tone);
+}
 
 .lesson-tool-tab.is-active {
   color: var(--page-tab-active-ink);
@@ -933,6 +957,10 @@
   background: var(--on-accent);
 }
 
+:root[data-theme="light"] .settings-toggle > span {
+  background: rgb(255 255 255);
+  box-shadow: 0 1px 3px rgb(25 32 45 / 22%);
+}
 
 .settings-theme-pool {
   display: grid;
@@ -1150,8 +1178,15 @@
   width: 58%;
 }
 
-
-
+:root[data-sidebar-monochrome-mode="theme"] .settings-icon-preview--mono {
+  color: var(--accent-ink, var(--accent));
+}
+:root[data-sidebar-monochrome-mode="neutral"] .settings-icon-preview--mono {
+  color: var(--text);
+}
+:root[data-sidebar-monochrome-mode="custom"] .settings-icon-preview--mono {
+  color: var(--sidebar-monochrome-color, var(--accent));
+}
 
 .settings-inline-options {
   display: flex;

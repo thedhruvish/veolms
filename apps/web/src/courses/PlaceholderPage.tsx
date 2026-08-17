@@ -1,4 +1,3 @@
-import "../styles/features/courses.css";
 import { Bell } from "@phosphor-icons/react/Bell";
 import { BookOpen } from "@phosphor-icons/react/BookOpen";
 import { ChartBar } from "@phosphor-icons/react/ChartBar";

@@ -1,9 +1,8 @@
-import "../styles/features/learning.css";
 import { ChatCenteredDots } from "@phosphor-icons/react/ChatCenteredDots";
 import { DotsThreeVertical } from "@phosphor-icons/react/DotsThreeVertical";
 import { ThumbsUp } from "@phosphor-icons/react/ThumbsUp";
 import React, { useState } from "react";
-import { IconButton } from "../ui/IconButton";
+import { IconButton } from "./IconButton";
 
 export interface Comment {
   id: number;

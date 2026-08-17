@@ -139,22 +139,3 @@
     transform: translateY(0) scale(1);
   }
 }
-
-.course-card,
-.learning-card,
-.home-resume-card,
-.dashboard-panel,
-.home-goal-summary,
-.home-mini-course,
-.learning-summary-row article,
-.home-metric {
-  border: 0;
-  background: var(--card-surface);
-  box-shadow: var(--card-shadow);
-}
-
-.home-mini-course,
-.home-metric,
-.learning-summary-row article {
-  background: var(--card-surface-raised);
-}

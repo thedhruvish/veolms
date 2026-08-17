@@ -1,0 +1,19 @@
+:root[data-theme="light"][data-palette="signal"] {
+  --canvas: #fff1f3;
+  --header: #fffdfd;
+  --surface: #ffffff;
+  --hover: #ffe7eb;
+  --selected: #ffdce3;
+  --track: #f0d9de;
+  --border: #e9cbd2;
+  --border-strong: #ce9ba7;
+  --text: #260c12;
+  --text-secondary: #56313a;
+  --muted: #805c64;
+  --accent: #bb1d3d;
+  --accent-hover: #a81634;
+  --accent-soft: rgba(187, 29, 61, 0.12);
+  --accent-border: rgba(187, 29, 61, 0.3);
+  --accent-shadow: rgba(168, 22, 52, 0.16);
+  --on-accent: #ffffff;
+}

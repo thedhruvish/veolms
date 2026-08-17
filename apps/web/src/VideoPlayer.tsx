@@ -1,4 +1,3 @@
-import "./styles/features/learning.css";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { CaretLeft } from "@phosphor-icons/react/CaretLeft";

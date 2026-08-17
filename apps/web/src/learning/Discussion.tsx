@@ -1,4 +1,3 @@
-import "../styles/features/learning.css";
 import { ChatCenteredDots } from "@phosphor-icons/react/ChatCenteredDots";
 import { MagnifyingGlass } from "@phosphor-icons/react/MagnifyingGlass";
 import { Notepad } from "@phosphor-icons/react/Notepad";
