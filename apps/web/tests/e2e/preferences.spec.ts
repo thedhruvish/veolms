@@ -169,8 +169,7 @@ test("page tabs pin beneath the shell edge while the framed surface uses only a 
         background,
       };
     });
-    expect(thumbAppearance.alpha).toBeGreaterThan(0);
-    expect(thumbAppearance.alpha).toBeLessThan(1);
+    expect(thumbAppearance.alpha).toBe(1);
     await page.locator("html").evaluate((root) => {
       root.style.setProperty("--accent", "#ff0066");
     });
@@ -364,8 +363,7 @@ test("the framed learning scrollbar clears content at compact and wide desktop s
           return Number(modernAlpha ?? legacyAlpha ?? 1);
         },
       );
-      expect(curriculumThumbAppearance).toBeGreaterThan(0);
-      expect(curriculumThumbAppearance).toBeLessThan(1);
+      expect(curriculumThumbAppearance).toBe(1);
 
       await curriculum.evaluate((scrollport) => scrollport.scrollTo(0, 0));
       const curriculumScrollTopBeforeClick = await curriculum.evaluate(
@@ -400,6 +398,52 @@ test("the framed learning scrollbar clears content at compact and wide desktop s
         .toBeLessThan(curriculumScrollTopBeforeDrag);
     }
   }
+});
+
+test("curriculum scrollbar follows navigation and sidebar layout shifts without scrolling", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1424, height: 678 });
+  await openApp(page, "/");
+
+  const navigation = page.getByRole("complementary", {
+    name: "Student navigation",
+  });
+  await navigation.getByRole("button", { name: "My Courses" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "The Ultimate TypeScript Course" })
+    .getByRole("button", { name: "Continue Learning" })
+    .click();
+
+  const curriculum = page.locator("#learning-course-curriculum-scrollport");
+  const curriculumScrollbar = page.locator(
+    '.floating-scrollbar[aria-controls="learning-course-curriculum-scrollport"]',
+  );
+  await expect(curriculum).toBeVisible();
+  await expect(curriculumScrollbar).toHaveClass(/is-visible/);
+
+  const scrollbarEdgeDelta = () =>
+    page.evaluate(() => {
+      const scrollport = document.querySelector(
+        "#learning-course-curriculum-scrollport",
+      );
+      const scrollbar = document.querySelector(
+        '.floating-scrollbar[aria-controls="learning-course-curriculum-scrollport"]',
+      );
+      if (!scrollport || !scrollbar) return Number.POSITIVE_INFINITY;
+      return Math.abs(
+        scrollbar.getBoundingClientRect().right -
+          scrollport.getBoundingClientRect().right,
+      );
+    });
+
+  await expect.poll(scrollbarEdgeDelta).toBeLessThan(0.5);
+
+  await navigation
+    .getByRole("button", { name: /^(Expand|Collapse) navigation$/ })
+    .click();
+  await expect.poll(scrollbarEdgeDelta).toBeLessThan(0.5);
 });
 
 test("dock context menus stay attached and reading controls update immediately", async ({
