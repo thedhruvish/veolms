@@ -391,7 +391,7 @@
     margin-top: 10px;
     overflow-y: auto;
     overscroll-behavior: contain;
-    scrollbar-gutter: stable;
+    scrollbar-gutter: auto;
   }
 
   .mobile-menu-sheet__list > button {

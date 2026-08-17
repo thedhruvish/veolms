@@ -61,6 +61,49 @@ test("framed layout scrolls inside its main surface while edge-to-edge uses the 
     .toBeGreaterThan(300);
 });
 
+test("page tabs pin flush while the framed surface uses only a floating thumb", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1133, height: 753 });
+
+  for (const [path, tabSelector] of [
+    ["/discussions/q-and-a", ".discussion-hub__tabs"],
+    ["/settings/appearance", ".settings-tabs"],
+  ] as const) {
+    await openApp(page, path);
+
+    const mainSurface = page.locator("main.courses-main");
+    const tabs = page.locator(tabSelector);
+    const floatingScrollbar = page.locator(".floating-scrollbar");
+
+    await mainSurface.evaluate((main) => main.scrollTo(0, 360));
+    await expect
+      .poll(() =>
+        page.evaluate((selector) => {
+          const main = document.querySelector("main.courses-main");
+          const tabList = document.querySelector(selector);
+          if (!main || !tabList) return null;
+          return Math.abs(
+            tabList.getBoundingClientRect().top -
+              main.getBoundingClientRect().top,
+          );
+        }, tabSelector),
+      )
+      .toBeLessThan(0.5);
+
+    await expect(tabs).toBeVisible();
+    await expect(floatingScrollbar).toHaveClass(/is-visible/);
+    await expect(
+      floatingScrollbar.locator(":scope > .floating-scrollbar__thumb"),
+    ).toHaveCount(1);
+    await expect
+      .poll(() =>
+        mainSurface.evaluate((main) => main.offsetWidth - main.clientWidth),
+      )
+      .toBe(0);
+  }
+});
+
 test("dock context menus stay attached and reading controls update immediately", async ({
   page,
 }) => {

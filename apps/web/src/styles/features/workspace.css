@@ -402,7 +402,7 @@
 
 .discussion-hub__tabs {
   position: sticky;
-  top: 0;
+  top: var(--page-tabs-sticky-top, 0px);
   z-index: 26;
   display: flex;
   min-width: 0;
