@@ -1,26 +1,21 @@
+import { Bell } from "@phosphor-icons/react/Bell";
+import { GearSix } from "@phosphor-icons/react/GearSix";
+import { GraduationCap } from "@phosphor-icons/react/GraduationCap";
+import { Palette } from "@phosphor-icons/react/Palette";
+import { ShieldCheck } from "@phosphor-icons/react/ShieldCheck";
+import { SidebarSimple } from "@phosphor-icons/react/SidebarSimple";
+import { UserCircle } from "@phosphor-icons/react/UserCircle";
 import {
-  Bell,
-  GearSix,
-  GraduationCap,
-  Palette,
-  ShieldCheck,
-  SidebarSimple,
-  UserCircle,
-} from "@phosphor-icons/react";
-import { useEffect, useRef, type ComponentType } from "react";
+  useEffect,
+  useRef,
+  type ComponentType,
+} from "react";
 import { handleRovingTabKeyDown } from "./accessibility/rovingTabFocus";
-import { AccountSettings } from "./settings/AccountSettings";
-import { AppearanceSettings } from "./settings/AppearanceSettings";
 import type { DisplayMode } from "./settings/AppearanceSettings";
-import { LearningSettings } from "./settings/LearningSettings";
-import { NotificationSettings } from "./settings/NotificationSettings";
-import { ProfileSettings } from "./settings/ProfileSettings";
 import type {
   ProfilePreferences,
   ProfileRole,
 } from "./settings/profilePreferences";
-import { SidebarSettings } from "./settings/SidebarSettings";
-import { SecuritySettings } from "./settings/SecuritySettings";
 import type {
   PageTabColors,
   SidebarMode,
@@ -37,7 +32,13 @@ import {
   isEditingShortcutTarget,
 } from "./keyboardShortcuts";
 import { SwipeableTabPanel } from "./navigation/SwipeableTabPanel";
-
+import { AccountSettings } from "./settings/AccountSettings";
+import { AppearanceSettings } from "./settings/AppearanceSettings";
+import { LearningSettings } from "./settings/LearningSettings";
+import { NotificationSettings } from "./settings/NotificationSettings";
+import { ProfileSettings } from "./settings/ProfileSettings";
+import { SecuritySettings } from "./settings/SecuritySettings";
+import { SidebarSettings } from "./settings/SidebarSettings";
 export type { SettingsTab } from "./routing/tabSessionState";
 
 type SettingsTabIcon = ComponentType<{
@@ -102,6 +103,59 @@ export interface SettingsPageProps {
   onSidebarModeChange: (mode: SidebarMode) => void;
 }
 
+function SettingsTabContent({
+  panelTab,
+  pageProps,
+}: {
+  panelTab: SettingsTab;
+  pageProps: SettingsPageProps;
+}) {
+  switch (panelTab) {
+    case "profile":
+      return (
+        <ProfileSettings
+          role={pageProps.role}
+          onNavigatePage={pageProps.onNavigatePage}
+          onProfileSaved={pageProps.onProfileSaved}
+        />
+      );
+    case "appearance":
+      return (
+        <AppearanceSettings
+          theme={pageProps.theme}
+          onThemeChange={pageProps.onThemeChange}
+          academyTheme={pageProps.academyTheme}
+          onAcademyThemeChange={pageProps.onAcademyThemeChange}
+          pageTabColors={pageProps.pageTabColors}
+          onPageTabColorsChange={pageProps.onPageTabColorsChange}
+        />
+      );
+    case "sidebar":
+      return (
+        <SidebarSettings
+          sidebarPreferences={pageProps.sidebarPreferences}
+          onSidebarPreferencesChange={pageProps.onSidebarPreferencesChange}
+          academyTheme={pageProps.academyTheme}
+          sidebarMode={pageProps.sidebarMode}
+          onSidebarModeChange={pageProps.onSidebarModeChange}
+        />
+      );
+    case "learning":
+      return <LearningSettings />;
+    case "notifications":
+      return <NotificationSettings />;
+    case "security":
+      return <SecuritySettings />;
+    case "account":
+      return (
+        <AccountSettings
+          role={pageProps.role ?? "student"}
+          onNavigatePage={pageProps.onNavigatePage}
+        />
+      );
+  }
+}
+
 export function SettingsPage({
   tab = "profile",
   role = "student",
@@ -121,46 +175,30 @@ export function SettingsPage({
 }: SettingsPageProps) {
   const activeTab = normalizeSettingsTab(tab);
   const tabListRef = useRef<HTMLElement>(null);
+  const pageProps: SettingsPageProps = {
+    tab,
+    role,
+    onNavigatePage,
+    onExitSettings,
+    onProfileSaved,
+    theme,
+    onThemeChange,
+    academyTheme,
+    onAcademyThemeChange,
+    pageTabColors,
+    onPageTabColorsChange,
+    sidebarPreferences,
+    onSidebarPreferencesChange,
+    sidebarMode,
+    onSidebarModeChange,
+  };
   const navigateTab = (id: SettingsTab) => {
     rememberSettingsTab(id);
     onNavigatePage?.(`/settings/${id}`, { preserveScroll: true });
   };
 
   const renderSettingsTab = (panelTab: SettingsTab) => (
-    <>
-      {panelTab === "profile" && (
-        <ProfileSettings
-          role={role}
-          onNavigatePage={onNavigatePage}
-          onProfileSaved={onProfileSaved}
-        />
-      )}
-      {panelTab === "appearance" && (
-        <AppearanceSettings
-          theme={theme}
-          onThemeChange={onThemeChange}
-          academyTheme={academyTheme}
-          onAcademyThemeChange={onAcademyThemeChange}
-          pageTabColors={pageTabColors}
-          onPageTabColorsChange={onPageTabColorsChange}
-        />
-      )}
-      {panelTab === "sidebar" && (
-        <SidebarSettings
-          sidebarPreferences={sidebarPreferences}
-          onSidebarPreferencesChange={onSidebarPreferencesChange}
-          academyTheme={academyTheme}
-          sidebarMode={sidebarMode}
-          onSidebarModeChange={onSidebarModeChange}
-        />
-      )}
-      {panelTab === "learning" && <LearningSettings />}
-      {panelTab === "notifications" && <NotificationSettings />}
-      {panelTab === "security" && <SecuritySettings />}
-      {panelTab === "account" && (
-        <AccountSettings role={role} onNavigatePage={onNavigatePage} />
-      )}
-    </>
+    <SettingsTabContent panelTab={panelTab} pageProps={pageProps} />
   );
 
   useEffect(() => {

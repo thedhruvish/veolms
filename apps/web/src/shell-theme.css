@@ -1416,24 +1416,56 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
 }
 
 .courses-nav__shortcut {
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   margin-left: auto;
+  min-width: 0;
+  min-height: 28px;
   max-width: 0;
   overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  padding: 0;
   visibility: hidden;
   opacity: 0;
   transform: translateX(4px);
   transition:
     max-width 150ms cubic-bezier(0.16, 1, 0.3, 1),
+    min-width 150ms cubic-bezier(0.16, 1, 0.3, 1),
+    padding 150ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 150ms ease,
+    background-color 150ms ease,
     opacity 120ms ease,
     transform 150ms cubic-bezier(0.16, 1, 0.3, 1),
     visibility 0s linear 150ms;
 }
 
+.courses-nav__shortcut kbd {
+  min-width: 0;
+  min-height: 0;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  box-shadow: none;
+  font: inherit;
+}
+
 .courses-nav button:hover .courses-nav__shortcut,
 .courses-nav button:focus-visible .courses-nav__shortcut {
-  max-width: 76px;
+  min-width: 28px;
+  max-width: 96px;
+  border-color: color-mix(in srgb, var(--accent) 22%, transparent);
+  padding-inline: 8px;
+  color: color-mix(in srgb, var(--text) 92%, var(--accent));
+  background: color-mix(in srgb, var(--surface-strong) 84%, var(--accent) 16%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--text) 10%, transparent),
+    0 4px 12px color-mix(in srgb, var(--accent-shadow) 24%, transparent);
   visibility: visible;
-  opacity: 0.82;
+  opacity: 1;
   transform: translateX(0);
   transition-delay: 0s;
 }
@@ -1521,7 +1553,8 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
 
 .courses-profile__button {
   position: relative;
-  z-index: 140;
+  /* Keep the profile trigger beneath both overlay menus when they overlap. */
+  z-index: 80;
   height: 57px;
   min-height: 57px;
   border: 0;
@@ -1554,11 +1587,14 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
 
 .profile-menu,
 .sidebar-palette-menu {
-  z-index: 100;
   border: 0;
   color: var(--text);
   background: var(--surface-strong);
   box-shadow: 0 22px 52px rgba(0, 0, 0, 0.32);
+}
+
+.profile-menu {
+  z-index: 100;
 }
 
 .sidebar-appearance {
@@ -1640,7 +1676,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   right: 0;
   bottom: calc(100% - 4px);
   left: auto;
-  width: min(264px, 100%);
+  width: 212px;
 }
 
 .sidebar-palette-trigger {
@@ -1663,98 +1699,238 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   bottom: calc(100% + 2px);
   left: 0;
   z-index: 130;
-  width: 276px;
-  max-height: calc(100dvh - 28px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  border-radius: 13px;
-  padding: 8px;
-}
-
-.sidebar-palette-menu > div {
   display: grid;
-  padding: 5px 8px 7px;
+  width: 212px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  overflow: visible;
+  border-radius: 18px;
+  padding: 11px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.055),
+      transparent 38%,
+      rgba(0, 0, 0, 0.18)
+    ),
+    #1b1c1f;
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.09),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.55),
+    0 20px 48px rgba(0, 0, 0, 0.42),
+    0 7px 18px rgba(0, 0, 0, 0.32);
 }
 
-.sidebar-palette-menu > div strong {
-  font-size: 0.78rem;
-}
-
-.sidebar-palette-menu > button {
+.sidebar-palette-menu > button[data-theme-swatch] {
+  position: relative;
   display: grid;
   width: 100%;
-  min-height: 44px;
-  grid-template-columns: 27px minmax(0, 1fr) 18px;
-  align-items: center;
-  gap: 10px;
-  border: 1px solid transparent;
-  border-radius: 9px;
-  padding: 5px 8px;
-  color: var(--text-secondary);
-  background: transparent;
-  text-align: left;
-  transition:
-    color 140ms ease,
-    border-color 140ms ease,
-    background-color 140ms ease,
-    box-shadow 140ms ease;
-}
-
-.sidebar-palette-menu > button:hover:not(.is-selected) {
-  color: var(--text);
-  border-color: color-mix(in srgb, var(--accent) 24%, transparent);
-  background: color-mix(in srgb, var(--accent) 11%, var(--surface-strong));
-}
-
-.sidebar-palette-menu > button.is-selected {
-  color: var(--text);
-  border-color: color-mix(in srgb, var(--accent) 52%, transparent);
-  background: color-mix(in srgb, var(--accent) 22%, var(--surface-strong));
+  min-width: 0;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 0;
+  border-radius: 12px;
+  padding: 5px;
+  color: white;
+  background: #111215;
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent),
-    0 6px 16px color-mix(in srgb, var(--accent-shadow) 26%, transparent);
+    inset 0 2px 5px rgba(0, 0, 0, 0.78),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.035);
+  transition:
+    background-color 150ms ease,
+    box-shadow 180ms ease;
 }
 
-.sidebar-palette-menu > button.is-selected:hover {
-  background: color-mix(in srgb, var(--accent) 27%, var(--surface-strong));
+.sidebar-palette-menu > button[data-theme-swatch]:hover:not(.is-selected) {
+  background: color-mix(in srgb, var(--theme-swatch) 10%, #111215);
+  box-shadow:
+    inset 0 2px 5px rgba(0, 0, 0, 0.72),
+    0 0 9px color-mix(in srgb, var(--theme-swatch) 46%, transparent),
+    0 0 16px color-mix(in srgb, var(--theme-swatch) 22%, transparent);
 }
 
-.sidebar-palette-menu > button:focus-visible {
+.sidebar-palette-menu > button[data-theme-swatch].is-selected {
+  background: color-mix(in srgb, var(--theme-swatch) 14%, #111215);
+  box-shadow:
+    inset 0 2px 5px rgba(0, 0, 0, 0.66),
+    0 0 0 1px color-mix(in srgb, var(--theme-swatch) 76%, white 24%),
+    0 0 7px color-mix(in srgb, var(--theme-swatch) 54%, transparent),
+    0 0 15px color-mix(in srgb, var(--theme-swatch) 22%, transparent);
+}
+
+.sidebar-palette-menu > button[data-theme-swatch].is-selected:hover {
+  background: color-mix(in srgb, var(--theme-swatch) 17%, #111215);
+}
+
+.sidebar-palette-menu > button[data-theme-swatch]:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-.sidebar-palette-menu > button.is-selected > svg {
-  color: var(--accent-ink, var(--accent));
+.sidebar-palette-menu > button[data-theme-swatch] > i {
+  width: 100%;
+  height: 100%;
+  border-radius: 11px;
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-swatch) 72%, white 28%),
+      var(--theme-swatch) 48%,
+      color-mix(in srgb, var(--theme-swatch) 80%, black 20%)
+    ),
+    var(--theme-swatch);
+  filter: saturate(1.13) contrast(1.06);
+  box-shadow:
+    inset 1px 1px 1px rgba(255, 255, 255, 0.34),
+    inset -1px -2px 2px rgba(0, 0, 0, 0.24),
+    0 3px 0 color-mix(in srgb, var(--theme-swatch) 60%, black 40%),
+    0 7px 10px rgba(0, 0, 0, 0.52);
+  transition:
+    filter 160ms ease,
+    box-shadow 180ms ease;
 }
 
-.sidebar-palette-menu > button > i {
-  width: 25px;
-  height: 25px;
-  border-radius: 8px;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+.sidebar-palette-menu > button[data-theme-swatch]:hover:not(.is-selected) > i {
+  filter: saturate(1.19) contrast(1.08);
+  box-shadow:
+    inset 1px 1px 1px rgba(255, 255, 255, 0.38),
+    inset -1px -2px 2px rgba(0, 0, 0, 0.22),
+    0 3px 0 color-mix(in srgb, var(--theme-swatch) 60%, black 40%),
+    0 7px 10px rgba(0, 0, 0, 0.5),
+    0 0 8px color-mix(in srgb, var(--theme-swatch) 44%, transparent);
 }
 
-.sidebar-palette-menu > button > span {
-  min-width: 0;
-  display: grid;
-  gap: 2px;
+.sidebar-palette-menu > button[data-theme-swatch].is-selected > i {
+  filter: saturate(1.18) contrast(1.08);
+  box-shadow:
+    inset 1px 1px 1px rgba(255, 255, 255, 0.42),
+    inset -1px -2px 2px rgba(0, 0, 0, 0.2),
+    0 3px 0 color-mix(in srgb, var(--theme-swatch) 62%, black 38%),
+    0 7px 12px rgba(0, 0, 0, 0.48),
+    0 0 0 1px color-mix(in srgb, var(--theme-swatch) 78%, white 22%);
 }
 
-.sidebar-palette-menu > button strong,
-.sidebar-palette-menu > button small {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+/* Desktop theme picker: a recessed charcoal tray with individually raised
+   color keys. The selected key lifts farther and casts its hue into the well,
+   matching the supplied tactile palette reference without changing the menu
+   structure or roving-keyboard behavior. */
+.sidebar-palette-menu:not(.mobile-palette-menu) {
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 20px;
+  padding: 12px;
+  background: #201e1b url("/assets/theme-menu-grain.webp") center / cover
+    no-repeat;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.72),
+    0 4px 0 #0d0c0b,
+    0 15px 34px rgba(0, 0, 0, 0.52),
+    0 32px 72px rgba(0, 0, 0, 0.42);
 }
 
-.sidebar-palette-menu > button strong {
-  font-size: 0.72rem;
+.sidebar-palette-menu:not(.mobile-palette-menu) > button[data-theme-swatch] {
+  overflow: visible;
+  border: 1px solid rgba(255, 255, 255, 0.035);
+  border-radius: 14px;
+  padding: 5px;
+  background: #12110f;
+  box-shadow:
+    inset 0 3px 7px rgba(0, 0, 0, 0.92),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.045),
+    0 1px 0 rgba(255, 255, 255, 0.035);
+  transition:
+    background-color 150ms ease,
+    box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.sidebar-palette-menu > button small {
-  color: var(--muted);
-  font-size: 0.61rem;
+.sidebar-palette-menu:not(.mobile-palette-menu)
+  > button[data-theme-swatch]
+  > i {
+  border: 1px solid color-mix(in srgb, var(--theme-swatch) 72%, white 28%);
+  border-radius: 12px;
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--theme-swatch) 76%, white 24%) 0%,
+      var(--theme-swatch) 52%,
+      color-mix(in srgb, var(--theme-swatch) 84%, black 16%) 100%
+    ),
+    var(--theme-swatch);
+  filter: saturate(1.08) contrast(1.04);
+  box-shadow:
+    inset 1px 1px 1px rgba(255, 255, 255, 0.46),
+    inset -1px -2px 2px rgba(0, 0, 0, 0.28),
+    0 4px 0 color-mix(in srgb, var(--theme-swatch) 56%, black 44%),
+    0 8px 10px rgba(0, 0, 0, 0.58);
+  transform: translateY(-1px);
+  transition:
+    filter 160ms ease,
+    box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sidebar-palette-menu:not(.mobile-palette-menu)
+  > button[data-theme-swatch]:hover:not(.is-selected) {
+  background: color-mix(in srgb, var(--theme-swatch) 7%, #12110f);
+  box-shadow:
+    inset 0 3px 7px rgba(0, 0, 0, 0.86),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.055),
+    0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.sidebar-palette-menu:not(.mobile-palette-menu)
+  > button[data-theme-swatch]:hover:not(.is-selected)
+  > i {
+  filter: saturate(1.13) contrast(1.06);
+  box-shadow:
+    inset 1px 1px 1px rgba(255, 255, 255, 0.5),
+    inset -1px -2px 2px rgba(0, 0, 0, 0.26),
+    0 5px 0 color-mix(in srgb, var(--theme-swatch) 58%, black 42%),
+    0 9px 12px rgba(0, 0, 0, 0.58);
+  transform: translateY(-2px);
+}
+
+.sidebar-palette-menu:not(.mobile-palette-menu)
+  > button[data-theme-swatch].is-selected {
+  background: color-mix(in srgb, var(--theme-swatch) 16%, #12110f);
+  box-shadow:
+    inset 0 3px 7px rgba(0, 0, 0, 0.68),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.07),
+    0 0 0 1px color-mix(in srgb, var(--theme-swatch) 48%, transparent),
+    0 0 12px color-mix(in srgb, var(--theme-swatch) 62%, transparent),
+    0 0 25px color-mix(in srgb, var(--theme-swatch) 36%, transparent);
+}
+
+.sidebar-palette-menu:not(.mobile-palette-menu)
+  > button[data-theme-swatch].is-selected:hover {
+  background: color-mix(in srgb, var(--theme-swatch) 19%, #12110f);
+}
+
+.sidebar-palette-menu:not(.mobile-palette-menu)
+  > button[data-theme-swatch].is-selected
+  > i {
+  filter: saturate(1.12) contrast(1.06);
+  box-shadow:
+    inset 1px 1px 1px rgba(255, 255, 255, 0.56),
+    inset -1px -2px 2px rgba(0, 0, 0, 0.22),
+    0 6px 0 color-mix(in srgb, var(--theme-swatch) 64%, black 36%),
+    0 10px 13px rgba(0, 0, 0, 0.56),
+    0 13px 20px color-mix(in srgb, var(--theme-swatch) 46%, transparent),
+    0 0 18px color-mix(in srgb, var(--theme-swatch) 34%, transparent);
+  transform: translateY(-4px) scale(1.02);
+}
+
+.sidebar-palette-menu:not(.mobile-palette-menu)
+  > button[data-theme-swatch]:focus-visible {
+  outline-color: color-mix(in srgb, var(--theme-swatch) 72%, white 28%);
+  outline-offset: 3px;
+}
+
+.sidebar-palette-menu:not(.mobile-palette-menu)
+  > button[data-theme-swatch]:active
+  > i {
+  transform: translateY(0) scale(0.99);
+  transition-duration: 80ms;
 }
 
 /* Light shells keep the same spectrum navigation, but deepen its ink and
@@ -2104,7 +2280,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
     0 10px 24px color-mix(in srgb, var(--accent-shadow) 42%, transparent);
 }
 
-/* Shared Radix Select styling. The content is portalled so each dropdown can
+/* Shared lightweight select styling. The content is portalled so each dropdown can
    rise above cards and toolbars without inheriting a browser-native surface. */
 .themed-select__trigger {
   display: inline-flex;
@@ -2158,7 +2334,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   box-shadow: none;
 }
 
-/* Radix keeps the trigger focused while its menu is open; neutralize the
+/* Keep the trigger visually neutral while its menu is open; neutralize the
    app-wide button focus rule for that state so it cannot add another ring. */
 .courses-app button.themed-select__trigger:focus-visible[data-state="open"] {
   outline: none;
@@ -2217,7 +2393,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   cursor: pointer;
 }
 
-.themed-select__item[data-highlighted] {
+.themed-select__item:is(:hover, :focus-visible) {
   color: var(--text);
   background: color-mix(in srgb, var(--accent) 16%, var(--surface));
 }
@@ -2263,6 +2439,15 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
 .home-metric,
 .learning-summary-row article {
   background: var(--card-surface-raised);
+}
+
+/* Isolate card layout/style work so a cold render does not repeatedly walk
+   between the app shell and independent dashboard/course surfaces. */
+.home-resume-card,
+.home-goal-summary,
+.learning-summary-row article,
+.learning-card {
+  contain: layout style;
 }
 
 .learning-page-header {
@@ -3018,12 +3203,7 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
     right: 12px;
     bottom: calc(78px + env(safe-area-inset-bottom));
     left: auto;
-    width: min(276px, calc(100% - 24px));
-    max-height: calc(
-      100dvh - 112px - env(safe-area-inset-top) - env(safe-area-inset-bottom)
-    );
-    overflow-y: auto;
-    overscroll-behavior: contain;
+    width: min(212px, calc(100% - 24px));
   }
 }
 
@@ -3042,6 +3222,14 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
     min-height: 76px;
     grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
     border-radius: 12px;
+  }
+
+  /* The lesson list starts below the mobile hero. Let the browser defer its
+     internal layout until it approaches the viewport while retaining a stable
+     remembered block size for scroll continuity. */
+  .home-resume-list {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 260px;
   }
 
   .home-goal-summary > div {
@@ -4014,106 +4202,139 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   }
 
   .sidebar-nav-tooltip {
+    /* Oppose the surrounding canvas for immediate legibility: an almost-white
+       raised slab on dark shells, then an almost-black slab on light shells.
+       The palette colors the material itself while the edge stays neutral. */
+    --sidebar-tooltip-surface-start: color-mix(
+      in srgb,
+      white 86%,
+      var(--accent) 14%
+    );
+    --sidebar-tooltip-surface-end: color-mix(
+      in srgb,
+      white 72%,
+      var(--accent) 28%
+    );
+    --sidebar-tooltip-edge-highlight: color-mix(
+      in srgb,
+      white 86%,
+      var(--accent) 14%
+    );
+    --sidebar-tooltip-edge-accent: color-mix(
+      in srgb,
+      #111827 18%,
+      transparent 82%
+    );
     position: fixed;
     top: var(--sidebar-tooltip-top);
     left: var(--sidebar-tooltip-left);
     z-index: 180;
     display: inline-flex;
-    min-height: 38px;
-    max-width: 280px;
+    height: 38px;
+    max-width: 288px;
     align-items: center;
     box-sizing: border-box;
-    border-radius: 6px;
-    gap: 12px;
-    padding: 0 10px 0 14px;
-    color: var(--sidebar-tooltip-ink);
-    background: var(--sidebar-tooltip-surface);
-    box-shadow:
-      inset 0 1px 0
-        color-mix(in srgb, var(--sidebar-tooltip-edge) 52%, transparent),
-      0 10px 26px color-mix(in srgb, var(--accent-shadow) 24%, transparent);
+    gap: 0;
+    color: #111827;
+    filter: drop-shadow(0 2px 3px rgb(0 0 0 / 52%))
+      drop-shadow(0 9px 16px rgb(0 0 0 / 46%))
+      drop-shadow(0 22px 34px rgb(0 0 0 / 34%));
     font-size: 0.78rem;
     font-weight: 650;
-    line-height: 1;
+    line-height: 1.25;
     white-space: nowrap;
     pointer-events: none;
     transform: translateY(-50%);
   }
 
-  .sidebar-nav-tooltip__pointer {
+  /* One SVG owns the complete tooltip silhouette. React adjusts only the
+     source path's horizontal runs and right-edge coordinates; every supplied
+     Bézier curve remains at its original aspect ratio. */
+  .sidebar-nav-tooltip__surface {
     position: absolute;
-    top: 50%;
-    right: calc(100% - 1px);
-    width: 9px;
-    height: 20px;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
     overflow: visible;
-    color: var(--sidebar-tooltip-surface);
-    fill: currentColor;
+    fill: url("#sidebar-tooltip-material");
+    shape-rendering: geometricPrecision;
     pointer-events: none;
-    transform: translateY(-50%);
+  }
+
+  .sidebar-nav-tooltip__surface path {
+    stroke: url("#sidebar-tooltip-edge");
+    stroke-width: 1px;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .sidebar-nav-tooltip__surface-start {
+    stop-color: var(--sidebar-tooltip-surface-start);
+  }
+
+  .sidebar-nav-tooltip__surface-end {
+    stop-color: var(--sidebar-tooltip-surface-end);
+  }
+
+  .sidebar-nav-tooltip__edge-highlight {
+    stop-color: var(--sidebar-tooltip-edge-highlight);
+  }
+
+  .sidebar-nav-tooltip__edge-accent {
+    stop-color: var(--sidebar-tooltip-edge-accent);
+  }
+
+  .sidebar-nav-tooltip__body {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    width: max-content;
+    min-width: 0;
+    max-width: 288px;
+    height: 38px;
+    align-items: center;
+    gap: 0;
+    overflow: visible;
+    box-sizing: border-box;
+    /* The curved leading edge consumes roughly six visual pixels, so the
+       larger raw inset produces the same visible gap as the trailing 11px. */
+    padding: 0 11px 0 17px;
   }
 
   .sidebar-nav-tooltip__label {
     position: relative;
     z-index: 1;
+    min-width: 0;
+    overflow: hidden;
+    line-height: 1.35;
+    text-overflow: ellipsis;
   }
 
-  .sidebar-nav-tooltip__shortcuts {
-    position: relative;
-    z-index: 1;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-  }
-
-  .sidebar-nav-tooltip .shortcut-keys {
-    opacity: 0.82;
-  }
-
-  .sidebar-nav-tooltip .shortcut-keys kbd {
-    border-color: color-mix(in srgb, currentColor 28%, transparent);
-    background: color-mix(in srgb, currentColor 10%, transparent);
-    box-shadow: inset 0 1px 0 color-mix(in srgb, white 12%, transparent);
-  }
-
-  .sidebar-nav-tooltip.is-active {
-    box-shadow:
-      inset 0 1px 0
-        color-mix(in srgb, var(--sidebar-tooltip-edge) 76%, transparent),
-      0 10px 26px color-mix(in srgb, var(--accent-shadow) 34%, transparent);
-  }
-
-  /* Dark compact-rail tooltips intentionally mirror the creator's primary
-     "Create Course" action: the same accent fill, on-accent label, edge,
-     and lifted glow. Keep the existing light-mode tooltip treatment above.
-     The pointer follows the same fill so the callout reads as one surface. */
-  :root:not([data-theme="light"]) .sidebar-nav-tooltip {
-    border: 1px solid color-mix(in srgb, var(--accent) 70%, transparent);
-    color: var(--on-accent);
-    background: var(--accent);
-    box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 20%, transparent);
-  }
-
-  :root:not([data-theme="light"]) .sidebar-nav-tooltip__pointer {
-    color: var(--accent-ink, var(--accent));
-  }
-
-  :root:not([data-theme="light"]) .sidebar-nav-tooltip.is-active {
-    /* Active navigation keeps the same fill as the primary action; only the
-       glow is lifted to make the current destination easier to spot. */
-    background: var(--accent);
-    box-shadow: 0 12px 30px var(--accent-shadow);
-  }
-
-  :root:not([data-theme="light"])
-    .sidebar-nav-tooltip.is-active
-    .sidebar-nav-tooltip__pointer {
-    color: var(--accent-ink, var(--accent));
-  }
-
-  .sidebar-nav-tooltip.is-focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--accent) 84%, white);
-    outline-offset: 2px;
+  :root[data-theme="light"] .sidebar-nav-tooltip {
+    --sidebar-tooltip-surface-start: color-mix(
+      in srgb,
+      #171a21 70%,
+      var(--accent) 30%
+    );
+    --sidebar-tooltip-surface-end: color-mix(
+      in srgb,
+      #07090d 78%,
+      var(--accent) 22%
+    );
+    --sidebar-tooltip-edge-highlight: color-mix(
+      in srgb,
+      white 24%,
+      var(--accent) 10%
+    );
+    --sidebar-tooltip-edge-accent: color-mix(
+      in srgb,
+      white 6%,
+      transparent 94%
+    );
+    color: #ffffff;
+    filter: drop-shadow(0 3px 5px rgb(15 23 42 / 28%))
+      drop-shadow(0 12px 22px rgb(15 23 42 / 22%))
+      drop-shadow(0 26px 44px rgb(15 23 42 / 16%));
   }
 
   @media (prefers-reduced-motion: no-preference) {
@@ -4424,6 +4645,16 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   gap: 14px;
   margin-top: 0;
   padding-inline: var(--settings-page-inline-gutter);
+}
+
+/* Skip layout and paint for settings sections that are still below the
+   viewport. Once visited, the browser remembers their real block size, which
+   keeps subsequent scrolling stable. */
+@supports (content-visibility: auto) {
+  .settings-content > .settings-section:nth-of-type(n + 2) {
+    content-visibility: auto;
+    contain-intrinsic-block-size: auto 720px;
+  }
 }
 
 .settings-tab-content
@@ -5468,6 +5699,13 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
 
 .settings-sidebar-settings {
   gap: 16px;
+}
+
+/* Keep the complete settings markup available on first paint while allowing
+   the browser to skip layout and paint work for the long, off-screen tail. */
+.settings-sidebar-settings > :nth-child(n + 4) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 420px;
 }
 
 .settings-sidebar-category-heading {
@@ -7383,11 +7621,250 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   --card-shadow: 0 14px 32px rgba(19, 89, 75, 0.1);
 }
 
+/* Brainwave Slate samples the supplied reference directly: its core shell,
+   workspace, raised surface, selection, and blue accent use the source colors. */
+:root[data-palette="brainwave"] {
+  --app-shell: #151718;
+  --main-surface: #242627;
+  --canvas: #202224;
+  --header: #242627;
+  --surface: #343839;
+  --surface-strong: #3c4143;
+  --hover: #3b3f40;
+  --selected: #323337;
+  --track: #151718;
+  --progress-track: #45494a;
+  --border: transparent;
+  --border-strong: transparent;
+  --text: #fefefe;
+  --text-secondary: #d9dddf;
+  --muted: #969ea2;
+  --accent: #0085ff;
+  --accent-hover: #2c9bff;
+  --accent-soft: rgba(0, 133, 255, 0.16);
+  --accent-border: rgba(0, 133, 255, 0.42);
+  --accent-shadow: rgba(0, 117, 224, 0.3);
+  --on-accent: #071829;
+  --on-accent-glyph: #071829;
+  --card-surface: #343839;
+  --card-surface-raised: #3c4143;
+  --card-surface-soft: #232526;
+  --card-surface-hover: #3a3f41;
+  --card-shadow: 0 16px 34px rgba(0, 2, 5, 0.28);
+}
+
+:root[data-palette="lilac"] {
+  --app-shell: #17131c;
+  --main-surface: #261f2f;
+  --canvas: #1d1823;
+  --header: #1c171f;
+  --surface: #32283c;
+  --surface-strong: #3b3047;
+  --hover: #443750;
+  --selected: #493760;
+  --track: #241d2a;
+  --border: transparent;
+  --border-strong: transparent;
+  --text: #fff8ff;
+  --text-secondary: #eadbef;
+  --muted: #bea9c5;
+  --accent: #c18cff;
+  --accent-hover: #d0a6ff;
+  --accent-soft: rgba(193, 140, 255, 0.16);
+  --accent-border: rgba(193, 140, 255, 0.42);
+  --accent-shadow: rgba(151, 84, 219, 0.28);
+  --on-accent: #21102f;
+  --on-accent-glyph: #21102f;
+  --card-surface: #32283c;
+  --card-surface-raised: #3b3047;
+  --card-surface-soft: #211a28;
+  --card-surface-hover: #40334c;
+  --card-shadow: 0 16px 34px rgba(20, 7, 27, 0.28);
+}
+
+:root[data-palette="champagne"] {
+  --app-shell: #171613;
+  --main-surface: #28251f;
+  --canvas: #1d1b17;
+  --header: #1c1a16;
+  --surface: #343027;
+  --surface-strong: #3e392e;
+  --hover: #464034;
+  --selected: #4c422d;
+  --track: #26231d;
+  --border: transparent;
+  --border-strong: transparent;
+  --text: #fffaf0;
+  --text-secondary: #eee4d0;
+  --muted: #bdb19c;
+  --accent: #e6c98a;
+  --accent-hover: #f0d8a2;
+  --accent-soft: rgba(230, 201, 138, 0.16);
+  --accent-border: rgba(230, 201, 138, 0.42);
+  --accent-shadow: rgba(169, 130, 53, 0.25);
+  --on-accent: #241c0d;
+  --on-accent-glyph: #241c0d;
+  --card-surface: #343027;
+  --card-surface-raised: #3e392e;
+  --card-surface-soft: #24211b;
+  --card-surface-hover: #403a2f;
+  --card-shadow: 0 16px 34px rgba(17, 13, 6, 0.27);
+}
+
+:root[data-palette="lime"] {
+  --app-shell: #121612;
+  --main-surface: #202820;
+  --canvas: #171d17;
+  --header: #161c16;
+  --surface: #2a3329;
+  --surface-strong: #333e32;
+  --hover: #3a4739;
+  --selected: #344a27;
+  --track: #1e261e;
+  --border: transparent;
+  --border-strong: transparent;
+  --text: #f8fff4;
+  --text-secondary: #dcebd4;
+  --muted: #a5b79d;
+  --accent: #a3e635;
+  --accent-hover: #b4f15b;
+  --accent-soft: rgba(163, 230, 53, 0.16);
+  --accent-border: rgba(163, 230, 53, 0.42);
+  --accent-shadow: rgba(103, 158, 17, 0.25);
+  --on-accent: #132006;
+  --on-accent-glyph: #132006;
+  --card-surface: #2a3329;
+  --card-surface-raised: #333e32;
+  --card-surface-soft: #1b221b;
+  --card-surface-hover: #354134;
+  --card-shadow: 0 16px 34px rgba(4, 16, 4, 0.27);
+}
+
+:root[data-theme="light"][data-palette="brainwave"] {
+  --app-shell: #d9e2e8;
+  --main-surface: #f7f9fb;
+  --canvas: #edf2f5;
+  --header: #e7edf1;
+  --surface: #ffffff;
+  --surface-strong: #e5ebef;
+  --hover: #dce7ef;
+  --selected: #d7eaff;
+  --track: #d8e0e6;
+  --border: transparent;
+  --border-strong: transparent;
+  --text: #12171c;
+  --text-secondary: #37444d;
+  --muted: #5e6d77;
+  --accent: #0085ff;
+  --accent-hover: #0074df;
+  --accent-soft: rgba(0, 133, 255, 0.12);
+  --accent-border: rgba(0, 133, 255, 0.3);
+  --accent-shadow: rgba(0, 103, 197, 0.18);
+  --on-accent: #071829;
+  --on-accent-glyph: #071829;
+  --card-surface: #ffffff;
+  --card-surface-raised: #e5ebef;
+  --card-surface-soft: #f1f5f7;
+  --card-surface-hover: #eaf2f7;
+  --card-shadow: 0 14px 32px rgba(45, 66, 80, 0.11);
+}
+
+:root[data-theme="light"][data-palette="lilac"] {
+  --app-shell: #e7dff0;
+  --main-surface: #fbf7ff;
+  --canvas: #f4eef9;
+  --header: #efe8f5;
+  --surface: #ffffff;
+  --surface-strong: #f1e8f7;
+  --hover: #ebdff4;
+  --selected: #ead9f8;
+  --track: #e3d8eb;
+  --border: transparent;
+  --border-strong: transparent;
+  --text: #25162d;
+  --text-secondary: #51405b;
+  --muted: #73637c;
+  --accent: #7f40b7;
+  --accent-hover: #6b329d;
+  --accent-soft: rgba(127, 64, 183, 0.12);
+  --accent-border: rgba(127, 64, 183, 0.3);
+  --accent-shadow: rgba(107, 50, 157, 0.17);
+  --on-accent: #ffffff;
+  --on-accent-glyph: #ffffff;
+  --card-surface: #ffffff;
+  --card-surface-raised: #f1e8f7;
+  --card-surface-soft: #faf5fd;
+  --card-surface-hover: #f2e8f8;
+  --card-shadow: 0 14px 32px rgba(77, 45, 92, 0.1);
+}
+
+:root[data-theme="light"][data-palette="champagne"] {
+  --app-shell: #e8e0d0;
+  --main-surface: #fbf8f1;
+  --canvas: #f3eee4;
+  --header: #eee8dc;
+  --surface: #fffdf9;
+  --surface-strong: #f2eadb;
+  --hover: #ece2d0;
+  --selected: #f2e3bd;
+  --track: #e5dccb;
+  --border: transparent;
+  --border-strong: transparent;
+  --text: #261f15;
+  --text-secondary: #554b3c;
+  --muted: #766b5a;
+  --accent: #896312;
+  --accent-hover: #735109;
+  --accent-soft: rgba(137, 99, 18, 0.12);
+  --accent-border: rgba(137, 99, 18, 0.3);
+  --accent-shadow: rgba(115, 81, 9, 0.16);
+  --on-accent: #ffffff;
+  --on-accent-glyph: #ffffff;
+  --card-surface: #fffdf9;
+  --card-surface-raised: #f2eadb;
+  --card-surface-soft: #fbf7ef;
+  --card-surface-hover: #f4ead8;
+  --card-shadow: 0 14px 32px rgba(82, 66, 37, 0.1);
+}
+
+:root[data-theme="light"][data-palette="lime"] {
+  --app-shell: #dfe8d8;
+  --main-surface: #f6fbf2;
+  --canvas: #edf5e8;
+  --header: #e8f0e2;
+  --surface: #fefffc;
+  --surface-strong: #e9f2e3;
+  --hover: #e0ecd9;
+  --selected: #dff2c6;
+  --track: #d9e5d3;
+  --border: transparent;
+  --border-strong: transparent;
+  --text: #15200f;
+  --text-secondary: #3f5038;
+  --muted: #63725c;
+  --accent: #4f7f0b;
+  --accent-hover: #416b07;
+  --accent-soft: rgba(79, 127, 11, 0.12);
+  --accent-border: rgba(79, 127, 11, 0.3);
+  --accent-shadow: rgba(65, 107, 7, 0.16);
+  --on-accent: #ffffff;
+  --on-accent-glyph: #ffffff;
+  --card-surface: #fefffc;
+  --card-surface-raised: #e9f2e3;
+  --card-surface-soft: #f6fbf3;
+  --card-surface-hover: #ebf4e6;
+  --card-shadow: 0 14px 32px rgba(48, 76, 35, 0.1);
+}
+
 /* Accent fills and accent-colored copy have different contrast needs on the
    deepest palettes. Keep the brand fill intact while giving small text a
    foreground value that clears WCAG AA on its card surface. */
 :root[data-palette] {
   --accent-ink: var(--accent);
+}
+
+:root[data-theme="light"][data-palette="brainwave"] {
+  --accent-ink: #0067c5;
 }
 
 :root[data-theme="dark"][data-palette="midnight"] {
@@ -8233,10 +8710,14 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
 .discussion-thread__more {
   position: absolute;
   z-index: 1;
-  top: 20px;
-  right: 17px;
+  top: 16px;
+  right: 12px;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
   border: 0;
-  padding: 3px 0;
+  padding: 0;
   color: var(--muted);
   background: transparent;
   cursor: pointer;
@@ -8443,6 +8924,16 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
 }
 
 @media (max-width: 780px) {
+  /* Keep the first discussion results immediately available while allowing
+     the browser to skip layout and paint for cards that start below the
+     mobile viewport. The content remains in the DOM and becomes interactive
+     normally as soon as it approaches the viewport. */
+  .discussion-hub__thread-list > .discussion-thread:nth-child(n + 3),
+  .discussion-hub__side {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 420px;
+  }
+
   .discussion-hub__filters {
     grid-template-columns: minmax(0, 1fr) minmax(118px, 0.45fr) minmax(
         110px,
@@ -8573,6 +9064,23 @@ html[data-hide-scrollbars="true"] *::-webkit-scrollbar {
   grid-template-columns: minmax(300px, 0.84fr) minmax(0, 1.4fr);
   align-items: stretch;
   gap: 14px;
+}
+
+@media (max-width: 720px) {
+  /* Keep the first visible profile fields eager, while letting the browser
+     skip layout and paint for the contact, social, and preview regions until
+     they approach the viewport. Their DOM and accessibility semantics remain
+     available; only below-the-fold rendering is deferred. */
+  .settings-profile__field-grid--contact,
+  .settings-profile__form-section:nth-child(n + 2) {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 230px;
+  }
+
+  .settings-profile__identity {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 520px;
+  }
 }
 
 .settings-profile__preview-column {

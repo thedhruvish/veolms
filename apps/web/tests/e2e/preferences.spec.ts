@@ -760,6 +760,26 @@ test("theme picker keeps pointer choices open and makes keyboard previews revers
   const ocean = menu.getByRole("menuitemradio", { name: /Ocean Blue/ });
 
   await expect(graphite).toBeFocused();
+  const tactileMaterial = await graphite.evaluate((button) => {
+    const swatch = button.querySelector("i");
+    if (!swatch) throw new Error("Theme swatch surface is missing");
+    const buttonStyles = getComputedStyle(button);
+    const swatchStyles = getComputedStyle(swatch);
+    const countShadowLayers = (value: string) =>
+      value.match(/(?:rgba?|color)\(/g)?.length ?? 0;
+    return {
+      menuShadowLayers: countShadowLayers(
+        getComputedStyle(button.parentElement!).boxShadow,
+      ),
+      selectedGlowLayers: countShadowLayers(buttonStyles.boxShadow),
+      swatchDepthLayers: countShadowLayers(swatchStyles.boxShadow),
+      swatchTransform: swatchStyles.transform,
+    };
+  });
+  expect(tactileMaterial.menuShadowLayers).toBeGreaterThanOrEqual(5);
+  expect(tactileMaterial.selectedGlowLayers).toBeGreaterThanOrEqual(5);
+  expect(tactileMaterial.swatchDepthLayers).toBeGreaterThanOrEqual(6);
+  expect(tactileMaterial.swatchTransform).not.toBe("none");
   await ocean.hover();
   await expect(page.locator("html")).toHaveAttribute(
     "data-palette",
@@ -768,10 +788,10 @@ test("theme picker keeps pointer choices open and makes keyboard previews revers
   await expectStoredValue(page, "veolms-academy-theme", "graphite");
 
   await page.keyboard.press("ArrowDown");
-  const copper = menu.getByRole("menuitemradio", { name: /Copper Slate/ });
-  await expect(copper).toBeFocused();
-  await expect(copper).toHaveAttribute("aria-checked", "true");
-  await expect(page.locator("html")).toHaveAttribute("data-palette", "violet");
+  const grove = menu.getByRole("menuitemradio", { name: /Grove Green/ });
+  await expect(grove).toBeFocused();
+  await expect(grove).toHaveAttribute("aria-checked", "true");
+  await expect(page.locator("html")).toHaveAttribute("data-palette", "grove");
   await expectStoredValue(page, "veolms-academy-theme", "graphite");
 
   await page.getByRole("main").click({ position: { x: 20, y: 20 } });
@@ -786,8 +806,8 @@ test("theme picker keeps pointer choices open and makes keyboard previews revers
   await page.keyboard.press("Enter");
   await expect(menu).toBeHidden();
   await expect(trigger).toBeFocused();
-  await expect(page.locator("html")).toHaveAttribute("data-palette", "violet");
-  await expectStoredValue(page, "veolms-academy-theme", "violet");
+  await expect(page.locator("html")).toHaveAttribute("data-palette", "grove");
+  await expectStoredValue(page, "veolms-academy-theme", "grove");
 
   await trigger.click();
   await ocean.click();
@@ -795,6 +815,37 @@ test("theme picker keeps pointer choices open and makes keyboard previews revers
   await expect(ocean).toHaveAttribute("aria-checked", "true");
   await expect(page.locator("html")).toHaveAttribute("data-palette", "ocean");
   await expectStoredValue(page, "veolms-academy-theme", "ocean");
+
+  const brainwave = menu.getByRole("menuitemradio", {
+    name: /Brainwave Slate/,
+  });
+  await brainwave.click();
+  await expect(brainwave).toHaveAttribute("aria-checked", "true");
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-palette",
+    "brainwave",
+  );
+  await expectStoredValue(page, "veolms-academy-theme", "brainwave");
+  await expect
+    .poll(() =>
+      page.locator("html").evaluate((root) => {
+        const styles = getComputedStyle(root);
+        return {
+          shell: styles.getPropertyValue("--app-shell").trim(),
+          workspace: styles.getPropertyValue("--main-surface").trim(),
+          raised: styles.getPropertyValue("--surface").trim(),
+          selected: styles.getPropertyValue("--selected").trim(),
+          accent: styles.getPropertyValue("--accent").trim(),
+        };
+      }),
+    )
+    .toEqual({
+      shell: "#151718",
+      workspace: "#242627",
+      raised: "#343839",
+      selected: "#323337",
+      accent: "#0085ff",
+    });
 });
 
 test("sidebar collapse and hide shortcuts persist without losing navigation", async ({

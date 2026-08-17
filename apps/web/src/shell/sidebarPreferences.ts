@@ -37,6 +37,8 @@ export const clampSidebarWidth = (
   );
 
 export const getInitialSidebarWidth = (): number => {
+  if (typeof window === "undefined") return SIDEBAR_DEFAULT_WIDTH;
+
   const rawSavedWidth = localStorage.getItem("veolms-sidebar-width");
   if (rawSavedWidth === null || rawSavedWidth.trim() === "") {
     return SIDEBAR_DEFAULT_WIDTH;
@@ -48,8 +50,7 @@ export const getInitialSidebarWidth = (): number => {
     : SIDEBAR_DEFAULT_WIDTH;
 };
 
-export const getInitialSidebarPreferences = (): SidebarPreferences => {
-  const fallback: SidebarPreferences = {
+export const getDefaultSidebarPreferences = (): SidebarPreferences => ({
     iconStyle: "monochrome",
     monochromeMode: "theme",
     monochromeColor: "#6c78ff",
@@ -63,7 +64,12 @@ export const getInitialSidebarPreferences = (): SidebarPreferences => {
     showCollapsedLogo: true,
     highlightActive: true,
     elevateMenus: false,
-  };
+});
+
+export const getInitialSidebarPreferences = (): SidebarPreferences => {
+  const fallback = getDefaultSidebarPreferences();
+  if (typeof window === "undefined") return fallback;
+
   try {
     const saved: unknown = JSON.parse(
       localStorage.getItem("veolms-sidebar-preferences") || "{}",

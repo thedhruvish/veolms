@@ -76,7 +76,7 @@ describe("React Router framework route configuration", () => {
   it("declares the root, learning, and fallback routes explicitly", () => {
     expect(childRoutes.find(({ id }) => id === "home")).toMatchObject({
       index: true,
-      file: "routes/academy-marker.tsx",
+      file: "routes/home-marker.tsx",
     });
     expect(childRoutes.find(({ id }) => id === "learning")).toMatchObject({
       path: "learn/:courseSlug/:lectureSlug?",

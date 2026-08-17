@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { KeyboardEvent as ReactKeyboardEvent } from "react";
-import { Check } from "@phosphor-icons/react";
+import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { AcademyTheme } from "../themes";
 
 interface AcademyPaletteMenuProps {
@@ -14,6 +13,8 @@ interface AcademyPaletteMenuProps {
   onConfirm: (themeId: string) => void;
   onCancel: () => void;
 }
+
+const PALETTE_GRID_COLUMNS = 4;
 
 export function AcademyPaletteMenu({
   themes,
@@ -52,16 +53,42 @@ export function AcademyPaletteMenu({
     itemRefs.current[index]?.focus({ preventScroll: true });
   };
 
+  const getDirectionalThemeIndex = (
+    activeIndex: number,
+    key: "ArrowDown" | "ArrowLeft" | "ArrowRight" | "ArrowUp",
+  ) => {
+    if (themes.length === 0) return activeIndex;
+    const rowCount = Math.ceil(themes.length / PALETTE_GRID_COLUMNS);
+    const row = Math.floor(activeIndex / PALETTE_GRID_COLUMNS);
+    const column = activeIndex % PALETTE_GRID_COLUMNS;
+
+    if (key === "ArrowLeft" || key === "ArrowRight") {
+      const nextColumn =
+        (column + (key === "ArrowRight" ? 1 : -1) + PALETTE_GRID_COLUMNS) %
+        PALETTE_GRID_COLUMNS;
+      return row * PALETTE_GRID_COLUMNS + nextColumn;
+    }
+
+    const nextRow =
+      (row + (key === "ArrowDown" ? 1 : -1) + rowCount) % rowCount;
+    const nextIndex = nextRow * PALETTE_GRID_COLUMNS + column;
+    return nextIndex < themes.length ? nextIndex : activeIndex;
+  };
+
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     const activeIndex = Math.max(
       0,
       themes.findIndex((theme) => theme.id === activeTheme),
     );
 
-    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    if (
+      event.key === "ArrowDown" ||
+      event.key === "ArrowUp" ||
+      event.key === "ArrowRight" ||
+      event.key === "ArrowLeft"
+    ) {
       event.preventDefault();
-      const direction = event.key === "ArrowDown" ? 1 : -1;
-      previewThemeAt((activeIndex + direction + themes.length) % themes.length);
+      previewThemeAt(getDirectionalThemeIndex(activeIndex, event.key));
       return;
     }
 
@@ -93,12 +120,9 @@ export function AcademyPaletteMenu({
       className={className}
       role="menu"
       aria-label="Choose a color theme"
-      aria-keyshortcuts="ArrowUp ArrowDown Home End Enter Escape"
+      aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight Home End Enter Escape"
       onKeyDown={handleKeyDown}
     >
-      <div>
-        <strong>Color theme</strong>
-      </div>
       {themes.map((item, index) => (
         <button
           ref={(element) => {
@@ -106,21 +130,20 @@ export function AcademyPaletteMenu({
           }}
           type="button"
           role="menuitemradio"
+          aria-label={`${item.name}. ${item.note}`}
           aria-checked={item.id === activeTheme}
           tabIndex={item.id === activeTheme ? 0 : -1}
           className={item.id === activeTheme ? "is-selected" : ""}
           key={item.id}
+          title={`${item.name} — ${item.note}`}
+          data-theme-swatch={item.id}
+          style={{ "--theme-swatch": item.preview } as CSSProperties}
           onClick={() => {
             setActiveTheme(item.id);
             onSelect(item.id);
           }}
         >
-          <i style={{ background: item.preview }} />
-          <span>
-            <strong>{item.name}</strong>
-            <small>{item.note}</small>
-          </span>
-          {item.id === activeTheme && <Check size={16} weight="bold" />}
+          <i aria-hidden="true" />
         </button>
       ))}
     </div>

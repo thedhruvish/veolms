@@ -380,6 +380,86 @@
   --on-accent: #04221e;
 }
 
+:root[data-palette="brainwave"] {
+  --canvas: #202224;
+  --header: #242627;
+  --surface: #343839;
+  --hover: #3b3f40;
+  --selected: #323337;
+  --track: #151718;
+  --border: #343839;
+  --border-strong: #4b5153;
+  --text: #fefefe;
+  --text-secondary: #d9dddf;
+  --muted: #969ea2;
+  --accent: #0085ff;
+  --accent-hover: #2c9bff;
+  --accent-soft: rgba(0, 133, 255, 0.16);
+  --accent-border: rgba(0, 133, 255, 0.42);
+  --accent-shadow: rgba(0, 117, 224, 0.3);
+  --on-accent: #071829;
+}
+
+:root[data-palette="lilac"] {
+  --canvas: #1d1823;
+  --header: #1c171f;
+  --surface: #32283c;
+  --hover: #443750;
+  --selected: #493760;
+  --track: #241d2a;
+  --border: #493b56;
+  --border-strong: #6b587b;
+  --text: #fff8ff;
+  --text-secondary: #eadbef;
+  --muted: #bea9c5;
+  --accent: #c18cff;
+  --accent-hover: #d0a6ff;
+  --accent-soft: rgba(193, 140, 255, 0.16);
+  --accent-border: rgba(193, 140, 255, 0.42);
+  --accent-shadow: rgba(151, 84, 219, 0.28);
+  --on-accent: #21102f;
+}
+
+:root[data-palette="champagne"] {
+  --canvas: #1d1b17;
+  --header: #1c1a16;
+  --surface: #343027;
+  --hover: #464034;
+  --selected: #4c422d;
+  --track: #26231d;
+  --border: #4a4438;
+  --border-strong: #6d624d;
+  --text: #fffaf0;
+  --text-secondary: #eee4d0;
+  --muted: #bdb19c;
+  --accent: #e6c98a;
+  --accent-hover: #f0d8a2;
+  --accent-soft: rgba(230, 201, 138, 0.16);
+  --accent-border: rgba(230, 201, 138, 0.42);
+  --accent-shadow: rgba(169, 130, 53, 0.25);
+  --on-accent: #241c0d;
+}
+
+:root[data-palette="lime"] {
+  --canvas: #171d17;
+  --header: #161c16;
+  --surface: #2a3329;
+  --hover: #3a4739;
+  --selected: #344a27;
+  --track: #1e261e;
+  --border: #3a4938;
+  --border-strong: #577052;
+  --text: #f8fff4;
+  --text-secondary: #dcebd4;
+  --muted: #a5b79d;
+  --accent: #a3e635;
+  --accent-hover: #b4f15b;
+  --accent-soft: rgba(163, 230, 53, 0.16);
+  --accent-border: rgba(163, 230, 53, 0.42);
+  --accent-shadow: rgba(103, 158, 17, 0.25);
+  --on-accent: #132006;
+}
+
 :root[data-theme="light"][data-palette="codex"] {
   --canvas: #f2f2f3;
   --header: #f9f9fa;
@@ -457,6 +537,86 @@
   --accent-soft: rgba(8, 122, 112, 0.12);
   --accent-border: rgba(8, 122, 112, 0.3);
   --accent-shadow: rgba(6, 104, 95, 0.16);
+  --on-accent: #ffffff;
+}
+
+:root[data-theme="light"][data-palette="brainwave"] {
+  --canvas: #edf2f5;
+  --header: #e7edf1;
+  --surface: #ffffff;
+  --hover: #dce7ef;
+  --selected: #d7eaff;
+  --track: #d8e0e6;
+  --border: #cad5dc;
+  --border-strong: #9eafb9;
+  --text: #12171c;
+  --text-secondary: #37444d;
+  --muted: #5e6d77;
+  --accent: #0085ff;
+  --accent-hover: #0074df;
+  --accent-soft: rgba(0, 133, 255, 0.12);
+  --accent-border: rgba(0, 133, 255, 0.3);
+  --accent-shadow: rgba(0, 103, 197, 0.18);
+  --on-accent: #071829;
+}
+
+:root[data-theme="light"][data-palette="lilac"] {
+  --canvas: #f4eef9;
+  --header: #efe8f5;
+  --surface: #ffffff;
+  --hover: #ebdff4;
+  --selected: #ead9f8;
+  --track: #e3d8eb;
+  --border: #ddcee8;
+  --border-strong: #bda4cd;
+  --text: #25162d;
+  --text-secondary: #51405b;
+  --muted: #73637c;
+  --accent: #7f40b7;
+  --accent-hover: #6b329d;
+  --accent-soft: rgba(127, 64, 183, 0.12);
+  --accent-border: rgba(127, 64, 183, 0.3);
+  --accent-shadow: rgba(107, 50, 157, 0.17);
+  --on-accent: #ffffff;
+}
+
+:root[data-theme="light"][data-palette="champagne"] {
+  --canvas: #f3eee4;
+  --header: #eee8dc;
+  --surface: #fffdf9;
+  --hover: #ece2d0;
+  --selected: #f2e3bd;
+  --track: #e5dccb;
+  --border: #ddd0ba;
+  --border-strong: #b9a584;
+  --text: #261f15;
+  --text-secondary: #554b3c;
+  --muted: #766b5a;
+  --accent: #896312;
+  --accent-hover: #735109;
+  --accent-soft: rgba(137, 99, 18, 0.12);
+  --accent-border: rgba(137, 99, 18, 0.3);
+  --accent-shadow: rgba(115, 81, 9, 0.16);
+  --on-accent: #ffffff;
+}
+
+:root[data-theme="light"][data-palette="lime"] {
+  --canvas: #edf5e8;
+  --header: #e8f0e2;
+  --surface: #fefffc;
+  --hover: #e0ecd9;
+  --selected: #dff2c6;
+  --track: #d9e5d3;
+  --border: #cadbc2;
+  --border-strong: #9eb491;
+  --text: #15200f;
+  --text-secondary: #3f5038;
+  --muted: #63725c;
+  --accent: #4f7f0b;
+  --accent-hover: #416b07;
+  --accent-soft: rgba(79, 127, 11, 0.12);
+  --accent-border: rgba(79, 127, 11, 0.3);
+  --accent-shadow: rgba(65, 107, 7, 0.16);
   --on-accent: #ffffff;
 }
 
@@ -1881,6 +2041,11 @@ button.player-menu-row:focus-visible {
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, white 13%, transparent),
     0 0 18px color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.learning-curriculum__lesson.is-active .learning-curriculum__lesson-number,
+.learning-curriculum__lesson.is-active .learning-curriculum__lesson-duration {
+  color: var(--text);
 }
 
 .learning-curriculum__lesson-status {
@@ -3751,6 +3916,11 @@ button.player-menu-row:focus-visible {
   margin-top: 16px;
 }
 
+.home-dashboard-sentinel {
+  width: 100%;
+  height: 1px;
+}
+
 .dashboard-panel {
   min-width: 0;
   padding: 14px;
@@ -4495,6 +4665,18 @@ button.player-menu-row:focus-visible {
 }
 
 @media (max-width: 820px) {
+  /* Only the first enrolled-course card can enter the initial mobile
+     viewport. Keep the remaining cards in the document for scrolling and
+     accessibility, while deferring their style/layout/paint work until they
+     approach the viewport. This avoids a long first-render layout task on
+     the My Courses route without changing its rendered content. */
+  @supports (content-visibility: auto) {
+    .learning-course-grid > .learning-card:nth-child(n + 2) {
+      content-visibility: auto;
+      contain-intrinsic-size: auto 640px;
+    }
+  }
+
   .student-surface-main {
     padding: 20px 15px 30px;
   }
