@@ -779,7 +779,7 @@
     right: 12px;
     bottom: calc(78px + env(safe-area-inset-bottom));
     left: auto;
-    width: min(212px, calc(100% - 24px));
+    width: min(252px, calc(100% - 24px));
   }
 }
 
