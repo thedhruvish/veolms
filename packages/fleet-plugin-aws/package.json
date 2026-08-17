@@ -1,0 +1,27 @@
+{
+  "name": "@veolms/fleet-plugin-aws",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./driver": "./src/driver.ts",
+    "./options": "./src/options.ts",
+    "./instances": "./src/ec2-instances.ts",
+    "./iam": "./src/iam-policies.ts",
+    "./manifest": "./src/manifest.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/**/*.test.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-ec2": "^3.758.0",
+    "@veolms/fleet-types": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.13",
+    "typescript": "npm:@typescript/typescript6@^6.0.2"
+  }
+}
