@@ -278,6 +278,17 @@ test("theme menus use the available height before introducing overflow", async (
 }) => {
   await page.setViewportSize({ width: 1101, height: 753 });
   await openApp(page, "/");
+  await page.evaluate(() => {
+    const current = JSON.parse(
+      localStorage.getItem("veolms-sidebar-preferences") || "{}",
+    ) as Record<string, unknown>;
+    const dockItems = ["appearance", "theme", "reading-mode", "fullscreen"];
+    localStorage.setItem(
+      "veolms-sidebar-preferences",
+      JSON.stringify({ ...current, dockItems, dockOrder: dockItems }),
+    );
+  });
+  await page.reload();
 
   const sidebar = page.getByRole("complementary", {
     name: "Student navigation",
@@ -868,9 +879,13 @@ test("theme picker keeps pointer choices open and makes keyboard previews revers
   const sidebar = page.getByRole("complementary", {
     name: "Student navigation",
   });
-  const trigger = sidebar.getByRole("button", { name: "Choose color theme" });
+  const trigger = sidebar
+    .getByRole("group", { name: "Appearance controls" })
+    .getByRole("button")
+    .nth(0);
+  const openThemeMenu = () => trigger.click({ button: "right" });
 
-  await trigger.click();
+  await openThemeMenu();
   const menu = page.getByRole("menu", { name: "Choose a color theme" });
   const graphite = menu.getByRole("menuitemradio", {
     name: /Graphite Studio/,
@@ -878,26 +893,47 @@ test("theme picker keeps pointer choices open and makes keyboard previews revers
   const ocean = menu.getByRole("menuitemradio", { name: /Ocean Blue/ });
 
   await expect(graphite).toBeFocused();
-  const tactileMaterial = await graphite.evaluate((button) => {
+  const paletteMaterial = await graphite.evaluate((button) => {
     const swatch = button.querySelector("i");
     if (!swatch) throw new Error("Theme swatch surface is missing");
+    const menu = button.parentElement;
+    if (!menu) throw new Error("Theme menu surface is missing");
+    const menuRect = menu.getBoundingClientRect();
+    const buttonRect = button.getBoundingClientRect();
+    const swatchRect = swatch.getBoundingClientRect();
+    const menuStyles = getComputedStyle(menu);
     const buttonStyles = getComputedStyle(button);
     const swatchStyles = getComputedStyle(swatch);
     const countShadowLayers = (value: string) =>
       value.match(/(?:rgba?|color)\(/g)?.length ?? 0;
     return {
-      menuShadowLayers: countShadowLayers(
-        getComputedStyle(button.parentElement!).boxShadow,
-      ),
-      selectedGlowLayers: countShadowLayers(buttonStyles.boxShadow),
+      menuWidth: menuRect.width,
+      menuRadius: Number.parseFloat(menuStyles.borderRadius),
+      gridGap: Number.parseFloat(menuStyles.columnGap),
+      buttonSquareDelta: Math.abs(buttonRect.width - buttonRect.height),
+      swatchSquareDelta: Math.abs(swatchRect.width - swatchRect.height),
+      swatchSize: swatchRect.width,
+      menuShadowLayers: countShadowLayers(menuStyles.boxShadow),
+      selectedBorderLayers: countShadowLayers(buttonStyles.boxShadow),
+      selectedInsetLayers: buttonStyles.boxShadow.match(/inset/g)?.length ?? 0,
       swatchDepthLayers: countShadowLayers(swatchStyles.boxShadow),
+      swatchBackgroundImage: swatchStyles.backgroundImage,
       swatchTransform: swatchStyles.transform,
     };
   });
-  expect(tactileMaterial.menuShadowLayers).toBeGreaterThanOrEqual(5);
-  expect(tactileMaterial.selectedGlowLayers).toBeGreaterThanOrEqual(5);
-  expect(tactileMaterial.swatchDepthLayers).toBeGreaterThanOrEqual(6);
-  expect(tactileMaterial.swatchTransform).not.toBe("none");
+  expect(paletteMaterial.menuWidth).toBeCloseTo(252, 0);
+  expect(paletteMaterial.menuRadius).toBe(24);
+  expect(paletteMaterial.gridGap).toBe(4);
+  expect(paletteMaterial.buttonSquareDelta).toBeLessThan(0.5);
+  expect(paletteMaterial.swatchSquareDelta).toBeLessThan(0.5);
+  expect(paletteMaterial.swatchSize).toBeGreaterThanOrEqual(39);
+  expect(paletteMaterial.swatchSize).toBeLessThanOrEqual(42);
+  expect(paletteMaterial.menuShadowLayers).toBeGreaterThanOrEqual(4);
+  expect(paletteMaterial.selectedBorderLayers).toBe(2);
+  expect(paletteMaterial.selectedInsetLayers).toBe(2);
+  expect(paletteMaterial.swatchDepthLayers).toBe(2);
+  expect(paletteMaterial.swatchBackgroundImage).toBe("none");
+  expect(paletteMaterial.swatchTransform).toBe("none");
   await ocean.hover();
   await expect(page.locator("html")).toHaveAttribute(
     "data-palette",
@@ -912,14 +948,16 @@ test("theme picker keeps pointer choices open and makes keyboard previews revers
   await expect(page.locator("html")).toHaveAttribute("data-palette", "grove");
   await expectStoredValue(page, "veolms-academy-theme", "graphite");
 
-  await page.getByRole("main").click({ position: { x: 20, y: 20 } });
+  await page
+    .locator("#courses-main-scrollport")
+    .click({ position: { x: 20, y: 20 } });
   await expect(menu).toBeHidden();
   await expect(page.locator("html")).toHaveAttribute(
     "data-palette",
     "graphite",
   );
 
-  await trigger.click();
+  await openThemeMenu();
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("Enter");
   await expect(menu).toBeHidden();
@@ -927,7 +965,7 @@ test("theme picker keeps pointer choices open and makes keyboard previews revers
   await expect(page.locator("html")).toHaveAttribute("data-palette", "grove");
   await expectStoredValue(page, "veolms-academy-theme", "grove");
 
-  await trigger.click();
+  await openThemeMenu();
   await ocean.click();
   await expect(menu).toBeVisible();
   await expect(ocean).toHaveAttribute("aria-checked", "true");

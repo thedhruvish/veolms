@@ -449,7 +449,7 @@
   right: 0;
   bottom: calc(100% - 4px);
   left: auto;
-  width: 212px;
+  width: 252px;
 }
 
 .sidebar-palette-trigger {
@@ -473,25 +473,19 @@
   left: 0;
   z-index: 130;
   display: grid;
-  width: 212px;
+  width: 252px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  gap: 4px;
   overflow: visible;
-  border-radius: 18px;
-  padding: 11px;
-  background:
-    linear-gradient(
-      145deg,
-      rgba(255, 255, 255, 0.055),
-      transparent 38%,
-      rgba(0, 0, 0, 0.18)
-    ),
-    #1b1c1f;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 24px;
+  padding: 15px;
+  background: #242321 url("/assets/theme-menu-grain.webp") center / cover
+    no-repeat;
   box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.09),
-    inset 0 -1px 1px rgba(0, 0, 0, 0.55),
-    0 20px 48px rgba(0, 0, 0, 0.42),
-    0 7px 18px rgba(0, 0, 0, 0.32);
+    inset 0 1px 0 rgb(255 255 255 / 10%),
+    inset 1px 0 0 rgb(255 255 255 / 4%),
+    var(--surface-depth-floating-shadow);
 }
 
 .sidebar-palette-menu > button[data-theme-swatch] {
@@ -501,209 +495,72 @@
   min-width: 0;
   aspect-ratio: 1;
   place-items: center;
-  border: 0;
-  border-radius: 12px;
+  border: 1px solid rgb(255 255 255 / 4%);
+  border-radius: 15px;
   padding: 5px;
   color: white;
-  background: #111215;
+  background: #171614;
   box-shadow:
-    inset 0 2px 5px rgba(0, 0, 0, 0.78),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.035);
+    inset 0 2px 5px rgb(0 0 0 / 64%),
+    inset 0 0 0 1px rgb(0 0 0 / 28%);
   transition:
     background-color 150ms ease,
-    box-shadow 180ms ease;
+    border-color 150ms ease,
+    box-shadow 150ms ease;
 }
 
 .sidebar-palette-menu > button[data-theme-swatch]:hover:not(.is-selected) {
-  background: color-mix(in srgb, var(--theme-swatch) 10%, #111215);
+  border-color: color-mix(
+    in srgb,
+    var(--theme-swatch) 32%,
+    rgb(255 255 255 / 8%)
+  );
+  background: color-mix(in srgb, var(--theme-swatch) 8%, #171614);
   box-shadow:
-    inset 0 2px 5px rgba(0, 0, 0, 0.72),
-    0 0 9px color-mix(in srgb, var(--theme-swatch) 46%, transparent),
-    0 0 16px color-mix(in srgb, var(--theme-swatch) 22%, transparent);
+    inset 0 2px 5px rgb(0 0 0 / 58%),
+    inset 0 0 0 1px color-mix(in srgb, var(--theme-swatch) 12%, transparent);
 }
 
 .sidebar-palette-menu > button[data-theme-swatch].is-selected {
-  background: color-mix(in srgb, var(--theme-swatch) 14%, #111215);
+  border-color: color-mix(in srgb, var(--theme-swatch) 84%, white 16%);
+  background: color-mix(in srgb, var(--theme-swatch) 17%, #171614);
   box-shadow:
-    inset 0 2px 5px rgba(0, 0, 0, 0.66),
-    0 0 0 1px color-mix(in srgb, var(--theme-swatch) 76%, white 24%),
-    0 0 7px color-mix(in srgb, var(--theme-swatch) 54%, transparent),
-    0 0 15px color-mix(in srgb, var(--theme-swatch) 22%, transparent);
+    inset 0 2px 5px rgb(0 0 0 / 48%),
+    inset 0 0 8px color-mix(in srgb, var(--theme-swatch) 22%, transparent);
 }
 
 .sidebar-palette-menu > button[data-theme-swatch].is-selected:hover {
-  background: color-mix(in srgb, var(--theme-swatch) 17%, #111215);
+  background: color-mix(in srgb, var(--theme-swatch) 20%, #171614);
 }
 
 .sidebar-palette-menu > button[data-theme-swatch]:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: none;
+  border-color: color-mix(in srgb, var(--theme-swatch) 88%, white 12%);
 }
 
 .sidebar-palette-menu > button[data-theme-swatch] > i {
   width: 100%;
   height: 100%;
-  border-radius: 11px;
-  background:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--theme-swatch) 72%, white 28%),
-      var(--theme-swatch) 48%,
-      color-mix(in srgb, var(--theme-swatch) 80%, black 20%)
-    ),
-    var(--theme-swatch);
-  filter: saturate(1.13) contrast(1.06);
+  border: 1px solid color-mix(in srgb, var(--theme-swatch) 76%, white 24%);
+  border-radius: 12px;
+  background: var(--theme-swatch);
+  filter: saturate(1.05);
   box-shadow:
-    inset 1px 1px 1px rgba(255, 255, 255, 0.34),
-    inset -1px -2px 2px rgba(0, 0, 0, 0.24),
-    0 3px 0 color-mix(in srgb, var(--theme-swatch) 60%, black 40%),
-    0 7px 10px rgba(0, 0, 0, 0.52);
+    inset 0 1px 0 rgb(255 255 255 / 18%),
+    0 2px 5px rgb(0 0 0 / 36%);
   transition:
     filter 160ms ease,
-    box-shadow 180ms ease;
+    border-color 160ms ease;
 }
 
 .sidebar-palette-menu > button[data-theme-swatch]:hover:not(.is-selected) > i {
-  filter: saturate(1.19) contrast(1.08);
-  box-shadow:
-    inset 1px 1px 1px rgba(255, 255, 255, 0.38),
-    inset -1px -2px 2px rgba(0, 0, 0, 0.22),
-    0 3px 0 color-mix(in srgb, var(--theme-swatch) 60%, black 40%),
-    0 7px 10px rgba(0, 0, 0, 0.5),
-    0 0 8px color-mix(in srgb, var(--theme-swatch) 44%, transparent);
+  border-color: color-mix(in srgb, var(--theme-swatch) 64%, white 36%);
+  filter: saturate(1.11) brightness(1.04);
 }
 
 .sidebar-palette-menu > button[data-theme-swatch].is-selected > i {
-  filter: saturate(1.18) contrast(1.08);
-  box-shadow:
-    inset 1px 1px 1px rgba(255, 255, 255, 0.42),
-    inset -1px -2px 2px rgba(0, 0, 0, 0.2),
-    0 3px 0 color-mix(in srgb, var(--theme-swatch) 62%, black 38%),
-    0 7px 12px rgba(0, 0, 0, 0.48),
-    0 0 0 1px color-mix(in srgb, var(--theme-swatch) 78%, white 22%);
-}
-
-/* Desktop theme picker: a recessed charcoal tray with individually raised
-   color keys. The selected key lifts farther and casts its hue into the well,
-   matching the supplied tactile palette reference without changing the menu
-   structure or roving-keyboard behavior. */
-.sidebar-palette-menu:not(.mobile-palette-menu) {
-  border: 1px solid rgba(255, 255, 255, 0.075);
-  border-radius: 20px;
-  padding: 12px;
-  background: #201e1b url("/assets/theme-menu-grain.webp") center / cover
-    no-repeat;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    inset 0 -2px 3px rgba(0, 0, 0, 0.72),
-    0 4px 0 #0d0c0b,
-    0 15px 34px rgba(0, 0, 0, 0.52),
-    0 32px 72px rgba(0, 0, 0, 0.42);
-}
-
-.sidebar-palette-menu:not(.mobile-palette-menu) > button[data-theme-swatch] {
-  overflow: visible;
-  border: 1px solid rgba(255, 255, 255, 0.035);
-  border-radius: 14px;
-  padding: 5px;
-  background: #12110f;
-  box-shadow:
-    inset 0 3px 7px rgba(0, 0, 0, 0.92),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.045),
-    0 1px 0 rgba(255, 255, 255, 0.035);
-  transition:
-    background-color 150ms ease,
-    box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.sidebar-palette-menu:not(.mobile-palette-menu)
-  > button[data-theme-swatch]
-  > i {
-  border: 1px solid color-mix(in srgb, var(--theme-swatch) 72%, white 28%);
-  border-radius: 12px;
-  background:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--theme-swatch) 76%, white 24%) 0%,
-      var(--theme-swatch) 52%,
-      color-mix(in srgb, var(--theme-swatch) 84%, black 16%) 100%
-    ),
-    var(--theme-swatch);
-  filter: saturate(1.08) contrast(1.04);
-  box-shadow:
-    inset 1px 1px 1px rgba(255, 255, 255, 0.46),
-    inset -1px -2px 2px rgba(0, 0, 0, 0.28),
-    0 4px 0 color-mix(in srgb, var(--theme-swatch) 56%, black 44%),
-    0 8px 10px rgba(0, 0, 0, 0.58);
-  transform: translateY(-1px);
-  transition:
-    filter 160ms ease,
-    box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1),
-    transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.sidebar-palette-menu:not(.mobile-palette-menu)
-  > button[data-theme-swatch]:hover:not(.is-selected) {
-  background: color-mix(in srgb, var(--theme-swatch) 7%, #12110f);
-  box-shadow:
-    inset 0 3px 7px rgba(0, 0, 0, 0.86),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.055),
-    0 1px 0 rgba(255, 255, 255, 0.04);
-}
-
-.sidebar-palette-menu:not(.mobile-palette-menu)
-  > button[data-theme-swatch]:hover:not(.is-selected)
-  > i {
-  filter: saturate(1.13) contrast(1.06);
-  box-shadow:
-    inset 1px 1px 1px rgba(255, 255, 255, 0.5),
-    inset -1px -2px 2px rgba(0, 0, 0, 0.26),
-    0 5px 0 color-mix(in srgb, var(--theme-swatch) 58%, black 42%),
-    0 9px 12px rgba(0, 0, 0, 0.58);
-  transform: translateY(-2px);
-}
-
-.sidebar-palette-menu:not(.mobile-palette-menu)
-  > button[data-theme-swatch].is-selected {
-  background: color-mix(in srgb, var(--theme-swatch) 16%, #12110f);
-  box-shadow:
-    inset 0 3px 7px rgba(0, 0, 0, 0.68),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.07),
-    0 0 0 1px color-mix(in srgb, var(--theme-swatch) 48%, transparent),
-    0 0 12px color-mix(in srgb, var(--theme-swatch) 62%, transparent),
-    0 0 25px color-mix(in srgb, var(--theme-swatch) 36%, transparent);
-}
-
-.sidebar-palette-menu:not(.mobile-palette-menu)
-  > button[data-theme-swatch].is-selected:hover {
-  background: color-mix(in srgb, var(--theme-swatch) 19%, #12110f);
-}
-
-.sidebar-palette-menu:not(.mobile-palette-menu)
-  > button[data-theme-swatch].is-selected
-  > i {
-  filter: saturate(1.12) contrast(1.06);
-  box-shadow:
-    inset 1px 1px 1px rgba(255, 255, 255, 0.56),
-    inset -1px -2px 2px rgba(0, 0, 0, 0.22),
-    0 6px 0 color-mix(in srgb, var(--theme-swatch) 64%, black 36%),
-    0 10px 13px rgba(0, 0, 0, 0.56),
-    0 13px 20px color-mix(in srgb, var(--theme-swatch) 46%, transparent),
-    0 0 18px color-mix(in srgb, var(--theme-swatch) 34%, transparent);
-  transform: translateY(-4px) scale(1.02);
-}
-
-.sidebar-palette-menu:not(.mobile-palette-menu)
-  > button[data-theme-swatch]:focus-visible {
-  outline-color: color-mix(in srgb, var(--theme-swatch) 72%, white 28%);
-  outline-offset: 3px;
-}
-
-.sidebar-palette-menu:not(.mobile-palette-menu)
-  > button[data-theme-swatch]:active
-  > i {
-  transform: translateY(0) scale(0.99);
-  transition-duration: 80ms;
+  border-color: color-mix(in srgb, var(--theme-swatch) 58%, white 42%);
+  filter: saturate(1.09) brightness(1.03);
 }
 
 /* Light shells keep the same spectrum navigation, but deepen its ink and
