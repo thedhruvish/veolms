@@ -11237,39 +11237,21 @@ html:has(.settings-profile__privacy-dialog[open]) {
 
 /* Ensure cov-page inside the modal fits gracefully without double outer bounds */
 .course-overview-preview-modal-body .cov-page {
-  height: auto;
+  height: 100%;
   max-height: none;
   min-height: 100%;
   border-radius: 0;
   background: transparent;
 }
 
+.course-overview-preview-modal-body .cov-scroll-container {
+  height: 100%;
+}
+
 @media (max-width: 640px) {
-  .course-overview-preview-modal-body .cov-page {
+  .course-overview-preview-modal-body .cov-content-inner {
     padding: 16px 14px 40px;
   }
-}
-
-.course-overview-preview-modal-body .cov-desktop-flow {
-  height: auto;
-  max-height: none;
-  overflow: visible;
-}
-
-.course-overview-preview-modal-body .cov-layout {
-  height: auto;
-  max-height: none;
-}
-
-.course-overview-preview-modal-body .cov-content {
-  overflow-y: visible;
-  padding-right: 8px;
-}
-
-.course-overview-preview-modal-body .cov-right-column {
-  position: sticky;
-  top: 0;
-  height: fit-content;
 }
 
 @media (max-width: 640px) {
