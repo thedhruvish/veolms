@@ -101,6 +101,36 @@
     width: 0;
     height: 0;
   }
+
+  /* Keep the shell's inset edge above sticky page content. Box shadows on the
+     scrollport itself paint behind descendants, so the shell overlay restores
+     the continuous rounded highlight without taking up layout space. */
+  :root[data-content-layout="framed"] .courses-app {
+    --main-surface-inline-start: var(--sidebar-expanded-width, 252px);
+    position: relative;
+  }
+
+  :root[data-content-layout="framed"] .courses-app--collapsed,
+  :root[data-content-layout="framed"] .courses-app--resizing {
+    --main-surface-inline-start: var(--sidebar-resize-preview-width, 76px);
+  }
+
+  :root[data-content-layout="framed"] .courses-app--hidden {
+    --main-surface-inline-start: 14px;
+  }
+
+  :root[data-content-layout="framed"] .courses-app::after {
+    content: "";
+    position: absolute;
+    z-index: 46;
+    top: 14px;
+    right: 14px;
+    bottom: 14px;
+    left: var(--main-surface-inline-start);
+    border-radius: 18px;
+    pointer-events: none;
+    box-shadow: var(--surface-depth-edge-shadow, none);
+  }
 }
 
 .floating-scrollbar {
