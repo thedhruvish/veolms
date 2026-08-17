@@ -1,12 +1,10 @@
-import {
-  CaretDown,
-  CaretRight,
-  Check,
-  Circle,
-  MagnifyingGlass,
-  Play,
-  X,
-} from "@phosphor-icons/react";
+import { CaretDown } from "@phosphor-icons/react/CaretDown";
+import { CaretRight } from "@phosphor-icons/react/CaretRight";
+import { Check } from "@phosphor-icons/react/Check";
+import { Circle } from "@phosphor-icons/react/Circle";
+import { MagnifyingGlass } from "@phosphor-icons/react/MagnifyingGlass";
+import { Play } from "@phosphor-icons/react/Play";
+import { X } from "@phosphor-icons/react/X";
 import React, { useEffect, useRef, useState } from "react";
 import { lessonsById, sections } from "./courseContent";
 import { IconButton } from "./IconButton";
@@ -157,7 +155,11 @@ export function Curriculum({
           </div>
           <div
             className="learning-curriculum__progress-track"
+            role="progressbar"
             aria-label={`Course progress: ${courseProgress} percent`}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={courseProgress}
           >
             <span style={{ width: `${courseProgress}%` }} />
           </div>

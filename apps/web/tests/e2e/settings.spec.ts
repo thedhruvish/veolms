@@ -343,6 +343,17 @@ test("appearance and sidebar preferences persist through their direct settings r
   await expect(colorThemeOptions.nth(0)).toContainText("Veo Onyx");
   await expect(colorThemeOptions.nth(1)).toContainText("Ocean Blue");
   await expect(colorThemeOptions.nth(2)).toContainText("Midnight Azure");
+  const previewTone = (themeName: RegExp) =>
+    colorThemeOptions
+      .filter({ hasText: themeName })
+      .locator(".settings-mini-surface")
+      .evaluate((element) =>
+        getComputedStyle(element).getPropertyValue("--mini-tone").trim(),
+      );
+  await expect.poll(() => previewTone(/Brainwave Slate/)).toBe("#0085ff");
+  await expect.poll(() => previewTone(/Velvet Lilac/)).toBe("#c18cff");
+  await expect.poll(() => previewTone(/Champagne Noir/)).toBe("#e6c98a");
+  await expect.poll(() => previewTone(/Electric Lime/)).toBe("#a3e635");
   await expect(page.locator("html")).toHaveAttribute(
     "data-sidebar-icon-style",
     "monochrome",
