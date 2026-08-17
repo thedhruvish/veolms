@@ -9865,6 +9865,12 @@ html:has(.settings-profile__privacy-dialog[open]) {
   }
 }
 
+.course-wizard-media-box {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
 .course-wizard-media-box h3 {
   margin: 0 0 4px;
   color: var(--text-secondary);
@@ -9876,26 +9882,131 @@ html:has(.settings-profile__privacy-dialog[open]) {
   margin: 0 0 12px;
   color: var(--muted);
   font-size: 0.78rem;
+  min-height: 1.15rem;
 }
 
 .course-wizard-media-dropzone {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  min-height: 175px;
+  box-sizing: border-box;
   border: 1px dashed rgba(255, 255, 255, 0.12);
   border-radius: 12px;
-  padding: 28px 16px;
+  padding: 16px;
   background: rgba(0, 0, 0, 0.15);
   text-align: center;
+  overflow: hidden;
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.course-wizard-media-dropzone.is-clickable {
+  cursor: pointer;
+}
+
+.course-wizard-media-dropzone.is-clickable:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, rgba(0, 0, 0, 0.18));
+}
+
+.course-wizard-media-dropzone--has-image {
+  padding: 0;
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.course-wizard-thumbnail-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.course-wizard-thumbnail-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.68);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.course-wizard-media-dropzone--has-image:hover .course-wizard-thumbnail-overlay {
+  opacity: 1;
+}
+
+.course-wizard-thumbnail-overlay .course-wizard-btn-secondary {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.course-wizard-thumbnail-overlay .course-wizard-btn-secondary:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent, #ffffff);
+}
+
+.course-wizard-btn-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.18);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.course-wizard-btn-danger:hover {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: #ffffff;
 }
 
 .dropzone-icon {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   color: var(--accent);
 }
 
+.course-wizard-media-dropzone-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .course-wizard-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   padding: 8px 16px;
@@ -9915,7 +10026,7 @@ html:has(.settings-profile__privacy-dialog[open]) {
 }
 
 .dropzone-hint {
-  margin: 10px 0 0;
+  margin: 8px 0 0;
   color: var(--muted);
   font-size: 0.74rem;
 }
@@ -9948,6 +10059,53 @@ html:has(.settings-profile__privacy-dialog[open]) {
   border-radius: 10px;
   overflow: hidden;
   background: color-mix(in srgb, var(--canvas) 40%, var(--surface));
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.course-preview-media.is-clickable {
+  cursor: pointer;
+}
+
+.course-preview-media.is-clickable:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+}
+
+.course-preview-media__image-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.course-preview-media__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.course-preview-media__hover-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+.course-preview-media:hover .course-preview-media__hover-overlay {
+  opacity: 1;
 }
 
 .course-preview-media__placeholder {
@@ -9972,6 +10130,23 @@ html:has(.settings-profile__privacy-dialog[open]) {
 .course-preview-media__placeholder span {
   color: var(--muted);
   opacity: 0.7;
+}
+
+.course-preview-media__placeholder-cta {
+  display: inline-block;
+  margin-top: 2px;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--accent) !important;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  opacity: 1 !important;
+  transition: background 0.15s ease;
+}
+
+.course-preview-media.is-clickable:hover .course-preview-media__placeholder-cta {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 .course-preview-info {
@@ -10690,16 +10865,21 @@ html:has(.settings-profile__privacy-dialog[open]) {
   border: none;
   border-radius: 8px;
   padding: 8px 14px;
-  color: #ffffff;
-  background: #6366f1;
+  color: var(--on-accent, #ffffff);
+  background: var(--accent);
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease,
+    opacity 0.15s ease;
+  box-shadow: 0 2px 8px var(--accent-shadow);
 }
 
 .curriculum-upload-btn-primary:hover {
-  background: #4f46e5;
+  background: var(--accent-hover, var(--accent));
+  box-shadow: 0 3px 12px var(--accent-shadow);
 }
 
 .curriculum-upload-btn-secondary {
@@ -11946,16 +12126,21 @@ html:has(.settings-profile__privacy-dialog[open]) {
   border: none;
   border-radius: 9px;
   padding: 9px 18px;
-  color: #ffffff;
-  background: #6366f1;
+  color: var(--on-accent, #ffffff);
+  background: var(--accent);
   font-size: 0.84rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease,
+    opacity 0.15s ease;
+  box-shadow: 0 2px 8px var(--accent-shadow);
 }
 
 .pricing-coupons-btn:hover {
-  background: #4f46e5;
+  background: var(--accent-hover, var(--accent));
+  box-shadow: 0 4px 12px var(--accent-shadow);
 }
 
 /* Light Mode Overrides for Pricing */
