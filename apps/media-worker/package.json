@@ -1,10 +1,24 @@
 {
   "name": "@veolms/media-worker",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
+  "exports": "./src/index.ts",
   "scripts": {
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
+    "test": "node --test tests/**/*.test.ts",
     "start": "node src/index.ts"
+  },
+  "dependencies": {
+    "@veolms/config": "workspace:*",
+    "@veolms/contracts": "workspace:*",
+    "@veolms/fleet-types": "workspace:*",
+    "fluent-ffmpeg": "^2.1.3"
+  },
+  "devDependencies": {
+    "@types/fluent-ffmpeg": "^2.1.27",
+    "@types/node": "^24.10.13",
+    "typescript": "npm:@typescript/typescript6@^6.0.2"
   }
 }
