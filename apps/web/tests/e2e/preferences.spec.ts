@@ -1176,6 +1176,8 @@ test("theme picker keeps pointer choices open and makes keyboard previews revers
       menuShadowLayers: countShadowLayers(menuStyles.boxShadow),
       selectedBorderLayers: countShadowLayers(buttonStyles.boxShadow),
       selectedInsetLayers: buttonStyles.boxShadow.match(/inset/g)?.length ?? 0,
+      selectedBorderColor: buttonStyles.borderTopColor,
+      selectedBorderStyle: buttonStyles.borderTopStyle,
       selectedBackgroundImage: buttonStyles.backgroundImage,
       selectedBorderWidth: Number.parseFloat(buttonStyles.borderTopWidth),
       selectedTransitionProperty: buttonStyles.transitionProperty,
@@ -1192,10 +1194,12 @@ test("theme picker keeps pointer choices open and makes keyboard previews revers
   expect(paletteMaterial.swatchSize).toBeGreaterThanOrEqual(35);
   expect(paletteMaterial.swatchSize).toBeLessThanOrEqual(38);
   expect(paletteMaterial.menuShadowLayers).toBeGreaterThanOrEqual(4);
-  expect(paletteMaterial.selectedBorderLayers).toBe(2);
+  expect(paletteMaterial.selectedBorderLayers).toBeGreaterThanOrEqual(3);
   expect(paletteMaterial.selectedInsetLayers).toBe(1);
-  expect(paletteMaterial.selectedBackgroundImage).toContain("conic-gradient");
-  expect(paletteMaterial.selectedBorderWidth).toBe(2);
+  expect(paletteMaterial.selectedBorderColor).not.toBe("rgba(0, 0, 0, 0)");
+  expect(paletteMaterial.selectedBorderStyle).toBe("solid");
+  expect(paletteMaterial.selectedBackgroundImage).toBe("none");
+  expect(paletteMaterial.selectedBorderWidth).toBe(3);
   expect(paletteMaterial.selectedTransitionProperty).toContain("transform");
   expect(paletteMaterial.swatchDepthLayers).toBe(2);
   expect(paletteMaterial.swatchBackgroundImage).toBe("none");
@@ -1224,12 +1228,37 @@ test("theme picker keeps pointer choices open and makes keyboard previews revers
   );
   await expectStoredValue(page, "veolms-academy-theme", "graphite");
 
+  await page.keyboard.press("ArrowRight");
+  const copper = menu.getByRole("menuitemradio", { name: /Copper Slate/ });
+  await expect(copper).toBeFocused();
+  await expect(copper).toHaveAttribute("aria-checked", "true");
+  await expect(page.locator("html")).toHaveAttribute("data-palette", "violet");
+  await expectStoredValue(page, "veolms-academy-theme", "graphite");
+
+  await page.keyboard.press("ArrowLeft");
+  await expect(graphite).toBeFocused();
+  await expect(graphite).toHaveAttribute("aria-checked", "true");
+
   await page.keyboard.press("ArrowDown");
   const grove = menu.getByRole("menuitemradio", { name: /Grove Green/ });
   await expect(grove).toBeFocused();
   await expect(grove).toHaveAttribute("aria-checked", "true");
   await expect(page.locator("html")).toHaveAttribute("data-palette", "grove");
   await expectStoredValue(page, "veolms-academy-theme", "graphite");
+
+  await page.keyboard.press("ArrowUp");
+  await expect(graphite).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(grove).toBeFocused();
+
+  await page.keyboard.press("End");
+  const lime = menu.getByRole("menuitemradio", { name: /Electric Lime/ });
+  const onyx = menu.getByRole("menuitemradio", { name: /Veo Onyx/ });
+  await expect(lime).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(onyx).toBeFocused();
+  await page.keyboard.press("ArrowLeft");
+  await expect(lime).toBeFocused();
 
   await page
     .locator("#courses-main-scrollport")

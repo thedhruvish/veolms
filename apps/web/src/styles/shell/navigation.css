@@ -534,24 +534,28 @@
 
 .sidebar-palette-menu > button[data-theme-swatch].is-selected {
   --palette-slot-surface: color-mix(in srgb, var(--theme-swatch) 24%, #171614);
-  --palette-slot-ring: conic-gradient(
-    from 215deg,
-    color-mix(in srgb, var(--theme-swatch) 62%, white 38%) 0deg,
-    var(--theme-swatch) 104deg,
-    color-mix(in srgb, var(--theme-swatch) 48%, black 52%) 214deg,
-    color-mix(in srgb, var(--theme-swatch) 76%, white 24%) 304deg,
-    color-mix(in srgb, var(--theme-swatch) 62%, white 38%) 360deg
+  --palette-selected-border: color-mix(
+    in srgb,
+    var(--theme-swatch) 72%,
+    white 28%
   );
+  border-width: 3px;
+  border-color: var(--palette-selected-border);
+  padding: 2px;
+  background: var(--palette-slot-surface);
   box-shadow:
     inset 0 2px 5px rgb(0 0 0 / 34%),
-    0 3px 9px color-mix(in srgb, var(--theme-swatch) 30%, transparent);
+    0 0 0 1px color-mix(in srgb, var(--theme-swatch) 38%, transparent),
+    0 0 6px color-mix(in srgb, var(--theme-swatch) 28%, transparent);
 }
 
 .sidebar-palette-menu > button[data-theme-swatch].is-selected:hover {
   --palette-slot-surface: color-mix(in srgb, var(--theme-swatch) 30%, #171614);
+  border-color: color-mix(in srgb, var(--theme-swatch) 66%, white 34%);
   box-shadow:
     inset 0 2px 5px rgb(0 0 0 / 30%),
-    0 4px 11px color-mix(in srgb, var(--theme-swatch) 34%, transparent);
+    0 0 0 1px color-mix(in srgb, var(--theme-swatch) 44%, transparent),
+    0 0 7px color-mix(in srgb, var(--theme-swatch) 32%, transparent);
 }
 
 .sidebar-palette-menu > button[data-theme-swatch]:active {
@@ -564,6 +568,10 @@
 .sidebar-palette-menu > button[data-theme-swatch]:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--theme-swatch) 52%, var(--text));
   outline-offset: 2px;
+}
+
+.sidebar-palette-menu > button[data-theme-swatch].is-selected:focus-visible {
+  outline: none;
 }
 
 .sidebar-palette-menu > button[data-theme-swatch] > i {
@@ -643,9 +651,15 @@
     var(--theme-swatch) 16%,
     var(--surface)
   );
+  --palette-selected-border: color-mix(
+    in srgb,
+    var(--theme-swatch) 72%,
+    var(--text) 28%
+  );
   box-shadow:
     inset 0 2px 5px color-mix(in srgb, var(--text) 10%, transparent),
-    0 3px 9px color-mix(in srgb, var(--theme-swatch) 28%, transparent);
+    0 0 0 1px color-mix(in srgb, var(--theme-swatch) 34%, transparent),
+    0 0 6px color-mix(in srgb, var(--theme-swatch) 25%, transparent);
 }
 
 :root[data-theme="light"]
@@ -656,6 +670,7 @@
     var(--theme-swatch) 22%,
     var(--surface)
   );
+  border-color: color-mix(in srgb, var(--theme-swatch) 68%, var(--text) 32%);
 }
 
 /* Light shells keep the same spectrum navigation, but deepen its ink and
