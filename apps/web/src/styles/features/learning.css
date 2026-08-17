@@ -740,8 +740,10 @@
 }
 
 .learning-discussion {
-  --learning-panel-inline-start: 6px;
-  --learning-panel-inline-end: 6px;
+  /* Let the swipe clip reach the frame edges so raised cards keep their full
+     shadow without changing the alignment of the discussion content. */
+  --learning-panel-inline-start: 22px;
+  --learning-panel-inline-end: 22px;
   margin: 15px 0 0;
   padding: 0 6px 28px;
 }
@@ -992,11 +994,6 @@
 
   .learning-workspace__lesson-heading {
     padding: 10px 6px;
-  }
-
-  .learning-discussion {
-    --learning-panel-inline-start: 22px;
-    --learning-panel-inline-end: 22px;
   }
 }
 

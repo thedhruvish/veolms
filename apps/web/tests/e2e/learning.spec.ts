@@ -5,6 +5,64 @@ test.beforeEach(async ({ page }) => {
   await installBaselineState(page);
 });
 
+test("desktop discussion preserves card elevation to the lesson frame edges", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1424, height: 678 });
+  await openApp(page, "/learn/typescript-course/the-design-mindset?from=home");
+  await expect(
+    page.getByRole("textbox", { name: "Add a comment" }),
+  ).toBeVisible();
+
+  const geometry = await page.evaluate(() => {
+    const main = document.querySelector<HTMLElement>(
+      ".learning-workspace__main",
+    );
+    const lesson = document.querySelector<HTMLElement>(
+      ".learning-workspace__lesson-column",
+    );
+    const panel = document.querySelector<HTMLElement>(
+      "#learning-discussion-tab-panel",
+    );
+    const card = document.querySelector<HTMLElement>(
+      ".learning-comment-composer",
+    );
+    if (!main || !lesson || !panel || !card) {
+      throw new Error("Learning discussion layout targets missing");
+    }
+
+    const mainRect = main.getBoundingClientRect();
+    const lessonRect = lesson.getBoundingClientRect();
+    const panelRect = panel.getBoundingClientRect();
+    const cardRect = card.getBoundingClientRect();
+    const mainStyle = getComputedStyle(main);
+    return {
+      mainLeft: mainRect.left,
+      lessonRight: lessonRect.right,
+      panelLeft: panelRect.left,
+      panelRight: panelRect.right,
+      cardLeft: cardRect.left,
+      cardRight: cardRect.right,
+      mainPaddingLeft: Number.parseFloat(mainStyle.paddingLeft),
+      mainPaddingRight: Number.parseFloat(mainStyle.paddingRight),
+      panelOverflowX: getComputedStyle(panel).overflowX,
+    };
+  });
+
+  expect(geometry.panelOverflowX).toBe("clip");
+  expect(geometry.panelLeft).toBeCloseTo(geometry.mainLeft, 0);
+  expect(geometry.panelRight).toBeCloseTo(
+    geometry.lessonRight + geometry.mainPaddingRight,
+    0,
+  );
+  expect(geometry.cardLeft - geometry.panelLeft).toBeGreaterThanOrEqual(
+    geometry.mainPaddingLeft,
+  );
+  expect(geometry.panelRight - geometry.cardRight).toBeGreaterThanOrEqual(
+    geometry.mainPaddingRight,
+  );
+});
+
 test("lesson choice, curriculum width, and player preferences persist", async ({
   page,
 }) => {
