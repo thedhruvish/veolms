@@ -372,7 +372,7 @@ function CourseHeroSection({
               {onNavigateCourses && (
                 <button
                   type="button"
-                  className="inline-flex items-center justify-center w-[38px] h-[38px] rounded-xl border border-[color-mix(in_srgb,var(--text)_14%,transparent)] bg-[color-mix(in_srgb,var(--surface)_90%,#000)] text-[var(--text)] cursor-pointer p-0 shadow-[0_2px_8px_rgba(0,0,0,0.14)] transition-[border-color,background-color,transform,color] duration-160 ease-out hover:border-[color-mix(in_srgb,var(--text)_30%,transparent)] hover:bg-[var(--hover)] hover:text-[var(--text)] hover:-translate-x-0.5"
+                  className="inline-flex items-center justify-center w-[38px] h-[38px] rounded-xl border border-[color-mix(in_srgb,var(--text)_14%,transparent)] bg-[color-mix(in_srgb,var(--surface)_90%,#000)] text-[var(--text)] cursor-pointer p-0 shadow-[0_2px_8px_rgba(0,0,0,0.14)] transition-[border-color,background-color,color] duration-160 ease-out hover:border-[color-mix(in_srgb,var(--text)_30%,transparent)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
                   aria-label="Back to courses"
                   onClick={onNavigateCourses}
                   title="Back to courses"
@@ -476,16 +476,16 @@ function CourseHeroSection({
             <div className="flex items-center gap-2.5 w-full max-[640px]:flex-wrap max-[640px]:gap-2">
               <button
                 type="button"
-                className="inline-flex items-center justify-center gap-1.5 min-h-[40px] border border-dashed border-[color-mix(in_srgb,var(--text)_22%,transparent)] rounded-[9px] px-4 py-[9px] text-[var(--text-secondary)] bg-[color-mix(in_srgb,var(--surface)_60%,transparent)] text-[0.86rem] font-semibold cursor-pointer whitespace-nowrap transition-[border-color,color,background-color,transform] duration-160 ease-out hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft,color-mix(in_srgb,var(--accent)_12%,transparent))] hover:-translate-y-px max-[640px]:flex-1 max-[640px]:min-w-[120px] max-[640px]:px-3.5 max-[640px]:py-2.5 max-[640px]:text-[0.84rem]"
+                className="inline-flex items-center justify-center gap-1.5 min-h-[40px] border border-dashed border-[color-mix(in_srgb,var(--text)_25%,transparent)] rounded-[9px] px-4 py-[9px] text-[var(--text)] bg-[color-mix(in_srgb,var(--surface)_60%,transparent)] text-[0.86rem] font-bold font-[750] cursor-pointer whitespace-nowrap transition-[border-color,color,background-color,transform] duration-160 ease-out hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft,color-mix(in_srgb,var(--accent)_12%,transparent))] hover:-translate-y-px max-[640px]:flex-1 max-[640px]:min-w-[120px] max-[640px]:px-3.5 max-[640px]:py-2.5 max-[640px]:text-[0.84rem]"
                 disabled={isReadOnlyPreview}
               >
-                <Ticket size={18} aria-hidden="true" />
-                <span>Apply coupon</span>
+                <Ticket size={18} weight="bold" aria-hidden="true" />
+                <span className="font-bold font-[750]">Apply coupon</span>
               </button>
 
               <button
                 type="button"
-                className="inline-flex items-center justify-center gap-[7px] flex-1 min-h-[42px] px-5 py-2.5 border-0 rounded-[9px] text-[var(--on-accent,#ffffff)] bg-[var(--accent)] shadow-[0_4px_14px_var(--accent-shadow,color-mix(in_srgb,var(--accent)_28%,transparent))] text-[0.92rem] font-[750] cursor-pointer whitespace-nowrap transition-[background-color,transform,box-shadow] duration-160 ease-out hover:bg-[var(--accent-hover,color-mix(in_srgb,var(--accent)_85%,var(--text)))] hover:-translate-y-px hover:shadow-[0_6px_18px_var(--accent-shadow,color-mix(in_srgb,var(--accent)_38%,transparent))] max-[640px]:min-w-[140px] max-[640px]:px-4 max-[640px]:py-2.5 max-[640px]:text-[0.88rem]"
+                className="inline-flex items-center justify-center gap-[7px] flex-1 min-h-[42px] px-5 py-2.5 border-0 rounded-[9px] text-[var(--on-accent,#ffffff)] bg-[var(--accent)] shadow-[0_4px_14px_var(--accent-shadow,color-mix(in_srgb,var(--accent)_28%,transparent))] text-[0.94rem] font-extrabold font-[800] tracking-[-0.01em] cursor-pointer whitespace-nowrap transition-[background-color,transform,box-shadow] duration-160 ease-out hover:bg-[var(--accent-hover,color-mix(in_srgb,var(--accent)_85%,var(--text)))] hover:-translate-y-px hover:shadow-[0_6px_18px_var(--accent-shadow,color-mix(in_srgb,var(--accent)_38%,transparent))] max-[640px]:min-w-[140px] max-[640px]:px-4 max-[640px]:py-2.5 max-[640px]:text-[0.88rem]"
                 disabled={isReadOnlyPreview}
                 onClick={() => {
                   if (!isReadOnlyPreview && onNavigatePage) {
@@ -494,7 +494,7 @@ function CourseHeroSection({
                 }}
               >
                 <ShoppingBag size={19} weight="bold" aria-hidden="true" />
-                <span>
+                <span className="font-extrabold font-[800]">
                   {price.toLowerCase() === "free"
                     ? "Enroll for Free"
                     : course.enrolled
@@ -590,7 +590,7 @@ function CourseAboutCard({
     >
       <h2
         id="cov-about-heading"
-        className="m-0 mb-2.5 text-[var(--text)] text-[1.1rem] font-bold tracking-[-0.015em]"
+        className="m-0 mb-3 text-[var(--text)] text-[1.24rem] font-bold tracking-[-0.015em]"
       >
         About this course
       </h2>

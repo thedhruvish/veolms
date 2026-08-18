@@ -8886,6 +8886,31 @@ html:has(.settings-profile__privacy-dialog[open]) {
   flex-shrink: 0;
 }
 
+.editor-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.editor-btn:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+
+.editor-btn.is-active {
+  color: var(--accent-ink, var(--accent));
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
 @media (max-width: 640px) {
   .course-wizard-editor__toolbar {
     padding: 6px 8px;
