@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { MouseEvent } from "react";
+import { useParams } from "react-router";
 import {
   ArrowLeft,
   BookOpen,
@@ -342,7 +343,7 @@ function CourseHeroSection({
 }: CourseHeroSectionProps) {
   const handlePreviewClick = () => {
     if (!isReadOnlyPreview && onNavigatePage) {
-      onNavigatePage(`/courses/${encodeURIComponent(course.id)}`);
+      onNavigatePage(`/learn/${encodeURIComponent(course.id)}`);
     }
   };
 
@@ -489,7 +490,7 @@ function CourseHeroSection({
                 disabled={isReadOnlyPreview}
                 onClick={() => {
                   if (!isReadOnlyPreview && onNavigatePage) {
-                    onNavigatePage(`/courses/${encodeURIComponent(course.id)}`);
+                    onNavigatePage(`/learn/${encodeURIComponent(course.id)}`);
                   }
                 }}
               >
@@ -695,7 +696,7 @@ export interface CourseOverviewPageProps {
 }
 
 export function CourseOverviewPage({
-  courseSlug,
+  courseSlug: propCourseSlug,
   onNavigateCourses,
   onNavigatePage,
   customCourse,
@@ -706,6 +707,9 @@ export function CourseOverviewPage({
   customPricing,
   isReadOnlyPreview = false,
 }: CourseOverviewPageProps) {
+  const { courseSlug: routeCourseSlug } = useParams();
+  const courseSlug = propCourseSlug ?? routeCourseSlug;
+
   const course =
     customCourse ??
     courses.find((c) => c.id === courseSlug) ??

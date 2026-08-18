@@ -7,10 +7,14 @@ import Fastify, {
   type FastifyServerOptions,
 } from "fastify";
 import type { Kysely } from "kysely";
+import fastifyCookie from "@fastify/cookie";
+import fastifyCors from "@fastify/cors";
 
-import { registerErrorHandler } from "./error-handler.ts";
+import { registerErrorHandler } from "./middlewares/error.middleware.ts";
 import type { RoutePluginOptions } from "./lib/route-plugin.ts";
 import { registerOpenApi } from "./openapi.ts";
+import { createServices, type AppServices } from "./services/index.ts";
+import { config } from "./config.ts";
 
 export const API_ROUTE_PREFIX = "/api/v1";
 
@@ -25,33 +29,78 @@ const MAX_PARAM_LENGTH = 512;
 interface CreateAppOptions {
   database: Kysely<Database>;
   logger?: FastifyServerOptions["logger"];
+  /** Overridable so tests can supply stubs instead of real gateways. */
+  services?: AppServices;
 }
 
 export async function createApp({
   database,
   logger = true,
+  services,
 }: CreateAppOptions): Promise<FastifyInstance> {
   const app = Fastify({
     logger,
     routerOptions: { maxParamLength: MAX_PARAM_LENGTH },
   });
 
+  const appServices =
+    services ?? createServices({ config, logger: app.log });
+
   // Await this: it installs the Zod compilers and the route-discovery hook that
   // everything registered below depends on.
   await registerOpenApi(app);
   registerErrorHandler(app);
 
-  // Every module in src/routes is registered automatically, so adding a route
-  // file is all it takes for the endpoint — and its OpenAPI entry — to exist.
-  // Files whose name starts with `_` are skipped, for route-local helpers.
+  app.addHook("preSerialization", async (request, reply, payload) => {
+    if (request.url.startsWith("/api/docs")) {
+      return payload;
+    }
+
+    // Already-enveloped payloads (notably error responses) pass through
+    // untouched, so they are not wrapped a second time.
+    if (payload && typeof payload === "object" && "success" in payload) {
+      return payload;
+    }
+
+    return {
+      success: true,
+      statusCode: reply.statusCode,
+      data: payload,
+    };
+  });
+
+  // Register cookie support for stateful sessions
+  await app.register(fastifyCookie, {
+    secret: config.SESSION_SECRET,
+  });
+
+  // Configure CORS
+  await app.register(fastifyCors, {
+    origin:
+      config.NODE_ENV === "production"
+        ? config.WEB_URL
+        : "http://localhost:3000",
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  });
+
+  // Every module in src/modules is scanned, and only files ending in .routes.ts
+  // are loaded as Fastify plugins.
   await app.register(fastifyAutoload, {
-    dir: fileURLToPath(new URL("./routes", import.meta.url)),
+    dir: fileURLToPath(new URL("./modules", import.meta.url)),
+    matchFilter: /\.routes\.ts$/,
     dirNameRoutePrefix: false,
     ignorePattern: /(?:^|[\\/])_/u,
     options: {
       prefix: API_ROUTE_PREFIX,
       database,
+      services: appServices,
     } satisfies RoutePluginOptions,
+  });
+
+  // Release pooled SMTP connections when the server shuts down.
+  app.addHook("onClose", async () => {
+    await appServices.email.close();
   });
 
   return app;
