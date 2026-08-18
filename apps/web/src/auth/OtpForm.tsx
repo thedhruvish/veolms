@@ -24,6 +24,7 @@ export interface OtpFormProps {
   onCodeChange: (code: string) => void;
   status: "idle" | "verifying";
   failure: OtpFailureReason | null;
+  errorMessage?: string | null;
   sendCount: number;
   onSubmit: (code: string) => void;
   onResend: () => void;
@@ -43,9 +44,14 @@ const SUBHEADINGS = {
 function resolveMessage(
   invalidReason: string | null,
   failure: OtpFailureReason | null,
+  errorMessage?: string | null,
 ): OtpMessage | null {
   if (invalidReason !== null) {
     return { title: null, body: invalidReason };
+  }
+
+  if (errorMessage) {
+    return { title: null, body: errorMessage };
   }
 
   return failure === null ? null : OTP_MESSAGES[failure];
@@ -54,6 +60,7 @@ function resolveMessage(
 export function OtpForm({
   code,
   failure,
+  errorMessage,
   identifier,
   onCodeChange,
   onIdentifierChange,
@@ -66,7 +73,7 @@ export function OtpForm({
   const [invalidReason, setInvalidReason] = useState<string | null>(null);
   const [countedSendCount, setCountedSendCount] = useState(sendCount);
   const [remaining, setRemaining] = useState(RESEND_COOLDOWN_SECONDS);
-  const message = resolveMessage(invalidReason, failure);
+  const message = resolveMessage(invalidReason, failure, errorMessage);
 
   if (countedSendCount !== sendCount) {
     setCountedSendCount(sendCount);
@@ -90,6 +97,10 @@ export function OtpForm({
   const changeCode = (next: string) => {
     setInvalidReason(null);
     onCodeChange(next);
+
+    if (next.length === 6 && !validateOtpCode(next) && !verifying) {
+      onSubmit(next);
+    }
   };
 
   const submit = (event: FormEvent<HTMLFormElement>) => {

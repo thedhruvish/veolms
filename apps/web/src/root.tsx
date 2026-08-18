@@ -4,6 +4,7 @@ import { fullAppStylesheet } from "./appStylesheet";
 import manropeFontUrl from "./assets/fonts/manrope-core.woff2?url";
 import procodrrLogoMark from "./assets/procodrr-logo-mark.svg";
 import { AppLoadingScreen } from "./bootstrap/AppLoadingScreen";
+import { QueryProvider } from "./providers/query-provider";
 import { ReadingModeEffects } from "./reading-mode/ReadingModeEffects";
 import { getReadingModeBootstrapScript } from "./reading-mode/readingModePreferences";
 import { getSurfaceDepthBootstrapScript } from "./settings/settingsPreferences";
@@ -90,5 +91,9 @@ export function HydrateFallback() {
 }
 
 export default function Root() {
-  return <Outlet />;
+  return (
+    <QueryProvider>
+      <Outlet />
+    </QueryProvider>
+  );
 }

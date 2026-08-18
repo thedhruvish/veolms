@@ -17,15 +17,21 @@
   --auth-radius-switch: 12px;
   --auth-line: color-mix(in srgb, var(--text) 13%, transparent);
 
-  display: grid;
-  justify-items: center;
-  align-content: center;
-  gap: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 100vh;
   min-height: 100dvh;
   margin: 0 auto;
-  padding: 24px 16px 76px;
+  padding: 24px 16px;
+  box-sizing: border-box;
   color: var(--text);
-  background: var(--app-shell);
+  background: var(--app-shell, var(--canvas));
+  transition:
+    background-color 200ms ease,
+    color 200ms ease;
 }
 
 .auth-page::before {
@@ -50,6 +56,7 @@
   width: 100%;
   min-width: 0;
   max-width: 480px;
+  margin: 0 auto;
   padding: var(--auth-pad-y) var(--auth-pad-x);
   border: 1px solid var(--auth-line);
   border-radius: 15px;
@@ -875,12 +882,37 @@
   }
 
   .auth-brand-panel {
+    display: grid;
     align-content: stretch;
   }
 
   .auth-brand-panel__illustration-slot {
+    position: relative;
+    width: 100%;
+    height: 100%;
     background: url("../assets/auth-illustration.webp") center / contain
       no-repeat;
+  }
+
+  /* Theme-adaptive blend overlay that selectively re-tints only the illustration's glowing elements */
+  .auth-brand-panel__illustration-slot::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--accent);
+    mix-blend-mode: hue;
+    opacity: 0.85;
+    pointer-events: none;
+    transition: background-color 200ms ease;
+  }
+
+  /* Palette-tailored adjustments: monochrome Veo Onyx / Codex */
+  :root[data-palette="codex"] .auth-brand-panel__illustration-slot {
+    filter: saturate(0.18) brightness(1.05);
+  }
+
+  :root[data-palette="codex"] .auth-brand-panel__illustration-slot::after {
+    display: none;
   }
 
   .auth-otp-form__destination {
@@ -945,3 +977,31 @@
     height: 44px;
   }
 }
+
+/* Light mode adjustments */
+:root[data-theme="light"] .auth-page {
+  background: var(--app-shell, var(--canvas));
+}
+
+:root[data-theme="light"] .auth-page::before {
+  opacity: 0.035;
+}
+
+:root[data-theme="light"] .auth-page__container {
+  background: var(--main-surface, var(--surface));
+  box-shadow: 0 20px 50px
+    color-mix(in srgb, var(--card-shadow, #000) 10%, transparent);
+}
+
+:root[data-theme="light"] .auth-page__form-column {
+  background: var(--surface);
+  box-shadow: 0 12px 30px
+    color-mix(in srgb, var(--card-shadow, #000) 8%, transparent);
+}
+
+:root[data-theme="light"] .auth-brand-panel {
+  background: color-mix(in srgb, var(--surface) 92%, var(--accent-soft));
+  border: 1px solid var(--auth-line);
+  border-radius: 14px;
+}
+

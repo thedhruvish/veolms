@@ -197,7 +197,9 @@ export function IdentifierForm({
         disabled={sending}
         type="submit"
       >
-        <span className="auth-form__submit-label">Continue</span>
+        <span className="auth-form__submit-label">
+          {sending ? "Sending..." : "Continue"}
+        </span>
         <Icon aria-hidden emphasis="bold" name="arrowRight" size={18} />
       </button>
     </form>

@@ -57,6 +57,10 @@ export function TwoFactorForm({
   const changeCode = (next: string) => {
     setInvalidReason(null);
     onCodeChange(next);
+
+    if (next.length === 6 && !validateOtpCode(next) && !verifying) {
+      onSubmit(next);
+    }
   };
 
   const submit = (event: FormEvent<HTMLFormElement>) => {

@@ -14,6 +14,8 @@ export interface AccountFormProps {
   status: "idle" | "creating";
   errorMessage?: string;
   onSubmit: (name: string) => void;
+  onBackToOtp?: () => void;
+  onIdentifierChange?: () => void;
 }
 
 const ACTION_LABELS = {
@@ -42,6 +44,8 @@ export function AccountForm({
   errorMessage,
   identifier,
   name,
+  onBackToOtp,
+  onIdentifierChange,
   onNameChange,
   onSubmit,
   status,
@@ -135,6 +139,30 @@ export function AccountForm({
             </span>
             <Icon aria-hidden emphasis="bold" name="arrowRight" size={18} />
           </button>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "0.75rem" }}>
+            {onBackToOtp ? (
+              <button
+                className="auth-otp-form__change"
+                onClick={onBackToOtp}
+                type="button"
+              >
+                Re-enter verification code
+              </button>
+            ) : null}
+
+            {onIdentifierChange ? (
+              <button
+                className="auth-otp-form__change"
+                onClick={onIdentifierChange}
+                type="button"
+              >
+                {identifier.method === "email"
+                  ? "Change email address"
+                  : "Change mobile number"}
+              </button>
+            ) : null}
+          </div>
 
           <p className="auth-account-form__legal">
             By creating an account, you agree to our{" "}

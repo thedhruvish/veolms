@@ -52,6 +52,8 @@ import { AcademyPaletteMenu } from "./shell/AcademyPaletteMenu";
 import { FloatingScrollbar } from "./shell/FloatingScrollbar";
 import { SidebarToggleIcon } from "./shell/SidebarToggleIcon";
 import { AppLoadingScreen } from "./bootstrap/AppLoadingScreen";
+import { useCurrentUser, useLogout } from "./services/auth/use-auth";
+import { useAuthStore } from "./store/auth.store";
 import {
   getDefaultNavigationOrder,
   getInitialNavigationOrder,
@@ -533,8 +535,14 @@ export function CoursesPage({
       : Boolean(getDocumentFullscreenElement(document)),
   );
   const shortcutPlatform = useShortcutPlatform();
+  const { data: authUser } = useCurrentUser();
+  const storeUser = useAuthStore((s) => s.user);
+  const activeUser = authUser || storeUser;
+  const logoutMutation = useLogout();
+
   const savedShellProfile = savedShellProfiles[role];
   const shellProfileDisplayName =
+    activeUser?.displayName ??
     savedShellProfile?.displayName ??
     (role === "creator" ? "Anurag Singh" : "Ashi Singh");
   const shellProfileAvatarUrl = savedShellProfile
@@ -2646,8 +2654,13 @@ export function CoursesPage({
                   <button
                     type="button"
                     role="menuitem"
-                    onClick={() => {
+                    onClick={async () => {
                       setProfileMenu(false);
+                      try {
+                        await logoutMutation.mutateAsync();
+                      } catch {
+                        // ignore logout errors
+                      }
                       onNavigatePage?.("Logout");
                     }}
                   >
