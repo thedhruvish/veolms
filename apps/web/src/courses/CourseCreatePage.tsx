@@ -1140,7 +1140,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
             {/* Preview Button (Ghost) */}
             <button
               type="button"
-              style={{ fontSize: "0.80rem", fontWeight: 700, height: "34px", borderRadius: "8px", gap: "6px", paddingLeft: "14px", paddingRight: "14px" }}
+              style={{
+                fontSize: "0.80rem",
+                fontWeight: 700,
+                height: "34px",
+                borderRadius: "8px",
+                gap: "6px",
+                paddingLeft: "14px",
+                paddingRight: "14px",
+              }}
               className="inline-flex items-center border border-white/10 text-[var(--text-secondary)] bg-transparent cursor-pointer transition-all duration-150 hover:bg-white/[0.05] hover:text-[var(--text)] disabled:opacity-60"
               onClick={handlePreviewAction}
               disabled={actionLoading !== null}
@@ -1164,7 +1172,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
             {/* Save Draft Button (Draft / Subtle Solid) */}
             <button
               type="button"
-              style={{ fontSize: "0.80rem", fontWeight: 700, height: "34px", borderRadius: "8px", gap: "6px", paddingLeft: "14px", paddingRight: "14px" }}
+              style={{
+                fontSize: "0.80rem",
+                fontWeight: 700,
+                height: "34px",
+                borderRadius: "8px",
+                gap: "6px",
+                paddingLeft: "14px",
+                paddingRight: "14px",
+              }}
               className="inline-flex items-center border border-white/10 text-[var(--text)] bg-white/[0.05] cursor-pointer transition-all duration-150 hover:bg-white/10 disabled:opacity-60"
               onClick={handleSaveDraftAction}
               disabled={actionLoading !== null}
@@ -1188,7 +1204,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
             {/* Save Changes / Publish Course Button (Primary Accent CTA) */}
             <button
               type="button"
-              style={{ fontSize: "0.80rem", fontWeight: 700, height: "34px", borderRadius: "8px", gap: "6px", paddingLeft: "18px", paddingRight: "18px" }}
+              style={{
+                fontSize: "0.80rem",
+                fontWeight: 700,
+                height: "34px",
+                borderRadius: "8px",
+                gap: "6px",
+                paddingLeft: "18px",
+                paddingRight: "18px",
+              }}
               className="inline-flex items-center justify-center border-none text-[var(--on-accent,#ffffff)] bg-[var(--accent)] cursor-pointer shadow-[0_3px_10px_var(--accent-shadow)] transition-all duration-150 ease-out hover:bg-[var(--accent-hover,var(--accent))] hover:shadow-[0_4px_14px_var(--accent-shadow)] disabled:opacity-60"
               disabled={actionLoading !== null}
               onClick={
@@ -1450,7 +1474,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                         <div className="flex items-center justify-center gap-2.5 flex-wrap">
                           <button
                             type="button"
-                            style={{ fontSize: "0.80rem", fontWeight: 700, height: "34px", borderRadius: "8px", gap: "6px", paddingLeft: "16px", paddingRight: "16px" }}
+                            style={{
+                              fontSize: "0.80rem",
+                              fontWeight: 700,
+                              height: "34px",
+                              borderRadius: "8px",
+                              gap: "6px",
+                              paddingLeft: "16px",
+                              paddingRight: "16px",
+                            }}
                             className="inline-flex items-center justify-center border-none text-[var(--on-accent,#ffffff)] bg-[var(--accent)] cursor-pointer shadow-[0_3px_10px_var(--accent-shadow)] transition-all duration-150 ease-out hover:bg-[var(--accent-hover,var(--accent))] hover:shadow-[0_4px_14px_var(--accent-shadow)]"
                             onClick={triggerThumbnailUpload}
                           >
@@ -1505,7 +1537,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                         <div className="flex items-center justify-center gap-2.5 flex-wrap">
                           <button
                             type="button"
-                            style={{ fontSize: "0.80rem", fontWeight: 700, height: "34px", borderRadius: "8px", gap: "6px", paddingLeft: "16px", paddingRight: "16px" }}
+                            style={{
+                              fontSize: "0.80rem",
+                              fontWeight: 700,
+                              height: "34px",
+                              borderRadius: "8px",
+                              gap: "6px",
+                              paddingLeft: "16px",
+                              paddingRight: "16px",
+                            }}
                             className="inline-flex items-center justify-center border-none text-[var(--on-accent,#ffffff)] bg-[var(--accent)] cursor-pointer shadow-[0_3px_10px_var(--accent-shadow)] transition-all duration-150 ease-out hover:bg-[var(--accent-hover,var(--accent))] hover:shadow-[0_4px_14px_var(--accent-shadow)]"
                             onClick={triggerVideoTrailerUpload}
                           >
@@ -1513,7 +1553,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                           </button>
                           <button
                             type="button"
-                            style={{ fontSize: "0.80rem", fontWeight: 500, height: "34px", borderRadius: "8px", gap: "6px", paddingLeft: "14px", paddingRight: "14px" }}
+                            style={{
+                              fontSize: "0.80rem",
+                              fontWeight: 500,
+                              height: "34px",
+                              borderRadius: "8px",
+                              gap: "6px",
+                              paddingLeft: "14px",
+                              paddingRight: "14px",
+                            }}
                             className="inline-flex items-center border border-white/10 text-[var(--text)] bg-white/[0.05] cursor-pointer transition-all duration-150 hover:bg-white/10"
                             onClick={() => {
                               // Select from media action
@@ -1641,7 +1689,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
               <div className="flex items-center gap-2.5">
                 <button
                   type="button"
-                  style={{ fontSize: "0.80rem", fontWeight: 700, height: "34px", borderRadius: "8px", gap: "6px", paddingLeft: "16px", paddingRight: "16px" }}
+                  style={{
+                    fontSize: "0.80rem",
+                    fontWeight: 700,
+                    height: "34px",
+                    borderRadius: "8px",
+                    gap: "6px",
+                    paddingLeft: "16px",
+                    paddingRight: "16px",
+                  }}
                   className="inline-flex items-center justify-center border-none text-[var(--on-accent,#ffffff)] bg-[var(--accent)] cursor-pointer shadow-[0_3px_10px_var(--accent-shadow)] transition-all duration-150 ease-out hover:bg-[var(--accent-hover,var(--accent))] hover:shadow-[0_4px_14px_var(--accent-shadow)] max-[768px]:whitespace-nowrap max-[768px]:self-start"
                   onClick={handleAddSection}
                 >
@@ -2039,7 +2095,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                     <div className="flex items-center gap-2 max-[768px]:w-full max-[768px]:flex max-[768px]:gap-2">
                                       <button
                                         type="button"
-                                        style={{ fontSize: "0.80rem", fontWeight: 700, height: "34px", borderRadius: "8px", gap: "6px", paddingLeft: "16px", paddingRight: "16px" }}
+                                        style={{
+                                          fontSize: "0.80rem",
+                                          fontWeight: 700,
+                                          height: "34px",
+                                          borderRadius: "8px",
+                                          gap: "6px",
+                                          paddingLeft: "16px",
+                                          paddingRight: "16px",
+                                        }}
                                         className="inline-flex items-center justify-center border-none text-[var(--on-accent,#ffffff)] bg-[var(--accent)] cursor-pointer shadow-[0_3px_10px_var(--accent-shadow)] transition-all duration-150 ease-out hover:bg-[var(--accent-hover,var(--accent))] hover:shadow-[0_4px_14px_var(--accent-shadow)] max-[768px]:flex-1 max-[768px]:justify-center max-[768px]:whitespace-nowrap"
                                       >
                                         <UploadSimple size={15} />
@@ -2047,7 +2111,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                       </button>
                                       <button
                                         type="button"
-                                        style={{ fontSize: "0.80rem", fontWeight: 500, height: "34px", borderRadius: "8px", gap: "6px", paddingLeft: "14px", paddingRight: "14px" }}
+                                        style={{
+                                          fontSize: "0.80rem",
+                                          fontWeight: 500,
+                                          height: "34px",
+                                          borderRadius: "8px",
+                                          gap: "6px",
+                                          paddingLeft: "14px",
+                                          paddingRight: "14px",
+                                        }}
                                         className="inline-flex items-center border border-white/10 text-[var(--text)] bg-white/[0.05] cursor-pointer transition-all duration-150 hover:bg-white/10 max-[768px]:flex-1 max-[768px]:justify-center max-[768px]:whitespace-nowrap"
                                       >
                                         {les.contentType === "video" ? (
@@ -2075,7 +2147,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                       <div className="flex items-center gap-2 max-[768px]:w-full max-[768px]:flex max-[768px]:gap-2">
                                         <button
                                           type="button"
-                                          style={{ fontSize: "0.80rem", fontWeight: 700, height: "34px", borderRadius: "8px", gap: "6px", paddingLeft: "16px", paddingRight: "16px" }}
+                                          style={{
+                                            fontSize: "0.80rem",
+                                            fontWeight: 700,
+                                            height: "34px",
+                                            borderRadius: "8px",
+                                            gap: "6px",
+                                            paddingLeft: "16px",
+                                            paddingRight: "16px",
+                                          }}
                                           className="inline-flex items-center justify-center border-none text-[var(--on-accent,#ffffff)] bg-[var(--accent)] cursor-pointer shadow-[0_3px_10px_var(--accent-shadow)] transition-all duration-150 ease-out hover:bg-[var(--accent-hover,var(--accent))] hover:shadow-[0_4px_14px_var(--accent-shadow)] max-[768px]:flex-1 max-[768px]:justify-center max-[768px]:whitespace-nowrap"
                                           onClick={() =>
                                             handleAddLessonResource(
@@ -2089,7 +2169,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                         </button>
                                         <button
                                           type="button"
-                                          style={{ fontSize: "0.80rem", fontWeight: 500, height: "34px", borderRadius: "8px", gap: "6px", paddingLeft: "14px", paddingRight: "14px" }}
+                                          style={{
+                                            fontSize: "0.80rem",
+                                            fontWeight: 500,
+                                            height: "34px",
+                                            borderRadius: "8px",
+                                            gap: "6px",
+                                            paddingLeft: "14px",
+                                            paddingRight: "14px",
+                                          }}
                                           className="inline-flex items-center border border-white/10 text-[var(--text)] bg-white/[0.05] cursor-pointer transition-all duration-150 hover:bg-white/10 max-[768px]:flex-1 max-[768px]:justify-center max-[768px]:whitespace-nowrap"
                                           onClick={() =>
                                             handleAddLessonResource(
@@ -2127,7 +2215,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                                     {res.name}
                                                   </span>
                                                   <span className="text-[var(--muted)] text-[0.72rem] flex items-center gap-1.5 mt-0.5">
-                                                    <span className="uppercase text-[var(--text-secondary)] font-bold">{res.type}</span>
+                                                    <span className="uppercase text-[var(--text-secondary)] font-bold">
+                                                      {res.type}
+                                                    </span>
                                                     <span>•</span>
                                                     <span>{res.size}</span>
                                                   </span>
@@ -2229,7 +2319,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                   <div className="flex justify-end mt-4 pt-3 border-t border-white/[0.06]">
                                     <button
                                       type="button"
-                                      style={{ fontSize: "0.80rem", fontWeight: 700, height: "34px", borderRadius: "8px", gap: "6px", paddingLeft: "16px", paddingRight: "16px" }}
+                                      style={{
+                                        fontSize: "0.80rem",
+                                        fontWeight: 700,
+                                        height: "34px",
+                                        borderRadius: "8px",
+                                        gap: "6px",
+                                        paddingLeft: "16px",
+                                        paddingRight: "16px",
+                                      }}
                                       className="inline-flex items-center justify-center border border-white/10 text-[var(--text)] bg-white/[0.05] cursor-pointer transition-all duration-150 hover:bg-white/10 disabled:opacity-60"
                                       onClick={() =>
                                         handleSaveLesson(sec.id, les.id)
@@ -2880,7 +2978,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
               <button
                 type="button"
-                style={{ fontSize: "0.80rem", fontWeight: 700, height: "34px", borderRadius: "8px", gap: "6px", paddingLeft: "18px", paddingRight: "18px" }}
+                style={{
+                  fontSize: "0.80rem",
+                  fontWeight: 700,
+                  height: "34px",
+                  borderRadius: "8px",
+                  gap: "6px",
+                  paddingLeft: "18px",
+                  paddingRight: "18px",
+                }}
                 className="inline-flex items-center justify-center border-none text-[var(--on-accent,#ffffff)] bg-[var(--accent)] cursor-pointer shadow-[0_3px_10px_var(--accent-shadow)] transition-all duration-150 ease-out hover:bg-[var(--accent-hover,var(--accent))] hover:shadow-[0_4px_14px_var(--accent-shadow)] max-[768px]:w-full max-[768px]:justify-center"
                 onClick={() => {
                   if (onNavigatePage) {
@@ -3749,14 +3855,23 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
         {/* Preview Button */}
         <button
           type="button"
-          style={{ fontSize: "0.84rem", fontWeight: 500, height: "44px", borderRadius: "12px", gap: "6px" }}
+          style={{
+            fontSize: "0.84rem",
+            fontWeight: 500,
+            height: "44px",
+            borderRadius: "12px",
+            gap: "6px",
+          }}
           className="flex-1 inline-flex items-center justify-center border border-white/10 text-[var(--text-secondary)] bg-transparent cursor-pointer transition-all hover:bg-white/[0.05] hover:text-[var(--text)] active:scale-[0.98] disabled:opacity-60"
           onClick={handlePreviewAction}
           disabled={actionLoading !== null}
         >
           {actionLoading === "preview" ? (
             <>
-              <CircleNotch size={14} className="animate-spin text-[var(--accent)]" />
+              <CircleNotch
+                size={14}
+                className="animate-spin text-[var(--accent)]"
+              />
               <span>Opening...</span>
             </>
           ) : (
@@ -3770,14 +3885,23 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
         {/* Save Draft Button */}
         <button
           type="button"
-          style={{ fontSize: "0.84rem", fontWeight: 500, height: "44px", borderRadius: "12px", gap: "6px" }}
+          style={{
+            fontSize: "0.84rem",
+            fontWeight: 500,
+            height: "44px",
+            borderRadius: "12px",
+            gap: "6px",
+          }}
           className="flex-1 inline-flex items-center justify-center border border-white/10 text-[var(--text)] bg-white/[0.05] cursor-pointer transition-all hover:bg-white/10 active:scale-[0.98] disabled:opacity-60"
           onClick={handleSaveDraftAction}
           disabled={actionLoading !== null}
         >
           {actionLoading === "draft" ? (
             <>
-              <CircleNotch size={14} className="animate-spin text-[var(--accent)]" />
+              <CircleNotch
+                size={14}
+                className="animate-spin text-[var(--accent)]"
+              />
               <span>Saving...</span>
             </>
           ) : (
@@ -3791,7 +3915,13 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
         {/* Save Changes / Publish Course Button */}
         <button
           type="button"
-          style={{ fontSize: "0.84rem", fontWeight: 600, height: "44px", borderRadius: "14px", gap: "6px" }}
+          style={{
+            fontSize: "0.84rem",
+            fontWeight: 600,
+            height: "44px",
+            borderRadius: "14px",
+            gap: "6px",
+          }}
           className="flex-1 inline-flex items-center justify-center border-none text-[var(--on-accent,#ffffff)] bg-[var(--accent)] cursor-pointer shadow-[0_3px_10px_var(--accent-shadow)] transition-all hover:bg-[var(--accent-hover,var(--accent))] active:scale-[0.98] disabled:opacity-60"
           disabled={actionLoading !== null}
           onClick={
@@ -3802,12 +3932,18 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
         >
           {actionLoading === "publish" ? (
             <>
-              <CircleNotch size={14} className="animate-spin text-[var(--on-accent,#fff)]" />
+              <CircleNotch
+                size={14}
+                className="animate-spin text-[var(--on-accent,#fff)]"
+              />
               <span>{isPublished ? "Updating..." : "Publishing..."}</span>
             </>
           ) : actionLoading === "save" ? (
             <>
-              <CircleNotch size={14} className="animate-spin text-[var(--on-accent,#fff)]" />
+              <CircleNotch
+                size={14}
+                className="animate-spin text-[var(--on-accent,#fff)]"
+              />
               <span>Saving...</span>
             </>
           ) : (
