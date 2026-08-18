@@ -1,11 +1,9 @@
-import {
-  ArrowsDownUp,
-  Funnel,
-  Heart,
-  MagnifyingGlass,
-  Plus,
-  X,
-} from "@phosphor-icons/react";
+import { ArrowsDownUp } from "@phosphor-icons/react/ArrowsDownUp";
+import { Funnel } from "@phosphor-icons/react/Funnel";
+import { Heart } from "@phosphor-icons/react/Heart";
+import { MagnifyingGlass } from "@phosphor-icons/react/MagnifyingGlass";
+import { Plus } from "@phosphor-icons/react/Plus";
+import { X } from "@phosphor-icons/react/X";
 import { ThemedSelect } from "../ThemedSelect";
 import { handleRovingTabKeyDown } from "../accessibility/rovingTabFocus";
 import { CourseCard } from "./CourseCard";
@@ -171,7 +169,7 @@ export function CourseCatalogue({
 
       {visibleCourses.length ? (
         <section className="courses-grid" aria-label={activeSection}>
-          {visibleCourses.map((course) => (
+          {visibleCourses.map((course, index) => (
             <CourseCard
               key={course.id}
               course={course}
@@ -181,12 +179,13 @@ export function CourseCatalogue({
               onOpen={onOpenCourse}
               onExplore={(selected) =>
                 onNavigatePage(
-                  `/courses/${encodeURIComponent(selected.id)}/overview`,
+                  `/explore-courses/${encodeURIComponent(selected.id)}/overview`,
                 )
               }
               menuOpen={courseMenu === course.id}
               setMenuOpen={setCourseMenu}
               setNotice={setNotice}
+              imagePriority={index === 0}
             />
           ))}
         </section>

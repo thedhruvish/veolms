@@ -10,6 +10,10 @@ export interface AuthMiddleware {
     request: FastifyRequest,
     reply: FastifyReply,
   ) => Promise<void>;
+  requireMfaVerified: (
+    request: FastifyRequest,
+    reply: FastifyReply,
+  ) => Promise<void>;
   requirePermission: (
     permission: string,
   ) => (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
@@ -25,9 +29,7 @@ export function createAuthMiddleware(
     request.user = null;
     request.session = null;
 
-    const sessionCookie =
-      request.cookies["veolms-session"] ||
-      request.cookies["__Host-veolms-session"];
+    const sessionCookie = request.cookies["veolms-session"];
     if (!sessionCookie) {
       return;
     }
@@ -171,6 +173,36 @@ export function createAuthMiddleware(
     }
   }
 
+  /**
+   * Enforces MFA step-up for users who have any MFA factor enabled.
+   * Must be used AFTER authenticate + requireAuthenticated in the preHandler chain.
+   */
+  async function requireMfaVerified(
+    request: FastifyRequest,
+    reply: FastifyReply,
+  ): Promise<void> {
+    if (!request.user || !request.session) {
+      return reply
+        .code(401)
+        .send(httpError(401, "UNAUTHORIZED", "Authentication required"));
+    }
+
+    const mfaRequired =
+      request.user.mfaMandatory ||
+      request.user.totpEnabled ||
+      request.user.passkeyEnabled;
+
+    if (mfaRequired && !request.session.mfa_verified) {
+      return reply.code(403).send(
+        httpError(
+          403,
+          "MFA_REQUIRED",
+          "Multi-factor authentication is required to access this resource.",
+        ),
+      );
+    }
+  }
+
   function requirePermission(permission: string) {
     return async (
       request: FastifyRequest,
@@ -207,6 +239,7 @@ export function createAuthMiddleware(
   return {
     authenticate,
     requireAuthenticated,
+    requireMfaVerified,
     requirePermission,
   };
 }

@@ -1,29 +1,31 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import {
-  ArrowRight,
-  ArrowSquareOut,
-  At,
-  Bell,
-  BookmarkSimple,
-  ChatCircleDots,
-  ChatTeardropText,
-  CheckCircle,
-  DotsThreeVertical,
-  Funnel,
-  MagnifyingGlass,
-  PaperPlaneTilt,
-  Question,
-  SealCheck,
-  UsersThree,
-} from "@phosphor-icons/react";
+import { ArrowRight } from "@phosphor-icons/react/ArrowRight";
+import { ArrowSquareOut } from "@phosphor-icons/react/ArrowSquareOut";
+import { At } from "@phosphor-icons/react/At";
+import { Bell } from "@phosphor-icons/react/Bell";
+import { BookmarkSimple } from "@phosphor-icons/react/BookmarkSimple";
+import { ChatCircleDots } from "@phosphor-icons/react/ChatCircleDots";
+import { ChatTeardropText } from "@phosphor-icons/react/ChatTeardropText";
+import { CheckCircle } from "@phosphor-icons/react/CheckCircle";
+import { DotsThreeVertical } from "@phosphor-icons/react/DotsThreeVertical";
+import { Funnel } from "@phosphor-icons/react/Funnel";
+import { MagnifyingGlass } from "@phosphor-icons/react/MagnifyingGlass";
+import { PaperPlaneTilt } from "@phosphor-icons/react/PaperPlaneTilt";
+import { Question } from "@phosphor-icons/react/Question";
+import { SealCheck } from "@phosphor-icons/react/SealCheck";
+import { UsersThree } from "@phosphor-icons/react/UsersThree";
 import type { CourseRole } from "../courses/catalogue";
 import { handleRovingTabKeyDown } from "../accessibility/rovingTabFocus";
 import type { NavigateTo } from "../routing/navigation";
+import {
+  normalizeDiscussionTab,
+  rememberDiscussionTab,
+} from "../routing/tabSessionState";
+import type { DiscussionTab } from "../routing/tabSessionState";
 import { ThemedSelect } from "../ThemedSelect";
+import { SwipeableTabPanel } from "../navigation/SwipeableTabPanel";
 
-type DiscussionTab =
-  "q-and-a" | "comments" | "mentions" | "following" | "saved";
 type DiscussionStatus = "answered" | "mentioned" | "solved" | "open";
 
 interface DiscussionThread {
@@ -39,6 +41,8 @@ interface DiscussionThread {
   tabs: DiscussionTab[];
 }
 
+type PageTabTone = "blue" | "green" | "gold" | "rose" | "violet";
+
 export interface DiscussionsWorkspaceProps {
   role: CourseRole;
   tab?: string;
@@ -50,13 +54,26 @@ const tabs: readonly {
   id: DiscussionTab;
   label: string;
   Icon: typeof Question;
+  tone: PageTabTone;
 }[] = [
-  { id: "q-and-a", label: "Q&A", Icon: Question },
-  { id: "comments", label: "Comments", Icon: ChatTeardropText },
-  { id: "mentions", label: "Mentions", Icon: At },
-  { id: "following", label: "Following", Icon: ChatCircleDots },
-  { id: "saved", label: "Saved", Icon: BookmarkSimple },
+  { id: "q-and-a", label: "Q&A", Icon: Question, tone: "violet" },
+  {
+    id: "comments",
+    label: "Comments",
+    Icon: ChatTeardropText,
+    tone: "blue",
+  },
+  { id: "mentions", label: "Mentions", Icon: At, tone: "rose" },
+  {
+    id: "following",
+    label: "Following",
+    Icon: ChatCircleDots,
+    tone: "green",
+  },
+  { id: "saved", label: "Saved", Icon: BookmarkSimple, tone: "gold" },
 ];
+
+const discussionTabIds = tabs.map(({ id }) => id);
 
 const initialThreads: readonly DiscussionThread[] = [
   {
@@ -66,7 +83,7 @@ const initialThreads: readonly DiscussionThread[] = [
       "I'm a bit confused about when and why we need to define explicit return types for functions. Could someone explain with an example?",
     course: "The Ultimate TypeScript Course",
     lesson: "Lecture 84: Conditional Types",
-    avatar: "/assets/ethan-avatar.jpg",
+    avatar: "/assets/ethan-avatar-160.webp",
     status: "answered",
     replies: 12,
     activity: "18 min ago",
@@ -79,7 +96,7 @@ const initialThreads: readonly DiscussionThread[] = [
       "Can someone help me understand how 'readonly' and 'optional' modifiers work together in mapped types?",
     course: "The Ultimate TypeScript Course",
     lesson: "Lecture 85: Mapped Types Deep Dive",
-    avatar: "/assets/sofia-avatar.jpg",
+    avatar: "/assets/sofia-avatar-160.webp",
     status: "mentioned",
     replies: 8,
     activity: "2h ago",
@@ -92,7 +109,7 @@ const initialThreads: readonly DiscussionThread[] = [
       "What folder structure and patterns do you follow for large-scale TypeScript applications?",
     course: "Complete Backend with Node.js",
     lesson: "Section 14: Performance & Optimization",
-    avatar: "/assets/ethan-avatar.jpg",
+    avatar: "/assets/ethan-avatar-160.webp",
     status: "solved",
     replies: 24,
     activity: "5h ago",
@@ -105,7 +122,7 @@ const initialThreads: readonly DiscussionThread[] = [
       "I know both can be used to define shapes, but when should we prefer one over the other?",
     course: "The Ultimate TypeScript Course",
     lesson: "Lecture 86: Template Literal Types",
-    avatar: "/assets/sofia-avatar.jpg",
+    avatar: "/assets/sofia-avatar-160.webp",
     status: "open",
     replies: 15,
     activity: "1d ago",
@@ -118,7 +135,7 @@ const initialThreads: readonly DiscussionThread[] = [
       "Could you share some practical examples of when to use INNER, LEFT, and RIGHT joins?",
     course: "Complete SQL Mastery",
     lesson: "Lecture 21: Joins and Relationships",
-    avatar: "/assets/ethan-avatar.jpg",
+    avatar: "/assets/ethan-avatar-160.webp",
     status: "open",
     replies: 6,
     activity: "2d ago",
@@ -215,11 +232,11 @@ export function DiscussionsWorkspace({
   onNavigatePage,
   setNotice,
 }: DiscussionsWorkspaceProps) {
-  const activeTab: DiscussionTab = tabs.some((item) => item.id === tab)
-    ? (tab as DiscussionTab)
-    : "q-and-a";
-  const navigateTab = (id: DiscussionTab) =>
+  const activeTab = normalizeDiscussionTab(tab);
+  const navigateTab = (id: DiscussionTab) => {
+    rememberDiscussionTab(id);
     onNavigatePage(`/discussions/${id}`, { preserveScroll: true });
+  };
   const tablistRef = useRef<HTMLElement>(null);
   const [query, setQuery] = useState("");
   const [course, setCourse] = useState("all");
@@ -230,6 +247,10 @@ export function DiscussionsWorkspace({
   );
   const [threads, setThreads] =
     useState<readonly DiscussionThread[]>(initialThreads);
+
+  useEffect(() => {
+    rememberDiscussionTab(activeTab);
+  }, [activeTab]);
 
   useEffect(() => {
     const tablist = tablistRef.current;
@@ -246,11 +267,11 @@ export function DiscussionsWorkspace({
     return () => window.cancelAnimationFrame(frame);
   }, [activeTab]);
 
-  const visibleThreads = useMemo(() => {
+  const getVisibleThreads = (panelTab: DiscussionTab) => {
     const normalizedQuery = query.trim().toLowerCase();
     const matching = threads.filter((thread) => {
       const matchesTab =
-        activeTab === "q-and-a" || thread.tabs.includes(activeTab);
+        panelTab === "q-and-a" || thread.tabs.includes(panelTab);
       const matchesQuery =
         !normalizedQuery ||
         `${thread.title} ${thread.excerpt} ${thread.course}`
@@ -263,7 +284,7 @@ export function DiscussionsWorkspace({
     return sort === "replies"
       ? [...matching].sort((left, right) => right.replies - left.replies)
       : matching;
-  }, [activeTab, course, query, sort, status, threads]);
+  };
 
   const publish = (
     kind: "question" | "discussion",
@@ -283,7 +304,7 @@ export function DiscussionsWorkspace({
             ? "Creator community"
             : "The Ultimate TypeScript Course",
         lesson: "General discussion",
-        avatar: "/assets/sofia-avatar.jpg",
+        avatar: "/assets/sofia-avatar-160.webp",
         status: "open",
         replies: 0,
         activity: "Just now",
@@ -316,11 +337,11 @@ export function DiscussionsWorkspace({
 
       <nav
         ref={tablistRef}
-        className="discussion-hub__tabs"
+        className="discussion-hub__tabs page-tabs"
         aria-label="Discussion views"
         role="tablist"
       >
-        {tabs.map(({ id, label, Icon }) => (
+        {tabs.map(({ id, label, Icon, tone }) => (
           <button
             type="button"
             key={id}
@@ -328,6 +349,8 @@ export function DiscussionsWorkspace({
             role="tab"
             aria-selected={activeTab === id}
             aria-controls="discussion-panel"
+            data-page-tab-tone={tone}
+            data-swipe-tab-id={id}
             tabIndex={activeTab === id ? 0 : -1}
             className={activeTab === id ? "is-active" : ""}
             onClick={() => navigateTab(id)}
@@ -343,280 +366,308 @@ export function DiscussionsWorkspace({
             <span>{label}</span>
           </button>
         ))}
+        <span className="page-tabs__indicator" aria-hidden="true" />
       </nav>
 
-      <div
+      <SwipeableTabPanel
+        tabs={discussionTabIds}
+        activeTab={activeTab}
+        onTabChange={navigateTab}
+        tabListRef={tablistRef}
         id="discussion-panel"
-        role="tabpanel"
-        aria-labelledby={`discussion-tab-${activeTab}`}
-        data-discussion-tab={activeTab}
-        tabIndex={0}
+        labelledBy={`discussion-tab-${activeTab}`}
+        stateAttribute="data-discussion-tab"
       >
-        {composer && (
-          <DiscussionComposer
-            kind={composer}
-            onCancel={() => setComposer(null)}
-            onPublish={publish}
-          />
-        )}
+        {(panelTab, preview) => (
+          <>
+            {composer && !preview && (
+              <DiscussionComposer
+                kind={composer}
+                onCancel={() => setComposer(null)}
+                onPublish={publish}
+              />
+            )}
 
-        <div className="discussion-hub__layout">
-          <main className="discussion-hub__feed">
-            <section
-              className="discussion-hub__filters"
-              aria-label="Filter discussions"
-            >
-              <label className="discussion-hub__search">
-                <MagnifyingGlass size={19} aria-hidden="true" />
-                <span className="sr-only">Search discussions</span>
-                <input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search discussions by title or keyword..."
-                />
-              </label>
-              <div className="discussion-hub__select">
-                <ThemedSelect
-                  value={course}
-                  onValueChange={setCourse}
-                  ariaLabel="Filter discussions by course"
-                  triggerClassName="discussion-hub__select-trigger"
-                  contentClassName="discussion-hub__select-content"
-                  options={
-                    [
-                      ["all", "Course"],
-                      ["The Ultimate TypeScript Course", "TypeScript"],
-                      ["Complete Backend with Node.js", "Backend with Node.js"],
-                      ["Complete SQL Mastery", "SQL Mastery"],
-                    ] as const
-                  }
-                />
-              </div>
-              <div className="discussion-hub__select">
-                <ThemedSelect
-                  value={status}
-                  onValueChange={setStatus}
-                  ariaLabel="Filter discussions by status"
-                  triggerClassName="discussion-hub__select-trigger"
-                  contentClassName="discussion-hub__select-content"
-                  options={
-                    [
-                      ["all", "Status"],
-                      ["answered", "Answered"],
-                      ["mentioned", "Mentioned"],
-                      ["solved", "Solved"],
-                      ["open", "Open"],
-                    ] as const
-                  }
-                />
-              </div>
-              <div className="discussion-hub__select discussion-hub__select--sort">
-                <Funnel size={17} aria-hidden="true" />
-                <ThemedSelect
-                  value={sort}
-                  onValueChange={setSort}
-                  ariaLabel="Sort discussions"
-                  triggerClassName="discussion-hub__select-trigger"
-                  contentClassName="discussion-hub__select-content"
-                  options={
-                    [
-                      ["activity", "Latest activity"],
-                      ["replies", "Most replies"],
-                    ] as const
-                  }
-                />
-              </div>
-            </section>
+            <div className="discussion-hub__layout">
+              <main className="discussion-hub__feed">
+                <section
+                  className="discussion-hub__filters"
+                  aria-label="Filter discussions"
+                >
+                  <label className="discussion-hub__search">
+                    <MagnifyingGlass size={19} aria-hidden="true" />
+                    <span className="sr-only">Search discussions</span>
+                    <input
+                      value={query}
+                      onChange={(event) => setQuery(event.target.value)}
+                      placeholder="Search discussions by title or keyword..."
+                    />
+                  </label>
+                  <div className="discussion-hub__select">
+                    <ThemedSelect
+                      value={course}
+                      onValueChange={setCourse}
+                      ariaLabel="Filter discussions by course"
+                      triggerClassName="discussion-hub__select-trigger"
+                      contentClassName="discussion-hub__select-content"
+                      options={
+                        [
+                          ["all", "Course"],
+                          ["The Ultimate TypeScript Course", "TypeScript"],
+                          [
+                            "Complete Backend with Node.js",
+                            "Backend with Node.js",
+                          ],
+                          ["Complete SQL Mastery", "SQL Mastery"],
+                        ] as const
+                      }
+                    />
+                  </div>
+                  <div className="discussion-hub__select">
+                    <ThemedSelect
+                      value={status}
+                      onValueChange={setStatus}
+                      ariaLabel="Filter discussions by status"
+                      triggerClassName="discussion-hub__select-trigger"
+                      contentClassName="discussion-hub__select-content"
+                      options={
+                        [
+                          ["all", "Status"],
+                          ["answered", "Answered"],
+                          ["mentioned", "Mentioned"],
+                          ["solved", "Solved"],
+                          ["open", "Open"],
+                        ] as const
+                      }
+                    />
+                  </div>
+                  <div className="discussion-hub__select discussion-hub__select--sort">
+                    <Funnel size={17} aria-hidden="true" />
+                    <ThemedSelect
+                      value={sort}
+                      onValueChange={setSort}
+                      ariaLabel={`Sort discussions: ${
+                        sort === "activity"
+                          ? "Latest activity"
+                          : sort === "replies"
+                            ? "Most replies"
+                            : "Newest"
+                      }`}
+                      triggerClassName="discussion-hub__select-trigger"
+                      contentClassName="discussion-hub__select-content"
+                      options={
+                        [
+                          ["activity", "Latest activity"],
+                          ["replies", "Most replies"],
+                        ] as const
+                      }
+                    />
+                  </div>
+                </section>
 
-            <div className="discussion-hub__thread-list" aria-live="polite">
-              {visibleThreads.map((thread) => {
-                const StatusIcon = statusIcons[thread.status];
-                return (
-                  <article className="discussion-thread" key={thread.id}>
-                    <button
-                      type="button"
-                      className="discussion-thread__open"
-                      aria-label={`Open discussion: ${thread.title}`}
-                      onClick={() => openThread(thread)}
-                    >
-                      <div className="discussion-thread__avatar">
-                        <img src={thread.avatar} alt="" />
-                        {thread.status !== "open" && <i aria-hidden="true" />}
-                      </div>
-                      <div className="discussion-thread__body">
-                        <span className="discussion-thread__title">
-                          {thread.title}
-                        </span>
-                        <p>{thread.excerpt}</p>
-                        <div className="discussion-thread__context">
-                          <span>{thread.course}</span>
-                          <span aria-hidden="true" />
-                          <small>{thread.lesson}</small>
-                        </div>
-                      </div>
-                      <div className="discussion-thread__meta">
-                        <span
-                          className={`discussion-thread__status is-${thread.status}`}
+                <div className="discussion-hub__thread-list" aria-live="polite">
+                  {getVisibleThreads(panelTab).map((thread) => {
+                    const StatusIcon = statusIcons[thread.status];
+                    return (
+                      <article className="discussion-thread" key={thread.id}>
+                        <button
+                          type="button"
+                          className="discussion-thread__open"
+                          onClick={() => openThread(thread)}
                         >
-                          <StatusIcon size={15} weight="fill" />{" "}
-                          {statusLabels[thread.status]}
-                        </span>
-                        <span>
-                          <ChatTeardropText size={17} /> {thread.replies}{" "}
-                          {thread.replies === 1 ? "reply" : "replies"}
-                        </span>
-                        <time>{thread.activity}</time>
-                      </div>
-                    </button>
+                          <div className="discussion-thread__avatar">
+                            <img src={thread.avatar} alt="" />
+                            {thread.status !== "open" && (
+                              <i aria-hidden="true" />
+                            )}
+                          </div>
+                          <div className="discussion-thread__body">
+                            <span className="discussion-thread__title">
+                              {thread.title}
+                            </span>
+                            <p>{thread.excerpt}</p>
+                            <div className="discussion-thread__context">
+                              <span>{thread.course}</span>
+                              <span aria-hidden="true" />
+                              <small>{thread.lesson}</small>
+                            </div>
+                          </div>
+                          <div className="discussion-thread__meta">
+                            <span
+                              className={`discussion-thread__status is-${thread.status}`}
+                            >
+                              <StatusIcon size={15} weight="fill" />{" "}
+                              {statusLabels[thread.status]}
+                            </span>
+                            <span>
+                              <ChatTeardropText size={17} /> {thread.replies}{" "}
+                              {thread.replies === 1 ? "reply" : "replies"}
+                            </span>
+                            <time>{thread.activity}</time>
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          className="discussion-thread__more"
+                          aria-label={`More options for ${thread.title}`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setNotice?.(
+                              "Thread actions will be available with connected discussions.",
+                            );
+                          }}
+                        >
+                          <DotsThreeVertical size={21} weight="bold" />
+                        </button>
+                      </article>
+                    );
+                  })}
+                  {getVisibleThreads(panelTab).length === 0 && (
+                    <div className="discussion-hub__empty">
+                      <UsersThree size={30} weight="duotone" />
+                      <h2>No discussions match these filters</h2>
+                      <p>
+                        Try clearing a filter or start a new question for the
+                        course.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setQuery("");
+                          setCourse("all");
+                          setStatus("all");
+                        }}
+                      >
+                        Clear filters
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </main>
+
+              <aside
+                className="discussion-hub__side"
+                aria-label="Discussion activity"
+              >
+                <section className="discussion-side-card discussion-side-card--activity">
+                  <header>
+                    <h2>My Activity</h2>
                     <button
                       type="button"
-                      className="discussion-thread__more"
-                      aria-label={`More options for ${thread.title}`}
-                      onClick={(event) => {
-                        event.stopPropagation();
+                      aria-label="Open activity details"
+                      onClick={() =>
                         setNotice?.(
-                          "Thread actions will be available with connected discussions.",
-                        );
-                      }}
+                          "Activity details will open here when discussions are connected.",
+                        )
+                      }
                     >
-                      <DotsThreeVertical size={21} weight="bold" />
+                      <ArrowSquareOut size={18} />
                     </button>
-                  </article>
-                );
-              })}
-              {visibleThreads.length === 0 && (
-                <div className="discussion-hub__empty">
-                  <UsersThree size={30} weight="duotone" />
-                  <h2>No discussions match these filters</h2>
-                  <p>
-                    Try clearing a filter or start a new question for the
-                    course.
-                  </p>
+                  </header>
+                  <dl>
+                    <div>
+                      <dt>
+                        <Question size={17} weight="fill" /> Questions asked
+                      </dt>
+                      <dd>8</dd>
+                    </div>
+                    <div>
+                      <dt>
+                        <ChatTeardropText size={17} weight="fill" /> Replies
+                      </dt>
+                      <dd>23</dd>
+                    </div>
+                    <div>
+                      <dt>
+                        <CheckCircle size={17} weight="fill" /> Answers accepted
+                      </dt>
+                      <dd>3</dd>
+                    </div>
+                    <div>
+                      <dt>
+                        <Bell size={17} weight="fill" /> Helpful votes
+                      </dt>
+                      <dd>17</dd>
+                    </div>
+                  </dl>
+                </section>
+
+                <section className="discussion-side-card discussion-side-card--mentions">
+                  <header>
+                    <h2>Unread Mentions</h2>
+                    <button
+                      type="button"
+                      onClick={() => navigateTab("mentions")}
+                    >
+                      View all
+                    </button>
+                  </header>
+                  <div className="discussion-mention">
+                    <img src="/assets/sofia-avatar-160.webp" alt="" />
+                    <p>
+                      <strong>Anurag Singh mentioned you</strong>
+                      <span>
+                        in “Understanding mapped types with modifiers”
+                      </span>
+                    </p>
+                    <time>18 min ago</time>
+                  </div>
+                  <div className="discussion-mention">
+                    <img src="/assets/ethan-avatar-160.webp" alt="" />
+                    <p>
+                      <strong>Instructor mentioned you</strong>
+                      <span>
+                        in “Why does TypeScript require explicit return types”
+                      </span>
+                    </p>
+                    <time>2h ago</time>
+                  </div>
+                </section>
+
+                <section className="discussion-side-card discussion-side-card--actions">
+                  <h2>Quick Actions</h2>
+                  <button type="button" onClick={() => setComposer("question")}>
+                    <span>
+                      <Question size={19} weight="duotone" />
+                    </span>
+                    <div>
+                      <strong>Ask a Question</strong>
+                      <small>Get help from instructors and peers</small>
+                    </div>
+                    <ArrowRight size={18} />
+                  </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      setQuery("");
-                      setCourse("all");
-                      setStatus("all");
-                    }}
+                    onClick={() => setComposer("discussion")}
                   >
-                    Clear filters
+                    <span>
+                      <ChatCircleDots size={19} weight="duotone" />
+                    </span>
+                    <div>
+                      <strong>Start a Discussion</strong>
+                      <small>Share ideas and start a conversation</small>
+                    </div>
+                    <ArrowRight size={18} />
                   </button>
-                </div>
-              )}
+                  <button
+                    type="button"
+                    onClick={() => onNavigatePage("/explore-courses")}
+                  >
+                    <span>
+                      <BookmarkSimple size={19} weight="duotone" />
+                    </span>
+                    <div>
+                      <strong>Browse Guidelines</strong>
+                      <small>Review course spaces and learning resources</small>
+                    </div>
+                    <ArrowRight size={18} />
+                  </button>
+                </section>
+              </aside>
             </div>
-          </main>
-
-          <aside
-            className="discussion-hub__side"
-            aria-label="Discussion activity"
-          >
-            <section className="discussion-side-card discussion-side-card--activity">
-              <header>
-                <h2>My Activity</h2>
-                <button
-                  type="button"
-                  aria-label="Open activity details"
-                  onClick={() =>
-                    setNotice?.(
-                      "Activity details will open here when discussions are connected.",
-                    )
-                  }
-                >
-                  <ArrowSquareOut size={18} />
-                </button>
-              </header>
-              <dl>
-                <div>
-                  <dt>
-                    <Question size={17} weight="fill" /> Questions asked
-                  </dt>
-                  <dd>8</dd>
-                </div>
-                <div>
-                  <dt>
-                    <ChatTeardropText size={17} weight="fill" /> Replies
-                  </dt>
-                  <dd>23</dd>
-                </div>
-                <div>
-                  <dt>
-                    <CheckCircle size={17} weight="fill" /> Answers accepted
-                  </dt>
-                  <dd>3</dd>
-                </div>
-                <div>
-                  <dt>
-                    <Bell size={17} weight="fill" /> Helpful votes
-                  </dt>
-                  <dd>17</dd>
-                </div>
-              </dl>
-            </section>
-
-            <section className="discussion-side-card discussion-side-card--mentions">
-              <header>
-                <h2>Unread Mentions</h2>
-                <button type="button" onClick={() => navigateTab("mentions")}>
-                  View all
-                </button>
-              </header>
-              <div className="discussion-mention">
-                <img src="/assets/sofia-avatar.jpg" alt="" />
-                <p>
-                  <strong>Anurag Singh mentioned you</strong>
-                  <span>in “Understanding mapped types with modifiers”</span>
-                </p>
-                <time>18 min ago</time>
-              </div>
-              <div className="discussion-mention">
-                <img src="/assets/ethan-avatar.jpg" alt="" />
-                <p>
-                  <strong>Instructor mentioned you</strong>
-                  <span>
-                    in “Why does TypeScript require explicit return types”
-                  </span>
-                </p>
-                <time>2h ago</time>
-              </div>
-            </section>
-
-            <section className="discussion-side-card discussion-side-card--actions">
-              <h2>Quick Actions</h2>
-              <button type="button" onClick={() => setComposer("question")}>
-                <span>
-                  <Question size={19} weight="duotone" />
-                </span>
-                <div>
-                  <strong>Ask a Question</strong>
-                  <small>Get help from instructors and peers</small>
-                </div>
-                <ArrowRight size={18} />
-              </button>
-              <button type="button" onClick={() => setComposer("discussion")}>
-                <span>
-                  <ChatCircleDots size={19} weight="duotone" />
-                </span>
-                <div>
-                  <strong>Start a Discussion</strong>
-                  <small>Share ideas and start a conversation</small>
-                </div>
-                <ArrowRight size={18} />
-              </button>
-              <button type="button" onClick={() => onNavigatePage("/courses")}>
-                <span>
-                  <BookmarkSimple size={19} weight="duotone" />
-                </span>
-                <div>
-                  <strong>Browse Guidelines</strong>
-                  <small>Review course spaces and learning resources</small>
-                </div>
-                <ArrowRight size={18} />
-              </button>
-            </section>
-          </aside>
-        </div>
-      </div>
+          </>
+        )}
+      </SwipeableTabPanel>
     </div>
   );
 }

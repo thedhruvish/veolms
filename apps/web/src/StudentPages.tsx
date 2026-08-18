@@ -1,34 +1,37 @@
 import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import {
-  ArrowRight,
-  BookOpen,
-  Certificate,
-  ChartLineUp,
-  ChatCircleDots,
-  CheckCircle,
-  CircleNotch,
-  Clock,
-  Fire,
-  GraduationCap,
-  Heart,
-  MagnifyingGlass,
-  Medal,
-  Play,
-  Target,
-} from "@phosphor-icons/react";
+import { ArrowRight } from "@phosphor-icons/react/ArrowRight";
+import { BookOpen } from "@phosphor-icons/react/BookOpen";
+import { Certificate } from "@phosphor-icons/react/Certificate";
+import { ChartLineUp } from "@phosphor-icons/react/ChartLineUp";
+import { ChatCircleDots } from "@phosphor-icons/react/ChatCircleDots";
+import { CheckCircle } from "@phosphor-icons/react/CheckCircle";
+import { CircleNotch } from "@phosphor-icons/react/CircleNotch";
+import { Clock } from "@phosphor-icons/react/Clock";
+import { Fire } from "@phosphor-icons/react/Fire";
+import { GraduationCap } from "@phosphor-icons/react/GraduationCap";
+import { Heart } from "@phosphor-icons/react/Heart";
+import { MagnifyingGlass } from "@phosphor-icons/react/MagnifyingGlass";
+import { Medal } from "@phosphor-icons/react/Medal";
+import { Play } from "@phosphor-icons/react/Play";
+import { Target } from "@phosphor-icons/react/Target";
 import type { Icon } from "@phosphor-icons/react";
 import { ThemedSelect } from "./ThemedSelect";
 import { handleRovingTabKeyDown } from "./accessibility/rovingTabFocus";
-import typescriptThumbnail from "./assets/course-thumbnails/typescript.jpg";
-import nodeThumbnail from "./assets/course-thumbnails/nodejs.jpg";
-import mongodbThumbnail from "./assets/course-thumbnails/mongodb.jpg";
-import awsThumbnail from "./assets/course-thumbnails/aws.jpg";
+import javascriptThumbnail from "./assets/course-thumbnails/javascript-960.webp";
+import typescriptThumbnail from "./assets/course-thumbnails/typescript-960.webp";
+import nodeThumbnail from "./assets/course-thumbnails/nodejs-960.webp";
+import mongodbThumbnail from "./assets/course-thumbnails/mongodb-960.webp";
+import awsThumbnail from "./assets/course-thumbnails/aws-960.webp";
 import typescriptInstructorHero from "./assets/learning-thumbnails/typescript-instructor-hero.webp";
 import veolmsThumbnail from "./assets/learning-thumbnails/veolms-course.webp";
 import illustratorThumbnail from "./assets/learning-thumbnails/illustrator-course.webp";
 import reactThumbnail from "./assets/learning-thumbnails/react-course.webp";
 import d3Thumbnail from "./assets/learning-thumbnails/d3-course.webp";
+import {
+  isStoredString,
+  useSessionStorageState,
+} from "./learning/useSessionStorageState";
 
 export interface LearningCourse {
   id: string;
@@ -68,9 +71,10 @@ interface LearningCourseCardProps {
   onWishlist: (courseId: string) => void;
   onOpen: (course: LearningCourse) => void;
   setNotice: (notice: string) => void;
+  imagePriority?: boolean;
 }
 
-interface MyLearningPageProps {
+interface MyCoursesPageProps {
   onOpenCourse: (course: LearningCourse) => void;
   wishlisted: ReadonlySet<string>;
   onWishlist: (courseId: string) => void;
@@ -88,6 +92,17 @@ const learningCourses: readonly LearningCourse[] = [
     lastLesson: "Conditional Types",
     accessed: "2h ago",
     thumbnail: typescriptThumbnail,
+  },
+  {
+    id: "javascript-course",
+    title: "The Complete JavaScript Course",
+    sections: 20,
+    lectures: 142,
+    status: "in-progress",
+    progress: 38,
+    lastLesson: "Closures and the Event Loop",
+    accessed: "4h ago",
+    thumbnail: javascriptThumbnail,
   },
   {
     id: "backend-nodejs",
@@ -165,6 +180,8 @@ const learningCourses: readonly LearningCourse[] = [
   },
 ];
 
+const LEGACY_MY_COURSES_SEARCH_KEYS = ["veolms-my-learning-search"] as const;
+
 const resumeLessons = [
   { number: 84, title: "Conditional Types", duration: "18:35", active: true },
   { number: 85, title: "Mapped Types Deep Dive", duration: "22:10" },
@@ -224,8 +241,17 @@ export function StudentHome({
   onNavigatePage,
   studentName,
 }: NavigationCallbacks) {
-  const currentCourse = learningCourses[0]!;
-  const continueCourses = [learningCourses[0]!, learningCourses[1]!];
+  const currentCourse = learningCourses.find(
+    ({ id }) => id === "typescript-course",
+  )!;
+  const continueCourses = [
+    learningCourses.find(({ id }) => id === "javascript-course")!,
+    learningCourses.find(({ id }) => id === "backend-nodejs")!,
+  ];
+  const recentlyUpdatedCourses = [
+    currentCourse,
+    learningCourses.find(({ id }) => id === "backend-nodejs")!,
+  ];
   const goalCompletion = 72;
   const firstName =
     (studentName?.trim() || "Ashi Singh").split(/\s+/)[0] || "Ashi";
@@ -327,7 +353,7 @@ export function StudentHome({
             <button
               type="button"
               className="resume-view-all"
-              onClick={() => onNavigatePage("my-learning")}
+              onClick={() => onNavigatePage("my-courses")}
             >
               View all in this section <ArrowRight size={17} />
             </button>
@@ -341,7 +367,7 @@ export function StudentHome({
             icon={BookOpen}
             title="Continue Learning"
             action="View All"
-            onAction={() => onNavigatePage("my-learning")}
+            onAction={() => onNavigatePage("my-courses")}
           />
           <div className="home-mini-course-grid">
             {continueCourses.map((course) => (
@@ -357,7 +383,7 @@ export function StudentHome({
                   <p>
                     {course.id === "backend-nodejs"
                       ? "Section 14 · Performance & Optimization"
-                      : "Section 12 · Advanced Generics"}
+                      : "Section 8 · Modern JavaScript Patterns"}
                   </p>
                 </div>
                 <div className="home-mini-progress">
@@ -392,7 +418,7 @@ export function StudentHome({
           />
           <div className="home-discussion-list">
             <article>
-              <img src="/assets/ethan-avatar.jpg" alt="" />
+              <img src="/assets/ethan-avatar-160.webp" alt="" />
               <div>
                 <strong>
                   Anurag Singh replied to your comment <b>NEW</b>
@@ -466,10 +492,10 @@ export function StudentHome({
             icon={Target}
             title="New in Your Courses"
             action="View All"
-            onAction={() => onNavigatePage("my-learning")}
+            onAction={() => onNavigatePage("my-courses")}
           />
           <div className="home-update-list">
-            {[learningCourses[0]!, learningCourses[1]!].map((course, index) => (
+            {recentlyUpdatedCourses.map((course, index) => (
               <button
                 type="button"
                 key={course.id}
@@ -509,6 +535,7 @@ function LearningCourseCard({
   onWishlist,
   onOpen,
   setNotice,
+  imagePriority = false,
 }: LearningCourseCardProps) {
   const completed = course.status === "completed";
   const notStarted = course.status === "not-started";
@@ -521,7 +548,15 @@ function LearningCourseCard({
   return (
     <article className="learning-card">
       <div className="learning-card-media">
-        <img src={course.thumbnail} alt="" loading="lazy" decoding="async" />
+        <img
+          src={course.thumbnail}
+          alt=""
+          width={960}
+          height={540}
+          loading={imagePriority ? "eager" : "lazy"}
+          fetchPriority={imagePriority ? "high" : "low"}
+          decoding={imagePriority ? "sync" : "async"}
+        />
         <span className={`learning-status ${course.status}`}>
           {statusLabel}
         </span>
@@ -594,14 +629,19 @@ function LearningCourseCard({
   );
 }
 
-export function MyLearningPage({
+export function MyCoursesPage({
   onOpenCourse,
   wishlisted,
   onWishlist,
   setNotice,
-}: MyLearningPageProps) {
+}: MyCoursesPageProps) {
   const [filter, setFilter] = useState("all");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useSessionStorageState(
+    "veolms-my-courses-search",
+    "",
+    isStoredString,
+    LEGACY_MY_COURSES_SEARCH_KEYS,
+  );
   const [sort, setSort] = useState("recent");
   const [status, setStatus] = useState("all");
 
@@ -621,17 +661,17 @@ export function MyLearningPage({
   }, [filter, search, sort, status]);
 
   const summary = [
-    { value: 8, label: "Enrolled Courses", icon: BookOpen, tone: "violet" },
-    { value: 5, label: "In Progress", icon: Clock, tone: "cyan" },
+    { value: 9, label: "Enrolled Courses", icon: BookOpen, tone: "violet" },
+    { value: 6, label: "In Progress", icon: Clock, tone: "cyan" },
     { value: 2, label: "Completed", icon: CheckCircle, tone: "green" },
     { value: 2, label: "Certificates Earned", icon: Certificate, tone: "gold" },
   ];
 
   return (
-    <div className="my-learning-page">
+    <div className="my-courses-page">
       <header className="learning-page-header">
         <div>
-          <h1>My Learning</h1>
+          <h1>My Courses</h1>
           <p>All your enrolled courses and learning progress in one place.</p>
         </div>
         <section
@@ -693,7 +733,7 @@ export function MyLearningPage({
           <ThemedSelect
             value={sort}
             onValueChange={setSort}
-            ariaLabel="Sort learning courses"
+            ariaLabel="Sort by learning course order"
             options={[
               ["recent", "Sort by: Recently Accessed"],
               ["title", "Sort by: Title"],
@@ -718,7 +758,7 @@ export function MyLearningPage({
 
       {visibleCourses.length ? (
         <section className="learning-course-grid" aria-label="Enrolled courses">
-          {visibleCourses.map((course) => (
+          {visibleCourses.map((course, index) => (
             <LearningCourseCard
               key={course.id}
               course={course}
@@ -726,6 +766,7 @@ export function MyLearningPage({
               onWishlist={onWishlist}
               onOpen={onOpenCourse}
               setNotice={setNotice}
+              imagePriority={index === 0}
             />
           ))}
         </section>

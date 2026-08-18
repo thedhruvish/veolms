@@ -1,37 +1,55 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type {
-  KeyboardEvent as ReactKeyboardEvent,
-  PointerEvent as ReactPointerEvent,
-} from "react";
-import {
-  CaretLeft,
-  CaretRight,
-  Check,
-  ClosedCaptioning,
-  CornersOut,
-  Gauge,
-  GearSix,
-  Monitor,
-  Pause,
-  PictureInPicture,
-  Play,
-  Rectangle,
-  Sparkle,
-  SpeakerHigh,
-  SpeakerSlash,
-} from "@phosphor-icons/react";
+import type { PointerEvent as ReactPointerEvent } from "react";
+import { CaretLeft } from "@phosphor-icons/react/CaretLeft";
+import { CaretRight } from "@phosphor-icons/react/CaretRight";
+import { Check } from "@phosphor-icons/react/Check";
+import { ClosedCaptioning } from "@phosphor-icons/react/ClosedCaptioning";
+import { CornersOut } from "@phosphor-icons/react/CornersOut";
+import { Gauge } from "@phosphor-icons/react/Gauge";
+import { GearSix } from "@phosphor-icons/react/GearSix";
+import { Monitor } from "@phosphor-icons/react/Monitor";
+import { Pause } from "@phosphor-icons/react/Pause";
+import { PictureInPicture } from "@phosphor-icons/react/PictureInPicture";
+import { Play } from "@phosphor-icons/react/Play";
+import { Rectangle } from "@phosphor-icons/react/Rectangle";
+import { Sparkle } from "@phosphor-icons/react/Sparkle";
+import { SpeakerHigh } from "@phosphor-icons/react/SpeakerHigh";
+import { SpeakerSlash } from "@phosphor-icons/react/SpeakerSlash";
+import { AppSlider } from "./AppSlider";
+import { isEditingShortcutTarget } from "./keyboardShortcuts";
 import type { CourseVideo } from "./learning/courseContent";
 
 const playbackSpeeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const RESUME_PERSIST_INTERVAL_MS = 5_000;
 const AMBIENT_FRAME_INTERVAL_MS = 480;
+const PLAYER_MUTED_STORAGE_KEY = "veolms-player-muted";
+const PLAYER_INTERACTIVE_SHORTCUT_SELECTOR =
+  "button, a[href], input, textarea, select, [role='button'], [role='tab'], [role='option'], [role='radio'], [role='checkbox'], [role='listbox'], [tabindex]:not([tabindex='-1'])";
+
+const getInitialMuted = () => {
+  if (typeof window === "undefined") return false;
+  try {
+    const savedPreference = window.localStorage.getItem(
+      PLAYER_MUTED_STORAGE_KEY,
+    );
+    return savedPreference === "true" || savedPreference === "on";
+  } catch {
+    return false;
+  }
+};
 
 const getAmbientDefault = () => {
   if (typeof window === "undefined") return false;
 
-  const savedPreference = window.localStorage.getItem("veolms-player-ambient");
-  if (savedPreference === "on") return true;
-  if (savedPreference === "off") return false;
+  try {
+    const savedPreference = window.localStorage.getItem(
+      "veolms-player-ambient",
+    );
+    if (savedPreference === "on") return true;
+    if (savedPreference === "off") return false;
+  } catch {
+    // Fall through to a device-sensitive default.
+  }
 
   const constrainedDevice = window.matchMedia?.(
     "(prefers-reduced-motion: reduce), (pointer: coarse)",
@@ -68,6 +86,7 @@ function SwitchVisual({ checked }: SwitchVisualProps) {
 interface VideoPlayerProps {
   media: CourseVideo;
   lessonTitle: string;
+  posterSrc?: string;
   theaterMode: boolean;
   onTheaterToggle: () => void;
   autoPlayOnMediaChange?: boolean;
@@ -76,6 +95,7 @@ interface VideoPlayerProps {
 export function VideoPlayer({
   media,
   lessonTitle,
+  posterSrc,
   theaterMode,
   onTheaterToggle,
   autoPlayOnMediaChange = false,
@@ -91,9 +111,11 @@ export function VideoPlayer({
   const hudTimerRef = useRef<number | undefined>(undefined);
   const lastResumePersistedAtRef = useRef<number | null>(null);
   const lastKnownPlaybackTimeRef = useRef(0);
+  const shortcutHandlerRef = useRef<(event: KeyboardEvent) => void>(() => {});
 
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [mutedPreferenceReady, setMutedPreferenceReady] = useState(false);
   const [volume, setVolume] = useState(1);
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
@@ -105,7 +127,9 @@ export function VideoPlayer({
   const [controlsVisible, setControlsVisible] = useState(true);
   const [hud, setHud] = useState("");
   const [mediaError, setMediaError] = useState(false);
-  const [ambient, setAmbient] = useState(getAmbientDefault);
+  // The server cannot read the saved device preference. Start from the same
+  // deterministic value on both sides, then restore it after hydration.
+  const [ambient, setAmbient] = useState(false);
 
   const showHud = (message: string) => {
     window.clearTimeout(hudTimerRef.current);
@@ -325,8 +349,32 @@ export function VideoPlayer({
   }, [volume]);
 
   useEffect(() => {
-    localStorage.setItem("veolms-player-ambient", ambient ? "on" : "off");
-  }, [ambient]);
+    setMuted(getInitialMuted());
+    setMutedPreferenceReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mutedPreferenceReady) return;
+    if (videoRef.current) videoRef.current.muted = muted;
+    try {
+      window.localStorage.setItem(PLAYER_MUTED_STORAGE_KEY, String(muted));
+    } catch {
+      // Playback controls should remain available when browser storage is unavailable.
+    }
+  }, [muted, mutedPreferenceReady]);
+
+  useEffect(() => {
+    const syncMutedPreference = (event: StorageEvent) => {
+      if (event.key !== PLAYER_MUTED_STORAGE_KEY) return;
+      setMuted(event.newValue === "true" || event.newValue === "on");
+    };
+    window.addEventListener("storage", syncMutedPreference);
+    return () => window.removeEventListener("storage", syncMutedPreference);
+  }, []);
+
+  useEffect(() => {
+    setAmbient(getAmbientDefault());
+  }, []);
 
   useEffect(
     () => () => {
@@ -398,17 +446,52 @@ export function VideoPlayer({
 
   const controlsAreVisible = controlsVisible || !playing || settingsOpen;
 
-  const handlePlayerKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
+  const handlePlayerKeyDown = (event: KeyboardEvent) => {
     if (
-      event.currentTarget !== event.target ||
-      event.ctrlKey ||
-      event.metaKey ||
-      event.altKey ||
-      settingsOpen
+      event.defaultPrevented ||
+      event.isComposing ||
+      isEditingShortcutTarget(event.target)
     )
       return;
 
+    const focusedInteractiveControl =
+      event.target instanceof Element
+        ? event.target.closest(PLAYER_INTERACTIVE_SHORTCUT_SELECTOR)
+        : null;
+    if (
+      focusedInteractiveControl &&
+      focusedInteractiveControl !== frameRef.current
+    )
+      return;
+
+    const isPercentageSeekShortcut =
+      event.altKey &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.shiftKey &&
+      /^Digit[0-9]$/.test(event.code);
+    if (isPercentageSeekShortcut) {
+      event.preventDefault();
+      seekToProgress(Number(event.code.slice(-1)) * 10);
+      return;
+    }
+
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+
     const key = event.key.toLowerCase();
+    const focusedControl =
+      event.target instanceof Element
+        ? event.target.closest('[role="slider"], [role="separator"]')
+        : null;
+    if (
+      focusedControl &&
+      (event.code === "ArrowLeft" ||
+        event.code === "ArrowRight" ||
+        event.code === "Home" ||
+        event.code === "End")
+    )
+      return;
+
     const speedDown =
       event.shiftKey &&
       (event.code === "Comma" ||
@@ -461,11 +544,17 @@ export function VideoPlayer({
     } else if (event.code === "End") {
       event.preventDefault();
       seekToProgress(100);
-    } else if (!event.shiftKey && /^Digit[0-9]$/.test(event.code)) {
-      event.preventDefault();
-      seekToProgress(Number(event.code.slice(-1)) * 10);
     }
   };
+  shortcutHandlerRef.current = handlePlayerKeyDown;
+
+  useEffect(() => {
+    const handlePageKeyDown = (event: KeyboardEvent) => {
+      shortcutHandlerRef.current(event);
+    };
+    window.addEventListener("keydown", handlePageKeyDown, true);
+    return () => window.removeEventListener("keydown", handlePageKeyDown, true);
+  }, []);
 
   return (
     <div
@@ -483,7 +572,6 @@ export function VideoPlayer({
         aria-label={`Lesson video player for ${lessonTitle}`}
         tabIndex={0}
         onPointerDownCapture={handleFramePointerDown}
-        onKeyDown={handlePlayerKeyDown}
         onMouseMove={scheduleControlsHide}
         onMouseLeave={() =>
           playing && !settingsOpen && setControlsVisible(false)
@@ -504,14 +592,20 @@ export function VideoPlayer({
         <video
           ref={videoRef}
           className="size-full object-contain"
-          preload="metadata"
+          preload="none"
+          poster={posterSrc}
           src={media.src}
           muted={muted}
           onLoadedMetadata={(event) => {
             setDuration(event.currentTarget.duration);
-            const savedTime = Number(
-              localStorage.getItem(`veolms-watch-${media.fileName}`),
-            );
+            let savedTime = 0;
+            try {
+              savedTime = Number(
+                localStorage.getItem(`veolms-watch-${media.fileName}`),
+              );
+            } catch {
+              // Resume from the beginning when browser storage is unavailable.
+            }
             event.currentTarget.currentTime =
               Number.isFinite(savedTime) && savedTime > 0
                 ? Math.min(
@@ -594,21 +688,15 @@ export function VideoPlayer({
           className={`player-chrome ${controlsAreVisible ? "player-chrome--visible" : ""}`}
         >
           <div className="absolute inset-x-3 bottom-3 z-20 text-white sm:inset-x-4">
-            <label className="relative block h-3" aria-label="Video position">
-              <span className="pointer-events-none absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 overflow-hidden rounded-full bg-white/25">
-                <span
-                  className="block h-full rounded-full bg-[var(--accent)]"
-                  style={{
-                    width: `${Number.isFinite(progress) ? progress : 0}%`,
-                  }}
-                />
-              </span>
-              <input
-                type="range"
+            <label className="relative block h-5" aria-label="Video position">
+              <AppSlider
                 min="0"
                 max="100"
                 step="0.1"
                 value={Number.isFinite(progress) ? progress : 0}
+                variant="player"
+                aria-label="Video position"
+                aria-valuetext={`${formatMediaTime(currentTime)} of ${formatMediaTime(duration)}`}
                 onInput={(event) =>
                   seekToProgress(Number(event.currentTarget.value))
                 }
@@ -650,14 +738,15 @@ export function VideoPlayer({
                     <SpeakerHigh size={25} />
                   )}
                 </button>
-                <input
+                <AppSlider
                   data-player-control
                   aria-label="Volume"
-                  type="range"
                   min="0"
                   max="1"
                   step="0.05"
                   value={muted ? 0 : volume}
+                  variant="volume"
+                  aria-valuetext={`${Math.round((muted ? 0 : volume) * 100)}%`}
                   onInput={(event) =>
                     changeVolume(Number(event.currentTarget.value))
                   }
@@ -720,7 +809,20 @@ export function VideoPlayer({
                         <button
                           type="button"
                           aria-pressed={ambient}
-                          onClick={() => setAmbient((current) => !current)}
+                          onClick={() =>
+                            setAmbient((current) => {
+                              const next = !current;
+                              try {
+                                localStorage.setItem(
+                                  "veolms-player-ambient",
+                                  next ? "on" : "off",
+                                );
+                              } catch {
+                                // Ambient mode remains available when browser storage is unavailable.
+                              }
+                              return next;
+                            })
+                          }
                           className="player-menu-row"
                         >
                           <span className="flex min-w-0 items-center gap-3">

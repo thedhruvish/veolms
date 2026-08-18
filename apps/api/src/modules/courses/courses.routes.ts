@@ -1,19 +1,16 @@
 import {
   courseListResponseSchema,
-  courseSlugSchema,
+  courseSlugParamsSchema,
   publicCourseSchema,
 } from "@veolms/contracts";
 import {
   findPublishedCourseBySlug,
   listPublishedCourses,
 } from "@veolms/database";
-import { z } from "zod";
 
 import { errorResponse, httpError } from "../../lib/errors.ts";
 import { jsonResponse } from "../../lib/responses.ts";
 import type { RoutePlugin } from "../../lib/route-plugin.ts";
-
-const courseSlugParamsSchema = z.object({ slug: courseSlugSchema });
 
 const courseRoutes: RoutePlugin = async (app, { database }) => {
   app.get(
