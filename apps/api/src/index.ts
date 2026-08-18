@@ -22,17 +22,23 @@ async function shutdown(signal: string): Promise<void> {
   }, 10000);
 
   try {
-    const results = await Promise.allSettled([
-      app.close(),
-      database.destroy()
-    ]);
+    const errors: unknown[] = [];
 
-    const errors = results
-      .filter((r): r is PromiseRejectedResult => r.status === "rejected")
-      .map((r) => r.reason);
+    try {
+      await app.close();
+    } catch (err) {
+      errors.push(err);
+    }
+
+    try {
+      await database.destroy();
+    } catch (err) {
+      errors.push(err);
+    }
 
     if (errors.length > 0) {
-      app.log.error({ err: errors }, "Error(s) occurred during graceful shutdown.");
+      // Pass the array as `errors`, since Pino's default `err` serializer doesn't handle arrays
+      app.log.error({ errors }, "Error(s) occurred during graceful shutdown.");
       process.exit(1);
     }
 
