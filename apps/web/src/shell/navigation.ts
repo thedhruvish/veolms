@@ -14,6 +14,8 @@ import { SquaresFour } from "@phosphor-icons/react/SquaresFour";
 import type { Icon } from "@phosphor-icons/react";
 import type { SidebarPreferences } from "../settings/settingsPreferences";
 
+import { ChatTeardropDots } from "@phosphor-icons/react/ChatTeardropDots";
+
 export type NavigationItem = readonly [label: string, icon: Icon];
 
 export const MESSAGES_NAVIGATION_ENABLED = false;
@@ -24,7 +26,8 @@ const studentNavigation: readonly NavigationItem[] = [
   ["Explore Courses", BookOpen],
   ["Wishlist", Heart],
   ["Discussions", ChatCircleDots],
-  ["Order History", Tote],
+  ["Orders", Tote],
+  ["Reviews", ChatTeardropDots],
   ["Notifications", Bell],
   ["Settings", GearSix],
 ];
@@ -33,7 +36,7 @@ const allCreatorNavigation: readonly NavigationItem[] = [
   ["Dashboard", SquaresFour],
   ["Courses", BookOpen],
   ["Students", Users],
-  ["Reviews", Star],
+  ["Reviews", ChatTeardropDots],
   ["Wishlist", Heart],
   ["Discussions", ChatCircleDots],
   ["Analytics", ChartBar],
