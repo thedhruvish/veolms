@@ -113,6 +113,7 @@ export function VideoPlayer({
   const lastKnownPlaybackTimeRef = useRef(0);
   const shortcutHandlerRef = useRef<(event: KeyboardEvent) => void>(() => { });
   const shortcutUpHandlerRef = useRef<(event: KeyboardEvent) => void>(() => { });
+  const blurHandlerRef = useRef<() => void>(() => { });
   const lastClickTimeRef = useRef(0);
   const wasPausedBeforeSpeedBoostRef = useRef(false);
   const longPressTimerRef = useRef<number | undefined>(undefined);
@@ -317,6 +318,12 @@ export function VideoPlayer({
       setSettingsPage("main");
       return;
     }
+
+    if (
+      event.target instanceof Element &&
+      event.target.closest("[data-player-control], [data-player-menu], input")
+    )
+      return;
 
     const now = Date.now();
     if (now - lastClickTimeRef.current < 400) {
@@ -597,8 +604,19 @@ export function VideoPlayer({
 
   const handlePlayerKeyUp = (event: KeyboardEvent) => {
     if (
+      event.defaultPrevented ||
       event.isComposing ||
       isEditingShortcutTarget(event.target)
+    )
+      return;
+
+    const focusedInteractiveControl =
+      event.target instanceof Element
+        ? event.target.closest(PLAYER_INTERACTIVE_SHORTCUT_SELECTOR)
+        : null;
+    if (
+      focusedInteractiveControl &&
+      focusedInteractiveControl !== frameRef.current
     )
       return;
 
@@ -614,6 +632,8 @@ export function VideoPlayer({
   };
   shortcutUpHandlerRef.current = handlePlayerKeyUp;
 
+  blurHandlerRef.current = clearTempSpeed;
+
   useEffect(() => {
     const handlePageKeyDown = (event: KeyboardEvent) => {
       shortcutHandlerRef.current(event);
@@ -621,11 +641,16 @@ export function VideoPlayer({
     const handlePageKeyUp = (event: KeyboardEvent) => {
       shortcutUpHandlerRef.current(event);
     };
+    const handleBlur = () => {
+      blurHandlerRef.current();
+    };
     window.addEventListener("keydown", handlePageKeyDown, true);
     window.addEventListener("keyup", handlePageKeyUp, true);
+    window.addEventListener("blur", handleBlur);
     return () => {
       window.removeEventListener("keydown", handlePageKeyDown, true);
       window.removeEventListener("keyup", handlePageKeyUp, true);
+      window.removeEventListener("blur", handleBlur);
     };
   }, []);
 
@@ -690,7 +715,7 @@ export function VideoPlayer({
                 )
                 : Math.min(0.01, event.currentTarget.duration || 0);
             lastKnownPlaybackTimeRef.current = event.currentTarget.currentTime;
-            event.currentTarget.playbackRate = speed;
+            event.currentTarget.playbackRate = tempSpeedActive ? 2 : speed;
             event.currentTarget.volume = volume;
           }}
           onLoadedData={paintAmbientFrame}
