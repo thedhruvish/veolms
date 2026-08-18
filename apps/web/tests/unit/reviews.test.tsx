@@ -58,23 +58,27 @@ describe("ReviewsPage", () => {
     // Switching to My Review
     fireEvent.click(myReviewTab);
     expect(myReviewTab).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByText("Ashi Singh")).toBeInTheDocument();
+    expect(screen.getAllByText("Ashi Singh")[0]).toBeInTheDocument();
   });
 
   it("allows searching reviews by text query", () => {
     render(<ReviewsPage />);
 
     const searchInput = screen.getByPlaceholderText("Search reviews...");
-    expect(screen.getByText("Ashi Singh")).toBeInTheDocument();
-    expect(screen.getByText("Anurag Singh")).toBeInTheDocument();
+    expect(screen.getAllByText("Ashi Singh")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("Anurag Singh")[0]).toBeInTheDocument();
 
     fireEvent.change(searchInput, { target: { value: "lengthy" } });
-    expect(screen.getByText("Anurag Singh")).toBeInTheDocument();
-    expect(screen.queryByText("Ashi Singh")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Anurag Singh")[0]).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Very detailed course, but could include more real-world production projects.",
+      ),
+    ).not.toBeInTheDocument();
 
     // Clear search
     fireEvent.change(searchInput, { target: { value: "" } });
-    expect(screen.getByText("Ashi Singh")).toBeInTheDocument();
+    expect(screen.getAllByText("Ashi Singh")[0]).toBeInTheDocument();
   });
 
   it("allows toggling the verified learners filter", () => {
@@ -127,8 +131,8 @@ describe("ReviewsPage", () => {
   it("renders rating summary, highlights, top reviewers, and need help widget", () => {
     render(<ReviewsPage />);
 
-    expect(screen.getByText("Rating summary")).toBeInTheDocument();
-    expect(screen.getByText("4.8")).toBeInTheDocument();
+    expect(screen.getAllByText("Rating summary")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("4.8")[0]).toBeInTheDocument();
     expect(screen.getByText("Highlights")).toBeInTheDocument();
     expect(screen.getByText("98%")).toBeInTheDocument();
     expect(screen.getByText("Top reviewers")).toBeInTheDocument();

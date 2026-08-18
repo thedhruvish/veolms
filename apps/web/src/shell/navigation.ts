@@ -26,8 +26,7 @@ const studentNavigation: readonly NavigationItem[] = [
   ["Explore Courses", BookOpen],
   ["Wishlist", Heart],
   ["Discussions", ChatCircleDots],
-  ["Orders", Tote],
-  ["Reviews", ChatTeardropDots],
+  ["Order History", Tote],
   ["Notifications", Bell],
   ["Settings", GearSix],
 ];
