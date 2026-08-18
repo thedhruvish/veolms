@@ -1,18 +1,16 @@
-import {
-  Bell,
-  BookOpen,
-  ChartBar,
-  GearSix,
-  GraduationCap,
-  Heart,
-  House,
-  Star,
-  Tote,
-  Users,
-  ChatCircleDots,
-  EnvelopeSimple,
-  SquaresFour,
-} from "@phosphor-icons/react";
+import { Bell } from "@phosphor-icons/react/Bell";
+import { BookOpen } from "@phosphor-icons/react/BookOpen";
+import { ChartBar } from "@phosphor-icons/react/ChartBar";
+import { GearSix } from "@phosphor-icons/react/GearSix";
+import { GraduationCap } from "@phosphor-icons/react/GraduationCap";
+import { Heart } from "@phosphor-icons/react/Heart";
+import { House } from "@phosphor-icons/react/House";
+import { Star } from "@phosphor-icons/react/Star";
+import { Tote } from "@phosphor-icons/react/Tote";
+import { Users } from "@phosphor-icons/react/Users";
+import { ChatCircleDots } from "@phosphor-icons/react/ChatCircleDots";
+import { EnvelopeSimple } from "@phosphor-icons/react/EnvelopeSimple";
+import { SquaresFour } from "@phosphor-icons/react/SquaresFour";
 import type { Icon } from "@phosphor-icons/react";
 import type { SidebarPreferences } from "../settings/settingsPreferences";
 
@@ -22,8 +20,8 @@ export const MESSAGES_NAVIGATION_ENABLED = false;
 
 const studentNavigation: readonly NavigationItem[] = [
   ["Home", House],
-  ["My Learning", GraduationCap],
-  ["Courses", BookOpen],
+  ["My Courses", GraduationCap],
+  ["Explore Courses", BookOpen],
   ["Wishlist", Heart],
   ["Discussions", ChatCircleDots],
   ["Order History", Tote],
@@ -56,7 +54,8 @@ const navigationByRole: Record<string, readonly NavigationItem[]> = {
 const navigationTones: Record<string, string> = {
   Home: "#5da9ff",
   Dashboard: "#5da9ff",
-  "My Learning": "#ad7cff",
+  "My Courses": "#ad7cff",
+  "Explore Courses": "#8f70ff",
   Courses: "#8f70ff",
   Students: "#55d98b",
   Wishlist: "#ff6684",
@@ -69,26 +68,40 @@ const navigationTones: Record<string, string> = {
   Messages: "#63c8d5",
   Notifications: "#f1be4b",
   Settings: "#a16cff",
+  Fullscreen: "#ff8a55",
   Logout: "#8c9294",
 };
 
 export function getNavigationDisplayLabel(label: string, page: string): string {
-  if (page !== "courses" && label === "Notifications") return "Notification";
+  if (page !== "explore-courses" && label === "Notifications")
+    return "Notification";
   return label;
 }
 
+const migrateStudentNavigationLabel = (label: string) => {
+  if (label === "My Learning") return "My Courses";
+  if (label === "Courses") return "Explore Courses";
+  return label;
+};
+
+export function getDefaultNavigationOrder(role: string): string[] {
+  return (navigationByRole[role] || studentNavigation).map(([label]) => label);
+}
+
 export function getInitialNavigationOrder(role: string): string[] {
-  const defaultOrder = (navigationByRole[role] || studentNavigation).map(
-    ([label]) => label,
-  );
+  const defaultOrder = getDefaultNavigationOrder(role);
+  if (typeof window === "undefined") return defaultOrder;
+
   try {
     const parsedOrder: unknown = JSON.parse(
       localStorage.getItem(`veolms-navigation-order-${role}`) || "[]",
     );
     if (!Array.isArray(parsedOrder)) return defaultOrder;
-    const savedOrder = parsedOrder.filter(
-      (label): label is string => typeof label === "string",
-    );
+    const savedOrder = parsedOrder
+      .filter((label): label is string => typeof label === "string")
+      .map((label) =>
+        role === "student" ? migrateStudentNavigationLabel(label) : label,
+      );
     const validSavedOrder = savedOrder.filter(
       (label, index) =>
         defaultOrder.includes(label) && savedOrder.indexOf(label) === index,
@@ -116,6 +129,16 @@ export function getOrderedNavigation(
       itemByLabel.has(label) && labels.indexOf(label) === index,
   );
   return orderedLabels.map((label) => itemByLabel.get(label)!);
+}
+
+export function getNavigationDestination(label: string): string {
+  if (label === "Home") return "home";
+  if (label === "Dashboard") return "dashboard";
+  if (label === "My Courses") return "my-courses";
+  if (label === "Explore Courses" || label === "Courses")
+    return "explore-courses";
+  if (label === "Wishlist") return "wishlist";
+  return label;
 }
 
 export function getNavigationIconColor(

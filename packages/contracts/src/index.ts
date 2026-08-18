@@ -1,18 +1,34 @@
 export {
   courseListResponseSchema,
+  courseSlugParamsSchema,
   courseSlugSchema,
   courseSummarySchema,
   publicCourseSchema,
 } from "./course.ts";
-export type { CourseSummary, PublicCourse } from "./course.ts";
+export type {
+  CourseSlugParams,
+  CourseSummary,
+  PublicCourse,
+} from "./course.ts";
+
+export { healthResponseSchema } from "./health.ts";
+export type { HealthResponse } from "./health.ts";
+
+export { errorResponseSchema } from "./error.ts";
+export type { ErrorResponse, ValidationIssue } from "./error.ts";
 
 export {
   otpSendRequestSchema,
   otpVerifyRequestSchema,
   registerRequestSchema,
   loginRequestSchema,
+  oauthProviderSchema,
+  oauthUrlRequestSchema,
+  oauthUrlResponseSchema,
+  oauthCallbackRequestSchema,
   oauthLoginRequestSchema,
   oauthRegisterRequestSchema,
+  authConfigResponseSchema,
   passkeyRegisterVerifyRequestSchema,
   passkeyLoginVerifyRequestSchema,
   totpVerifyRequestSchema,
@@ -20,7 +36,12 @@ export {
   authMessageResponseSchema,
   loginResponseSchema,
   userProfileResponseSchema,
+  sessionParamsSchema,
   sessionResponseSchema,
+  setupTokenRequestSchema,
+  creatorRegisterRequestSchema,
+  academyRequestSchema,
+  academyResponseSchema,
   totpSetupResponseSchema,
   totpEnableResponseSchema,
   passkeyOptionsResponseSchema,
@@ -31,12 +52,22 @@ export type {
   OtpVerifyRequest,
   RegisterRequest,
   LoginRequest,
+  OauthProvider,
+  OauthUrlRequest,
+  OauthUrlResponse,
+  OauthCallbackRequest,
   OauthLoginRequest,
   OauthRegisterRequest,
+  AuthConfigResponse,
   PasskeyRegisterVerifyRequest,
   PasskeyLoginVerifyRequest,
   UserProfileResponse,
+  SessionParams,
   SessionResponse,
+  SetupTokenRequest,
+  CreatorRegisterRequest,
+  AcademyRequest,
+  AcademyResponse,
   TotpVerifyRequest,
   TotpEnableRequest,
 } from "./auth.ts";

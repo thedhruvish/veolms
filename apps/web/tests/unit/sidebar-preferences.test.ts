@@ -12,10 +12,14 @@ const defaultPreferences = {
   monochromeColor: "#6c78ff",
   contentLayout: "framed",
   sidebarMaxWidth: 300,
+  headerLayout: "inline",
+  dockItems: ["appearance", "reading-mode", "fullscreen"],
+  dockOrder: ["appearance", "theme", "reading-mode", "fullscreen", "settings"],
+  showKeyboardShortcuts: true,
   showCollapsedLabels: true,
   showCollapsedLogo: true,
-  showThemeIcon: true,
   highlightActive: true,
+  elevateMenus: false,
 };
 
 describe("sidebar width helpers", () => {
@@ -58,6 +62,12 @@ describe("sidebar preference storage", () => {
     ).toBe("300px-v1");
     expect(localStorage.getItem("veolms-sidebar-icon-default-version")).toBe(
       "monochrome-theme-v1",
+    );
+    expect(localStorage.getItem("veolms-sidebar-dock-default-version")).toBe(
+      "three-controls-v2",
+    );
+    expect(localStorage.getItem("veolms-sidebar-header-default-version")).toBe(
+      "inline-v1",
     );
     expect(
       JSON.parse(localStorage.getItem("veolms-sidebar-preferences") ?? "null"),
@@ -150,6 +160,132 @@ describe("sidebar preference storage", () => {
     expect(getInitialSidebarPreferences().iconStyle).toBe("multicolor");
   });
 
+  it("migrates the legacy theme-icon preference into the dock selection", () => {
+    localStorage.setItem(
+      "veolms-sidebar-max-width-default-version",
+      "300px-v1",
+    );
+    localStorage.setItem(
+      "veolms-sidebar-icon-default-version",
+      "monochrome-theme-v1",
+    );
+    localStorage.setItem(
+      "veolms-sidebar-preferences",
+      JSON.stringify({
+        showThemeIcon: false,
+        sidebarMaxWidth: 360,
+      }),
+    );
+
+    const migratedPreferences = getInitialSidebarPreferences();
+    expect(migratedPreferences).toEqual({
+      ...defaultPreferences,
+      sidebarMaxWidth: 360,
+      dockItems: ["appearance", "fullscreen"],
+    });
+    expect(
+      JSON.parse(localStorage.getItem("veolms-sidebar-preferences") ?? "null"),
+    ).toEqual(migratedPreferences);
+    expect(migratedPreferences).not.toHaveProperty("showThemeIcon");
+  });
+
+  it("migrates a dock only when its legacy marker confirms the old default", () => {
+    localStorage.setItem(
+      "veolms-sidebar-dock-default-version",
+      "four-controls-v1",
+    );
+    localStorage.setItem(
+      "veolms-sidebar-preferences",
+      JSON.stringify({
+        headerLayout: "fixed",
+        dockItems: ["appearance", "theme", "reading-mode", "fullscreen"],
+        dockOrder: [
+          "appearance",
+          "theme",
+          "reading-mode",
+          "fullscreen",
+          "settings",
+        ],
+      }),
+    );
+
+    const migratedPreferences = getInitialSidebarPreferences();
+    expect(migratedPreferences).toMatchObject({
+      headerLayout: "fixed",
+      dockItems: ["appearance", "reading-mode", "fullscreen"],
+    });
+    expect(localStorage.getItem("veolms-sidebar-dock-default-version")).toBe(
+      "three-controls-v2",
+    );
+    expect(localStorage.getItem("veolms-sidebar-header-default-version")).toBe(
+      "inline-v1",
+    );
+
+    localStorage.removeItem("veolms-sidebar-dock-default-version");
+    localStorage.removeItem("veolms-sidebar-header-default-version");
+    localStorage.setItem(
+      "veolms-sidebar-preferences",
+      JSON.stringify({
+        headerLayout: "fixed",
+        dockItems: ["appearance", "theme", "reading-mode", "fullscreen"],
+      }),
+    );
+    expect(getInitialSidebarPreferences()).toMatchObject({
+      headerLayout: "fixed",
+      dockItems: ["appearance", "theme", "reading-mode", "fullscreen"],
+    });
+  });
+
+  it("preserves a customized legacy dock order", () => {
+    const dockItems = ["appearance", "theme", "reading-mode", "fullscreen"];
+    const dockOrder = [
+      "reading-mode",
+      "appearance",
+      "theme",
+      "fullscreen",
+      "settings",
+    ];
+    localStorage.setItem(
+      "veolms-sidebar-dock-default-version",
+      "four-controls-v1",
+    );
+    localStorage.setItem(
+      "veolms-sidebar-preferences",
+      JSON.stringify({ dockItems, dockOrder }),
+    );
+
+    expect(getInitialSidebarPreferences()).toMatchObject({
+      dockItems,
+      dockOrder,
+    });
+  });
+
+  it("migrates the legacy always-elevate preference without changing its value", () => {
+    localStorage.setItem(
+      "veolms-sidebar-max-width-default-version",
+      "300px-v1",
+    );
+    localStorage.setItem(
+      "veolms-sidebar-icon-default-version",
+      "monochrome-theme-v1",
+    );
+    localStorage.setItem(
+      "veolms-sidebar-dock-default-version",
+      "four-controls-v1",
+    );
+    localStorage.setItem(
+      "veolms-sidebar-preferences",
+      JSON.stringify({ alwaysElevateMenus: true }),
+    );
+
+    const migratedPreferences = getInitialSidebarPreferences();
+    expect(migratedPreferences.elevateMenus).toBe(true);
+    expect(migratedPreferences).not.toHaveProperty("alwaysElevateMenus");
+    expect(
+      JSON.parse(localStorage.getItem("veolms-sidebar-preferences") ?? "null"),
+    ).toEqual(migratedPreferences);
+  });
+
   it("returns defaults for invalid JSON without stamping the migration version", () => {
     localStorage.setItem("veolms-sidebar-preferences", "{");
 
@@ -159,6 +295,12 @@ describe("sidebar preference storage", () => {
     ).toBeNull();
     expect(
       localStorage.getItem("veolms-sidebar-icon-default-version"),
+    ).toBeNull();
+    expect(
+      localStorage.getItem("veolms-sidebar-dock-default-version"),
+    ).toBeNull();
+    expect(
+      localStorage.getItem("veolms-sidebar-header-default-version"),
     ).toBeNull();
     expect(localStorage.getItem("veolms-sidebar-preferences")).toBe("{");
   });

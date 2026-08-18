@@ -1,8 +1,9 @@
-import nodeThumbnail from "../assets/course-thumbnails/nodejs.jpg";
-import typescriptThumbnail from "../assets/course-thumbnails/typescript.jpg";
-import figmaThumbnail from "../assets/course-thumbnails/figma.jpg";
-import mongodbThumbnail from "../assets/course-thumbnails/mongodb.jpg";
-import awsThumbnail from "../assets/course-thumbnails/aws.jpg";
+import nodeThumbnail from "../assets/course-thumbnails/nodejs-960.webp";
+import javascriptThumbnail from "../assets/course-thumbnails/javascript-960.webp";
+import typescriptThumbnail from "../assets/course-thumbnails/typescript-960.webp";
+import figmaThumbnail from "../assets/course-thumbnails/figma-960.webp";
+import mongodbThumbnail from "../assets/course-thumbnails/mongodb-960.webp";
+import awsThumbnail from "../assets/course-thumbnails/aws-960.webp";
 
 export type CourseLevel = "Beginner" | "Intermediate";
 export type CourseCategory = "Design" | "Development" | "Database" | "Cloud";
@@ -49,7 +50,7 @@ export const courses: readonly Course[] = [
     enrolled: true,
     duration: "12h 40m",
     students: 842,
-    thumbnail: "/assets/instructor-poster.jpg",
+    thumbnail: "/assets/instructor-poster-960.webp",
   },
   {
     id: "backend-nodejs",
@@ -80,6 +81,21 @@ export const courses: readonly Course[] = [
     duration: "28h 10m",
     students: 967,
     thumbnail: typescriptThumbnail,
+  },
+  {
+    id: "javascript-course",
+    title: "The Complete JavaScript Course",
+    description:
+      "Learn modern JavaScript from core language fundamentals to asynchronous application patterns.",
+    level: "Beginner",
+    category: "Development",
+    sections: 20,
+    lectures: 142,
+    progress: 38,
+    enrolled: true,
+    duration: "24h 35m",
+    students: 1584,
+    thumbnail: javascriptThumbnail,
   },
   {
     id: "figma-ui-essentials",
