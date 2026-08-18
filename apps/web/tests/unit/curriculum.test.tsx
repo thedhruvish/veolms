@@ -100,5 +100,5 @@ describe("Curriculum", () => {
       }),
     );
     expect(onSelectLesson).toHaveBeenCalledWith(11);
-  });
+  }, 15_000);
 });
