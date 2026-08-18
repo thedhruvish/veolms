@@ -818,6 +818,10 @@ void main();
     fleetEnvLines.push(`FLEET_MANAGER_API_URL=${managerUrl}`);
   }
 
+  if (existingEnv.FLEET_API_KEY) {
+    fleetEnvLines.push(`FLEET_API_KEY=${existingEnv.FLEET_API_KEY}`);
+  }
+
   const sanitizePlaceholder = (val?: string) => {
     if (!val) return "";
     if (
@@ -910,6 +914,10 @@ void main();
       `# [2] Control Plane Settings`,
       `FLEET_MANAGER_API_URL=${managerUrl}`,
     );
+  }
+
+  if (existingEnv.FLEET_API_KEY) {
+    workerEnvLines.push(`FLEET_API_KEY=${existingEnv.FLEET_API_KEY}`);
   }
 
   workerEnvLines.push(``);

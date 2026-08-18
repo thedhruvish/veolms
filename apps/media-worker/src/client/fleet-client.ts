@@ -17,6 +17,7 @@ export interface CallFleetManagerOptions {
   readonly method?: "GET" | "POST" | "PUT" | "DELETE";
   readonly body?: unknown;
   readonly headers?: Record<string, string>;
+  readonly apiKey?: string;
 }
 
 export interface CallFleetManagerResult<T = unknown> {
@@ -47,11 +48,19 @@ export async function callFleetManager<T = unknown>(
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   const url = `${baseUrl}${cleanPath}`;
 
+  const apiKey = options.apiKey || process.env.FLEET_API_KEY;
+  const authHeaders: Record<string, string> = {};
+  if (apiKey) {
+    authHeaders["Authorization"] = `Bearer ${apiKey}`;
+    authHeaders["x-api-key"] = apiKey;
+  }
+
   try {
     const res = await fetch(url, {
       method: options.method ?? (options.body ? "POST" : "GET"),
       headers: {
         "Content-Type": "application/json",
+        ...authHeaders,
         ...(options.headers ?? {}),
       },
       body: options.body ? JSON.stringify(options.body) : undefined,
@@ -90,9 +99,11 @@ export async function callFleetManager<T = unknown>(
  */
 export class FleetApiClient {
   readonly baseUrl: string;
+  readonly apiKey?: string;
 
-  constructor(managerApiUrl: string) {
+  constructor(managerApiUrl: string, apiKey?: string) {
     this.baseUrl = managerApiUrl.replace(/\/+$/, "");
+    this.apiKey = apiKey || process.env.FLEET_API_KEY;
   }
 
   /**
@@ -105,6 +116,7 @@ export class FleetApiClient {
       "/api/v1/workers/register",
       {
         baseUrl: this.baseUrl,
+        apiKey: this.apiKey,
         method: "POST",
         body: payload,
       },
@@ -125,6 +137,7 @@ export class FleetApiClient {
       `/api/v1/workers/${payload.workerId}/heartbeat`,
       {
         baseUrl: this.baseUrl,
+        apiKey: this.apiKey,
         method: "POST",
         body: payload,
       },
@@ -145,6 +158,7 @@ export class FleetApiClient {
       `/api/v1/workers/${payload.workerId}/no-work`,
       {
         baseUrl: this.baseUrl,
+        apiKey: this.apiKey,
         method: "POST",
         body: payload,
       },
@@ -169,6 +183,7 @@ export class FleetApiClient {
       `/api/v1/workers/${workerId}/next-job`,
       {
         baseUrl: this.baseUrl,
+        apiKey: this.apiKey,
         method: "POST",
       },
     );
@@ -188,6 +203,7 @@ export class FleetApiClient {
       `/api/v1/workers/${workerId}/complete-chunk`,
       {
         baseUrl: this.baseUrl,
+        apiKey: this.apiKey,
         method: "POST",
         body: { chunkId, outputKey },
       },
@@ -211,6 +227,7 @@ export class FleetApiClient {
       `/api/v1/workers/${workerId}/finalize-video`,
       {
         baseUrl: this.baseUrl,
+        apiKey: this.apiKey,
         method: "POST",
         body: { videoId, masterManifestKey, error },
       },
@@ -229,14 +246,12 @@ export class FleetApiClient {
     chunkId: string,
     errorMessage: string,
   ): Promise<void> {
-    await callFleetManager(
-      `/api/v1/workers/${workerId}/fail-chunk`,
-      {
-        baseUrl: this.baseUrl,
-        method: "POST",
-        body: { chunkId, error: errorMessage },
-      },
-    );
+    await callFleetManager(`/api/v1/workers/${workerId}/fail-chunk`, {
+      baseUrl: this.baseUrl,
+      apiKey: this.apiKey,
+      method: "POST",
+      body: { chunkId, error: errorMessage },
+    });
   }
 
   /**
@@ -246,18 +261,16 @@ export class FleetApiClient {
     workerId: string,
     chunkId?: string,
   ): Promise<void> {
-    await callFleetManager(
-      `/api/v1/workers/${workerId}/interruption`,
-      {
-        baseUrl: this.baseUrl,
-        method: "POST",
-        body: {
-          workerId,
-          chunkId,
-          timestamp: new Date().toISOString(),
-        },
+    await callFleetManager(`/api/v1/workers/${workerId}/interruption`, {
+      baseUrl: this.baseUrl,
+      apiKey: this.apiKey,
+      method: "POST",
+      body: {
+        workerId,
+        chunkId,
+        timestamp: new Date().toISOString(),
       },
-    );
+    });
   }
 }
 
@@ -265,7 +278,9 @@ export class FleetApiClient {
  * Creates or gets a configured FleetApiClient instance.
  */
 export function createFleetClient(
-  managerApiUrl: string = process.env.MANAGER_API_URL || "http://localhost:4000",
+  managerApiUrl: string = process.env.MANAGER_API_URL ||
+    "http://localhost:4000",
+  apiKey?: string,
 ): FleetApiClient {
-  return new FleetApiClient(managerApiUrl);
+  return new FleetApiClient(managerApiUrl, apiKey);
 }

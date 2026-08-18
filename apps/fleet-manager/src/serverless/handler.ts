@@ -13,6 +13,7 @@ import type {
   LambdaContextLike,
   SQSEventLike,
 } from "./types.ts";
+import { verifyApiKeyAuth } from "../utils/auth.ts";
 
 function jsonResponse(
   statusCode: number,
@@ -106,6 +107,14 @@ export function createLambdaHandler(
         return jsonResponse(200, {
           status: "ok",
           timestamp: new Date().toISOString(),
+        });
+      }
+
+      // Security check: API Key authentication for /api/* control plane routes
+      const authResult = verifyApiKeyAuth(pathname, httpEvent.headers || {});
+      if (!authResult.authorized) {
+        return jsonResponse(401, {
+          error: authResult.error ?? "Unauthorized",
         });
       }
 

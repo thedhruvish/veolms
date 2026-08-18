@@ -12,6 +12,7 @@ interface JsonWorkerConfig {
   controlPlane?: {
     mode?: "serverful" | "serverless";
     fleetManagerUrl?: string;
+    apiKey?: string;
   };
   storage?: {
     type?: "local" | "s3";
@@ -147,6 +148,13 @@ export function loadWorkerConfig(
     10,
   );
 
+  const apiKey =
+    env.FLEET_API_KEY ||
+    env.API_KEY ||
+    jsonCfg?.controlPlane?.apiKey ||
+    process.env.FLEET_API_KEY ||
+    undefined;
+
   return {
     workerId,
     instanceId,
@@ -161,6 +169,7 @@ export function loadWorkerConfig(
     scratchDir,
     heartbeatIntervalMs,
     concurrency,
+    apiKey,
     defaultCrf,
     ffmpegPreset,
     hlsSegmentDurationSeconds,

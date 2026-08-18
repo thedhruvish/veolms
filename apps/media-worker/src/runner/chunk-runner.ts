@@ -46,6 +46,15 @@ export class ChunkTranscodingRunner {
   }
 
   /**
+   * Immediately aborts any ongoing FFmpeg transcoding job.
+   */
+  abort(): void {
+    if (this.transcoder && typeof this.transcoder.abort === "function") {
+      this.transcoder.abort();
+    }
+  }
+
+  /**
    * Executes transcoding pipeline for a single chunk job payload.
    */
   async executeChunk(

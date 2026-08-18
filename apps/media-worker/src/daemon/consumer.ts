@@ -92,6 +92,7 @@ export class QueueJobConsumer {
     console.info(
       `[Worker ${this.config.workerId}] QueueJobConsumer loop started.`,
     );
+    let consecutiveErrors = 0;
     while (this.isRunning) {
       try {
         // 1. Fetch next available chunk job from Queue 2
@@ -100,6 +101,7 @@ export class QueueJobConsumer {
         );
 
         if (job) {
+          consecutiveErrors = 0;
           console.info(
             `[Worker ${this.config.workerId}] Claimed chunk job: ${job.data.chunkId} (Video: ${job.data.videoId})`,
           );
@@ -186,6 +188,12 @@ export class QueueJobConsumer {
           timestamp: new Date().toISOString(),
         });
 
+        if (noWorkDecision.error) {
+          consecutiveErrors += 1;
+        } else {
+          consecutiveErrors = 0;
+        }
+
         if (noWorkDecision.action === "TERMINATE") {
           console.info(
             `[Worker ${this.config.workerId}] Received TERMINATE signal from Fleet Manager (${noWorkDecision.reason}). Shutting down...`,
@@ -197,17 +205,22 @@ export class QueueJobConsumer {
           break;
         }
 
-        // If KEEP -> wait for poll interval before retrying queue
-        await new Promise((resolve) =>
-          setTimeout(resolve, this.pollIntervalMs),
+        // If KEEP -> wait for poll interval (with backoff if consecutive errors)
+        const backoffMs = Math.min(
+          15000,
+          this.pollIntervalMs * Math.pow(2, Math.min(consecutiveErrors, 4)),
         );
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
       } catch (err) {
+        consecutiveErrors += 1;
+        const backoffMs = Math.min(
+          15000,
+          this.pollIntervalMs * Math.pow(2, Math.min(consecutiveErrors, 4)),
+        );
         console.error(
-          `[Worker ${this.config.workerId}] Error in worker queue loop: ${String(err)}`,
+          `[Worker ${this.config.workerId}] Error in worker queue loop (attempt ${consecutiveErrors}): ${String(err)}. Backing off for ${backoffMs}ms...`,
         );
-        await new Promise((resolve) =>
-          setTimeout(resolve, this.pollIntervalMs),
-        );
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
       }
     }
   }

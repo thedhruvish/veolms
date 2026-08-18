@@ -41,6 +41,8 @@ export class ProcessWorkerRunner {
         process.env.STORAGE_BASE_PATH || resolve(process.cwd(), "s3-bucket"),
       SCRATCH_DIR:
         process.env.SCRATCH_DIR || resolve(process.cwd(), ".tmp/scratch"),
+      FLEET_API_KEY:
+        process.env.FLEET_API_KEY || spec.environment?.FLEET_API_KEY,
     };
 
     const nodeBinary = options.nodeBinaryPath ?? process.execPath;

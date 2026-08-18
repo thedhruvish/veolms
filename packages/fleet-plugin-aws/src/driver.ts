@@ -15,6 +15,11 @@ import type {
 import type { AwsCloudDriverOptions } from "./options.ts";
 import { selectBestEC2Instance } from "./ec2-instances.ts";
 
+function quoteForShell(val?: string | null): string {
+  if (val === undefined || val === null) return "''";
+  return `'${String(val).replace(/'/g, `'\\''`)}'`;
+}
+
 /**
  * AwsCloudDriver: Hexagonal driver for AWS EC2 Spot Instances & ECS Fargate workers.
  */
@@ -41,26 +46,46 @@ export class AwsCloudDriver implements CloudDriver {
   private generateUserDataScript(spec: WorkerLaunchSpec): string {
     const isContainer = Boolean(this.options.workerContainerImage);
     const containerImage = this.options.workerContainerImage || "";
+    const apiKey =
+      process.env.FLEET_API_KEY || spec.environment?.FLEET_API_KEY || "";
+
+    const workerIdVal = quoteForShell(spec.workerId);
+    const managerUrlVal = quoteForShell(
+      spec.managerApiUrl || this.options.fleetManagerApiUrl || "",
+    );
+    const dbUrlVal = quoteForShell(
+      spec.queueConnectionString || this.options.databaseUrl || "",
+    );
+    const tempBucketVal = quoteForShell(this.options.tempS3Bucket || "");
+    const prodBucketVal = quoteForShell(this.options.prodS3Bucket || "");
+    const regionVal = quoteForShell(this.options.region || "us-east-1");
+    const forceHwVal = quoteForShell(
+      this.options.forceSoftwareEncoder ? "true" : "false",
+    );
+    const apiKeyVal = quoteForShell(apiKey);
+    const containerImageVal = quoteForShell(containerImage);
+    const safeContainerName = `veolms-worker-${spec.workerId.replace(/[^a-zA-Z0-9_-]/g, "")}`;
 
     const script = `#!/bin/bash
 set -ex
 
 # 1. Export Environment Variables for VeoLMS Media Worker
-export WORKER_ID="${spec.workerId}"
-export FLEET_MANAGER_API_URL="${spec.managerApiUrl || this.options.fleetManagerApiUrl}"
-export DATABASE_URL="${spec.queueConnectionString || this.options.databaseUrl || ""}"
+export WORKER_ID=${workerIdVal}
+export FLEET_MANAGER_API_URL=${managerUrlVal}
+export DATABASE_URL=${dbUrlVal}
 export STORAGE_DRIVER="s3"
-export S3_TEMP_BUCKET="${this.options.tempS3Bucket}"
-export S3_PROD_BUCKET="${this.options.prodS3Bucket}"
-export AWS_REGION="${this.options.region}"
-export FORCE_SOFTWARE_ENCODER="${this.options.forceSoftwareEncoder ? "true" : "false"}"
+export S3_TEMP_BUCKET=${tempBucketVal}
+export S3_PROD_BUCKET=${prodBucketVal}
+export AWS_REGION=${regionVal}
+export FORCE_SOFTWARE_ENCODER=${forceHwVal}
+export FLEET_API_KEY=${apiKeyVal}
 
 ${
   isContainer
     ? `# 2. Container Execution Mode (Docker / Containerd)
-docker pull "${containerImage}" || true
+docker pull ${containerImageVal} || true
 
-docker run -d --restart=unless-stopped --name "veolms-worker-${spec.workerId}" \\
+docker run -d --restart=unless-stopped --name "${safeContainerName}" \\
   --net=host \\
   -e WORKER_ID="$WORKER_ID" \\
   -e FLEET_MANAGER_API_URL="$FLEET_MANAGER_API_URL" \\
@@ -70,7 +95,8 @@ docker run -d --restart=unless-stopped --name "veolms-worker-${spec.workerId}" \
   -e S3_PROD_BUCKET="$S3_PROD_BUCKET" \\
   -e AWS_REGION="$AWS_REGION" \\
   -e FORCE_SOFTWARE_ENCODER="$FORCE_SOFTWARE_ENCODER" \\
-  "${containerImage}"`
+  -e FLEET_API_KEY="$FLEET_API_KEY" \\
+  ${containerImageVal}`
     : `# 2. Bare-Metal Native Host Process Execution (Zero-Docker Overhead)
 cd /opt/veolms || cd /home/ec2-user/veolms || cd /app || true
 if [ -f "apps/media-worker/src/index.ts" ]; then

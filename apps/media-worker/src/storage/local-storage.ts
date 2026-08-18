@@ -15,8 +15,21 @@ export class LocalStorageAdapter implements StorageAdapter {
   }
 
   private resolveKey(key: string): string {
-    const cleanKey = key.replace(/^\/+/, "");
-    return join(this.rootStorageDir, cleanKey);
+    const cleanKey = key.replace(/\\/g, "/").replace(/^\/+/, "");
+    const resolved = resolve(this.rootStorageDir, cleanKey);
+    const rootWithSlash = this.rootStorageDir.endsWith("/")
+      ? this.rootStorageDir
+      : `${this.rootStorageDir}/`;
+
+    if (
+      resolved !== this.rootStorageDir &&
+      !resolved.startsWith(rootWithSlash)
+    ) {
+      throw new Error(
+        `Security Violation: Path traversal detected for key: "${key}"`,
+      );
+    }
+    return resolved;
   }
 
   async downloadFile(
@@ -72,10 +85,10 @@ export class LocalStorageAdapter implements StorageAdapter {
       return { filePath, remoteKey };
     });
 
-    let currentIndex = 0;
+    const queue = [...tasks];
     const worker = async () => {
-      while (currentIndex < tasks.length) {
-        const item = tasks[currentIndex++];
+      while (queue.length > 0) {
+        const item = queue.shift();
         if (!item) break;
         await this.uploadFile(item.filePath, item.remoteKey);
         uploadedKeys.push(item.remoteKey);

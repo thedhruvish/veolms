@@ -25,6 +25,7 @@ export interface MediaWorkerConfig {
   readonly scratchDir: string;
   readonly heartbeatIntervalMs: number;
   readonly concurrency: number;
+  readonly apiKey?: string;
   readonly defaultCrf: number;
   readonly ffmpegPreset: string;
   readonly hlsSegmentDurationSeconds: number;

@@ -29,6 +29,22 @@ function parseTimemark(timemark?: string): number {
  * enforcing CRF 22 encoding standards, No-Upscaling clamping, and multi-rendition HLS segmentation.
  */
 export class FluentFfmpegTranscoder {
+  private activeCommand: ffmpeg.FfmpegCommand | null = null;
+
+  /**
+   * Immediately terminates any active FFmpeg child process to prevent orphan/zombie leaks.
+   */
+  abort(): void {
+    if (this.activeCommand) {
+      try {
+        this.activeCommand.kill("SIGKILL");
+      } catch {
+        // Ignore if already terminated
+      }
+      this.activeCommand = null;
+    }
+  }
+
   /**
    * Transcodes source video chunk into multi-rendition HLS streams.
    */
@@ -80,6 +96,7 @@ export class FluentFfmpegTranscoder {
 
       await new Promise<void>((resolve, reject) => {
         const cmd = ffmpeg(options.sourcePath).videoCodec(hwInfo.encoder);
+        this.activeCommand = cmd;
 
         const videoOptions =
           hwInfo.type === "nvenc"
@@ -151,12 +168,14 @@ export class FluentFfmpegTranscoder {
               (i / targetRenditions.length) * 100 +
               calculatedPercent / targetRenditions.length;
 
+            const effectiveFps = probe.fps > 0 ? probe.fps : 30;
             const etaSeconds =
               progress.currentFps && progress.currentFps > 0
                 ? Math.max(
                     0,
                     Math.round(
-                      (totalDurationSeconds * 30 - (progress.frames ?? 0)) /
+                      (totalDurationSeconds * effectiveFps -
+                        (progress.frames ?? 0)) /
                         progress.currentFps,
                     ),
                   )
@@ -176,11 +195,13 @@ export class FluentFfmpegTranscoder {
         );
 
         cmd.on("end", () => {
+          this.activeCommand = null;
           successfulRenditions.push(rendition);
           resolve();
         });
 
         cmd.on("error", (err: Error) => {
+          this.activeCommand = null;
           reject(
             new Error(
               `FFmpeg transcoding failed for rendition ${rendition.quality}: ${err.message}`,

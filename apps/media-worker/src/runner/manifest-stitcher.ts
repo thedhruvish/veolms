@@ -60,7 +60,9 @@ export class ManifestStitcher {
    */
   async stitchAndUpload(options: FinalizeManifestOptions): Promise<string> {
     const { videoId, requestedQualities, chunks } = options;
-    const sortedChunks = [...chunks].sort((a, b) => a.chunk_index - b.chunk_index);
+    const sortedChunks = [...chunks].sort(
+      (a, b) => a.chunk_index - b.chunk_index,
+    );
 
     const workspacePaths = await this.workspace.createChunkWorkspace(
       `finalizer-${videoId}`,
@@ -75,10 +77,16 @@ export class ManifestStitcher {
 
         for (const chunk of sortedChunks) {
           const remoteChunkPlaylistKey = `videos/${videoId}/chunks/${chunk.id}/${quality}.m3u8`;
-          const localChunkPlaylistPath = join(workDir, `${chunk.id}_${quality}.m3u8`);
+          const localChunkPlaylistPath = join(
+            workDir,
+            `${chunk.id}_${quality}.m3u8`,
+          );
 
           try {
-            await this.prodStorage.downloadFile(remoteChunkPlaylistKey, localChunkPlaylistPath);
+            await this.prodStorage.downloadFile(
+              remoteChunkPlaylistKey,
+              localChunkPlaylistPath,
+            );
             const content = await readFile(localChunkPlaylistPath, "utf-8");
             const lines = content.split("\n");
             const chunkSegments: ChunkSegment[] = [];
@@ -184,8 +192,12 @@ export class ManifestStitcher {
 
       // Clean up intermediate raw chunk cuts in temp storage
       for (const chunk of sortedChunks) {
-        await this.tempStorage.deleteFile(`chunks/${chunk.id}.mp4`).catch(() => {});
-        await this.tempStorage.deleteFile(`videos/${videoId}/chunks/${chunk.id}.mp4`).catch(() => {});
+        await this.tempStorage
+          .deleteFile(`chunks/${chunk.id}.mp4`)
+          .catch(() => {});
+        await this.tempStorage
+          .deleteFile(`videos/${videoId}/chunks/${chunk.id}.mp4`)
+          .catch(() => {});
       }
 
       return remoteMasterKey;

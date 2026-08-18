@@ -21,7 +21,8 @@ export class HeartbeatEmitter {
 
   constructor(config: MediaWorkerConfig, client?: FleetApiClient) {
     this.config = config;
-    this.client = client ?? new FleetApiClient(config.managerApiUrl);
+    this.client =
+      client ?? new FleetApiClient(config.managerApiUrl, config.apiKey);
   }
 
   /**

@@ -13,6 +13,7 @@ import type {
 } from "@veolms/fleet-types";
 
 import type { FleetCoordinator } from "../core/coordinator/coordinator.ts";
+import { verifyApiKeyAuth } from "../utils/auth.ts";
 
 function sendJson(
   res: ServerResponse,
@@ -70,6 +71,15 @@ export function createWorkerApiServer(coordinator: FleetCoordinator): Server {
         sendJson(res, 200, {
           status: "ok",
           timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Security check: API Key authentication for /api/* control plane routes
+      const authResult = verifyApiKeyAuth(pathname, req.headers);
+      if (!authResult.authorized) {
+        sendJson(res, 401, {
+          error: authResult.error ?? "Unauthorized",
         });
         return;
       }

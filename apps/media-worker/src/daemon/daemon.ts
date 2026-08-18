@@ -51,7 +51,10 @@ export class MediaWorkerDaemon {
       this.config.scratchDir,
       this.config.workerId,
     );
-    this.client = new FleetApiClient(this.config.managerApiUrl);
+    this.client = new FleetApiClient(
+      this.config.managerApiUrl,
+      this.config.apiKey,
+    );
     this.heartbeat = new HeartbeatEmitter(this.config, this.client);
     this.runner = new ChunkTranscodingRunner({
       config: this.config,
@@ -81,7 +84,11 @@ export class MediaWorkerDaemon {
         return this.client.fetchNextJob(this.config.workerId);
       },
       completeJob: async (_queue, jobId, outputKey) => {
-        return this.client.completeChunk(this.config.workerId, jobId, outputKey);
+        return this.client.completeChunk(
+          this.config.workerId,
+          jobId,
+          outputKey,
+        );
       },
       failJob: async (_queue, jobId, error) => {
         return this.client.failChunk(this.config.workerId, jobId, error);
@@ -109,14 +116,34 @@ export class MediaWorkerDaemon {
       return;
     }
 
-    // 1. Register with Fleet Manager API
-    await this.client.register({
-      workerId: this.config.workerId,
-      instanceId: this.config.instanceId,
-      provider: this.config.provider,
-      instanceType: this.config.instanceType ?? "standard",
-      startedAt: this.startedAt.toISOString(),
-    });
+    // 1. Register with Fleet Manager API (with retries)
+    let registered = false;
+    let attempts = 0;
+    const maxRegistrationAttempts = 5;
+    while (!registered && attempts < maxRegistrationAttempts) {
+      attempts += 1;
+      const regRes = await this.client.register({
+        workerId: this.config.workerId,
+        instanceId: this.config.instanceId,
+        provider: this.config.provider,
+        instanceType: this.config.instanceType ?? "standard",
+        startedAt: this.startedAt.toISOString(),
+      });
+
+      if (regRes.success) {
+        registered = true;
+      } else {
+        if (attempts >= maxRegistrationAttempts) {
+          throw new Error(
+            `Failed to register worker with Fleet Manager after ${maxRegistrationAttempts} attempts: ${regRes.error}`,
+          );
+        }
+        console.warn(
+          `[Worker ${this.config.workerId}] Registration attempt ${attempts}/${maxRegistrationAttempts} failed: ${regRes.error}. Retrying in ${attempts * 500}ms...`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, attempts * 500));
+      }
+    }
 
     // 2. Start heartbeat emitter
     this.heartbeat.start();
@@ -140,16 +167,19 @@ export class MediaWorkerDaemon {
       return;
     }
 
-    // 1. Stop Spot listener
+    // 1. Abort any running FFmpeg transcoding processes immediately
+    this.runner.abort();
+
+    // 2. Stop Spot listener
     this.spotListener.stop();
 
-    // 2. Stop queue consumer
+    // 3. Stop queue consumer
     this.consumer?.stop();
 
-    // 3. Stop heartbeat emitter
+    // 4. Stop heartbeat emitter
     this.heartbeat.stop();
 
-    // 4. Purge scratch workspace
+    // 5. Purge scratch workspace
     await this.workspace.purgeWorkerWorkspace();
 
     this.isRunning = false;

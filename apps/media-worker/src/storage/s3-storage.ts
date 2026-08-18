@@ -109,7 +109,12 @@ export class S3StorageAdapter implements StorageAdapter {
       ContentType: contentType,
     });
 
-    await this.client.send(command);
+    try {
+      await this.client.send(command);
+    } catch (err) {
+      fileStream.destroy();
+      throw err;
+    }
   }
 
   async uploadDirectory(
@@ -147,10 +152,10 @@ export class S3StorageAdapter implements StorageAdapter {
       return { filePath, remoteKey };
     });
 
-    let currentIndex = 0;
+    const queue = [...tasks];
     const worker = async () => {
-      while (currentIndex < tasks.length) {
-        const item = tasks[currentIndex++];
+      while (queue.length > 0) {
+        const item = queue.shift();
         if (!item) break;
         await this.uploadFile(item.filePath, item.remoteKey);
         uploadedKeys.push(item.remoteKey);
