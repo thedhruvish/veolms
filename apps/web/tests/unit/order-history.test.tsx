@@ -150,7 +150,11 @@ describe("OrderHistoryPage", () => {
   it("navigates across pages using pagination controls", () => {
     render(<OrderHistoryPage />);
 
-    expect(screen.getByText("Showing 1 to 6 of 24 orders")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        (_, el) => el?.textContent?.trim() === "Showing 1 to 6 of 24 orders",
+      ),
+    ).toBeInTheDocument();
     expect(
       screen.getAllByText("The Ultimate TypeScript Course")[0],
     ).toBeInTheDocument();
@@ -160,7 +164,9 @@ describe("OrderHistoryPage", () => {
     fireEvent.click(page2Button);
 
     expect(
-      screen.getByText("Showing 7 to 12 of 24 orders"),
+      screen.getByText(
+        (_, el) => el?.textContent?.trim() === "Showing 7 to 12 of 24 orders",
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getAllByText("Docker & Kubernetes for Developers")[0],
@@ -171,7 +177,9 @@ describe("OrderHistoryPage", () => {
     fireEvent.click(nextButton);
 
     expect(
-      screen.getByText("Showing 13 to 18 of 24 orders"),
+      screen.getByText(
+        (_, el) => el?.textContent?.trim() === "Showing 13 to 18 of 24 orders",
+      ),
     ).toBeInTheDocument();
   });
 
