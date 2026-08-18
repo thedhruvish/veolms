@@ -3,7 +3,11 @@ import { describe, it } from "node:test";
 import { resolve } from "node:path";
 import { writeFileSync, unlinkSync } from "node:fs";
 
-import { LocalCloudDriver, ContainerWorkerRunner } from "../src/index.ts";
+import {
+  LocalCloudDriver,
+  ContainerWorkerRunner,
+  localPluginManifest,
+} from "../src/index.ts";
 
 describe("Local Container & Process Driver (Local & Podman)", () => {
   it("should configure correct providerType for process and podman modes", () => {
@@ -81,5 +85,22 @@ describe("Local Container & Process Driver (Local & Podman)", () => {
 
     // Check that isEngineAvailable returns a boolean without throwing
     assert.equal(typeof isPodmanAvailable, "boolean");
+  });
+
+  it("should have complete local plugin manifest and environment templates", () => {
+    assert.equal(localPluginManifest.provider, "local");
+    assert.equal(localPluginManifest.packageName, "@veolms/fleet-plugin-local");
+    assert.ok(localPluginManifest.supportedRunnerModes.includes("process"));
+    assert.ok(localPluginManifest.supportedRunnerModes.includes("podman"));
+    assert.ok(localPluginManifest.supportedRunnerModes.includes("docker"));
+
+    const envTemplate = localPluginManifest.getEnvTemplate({
+      runnerMode: "process",
+      storagePath: "./s3-bucket",
+      isHardwareAccelerated: true,
+    });
+    assert.equal(envTemplate.RUNNER_MODE, "process");
+    assert.equal(envTemplate.STORAGE_BASE_PATH, "./s3-bucket");
+    assert.equal(envTemplate.FORCE_SOFTWARE_ENCODER, "false");
   });
 });

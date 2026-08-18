@@ -125,31 +125,42 @@ export async function provisionDualS3Buckets(
       await s3.send(new HeadBucketCommand({ Bucket: bucket }));
       return false; // Already exists
     } catch {
-      await s3.send(
-        new CreateBucketCommand({
-          Bucket: bucket,
-          CreateBucketConfiguration:
-            region === "us-east-1"
-              ? undefined
-              : { LocationConstraint: region as never },
-        }),
-      );
+      try {
+        await s3.send(
+          new CreateBucketCommand({
+            Bucket: bucket,
+            CreateBucketConfiguration:
+              region === "us-east-1"
+                ? undefined
+                : { LocationConstraint: region as never },
+          }),
+        );
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (!msg.includes("BucketAlreadyOwnedByYou")) {
+          throw err;
+        }
+      }
 
       // Default SSE-S3 encryption
-      await s3.send(
-        new PutBucketEncryptionCommand({
-          Bucket: bucket,
-          ServerSideEncryptionConfiguration: {
-            Rules: [
-              {
-                ApplyServerSideEncryptionByDefault: {
-                  SSEAlgorithm: "AES256",
+      try {
+        await s3.send(
+          new PutBucketEncryptionCommand({
+            Bucket: bucket,
+            ServerSideEncryptionConfiguration: {
+              Rules: [
+                {
+                  ApplyServerSideEncryptionByDefault: {
+                    SSEAlgorithm: "AES256",
+                  },
                 },
-              },
-            ],
-          },
-        }),
-      );
+              ],
+            },
+          }),
+        );
+      } catch {
+        // Ignore if already encrypted
+      }
 
       return true;
     }

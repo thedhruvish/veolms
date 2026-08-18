@@ -41,6 +41,7 @@ interface FleetConfig {
     type: string;
     containerEngine?: string;
     containerImage?: string;
+    allowedInstanceTypes?: string[];
     maxWorkersPerVideo?: number;
     maxTotalWorkers?: number;
     idleTimeoutSeconds?: number;
@@ -48,8 +49,10 @@ interface FleetConfig {
   };
   storage: {
     type: "local" | "s3";
-    tempStoragePath: string;
-    productionStoragePath: string;
+    tempBucket?: string;
+    productionBucket?: string;
+    tempStoragePath?: string;
+    productionStoragePath?: string;
     autoPruneIntermediateChunks?: boolean;
   };
   server?: {
@@ -61,7 +64,7 @@ interface FleetConfig {
 interface WorkerConfig {
   controlPlane: {
     mode: "serverful" | "serverless";
-    fleetManagerUrl: string;
+    fleetManagerUrl?: string;
   };
   storage: {
     type: "local" | "s3";
@@ -235,6 +238,13 @@ async function runInteractivePreSetup(): Promise<void> {
   let selectedRunner = existingConfig.runner?.type ?? "process";
   let selectedControlPlane: "serverful" | "serverless" =
     existingConfig.executionMode ?? "serverful";
+  let selectedEc2Instances = [
+    "c6i.large",
+    "c6i.xlarge",
+    "c6i.2xlarge",
+    "g4dn.xlarge",
+  ];
+  let baselineEc2Instance = "c6i.xlarge";
 
   // Build provider choices dynamically from available plugin registry
   const providerChoices = Object.values(PLUGIN_REGISTRY).map((manifest) => ({
@@ -267,7 +277,34 @@ async function runInteractivePreSetup(): Promise<void> {
         PLUGIN_REGISTRY[selectedProvider] ?? localPluginManifest;
 
       // 2. Choose Runner Type (from the plugin's supported modes)
-      if (activeManifest.supportedRunnerModes.length > 1) {
+      if (selectedProvider === "aws") {
+        const runnerOptions = [
+          {
+            label:
+              "EC2 Spot Instances   (Cost-Optimized, ~70-90% discount, auto-scaled) [Recommended]",
+            value: "spot",
+          },
+          {
+            label:
+              "EC2 On-Demand In-line (Guaranteed capacity, no spot interruptions)",
+            value: "on_demand",
+          },
+          {
+            label: "AWS ECS Fargate      (Serverless container tasks)",
+            value: "ecs_fargate",
+          },
+        ];
+
+        const defaultRunnerIdx = runnerOptions.findIndex(
+          (r) => r.value === selectedRunner,
+        );
+        selectedRunner = await promptMenu(
+          rl,
+          "Select Worker Execution Runner for AWS Cloud:",
+          runnerOptions,
+          defaultRunnerIdx >= 0 ? String(defaultRunnerIdx + 1) : "1",
+        );
+      } else if (activeManifest.supportedRunnerModes.length > 1) {
         const runnerOptions = activeManifest.supportedRunnerModes.map(
           (mode) => {
             if (mode === "process") {
@@ -309,13 +346,13 @@ async function runInteractivePreSetup(): Promise<void> {
       }
 
       // If AWS provider selected, choose EC2 multi-instance sizing strategy
-      let selectedEc2Instances = [
+      selectedEc2Instances = [
         "c6i.large",
         "c6i.xlarge",
         "c6i.2xlarge",
         "g4dn.xlarge",
       ];
-      let baselineEc2Instance = "c6i.xlarge";
+      baselineEc2Instance = "c6i.xlarge";
 
       if (selectedProvider === "aws") {
         console.log("\n💡 Dynamic Workload-Aware EC2 Fleet Sizing:");
@@ -409,6 +446,9 @@ async function runInteractivePreSetup(): Promise<void> {
   // =========================================================================
   // STEP 3: Save updated apps/fleet-manager/fleet.config.json & worker.config.json
   // =========================================================================
+  const isAws = selectedProvider === "aws";
+  const isServerless = selectedControlPlane === "serverless";
+
   const prodStorageDir = resolve(
     cwd,
     existingEnv.STORAGE_BASE_PATH || "s3-bucket",
@@ -423,36 +463,69 @@ async function runInteractivePreSetup(): Promise<void> {
     executionMode: selectedControlPlane,
     runner: {
       type: selectedRunner,
-      containerEngine: selectedRunner === "docker" ? "docker" : "podman",
-      containerImage:
-        existingEnv.CONTAINER_IMAGE || "localhost/veolms-media-worker:latest",
+      ...(selectedRunner === "docker" || selectedRunner === "podman"
+        ? {
+            containerEngine: selectedRunner,
+            containerImage:
+              existingEnv.CONTAINER_IMAGE ||
+              "localhost/veolms-media-worker:latest",
+          }
+        : {}),
+      ...(isAws
+        ? {
+            allowedInstanceTypes: selectedEc2Instances,
+          }
+        : {}),
       maxWorkersPerVideo: 4,
       maxTotalWorkers: 10,
       idleTimeoutSeconds: 10,
       reuseProgressThreshold: 85,
     },
-    storage: {
-      type: selectedProvider === "aws" ? "s3" : "local",
-      tempStoragePath: "./s3-bucket/temp",
-      productionStoragePath: "./s3-bucket",
-      autoPruneIntermediateChunks: true,
-    },
-    server: {
-      host: "127.0.0.1",
-      port: 4000,
-    },
+    storage: isAws
+      ? {
+          type: "s3",
+          tempBucket:
+            existingEnv.S3_TEMP_BUCKET || "veolms-temp-scratch-bucket",
+          productionBucket:
+            existingEnv.S3_PROD_BUCKET || "veolms-production-media-bucket",
+          autoPruneIntermediateChunks: true,
+        }
+      : {
+          type: "local",
+          tempStoragePath: "./s3-bucket/temp",
+          productionStoragePath: "./s3-bucket",
+          autoPruneIntermediateChunks: true,
+        },
+    ...(!isServerless
+      ? {
+          server: {
+            host: "127.0.0.1",
+            port: 4000,
+          },
+        }
+      : {}),
   };
 
   const workerConfig: WorkerConfig = {
     controlPlane: {
       mode: selectedControlPlane,
-      fleetManagerUrl: `http://${fleetConfig.server?.host || "127.0.0.1"}:${fleetConfig.server?.port || 4000}`,
+      fleetManagerUrl: !isServerless
+        ? existingEnv.FLEET_MANAGER_API_URL || "http://127.0.0.1:4000"
+        : "",
     },
-    storage: {
-      type: selectedProvider === "aws" ? "s3" : "local",
-      tempBucket: "./s3-bucket/temp",
-      productionBucket: "./s3-bucket",
-    },
+    storage: isAws
+      ? {
+          type: "s3",
+          tempBucket:
+            existingEnv.S3_TEMP_BUCKET || "veolms-temp-scratch-bucket",
+          productionBucket:
+            existingEnv.S3_PROD_BUCKET || "veolms-production-media-bucket",
+        }
+      : {
+          type: "local",
+          tempBucket: "./s3-bucket/temp",
+          productionBucket: "./s3-bucket",
+        },
     transcoding: {
       engine: "fluent-ffmpeg",
       preset: "veryfast",
@@ -497,31 +570,51 @@ async function runInteractivePreSetup(): Promise<void> {
   const nodeVersion = process.version;
   console.log(`   ├─ Node.js Runtime:        ${nodeVersion} ✅`);
 
-  const ffmpegVersion = await checkSystemBinary("ffmpeg", ["-version"]);
-  if (ffmpegVersion) {
+  let isHardwareAccelerated = false;
+
+  if (selectedProvider === "local") {
+    const ffmpegVersion = await checkSystemBinary("ffmpeg", ["-version"]);
+    if (ffmpegVersion) {
+      console.log(
+        `   ├─ Local FFmpeg Binary:    ${ffmpegVersion.substring(0, 30)} ✅`,
+      );
+    } else {
+      console.log(
+        `   ├─ Local FFmpeg Binary:    NOT FOUND ❌ (Please install ffmpeg for local worker)`,
+      );
+    }
+
+    const hwInfo = await detectHardwareEncoder();
+    isHardwareAccelerated = hwInfo.isHardwareAccelerated;
     console.log(
-      `   ├─ FFmpeg Binary:          ${ffmpegVersion.substring(0, 30)} ✅`,
+      `   ├─ Hardware Acceleration:  ${hwInfo.isHardwareAccelerated ? `Enabled (${hwInfo.type.toUpperCase()} / ${hwInfo.encoder}) ⚡` : "Software libx264 (CPU) ✅"}`,
+    );
+
+    if (fleetConfig.runner.type === "podman") {
+      const podmanVer = await checkSystemBinary("podman", ["--version"]);
+      console.log(
+        `   └─ Podman Engine:          ${podmanVer ?? "NOT FOUND ⚠️"}`,
+      );
+    } else if (fleetConfig.runner.type === "docker") {
+      const dockerVer = await checkSystemBinary("docker", ["--version"]);
+      console.log(
+        `   └─ Docker Engine:          ${dockerVer ?? "NOT FOUND ⚠️"}`,
+      );
+    } else {
+      console.log(
+        `   └─ Runner Engine:          Native Host Child Processes (No container engine required) ✅`,
+      );
+    }
+  } else if (selectedProvider === "aws") {
+    console.log(
+      `   ├─ Transcoding Engine:     AWS EC2 Spot Workers (Debian 14 + FFmpeg 7.x auto-provisioned) ☁️`,
+    );
+    console.log(
+      `   └─ Cloud Hardware Codecs:  Dynamic NVENC GPU / Graviton / Intel QSV support on EC2 ⚡`,
     );
   } else {
     console.log(
-      `   ├─ FFmpeg Binary:          NOT FOUND ❌ (Please install ffmpeg)`,
-    );
-  }
-
-  const hwInfo = await detectHardwareEncoder();
-  console.log(
-    `   ├─ Hardware Acceleration:  ${hwInfo.isHardwareAccelerated ? `Enabled (${hwInfo.type.toUpperCase()} / ${hwInfo.encoder}) ⚡` : "Software libx264 (CPU) ✅"}`,
-  );
-
-  if (fleetConfig.runner.type === "podman") {
-    const podmanVer = await checkSystemBinary("podman", ["--version"]);
-    console.log(`   └─ Podman Engine:          ${podmanVer ?? "NOT FOUND ⚠️"}`);
-  } else if (fleetConfig.runner.type === "docker") {
-    const dockerVer = await checkSystemBinary("docker", ["--version"]);
-    console.log(`   └─ Docker Engine:          ${dockerVer ?? "NOT FOUND ⚠️"}`);
-  } else {
-    console.log(
-      `   └─ Runner Engine:          Native Host Child Processes (No container engine required) ✅`,
+      `   └─ Simulation Engine:      Virtual Transcoding Simulator (Zero local FFmpeg dependency) 🧪`,
     );
   }
   console.log();
@@ -630,17 +723,7 @@ export function createConfiguredDriver(): CloudDriver {
 
   if (fleetConfig.executionMode === "serverless") {
     mainIndexContent = `// Auto-generated by pnpm run fleet:pre:setup for Serverless Execution Mode.
-import { createLambdaAdapter } from "./serverless/adapter.ts";
-import { createDatabase } from "@veolms/database";
-import { DEFAULT_FLEET_CONFIG } from "@veolms/fleet-types";
-
-const dbUrl = process.env.DATABASE_URL || "";
-const database = createDatabase(dbUrl);
-
-export const handler = createLambdaAdapter({
-  database,
-  config: DEFAULT_FLEET_CONFIG,
-});
+export { handler, getOrCreateServerlessHandler } from "./serverless/entrypoint.ts";
 `;
   } else {
     mainIndexContent = `// Auto-generated by pnpm run fleet:pre:setup for Serverful Execution Mode.
@@ -700,10 +783,10 @@ void main();
   );
 
   // =========================================================================
-  // STEP 7: Generate Plugin-Defined .env.local File
+  // STEP 7: Generate Component-Tailored .env.local Files
   // =========================================================================
   console.log(
-    "6. 📝 Generating Plugin-Defined Environment Variables (.env.local)...",
+    "6. 📝 Generating Component-Tailored Environment Variables (.env.local)...",
   );
 
   const rawDbUrl = existingEnv.DATABASE_URL || process.env.DATABASE_URL || "";
@@ -712,18 +795,10 @@ void main();
       ? rawDbUrl.trim()
       : "postgresql://postgres:postgres@localhost:5432/veolms";
 
-  // Call the plugin's own getEnvTemplate contract!
-  const pluginEnvVars = selectedPlugin.getEnvTemplate({
-    runnerMode: selectedRunner,
-    databaseUrl: existingDbUrl,
-    storagePath: prodStorageDir,
-    fleetManagerUrl: `http://${fleetConfig.server?.host || "127.0.0.1"}:${fleetConfig.server?.port || 4000}`,
-    isHardwareAccelerated: hwInfo.isHardwareAccelerated,
-  });
-
-  const envFileLines: string[] = [
+  // Build Fleet Manager .env.local
+  const fleetEnvLines: string[] = [
     `# ==============================================================================`,
-    `# VeoLMS Environment Configuration File (.env.local)`,
+    `# VeoLMS Fleet Manager - Environment Configuration (.env.local)`,
     `# Generated by: pnpm run fleet:pre:setup`,
     `# Provider Plugin: ${selectedPlugin.name.toUpperCase()} (${selectedPlugin.packageName})`,
     `# ==============================================================================`,
@@ -731,26 +806,150 @@ void main();
     `# [1] Database Settings`,
     `DATABASE_URL=${existingDbUrl}`,
     ``,
-    `# [2] Control Plane Settings`,
+    `# [2] Control Plane & Architecture Settings`,
     `PROVIDER=${selectedPlugin.provider}`,
-    `CONTROL_PLANE_MODE=${selectedControlPlane}`,
-    `FLEET_MANAGER_API_URL=http://${fleetConfig.server?.host || "127.0.0.1"}:${fleetConfig.server?.port || 4000}`,
-    ``,
-    `# [3] ${selectedPlugin.name} Required Variables (Defined by ${selectedPlugin.packageName})`,
+    `FLEET_ARCHITECTURE=${selectedControlPlane}`,
   ];
 
-  for (const [key, val] of Object.entries(pluginEnvVars)) {
-    const existingVal = existingEnv[key];
-    const customValue =
-      existingVal !== undefined && existingVal.trim() !== ""
-        ? existingVal.trim()
-        : val;
-    envFileLines.push(`${key}=${customValue}`);
+  if (!isServerless) {
+    const managerUrl =
+      existingEnv.FLEET_MANAGER_API_URL ||
+      `http://${fleetConfig.server?.host || "127.0.0.1"}:${fleetConfig.server?.port || 4000}`;
+    fleetEnvLines.push(`FLEET_MANAGER_API_URL=${managerUrl}`);
   }
 
-  const envContent = envFileLines.join("\n") + "\n";
-  await writeFile(fleetEnvPath, envContent, "utf-8");
-  await writeFile(workerEnvPath, envContent, "utf-8");
+  const sanitizePlaceholder = (val?: string) => {
+    if (!val) return "";
+    if (
+      val.includes("ami-0c7217cdde317cfec") ||
+      val.includes("sg-0123456789abcdef0") ||
+      val.includes("arn:aws:iam::123456789012")
+    ) {
+      return "";
+    }
+    return val.trim();
+  };
+
+  fleetEnvLines.push("");
+
+  if (selectedProvider === "aws") {
+    fleetEnvLines.push(
+      `# [3] AWS Cloud Worker Fleet Provisioning Settings`,
+      `AWS_REGION=${existingEnv.AWS_REGION || "us-east-1"}`,
+      `AMI_MODE=${existingEnv.AMI_MODE || "golden_ami"}`,
+      `RUNNER_MODE=${selectedRunner}`,
+      `AWS_EC2_INSTANCE_TYPE=${baselineEc2Instance}`,
+      `AWS_EC2_INSTANCE_TYPES=${selectedEc2Instances.join(",")}`,
+    );
+
+    if (existingEnv.DEBUG === "true") {
+      fleetEnvLines.push(`DEBUG=true`);
+    }
+
+    const amiId = sanitizePlaceholder(
+      existingEnv.AWS_EC2_AMI_ID || existingEnv.AWS_AMI_ID,
+    );
+    if (amiId) {
+      fleetEnvLines.push(`AWS_EC2_AMI_ID=${amiId}`);
+    }
+
+    const sgId = sanitizePlaceholder(existingEnv.AWS_SECURITY_GROUP_ID);
+    if (sgId) {
+      fleetEnvLines.push(`AWS_SECURITY_GROUP_ID=${sgId}`);
+    }
+
+    const iamRole = sanitizePlaceholder(existingEnv.AWS_IAM_ROLE_ARN);
+    if (iamRole) {
+      fleetEnvLines.push(`AWS_IAM_ROLE_ARN=${iamRole}`);
+    }
+  } else if (selectedProvider === "local") {
+    fleetEnvLines.push(
+      `# [3] Local Runner Engine Settings`,
+      `RUNNER_MODE=${selectedRunner}`,
+    );
+
+    if (
+      existingEnv.FORCE_SOFTWARE_ENCODER === "true" ||
+      !isHardwareAccelerated
+    ) {
+      fleetEnvLines.push(`FORCE_SOFTWARE_ENCODER=true`);
+    }
+
+    if (selectedRunner === "podman" || selectedRunner === "docker") {
+      fleetEnvLines.push(
+        `CONTAINER_ENGINE=${selectedRunner}`,
+        `CONTAINER_IMAGE=${existingEnv.CONTAINER_IMAGE || "localhost/veolms-media-worker:latest"}`,
+      );
+    }
+  } else if (selectedProvider === "simulator") {
+    fleetEnvLines.push(
+      `# [3] Simulator Virtual Fleet Settings`,
+      `SIMULATION_MODE=true`,
+      `SIMULATOR_TICK_INTERVAL_MS=2000`,
+      `SIMULATOR_CHUNK_DURATION_SECONDS=6`,
+    );
+  }
+
+  // Build Media Worker .env.local
+  const workerEnvLines: string[] = [
+    `# ==============================================================================`,
+    `# VeoLMS Media Worker - Environment Configuration (.env.local)`,
+    `# Generated by: pnpm run fleet:pre:setup`,
+    `# ==============================================================================`,
+    ``,
+    `# [1] Database Settings (Queue connection)`,
+    `DATABASE_URL=${existingDbUrl}`,
+  ];
+
+  if (!isServerless) {
+    const managerUrl =
+      existingEnv.FLEET_MANAGER_API_URL ||
+      `http://${fleetConfig.server?.host || "127.0.0.1"}:${fleetConfig.server?.port || 4000}`;
+    workerEnvLines.push(
+      ``,
+      `# [2] Control Plane Settings`,
+      `FLEET_MANAGER_API_URL=${managerUrl}`,
+    );
+  }
+
+  workerEnvLines.push(``);
+
+  if (selectedProvider === "aws" || fleetConfig.storage.type === "s3") {
+    workerEnvLines.push(
+      `# [3] Storage & S3 Configuration`,
+      `STORAGE_DRIVER=s3`,
+      `S3_TEMP_BUCKET=${existingEnv.S3_TEMP_BUCKET || fleetConfig.storage.tempBucket || "veolms-temp-scratch-bucket"}`,
+      `S3_PROD_BUCKET=${existingEnv.S3_PROD_BUCKET || fleetConfig.storage.productionBucket || "veolms-production-media-bucket"}`,
+      `AWS_REGION=${existingEnv.AWS_REGION || "us-east-1"}`,
+    );
+
+    if (existingEnv.S3_ENDPOINT) {
+      workerEnvLines.push(`S3_ENDPOINT=${existingEnv.S3_ENDPOINT}`);
+    }
+    if (existingEnv.AWS_ACCESS_KEY_ID) {
+      workerEnvLines.push(`AWS_ACCESS_KEY_ID=${existingEnv.AWS_ACCESS_KEY_ID}`);
+    }
+    if (existingEnv.AWS_SECRET_ACCESS_KEY) {
+      workerEnvLines.push(
+        `AWS_SECRET_ACCESS_KEY=${existingEnv.AWS_SECRET_ACCESS_KEY}`,
+      );
+    }
+    if (existingEnv.S3_FORCE_PATH_STYLE) {
+      workerEnvLines.push(
+        `S3_FORCE_PATH_STYLE=${existingEnv.S3_FORCE_PATH_STYLE}`,
+      );
+    }
+  } else {
+    workerEnvLines.push(
+      `# [3] Local Storage Paths`,
+      `STORAGE_DRIVER=local`,
+      `STORAGE_BASE_PATH=${existingEnv.STORAGE_BASE_PATH || "./s3-bucket"}`,
+      `TEMP_STORAGE_PATH=${existingEnv.TEMP_STORAGE_PATH || "./s3-bucket/temp"}`,
+    );
+  }
+
+  await writeFile(fleetEnvPath, fleetEnvLines.join("\n") + "\n", "utf-8");
+  await writeFile(workerEnvPath, workerEnvLines.join("\n") + "\n", "utf-8");
 
   console.log(`   ├─ Written:                apps/fleet-manager/.env.local ✅`);
   console.log(
@@ -792,19 +991,23 @@ void main();
   }
 
   console.log("=".repeat(78));
-  console.log("🎉 Plugin Environment Setup Completed Successfully!");
+  console.log("🎉 VeoLMS Plugin Environment Pre-Setup Completed Successfully!");
   console.log("=".repeat(78));
-  console.log("\nNext Steps:");
   console.log(
-    "  1. Provision Cloud/Local Infra: pnpm run fleet:infra",
+    "\n📋 Please review your generated configuration files before deploying:",
+  );
+  console.log(`   • Fleet Config:     apps/fleet-manager/fleet.config.json`);
+  console.log(`   • Worker Config:    apps/media-worker/worker.config.json`);
+  console.log(`   • Fleet Manager Env: apps/fleet-manager/.env.local`);
+  console.log(`   • Media Worker Env:  apps/media-worker/.env.local`);
+  console.log("\n🚀 Next Step - Provision Infrastructure:");
+  console.log(
+    "   Run: `pnpm run fleet:infra` (or `pnpm run fleet:infra setup`)",
   );
   console.log(
-    "  2. Start Fleet Manager:        pnpm --filter @veolms/fleet-manager start",
+    "   (It will automatically read apps/fleet-manager/.env.local without asking duplicate questions)\n",
   );
-  console.log(
-    "  3. Start Media Worker:         pnpm --filter @veolms/media-worker start",
-  );
-  console.log("  4. Re-configure Fleet:         pnpm run fleet:pre:setup\n");
+  console.log("=".repeat(78) + "\n");
 }
 
 void runInteractivePreSetup();

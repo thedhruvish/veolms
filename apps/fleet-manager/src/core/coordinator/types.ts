@@ -20,6 +20,12 @@ export interface CoordinationContext {
 }
 
 export interface FleetStatusSummary {
+  readonly provider?: string;
+  readonly region?: string;
+  readonly workerInstanceProfile?: string;
+  readonly securityGroupId?: string;
+  readonly tempBucket?: string;
+  readonly prodBucket?: string;
   readonly totalWorkers: number;
   readonly runningWorkers: number;
   readonly idleWorkers: number;

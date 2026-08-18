@@ -37,7 +37,6 @@ describe("AWS Cloud Driver & Manifest Suite", () => {
       isHardwareAccelerated: false,
     });
 
-    assert.equal(envTemplate.PROVIDER, "aws");
     assert.equal(envTemplate.RUNNER_MODE, "spot");
     assert.equal(envTemplate.S3_TEMP_BUCKET, "veolms-temp-scratch-bucket");
     assert.equal(envTemplate.S3_PROD_BUCKET, "veolms-production-media-bucket");

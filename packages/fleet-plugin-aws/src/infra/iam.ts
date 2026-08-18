@@ -11,9 +11,11 @@ import {
   ListRolePoliciesCommand,
   PutRolePolicyCommand,
   RemoveRoleFromInstanceProfileCommand,
+  UpdateAssumeRolePolicyCommand,
 } from "@aws-sdk/client-iam";
 
 import {
+  CONTROL_PLANE_TRUST_RELATIONSHIP,
   EC2_TRUST_RELATIONSHIP,
   generateFleetManagerIamPolicy,
   generateWorkerIamPolicy,
@@ -55,7 +57,9 @@ export async function provisionIamRoles(
   // 1. Ensure Media Worker IAM Role
   let workerRoleArn = "";
   try {
-    const roleRes = await iam.send(new GetRoleCommand({ RoleName: workerRoleName }));
+    const roleRes = await iam.send(
+      new GetRoleCommand({ RoleName: workerRoleName }),
+    );
     workerRoleArn = roleRes.Role?.Arn || "";
   } catch {
     const createRes = await iam.send(
@@ -112,14 +116,26 @@ export async function provisionIamRoles(
   // 4. Ensure Fleet Manager Control Plane IAM Role
   let managerRoleArn = "";
   try {
-    const mgrRes = await iam.send(new GetRoleCommand({ RoleName: managerRoleName }));
+    const mgrRes = await iam.send(
+      new GetRoleCommand({ RoleName: managerRoleName }),
+    );
     managerRoleArn = mgrRes.Role?.Arn || "";
+
+    // Ensure trust relationship includes Lambda and EC2
+    await iam.send(
+      new UpdateAssumeRolePolicyCommand({
+        RoleName: managerRoleName,
+        PolicyDocument: JSON.stringify(CONTROL_PLANE_TRUST_RELATIONSHIP),
+      }),
+    );
   } catch {
     const createMgr = await iam.send(
       new CreateRoleCommand({
         RoleName: managerRoleName,
         Description: "IAM Role for VeoLMS Fleet Manager Control Plane",
-        AssumeRolePolicyDocument: JSON.stringify(EC2_TRUST_RELATIONSHIP),
+        AssumeRolePolicyDocument: JSON.stringify(
+          CONTROL_PLANE_TRUST_RELATIONSHIP,
+        ),
       }),
     );
     managerRoleArn = createMgr.Role?.Arn || "";
@@ -217,7 +233,11 @@ export async function checkIamRoles(options: {
   workerRoleName?: string;
   workerProfileName?: string;
   managerRoleName?: string;
-}): Promise<{ workerRole: boolean; workerProfile: boolean; managerRole: boolean }> {
+}): Promise<{
+  workerRole: boolean;
+  workerProfile: boolean;
+  managerRole: boolean;
+}> {
   const {
     region = "us-east-1",
     workerRoleName = "VeoLMSMediaWorkerRole",
@@ -238,7 +258,9 @@ export async function checkIamRoles(options: {
 
   async function profileExists(name: string): Promise<boolean> {
     try {
-      await iam.send(new GetInstanceProfileCommand({ InstanceProfileName: name }));
+      await iam.send(
+        new GetInstanceProfileCommand({ InstanceProfileName: name }),
+      );
       return true;
     } catch {
       return false;

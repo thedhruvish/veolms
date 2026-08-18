@@ -87,6 +87,12 @@ export class FleetCoordinator {
       ]);
 
     return {
+      provider: this.context.driver.providerType,
+      region: process.env.AWS_REGION || undefined,
+      workerInstanceProfile: process.env.AWS_IAM_ROLE_ARN || undefined,
+      securityGroupId: process.env.AWS_SECURITY_GROUP_ID || undefined,
+      tempBucket: process.env.S3_TEMP_BUCKET || undefined,
+      prodBucket: process.env.S3_PROD_BUCKET || undefined,
       totalWorkers: activeWorkers.length,
       runningWorkers: reusableState.runningWorkers,
       idleWorkers: reusableState.idleWorkers,

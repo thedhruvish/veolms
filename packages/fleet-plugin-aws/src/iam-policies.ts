@@ -30,6 +30,26 @@ export const EC2_TRUST_RELATIONSHIP: IamPolicyDocument = {
 };
 
 /**
+ * Trust Relationship allowing Lambda, EC2, and ECS to assume the Fleet Manager IAM Role.
+ */
+export const CONTROL_PLANE_TRUST_RELATIONSHIP: IamPolicyDocument = {
+  Version: "2012-10-17",
+  Statement: [
+    {
+      Effect: "Allow",
+      Action: "sts:AssumeRole",
+      Principal: {
+        Service: [
+          "ec2.amazonaws.com",
+          "lambda.amazonaws.com",
+          "ecs-tasks.amazonaws.com",
+        ],
+      },
+    },
+  ] as unknown as IamPolicyDocument["Statement"],
+};
+
+/**
  * Generates the Media Worker IAM Policy granting least-privilege access
  * to the Temporary Scratch Bucket, Production CDN Bucket, and CloudWatch Logs.
  */
@@ -124,6 +144,19 @@ export function generateFleetManagerIamPolicy(): IamPolicyDocument {
         Effect: "Allow",
         Action: ["iam:PassRole"],
         Resource: ["arn:aws:iam::*:role/VeoLMS*"],
+      },
+      {
+        Sid: "VeoLMSCloudWatchAndLambdaControl",
+        Effect: "Allow",
+        Action: [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogStreams",
+          "lambda:InvokeFunction",
+          "lambda:GetFunction",
+        ],
+        Resource: ["*"],
       },
     ],
   };

@@ -1,7 +1,4 @@
-import type {
-  InfraProvisionOptions,
-  InfraProvisionResult,
-} from "./infra.ts";
+import type { InfraProvisionOptions, InfraProvisionResult } from "./infra.ts";
 
 export interface PluginEnvVarDefinition {
   readonly key: string;

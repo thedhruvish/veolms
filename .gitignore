@@ -2,6 +2,7 @@ node_modules/
 .pnpm-store/
 .turbo/
 build/
+dist/
 .react-router/
 .env
 .env.local

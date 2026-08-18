@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc --noEmit",
+    "bundle:lambda": "esbuild src/serverless/entrypoint.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/lambda/index.mjs --external:@aws-sdk/*",
     "typecheck": "tsc --noEmit",
     "test": "node --test tests/**/*.test.ts",
     "start": "node src/index.ts"
@@ -11,13 +12,14 @@
   "dependencies": {
     "@veolms/config": "workspace:*",
     "@veolms/database": "workspace:*",
-    "@veolms/fleet-plugin-local": "workspace:*",
+    "@veolms/fleet-plugin-aws": "workspace:*",
     "@veolms/fleet-types": "workspace:*",
     "kysely": "catalog:"
   },
   "devDependencies": {
     "@types/node": "^24.10.13",
     "@veolms/fleet-plugin-simulator": "workspace:*",
+    "esbuild": "^0.28.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2"
   }
 }

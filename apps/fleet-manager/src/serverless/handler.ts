@@ -114,6 +114,18 @@ export function createLambdaHandler(
         return jsonResponse(200, status);
       }
 
+      if (method === "GET" && pathname === "/api/v1/fleet/infra") {
+        return jsonResponse(200, {
+          provider: coordinator.context.driver.providerType,
+          region: process.env.AWS_REGION || undefined,
+          workerInstanceProfile: process.env.AWS_IAM_ROLE_ARN || undefined,
+          workerRole: process.env.AWS_IAM_ROLE_ARN || undefined,
+          securityGroupId: process.env.AWS_SECURITY_GROUP_ID || undefined,
+          tempBucket: process.env.S3_TEMP_BUCKET || undefined,
+          prodBucket: process.env.S3_PROD_BUCKET || undefined,
+        });
+      }
+
       if (method === "POST" && pathname === "/api/v1/fleet/cycle") {
         const result = await coordinator.runCoordinationCycle();
         return jsonResponse(200, result);
@@ -159,9 +171,31 @@ export function createLambdaHandler(
       });
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : String(err);
+      const errorStack = err instanceof Error ? err.stack : undefined;
+      const isDebug = process.env.DEBUG === "true";
+
+      console.error(
+        `[VeoLMS Lambda Error] ${method} ${pathname}:`,
+        errorMessage,
+        "\nStack:",
+        errorStack,
+      );
+
+      if (isDebug) {
+        return jsonResponse(500, {
+          error: "Internal Server Error",
+          message: errorMessage,
+          stack: errorStack,
+          path: pathname,
+          method,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
       return jsonResponse(500, {
         error: "Internal Server Error",
-        message: errorMessage,
+        message: "Internal Server Error",
+        timestamp: new Date().toISOString(),
       });
     }
   };

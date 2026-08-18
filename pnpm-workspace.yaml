@@ -2,6 +2,9 @@ packages:
   - "apps/*"
   - "packages/*"
 
+allowBuilds:
+  esbuild: set this to true or false
+
 catalog:
   zod: "^4.4.3"
   kysely: "^0.29.4"

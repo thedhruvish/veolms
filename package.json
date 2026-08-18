@@ -18,6 +18,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
     "db:migrate": "pnpm --filter @veolms/database migrate",
     "db:seed": "pnpm --filter @veolms/database seed",
     "db:reset": "pnpm --filter @veolms/database reset",

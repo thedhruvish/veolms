@@ -84,13 +84,23 @@ export async function provisionSecurityGroup(
             IpProtocol: "tcp",
             FromPort: 443,
             ToPort: 443,
-            IpRanges: [{ CidrIp: "0.0.0.0/0", Description: "HTTPS Outbound for S3/Fleet API" }],
+            IpRanges: [
+              {
+                CidrIp: "0.0.0.0/0",
+                Description: "HTTPS Outbound for S3/Fleet API",
+              },
+            ],
           },
           {
             IpProtocol: "tcp",
             FromPort: 5432,
             ToPort: 5432,
-            IpRanges: [{ CidrIp: "0.0.0.0/0", Description: "PostgreSQL Database Connection" }],
+            IpRanges: [
+              {
+                CidrIp: "0.0.0.0/0",
+                Description: "PostgreSQL Database Connection",
+              },
+            ],
           },
         ],
       }),

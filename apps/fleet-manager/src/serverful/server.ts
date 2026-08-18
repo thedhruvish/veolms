@@ -81,6 +81,20 @@ export function createWorkerApiServer(coordinator: FleetCoordinator): Server {
         return;
       }
 
+      // Fleet Infrastructure Details
+      if (method === "GET" && pathname === "/api/v1/fleet/infra") {
+        sendJson(res, 200, {
+          provider: coordinator.context.driver.providerType,
+          region: process.env.AWS_REGION || undefined,
+          workerInstanceProfile: process.env.AWS_IAM_ROLE_ARN || undefined,
+          workerRole: process.env.AWS_IAM_ROLE_ARN || undefined,
+          securityGroupId: process.env.AWS_SECURITY_GROUP_ID || undefined,
+          tempBucket: process.env.S3_TEMP_BUCKET || undefined,
+          prodBucket: process.env.S3_PROD_BUCKET || undefined,
+        });
+        return;
+      }
+
       // Manual Coordination Cycle Trigger
       if (method === "POST" && pathname === "/api/v1/fleet/cycle") {
         const result = await coordinator.runCoordinationCycle();
@@ -400,9 +414,34 @@ export function createWorkerApiServer(coordinator: FleetCoordinator): Server {
       sendJson(res, 404, { error: "Route not found", path: pathname });
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : String(err);
+      const errorStack = err instanceof Error ? err.stack : undefined;
+      const isDebug = process.env.DEBUG === "true";
+      const reqMethod = (req.method || "GET").toUpperCase();
+      const reqPath = req.url || "/";
+
+      console.error(
+        `[VeoLMS Server Error] ${reqMethod} ${reqPath}:`,
+        errorMessage,
+        "\nStack:",
+        errorStack,
+      );
+
+      if (isDebug) {
+        sendJson(res, 500, {
+          error: "Internal Server Error",
+          message: errorMessage,
+          stack: errorStack,
+          path: reqPath,
+          method: reqMethod,
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
       sendJson(res, 500, {
         error: "Internal Server Error",
-        message: errorMessage,
+        message: "Internal Server Error",
+        timestamp: new Date().toISOString(),
       });
     }
   });

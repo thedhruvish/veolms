@@ -17,9 +17,9 @@ export const awsPluginManifest: FleetPluginManifest = {
     },
     {
       key: "AWS_EC2_AMI_ID",
-      description: "Amazon Machine Image ID for Media Worker instances",
+      description:
+        "Amazon Machine Image ID for Media Worker instances (auto-populated by fleet:infra)",
       required: false,
-      defaultValue: "ami-0c7217cdde317cfec",
     },
     {
       key: "AWS_EC2_INSTANCE_TYPE",
@@ -41,12 +41,14 @@ export const awsPluginManifest: FleetPluginManifest = {
     },
     {
       key: "AWS_SECURITY_GROUP_ID",
-      description: "VPC Security Group ID for worker instances",
+      description:
+        "VPC Security Group ID for worker instances (auto-populated by fleet:infra)",
       required: false,
     },
     {
       key: "AWS_IAM_ROLE_ARN",
-      description: "IAM Instance Profile ARN granting S3 access to workers",
+      description:
+        "IAM Instance Profile ARN granting S3 access to workers (auto-populated by fleet:infra)",
       required: false,
     },
     {
@@ -70,38 +72,35 @@ export const awsPluginManifest: FleetPluginManifest = {
     },
   ],
   getEnvTemplate: (config) => {
-    return {
-      PROVIDER: "aws",
+    const env: Record<string, string> = {
+      AWS_REGION: process.env.AWS_REGION || "us-east-1",
+      AMI_MODE: process.env.AMI_MODE || "golden_ami",
       RUNNER_MODE: config.runnerMode || "spot",
-      AWS_REGION: "us-east-1",
-      AWS_EC2_INSTANCE_TYPE: "c6i.xlarge",
+      AWS_EC2_INSTANCE_TYPE: "c6i.large",
       AWS_EC2_INSTANCE_TYPES: "c6i.large,c6i.xlarge,c6i.2xlarge,g4dn.xlarge",
-      AWS_EC2_AMI_ID: "ami-0c7217cdde317cfec",
-      AWS_SUBNET_ID: "subnet-0123456789abcdef0",
-      AWS_SECURITY_GROUP_ID: "sg-0123456789abcdef0",
-      AWS_IAM_ROLE_ARN:
-        "arn:aws:iam::123456789012:instance-profile/VeoLMSWorkerProfile",
-      S3_TEMP_BUCKET: "veolms-temp-scratch-bucket",
-      S3_PROD_BUCKET: "veolms-production-media-bucket",
       STORAGE_DRIVER: "s3",
-      FLEET_MANAGER_API_URL: config.fleetManagerUrl || "http://127.0.0.1:4000",
-      DATABASE_URL:
-        config.databaseUrl ||
-        "postgresql://postgres:postgres@localhost:5432/veolms",
+      S3_TEMP_BUCKET:
+        process.env.S3_TEMP_BUCKET || "veolms-temp-scratch-bucket",
+      S3_PROD_BUCKET:
+        process.env.S3_PROD_BUCKET || "veolms-production-media-bucket",
     };
+    if (process.env.DEBUG === "true") {
+      env.DEBUG = "true";
+    }
+    if (process.env.AWS_EC2_AMI_ID) {
+      env.AWS_EC2_AMI_ID = process.env.AWS_EC2_AMI_ID;
+    }
+    if (process.env.AWS_SECURITY_GROUP_ID) {
+      env.AWS_SECURITY_GROUP_ID = process.env.AWS_SECURITY_GROUP_ID;
+    }
+    if (process.env.AWS_IAM_ROLE_ARN) {
+      env.AWS_IAM_ROLE_ARN = process.env.AWS_IAM_ROLE_ARN;
+    }
+    return env;
   },
   provisionInfra: async (options) => {
     const action = options.action || "setup";
     const region = options.region || process.env.AWS_REGION || "us-east-1";
-    const tempBucket =
-      options.tempBucketName ||
-      process.env.S3_TEMP_BUCKET ||
-      "veolms-temp-scratch-bucket";
-    const prodBucket =
-      options.prodBucketName ||
-      process.env.S3_PROD_BUCKET ||
-      "veolms-production-media-bucket";
-
     const { validateAwsCredentials } = await import("./infra/auth-check.ts");
     const auth = await validateAwsCredentials(region);
 
@@ -123,31 +122,53 @@ export const awsPluginManifest: FleetPluginManifest = {
       };
     }
 
+    const defaultTemp = auth.accountId
+      ? `veolms-temp-${auth.accountId}`
+      : "veolms-temp-scratch-bucket";
+    const defaultProd = auth.accountId
+      ? `veolms-prod-${auth.accountId}`
+      : "veolms-production-media-bucket";
+
+    const tempBucket =
+      options.tempBucketName || process.env.S3_TEMP_BUCKET || defaultTemp;
+    const prodBucket =
+      options.prodBucketName || process.env.S3_PROD_BUCKET || defaultProd;
+
+    const { provisionDualS3Buckets, destroyDualS3Buckets, checkDualS3Buckets } =
+      await import("./infra/s3.ts");
+    const { provisionIamRoles, destroyIamRoles, checkIamRoles } =
+      await import("./infra/iam.ts");
+    const { provisionSecurityGroup, destroySecurityGroup, checkSecurityGroup } =
+      await import("./infra/security-groups.ts");
     const {
-      provisionDualS3Buckets,
-      destroyDualS3Buckets,
-      checkDualS3Buckets,
-    } = await import("./infra/s3.ts");
+      provisionCloudWatchLogs,
+      destroyCloudWatchLogs,
+      checkCloudWatchLogs,
+    } = await import("./infra/cloudwatch.ts");
+    const { bakeGoldenAmiViaEc2, checkGoldenAmi, destroyGoldenAmi } =
+      await import("./infra/ami-builder.ts");
     const {
-      provisionIamRoles,
-      destroyIamRoles,
-      checkIamRoles,
-    } = await import("./infra/iam.ts");
-    const {
-      provisionSecurityGroup,
-      destroySecurityGroup,
-      checkSecurityGroup,
-    } = await import("./infra/security-groups.ts");
+      deployServerlessLambda,
+      destroyServerlessLambda,
+      checkServerlessLambda,
+    } = await import("./infra/lambda-deploy.ts");
 
     // 1. DESTROY ACTION
     if (action === "destroy") {
+      console.log("  🗑️  Destroying Dual S3 Buckets...");
       const s3Res = await destroyDualS3Buckets({
         region,
         tempBucketName: tempBucket,
         prodBucketName: prodBucket,
       });
+      console.log("  🗑️  Destroying IAM Roles & Profiles...");
       const iamRes = await destroyIamRoles({ region });
+      console.log("  🗑️  Destroying Security Groups...");
       const sgRes = await destroySecurityGroup({ region });
+      console.log("  🗑️  Destroying Serverless Lambda & CloudWatch Logs...");
+      const lambdaDeleted = await destroyServerlessLambda({ region });
+      const logsDeleted = await destroyCloudWatchLogs({ region });
+      const amiDeleted = await destroyGoldenAmi({ region });
 
       return {
         provider: "aws",
@@ -159,19 +180,31 @@ export const awsPluginManifest: FleetPluginManifest = {
           iamRolesDeleted: iamRes.rolesDeleted,
           iamProfilesDeleted: iamRes.profilesDeleted,
           securityGroupDeleted: sgRes,
+          lambdaDeleted,
+          cloudWatchLogsDeleted: logsDeleted,
+          goldenAmiDeleted: amiDeleted,
         },
       };
     }
 
     // 2. STATUS ACTION
     if (action === "status") {
+      console.log("  🔍 Inspecting Dual S3 Buckets...");
       const s3Status = await checkDualS3Buckets({
         region,
         tempBucketName: tempBucket,
         prodBucketName: prodBucket,
       });
+      console.log("  🔍 Inspecting IAM Roles & Profiles...");
       const iamStatus = await checkIamRoles({ region });
+      console.log("  🔍 Inspecting Security Group...");
       const sgStatus = await checkSecurityGroup({ region });
+      console.log("  🔍 Inspecting CloudWatch Log Groups...");
+      const cwStatus = await checkCloudWatchLogs({ region });
+      console.log("  🔍 Inspecting Golden AMI...");
+      const amiStatus = await checkGoldenAmi({ region });
+      console.log("  🔍 Inspecting Serverless Lambda...");
+      const lambdaStatus = await checkServerlessLambda({ region });
 
       const allHealthy =
         s3Status.tempExists &&
@@ -191,14 +224,29 @@ export const awsPluginManifest: FleetPluginManifest = {
           s3TempBucket: s3Status.tempExists ? "Active ✅" : "Missing ❌",
           s3ProdBucket: s3Status.prodExists ? "Active ✅" : "Missing ❌",
           workerIamRole: iamStatus.workerRole ? "Active ✅" : "Missing ❌",
-          workerInstanceProfile: iamStatus.workerProfile ? "Active ✅" : "Missing ❌",
-          securityGroup: sgStatus.exists ? `Active (${sgStatus.groupId}) ✅` : "Missing ❌",
+          workerInstanceProfile: iamStatus.workerProfile
+            ? "Active ✅"
+            : "Missing ❌",
+          securityGroup: sgStatus.exists
+            ? `Active (${sgStatus.groupId}) ✅`
+            : "Missing ❌",
+          cloudWatchLogs:
+            cwStatus.managerLogsActive && cwStatus.workerLogsActive
+              ? "Active (/aws/veolms/*) ✅"
+              : "Partially Configured ⚠️",
+          goldenAmi: amiStatus.exists
+            ? `Active (${amiStatus.imageId}) ✅`
+            : "Not Baked (Using Dynamic UserData Mode)",
+          serverlessLambda: lambdaStatus.exists
+            ? `Active (${lambdaStatus.runtime} / ${lambdaStatus.architecture || "arm64"}) ✅`
+            : "Not Deployed (Serverful mode)",
         },
       };
     }
 
     // 3. REINSTALL ACTION (Destroy + Setup)
     if (action === "reinstall") {
+      console.log("  🔄 Re-installing: Cleaning existing resources first...");
       await destroyDualS3Buckets({
         region,
         tempBucketName: tempBucket,
@@ -206,9 +254,12 @@ export const awsPluginManifest: FleetPluginManifest = {
       });
       await destroyIamRoles({ region });
       await destroySecurityGroup({ region });
+      await destroyServerlessLambda({ region });
+      await destroyCloudWatchLogs({ region });
     }
 
     // 4. SETUP ACTION (or Reinstall second phase)
+    console.log("  [1/5] 🗄️  Provisioning Dual S3 Buckets (Scratch + Prod)...");
     const s3Res = await provisionDualS3Buckets({
       region,
       tempBucketName: tempBucket,
@@ -217,15 +268,67 @@ export const awsPluginManifest: FleetPluginManifest = {
       enableCors: true,
     });
 
+    console.log(
+      "  [2/5] 🔑 Provisioning IAM Roles & Worker Instance Profile...",
+    );
     const iamRes = await provisionIamRoles({
       region,
       tempBucketName: tempBucket,
       prodBucketName: prodBucket,
     });
 
+    console.log("  [3/5] 🛡️  Provisioning Transcoding Security Group...");
     const sgRes = await provisionSecurityGroup({
       region,
     });
+
+    console.log(
+      "  [4/5] 📊 Provisioning CloudWatch Log Groups (14-day retention)...",
+    );
+    const cwRes = await provisionCloudWatchLogs({
+      region,
+      retentionInDays: 14,
+    });
+
+    // 5. EC2 Golden AMI Baking (if Golden AMI mode selected)
+    let goldenAmiRes: { imageId?: string; imageName?: string } | undefined =
+      undefined;
+    if (options.amiMode === "golden_ami") {
+      console.log(
+        "  [+] 🔨 Baking Pre-baked Golden AMI with latest GitHub Release FFmpeg...",
+      );
+      goldenAmiRes = await bakeGoldenAmiViaEc2({
+        region,
+        securityGroupId: sgRes.securityGroupId,
+        workerInstanceProfileName: "VeoLMSMediaWorkerInstanceProfile",
+      });
+    }
+
+    let lambdaRes: { functionName?: string; functionArn?: string } | undefined =
+      undefined;
+    const shouldDeployLambda = Boolean(
+      options.architecture === "serverless" ||
+      options.deployLambda === true ||
+      options.runnerMode === "serverless" ||
+      process.env.FLEET_ARCHITECTURE === "serverless",
+    );
+
+    if (shouldDeployLambda) {
+      console.log(
+        "  [5/5] ⚡ Deploying Serverless Lambda Function (VeoLMS-FleetManager-ControlPlane)...",
+      );
+      lambdaRes = await deployServerlessLambda({
+        region,
+        roleArn: iamRes.managerRoleArn,
+        tempBucket: s3Res.tempBucketName,
+        prodBucket: s3Res.prodBucketName,
+        databaseUrl: options.databaseUrl || process.env.DATABASE_URL,
+      });
+    } else {
+      console.log(
+        "  [5/5] 🖥️  Configured Serverful Control Plane (Node daemon / EC2).",
+      );
+    }
 
     return {
       provider: "aws",
@@ -239,12 +342,31 @@ export const awsPluginManifest: FleetPluginManifest = {
         workerInstanceProfileArn: iamRes.workerInstanceProfileArn,
         managerRoleArn: iamRes.managerRoleArn,
         securityGroupId: sgRes.securityGroupId,
+        cloudWatchManagerLogs: cwRes.managerLogGroup,
+        cloudWatchWorkerLogs: cwRes.workerLogGroup,
+        ...(goldenAmiRes
+          ? {
+              goldenAmiId: goldenAmiRes.imageId,
+              goldenAmiName: goldenAmiRes.imageName,
+            }
+          : { workerBootstrapping: "Dynamic UserData ($0 idle fees)" }),
+        ...(lambdaRes
+          ? {
+              serverlessLambdaArn: lambdaRes.functionArn,
+              serverlessLambdaName: lambdaRes.functionName,
+            }
+          : {}),
       },
       outputs: {
         S3_TEMP_BUCKET: s3Res.tempBucketName,
         S3_PROD_BUCKET: s3Res.prodBucketName,
         AWS_IAM_ROLE_ARN: iamRes.workerInstanceProfileArn,
         AWS_SECURITY_GROUP_ID: sgRes.securityGroupId,
+        CLOUDWATCH_WORKER_LOGS: cwRes.workerLogGroup,
+        ...(goldenAmiRes?.imageId ? { AWS_AMI_ID: goldenAmiRes.imageId } : {}),
+        ...(lambdaRes?.functionArn
+          ? { AWS_LAMBDA_FUNCTION_ARN: lambdaRes.functionArn }
+          : {}),
       },
     };
   },

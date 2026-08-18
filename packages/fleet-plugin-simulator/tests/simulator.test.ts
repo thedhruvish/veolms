@@ -6,7 +6,7 @@ import type {
   WorkerRegistrationPayload,
 } from "@veolms/fleet-types";
 
-import { SimulatorCloudDriver } from "../src/index.ts";
+import { SimulatorCloudDriver, simulatorPluginManifest } from "../src/index.ts";
 
 describe("Fleet Worker Simulator Plugin", () => {
   it("should launch worker, boot, and register successfully", async () => {
@@ -159,5 +159,19 @@ describe("Fleet Worker Simulator Plugin", () => {
 
     const listAfter = await driver.listWorkers();
     assert.equal(listAfter.length, 0);
+  });
+
+  it("should have complete simulator plugin manifest and environment templates", () => {
+    assert.equal(simulatorPluginManifest.provider, "simulator");
+    assert.equal(
+      simulatorPluginManifest.packageName,
+      "@veolms/fleet-plugin-simulator",
+    );
+
+    const template = simulatorPluginManifest.getEnvTemplate({
+      runnerMode: "simulator",
+    });
+    assert.ok(template.SIMULATOR_TICK_INTERVAL_MS);
+    assert.ok(template.SIMULATOR_CHUNK_DURATION_SECONDS);
   });
 });
