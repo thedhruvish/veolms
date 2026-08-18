@@ -16,11 +16,13 @@ const courseSummaryObjectSchema = z.strictObject({
   slug: z
     .string()
     .min(1)
+    .max(160)
     .meta({ description: "URL-safe identifier used to address the course." }),
-  title: z.string().min(1).meta({ description: "Course title." }),
+  title: z.string().min(1).max(255).meta({ description: "Course title." }),
   shortDescription: z
     .string()
     .min(1)
+    .max(500)
     .meta({ description: "One-line summary shown in catalogue listings." }),
 });
 
@@ -32,6 +34,7 @@ export const publicCourseSchema: z.ZodType<PublicCourse> =
     description: z
       .string()
       .min(1)
+      .max(2000)
       .meta({ description: "Full course description." }),
   });
 
@@ -46,6 +49,10 @@ export const courseSlugSchema = z
   .min(1)
   .max(160)
   .meta({ description: "URL-safe identifier used to address the course." });
+
+export const courseSlugParamsSchema = z.object({ slug: courseSlugSchema });
+
+export type CourseSlugParams = z.input<typeof courseSlugParamsSchema>;
 
 // Name the shared contracts so the API documents them as reusable OpenAPI
 // components instead of inlining a copy at every use site. Registering by

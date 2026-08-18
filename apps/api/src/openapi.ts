@@ -22,6 +22,11 @@ const OPENAPI_TAGS = [
     name: "Courses",
     description: "Read-only access to the published course catalogue.",
   },
+  {
+    name: "Auth",
+    description:
+      "Session management, registration, password recovery, and multi-factor authentication (TOTP).",
+  },
 ];
 
 /**

@@ -1,14 +1,31 @@
-/**
- * Declares a JSON response with a status-specific description.
- *
- * `@fastify/swagger` takes a response description from the schema sitting at
- * `response[status]`, which does not work for a schema published as a reusable
- * component: attaching the text with `.meta()` clones the Zod schema, and the
- * clone is not the object registered in `z.globalRegistry`, so the response
- * would inline a copy of the shape instead of referencing the component. The
- * long-hand `content` form keeps the description beside the `$ref`.
- */
-export function jsonResponse<Schema>(description: string, schema: Schema) {
+import { z } from "zod";
+
+export function successEnvelopeSchema<T extends z.ZodTypeAny>(dataSchema: T) {
+  return z.strictObject({
+    success: z.literal(true),
+    statusCode: z.number().int().min(100).max(599),
+    data: dataSchema,
+  });
+}
+
+export function jsonResponse<T extends z.ZodTypeAny>(
+  description: string,
+  schema: T,
+) {
+  return {
+    description,
+    content: {
+      "application/json": {
+        schema: successEnvelopeSchema(schema) as unknown as T,
+      },
+    },
+  };
+}
+
+export function errorJsonResponse<T extends z.ZodTypeAny>(
+  description: string,
+  schema: T,
+) {
   return {
     description,
     content: { "application/json": { schema } },

@@ -1,12 +1,11 @@
-import {
-  Clock,
-  DotsThree,
-  Heart,
-  List,
-  Sparkle,
-  Users,
-  VideoCamera,
-} from "@phosphor-icons/react";
+import { Clock } from "@phosphor-icons/react/Clock";
+import { DotsThree } from "@phosphor-icons/react/DotsThree";
+import { Eye } from "@phosphor-icons/react/Eye";
+import { Heart } from "@phosphor-icons/react/Heart";
+import { List } from "@phosphor-icons/react/List";
+import { Sparkle } from "@phosphor-icons/react/Sparkle";
+import { Users } from "@phosphor-icons/react/Users";
+import { VideoCamera } from "@phosphor-icons/react/VideoCamera";
 import type { MouseEvent } from "react";
 import type { Course, CourseRole } from "./catalogue";
 
@@ -24,6 +23,7 @@ export interface CourseCardProps {
   menuOpen: boolean;
   setMenuOpen: (courseId: string | null) => void;
   setNotice: (notice: string) => void;
+  imagePriority?: boolean;
 }
 
 export function CourseCard({
@@ -36,6 +36,7 @@ export function CourseCard({
   menuOpen,
   setMenuOpen,
   setNotice,
+  imagePriority = false,
 }: CourseCardProps) {
   const openCard = () => {
     if (role === "creator" || course.enrolled) onOpen(course);
@@ -58,8 +59,11 @@ export function CourseCard({
           src={course.thumbnail}
           alt=""
           className="course-card__image"
-          loading="lazy"
-          decoding="async"
+          width={960}
+          height={540}
+          loading={imagePriority ? "eager" : "lazy"}
+          fetchPriority={imagePriority ? "high" : "low"}
+          decoding={imagePriority ? "sync" : "async"}
         />
         <span className="course-level">{course.level}</span>
         <button
@@ -116,6 +120,16 @@ export function CourseCard({
                     event.stopPropagation()
                   }
                 >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuOpen(null);
+                      onExplore(course);
+                    }}
+                  >
+                    <Eye size={17} /> View overview
+                  </button>
                   <button
                     type="button"
                     role="menuitem"
