@@ -251,12 +251,21 @@ export function authFlowReducer(
     };
   }
 
-  if (state.status === "sendingOtp" && action.type === "OTP_SENT") {
+  if (action.type === "CHANGE_IDENTIFIER") {
+    return initialAuthFlowState;
+  }
+
+  if (
+    (state.status === "sendingOtp" ||
+      state.status === "newUserName" ||
+      state.status === "creatingAccount") &&
+    action.type === "OTP_SENT"
+  ) {
     return {
       status: "otp",
       identifier: state.identifier,
       code: "",
-      sendCount: state.sendCount + 1,
+      sendCount: "sendCount" in state ? state.sendCount + 1 : 1,
       failure: null,
     };
   }
@@ -284,10 +293,6 @@ export function authFlowReducer(
       identifier: state.identifier,
       sendCount: state.sendCount,
     };
-  }
-
-  if (state.status === "otp" && action.type === "CHANGE_IDENTIFIER") {
-    return initialAuthFlowState;
   }
 
   if (state.status === "verifyingOtp" && action.type === "OTP_REJECTED") {

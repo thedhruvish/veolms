@@ -104,5 +104,9 @@ export default [
       id: "register",
       caseSensitive: true,
     }),
+    route("auth/callback", "routes/auth-callback.tsx", {
+      id: "auth-callback",
+      caseSensitive: true,
+    }),
   ]),
 ] satisfies RouteConfig;

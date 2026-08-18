@@ -4,7 +4,6 @@ import { useAuthAppearance } from "../auth/useAuthAppearance";
 import { productName } from "../routing/routeDescriptors";
 import "../auth/auth.css";
 
-
 export default function AuthLayout() {
   useAuthAppearance();
 
