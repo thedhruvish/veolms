@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import EmojiPicker, { Theme as EmojiTheme } from "emoji-picker-react";
 import {
+  CaretDown,
   TextB,
   TextItalic,
   ListBullets,
@@ -550,155 +551,166 @@ export function RichTextEditor({
   // -------------------------------------------------------------------------
   return (
     <div className="relative border border-white/[0.08] rounded-[10px] overflow-visible bg-black/20 focus-within:border-[var(--accent)]">
-      <div className="flex items-center flex-wrap gap-y-1.5 gap-x-1 border-b border-white/[0.08] px-2.5 py-2 bg-white/[0.02] rounded-t-[9px] max-[640px]:px-2 max-[640px]:py-1.5 max-[640px]:gap-y-1.25 max-[640px]:gap-x-0.5">
+      <div className="flex items-center flex-wrap gap-1 border-b border-white/[0.08] px-3 py-1.5 bg-white/[0.02] rounded-t-[9px]">
         {/* Heading / Format Selector */}
-        <div className="course-wizard-editor__select relative inline-flex items-center shrink-0">
+        <div className="relative inline-flex items-center shrink-0">
           <select
             aria-label="Text format"
             value={currentFormat}
             onChange={(e) => handleHeadingChange(e.target.value)}
+            className="h-7 px-2.5 pr-6 border border-white/10 rounded-md bg-white/[0.04] text-[var(--text)] text-[0.80rem] font-semibold cursor-pointer outline-none transition-colors hover:bg-white/[0.08] focus:border-[var(--accent)] appearance-none"
           >
-            <option value="normal">Normal</option>
-            <option value="h1">Heading 1</option>
-            <option value="h2">Heading 2</option>
+            <option value="normal" className="bg-[#1e1e24] text-white">Normal</option>
+            <option value="h1" className="bg-[#1e1e24] text-white">Heading 1</option>
+            <option value="h2" className="bg-[#1e1e24] text-white">Heading 2</option>
           </select>
+          <CaretDown size={11} weight="bold" className="absolute right-2 text-[var(--muted)] pointer-events-none" />
         </div>
 
-        <div className="w-px h-[18px] mx-[3px] bg-white/10 shrink-0 max-[640px]:h-4 max-[640px]:mx-px" />
+        {/* Divider */}
+        <div className="w-px h-4 mx-1.5 bg-white/10 shrink-0" />
 
-        {/* Bold & Italic */}
-        <button
-          type="button"
-          title="Bold"
-          className={`editor-btn ${isBold ? "is-active" : ""}`}
-          aria-label="Bold"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={handleBold}
-        >
-          <TextB size={16} weight="bold" />
-        </button>
-        <button
-          type="button"
-          title="Italic"
-          className={`editor-btn ${isItalic ? "is-active" : ""}`}
-          aria-label="Italic"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={handleItalic}
-        >
-          <TextItalic size={16} weight="bold" />
-        </button>
-
-        <div className="w-px h-[18px] mx-[3px] bg-white/10 shrink-0 max-[640px]:h-4 max-[640px]:mx-px" />
-
-        {/* Lists & Blockquote */}
-        <button
-          type="button"
-          title="Bullet List"
-          className={`editor-btn ${isBulletList ? "is-active" : ""}`}
-          aria-label="Bullet List"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={handleBulletList}
-        >
-          <ListBullets size={16} />
-        </button>
-        <button
-          type="button"
-          title="Numbered List"
-          className={`editor-btn ${isOrderedList ? "is-active" : ""}`}
-          aria-label="Numbered List"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={handleOrderedList}
-        >
-          <ListNumbers size={16} />
-        </button>
-        <button
-          type="button"
-          title="Quote"
-          className={`editor-btn ${isBlockquote ? "is-active" : ""}`}
-          aria-label="Quote"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={handleBlockquote}
-        >
-          <Quotes size={16} />
-        </button>
-
-        <div className="w-px h-[18px] mx-[3px] bg-white/10 shrink-0 max-[640px]:h-4 max-[640px]:mx-px" />
-
-        {/* Link Button & Popover */}
-        <div className="course-wizard-emoji-popover-wrap relative inline-flex shrink-0">
+        {/* Group 1: Bold & Italic */}
+        <div className="flex items-center gap-0.5">
           <button
-            ref={linkBtnRef}
             type="button"
-            title="Add Link"
-            className={`editor-btn ${showLinkPopover ? "is-active" : ""}`}
-            aria-label="Add Link"
+            title="Bold"
+            className={`editor-btn ${isBold ? "is-active" : ""}`}
+            aria-label="Bold"
             onMouseDown={(e) => e.preventDefault()}
-            onClick={handleOpenLinkPopover}
+            onClick={handleBold}
           >
-            <Paperclip size={16} />
+            <TextB size={15} weight="bold" />
           </button>
-          {showLinkPopover &&
-            linkPopoverPos &&
-            createPortal(
-              <div
-                ref={linkPopoverRef}
-                className="course-wizard-link-popover"
-                style={{
-                  position: "fixed",
-                  top: `${linkPopoverPos.top}px`,
-                  left: `${linkPopoverPos.left}px`,
-                  zIndex: 99999,
-                }}
-                onMouseDown={(e) => e.stopPropagation()}
-              >
-                <div className="course-wizard-link-popover__inner">
-                  <input
-                    type="url"
-                    className="course-wizard-link-input"
-                    placeholder="https://example.com"
-                    value={linkUrlInput}
-                    autoFocus
-                    onChange={(e) => setLinkUrlInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") { e.preventDefault(); handleApplyLink(); }
-                      else if (e.key === "Escape") { e.preventDefault(); setShowLinkPopover(false); }
-                    }}
-                  />
-                  <div className="course-wizard-link-actions">
-                    <button
-                      type="button"
-                      className="course-wizard-link-btn-secondary"
-                      onClick={() => setShowLinkPopover(false)}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      className="course-wizard-link-btn-primary"
-                      onClick={handleApplyLink}
-                    >
-                      Add Link
-                    </button>
+          <button
+            type="button"
+            title="Italic"
+            className={`editor-btn ${isItalic ? "is-active" : ""}`}
+            aria-label="Italic"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={handleItalic}
+          >
+            <TextItalic size={15} weight="bold" />
+          </button>
+        </div>
+
+        {/* Divider */}
+        <div className="w-px h-4 mx-1.5 bg-white/10 shrink-0" />
+
+        {/* Group 2: Lists & Blockquote */}
+        <div className="flex items-center gap-0.5">
+          <button
+            type="button"
+            title="Bullet List"
+            className={`editor-btn ${isBulletList ? "is-active" : ""}`}
+            aria-label="Bullet List"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={handleBulletList}
+          >
+            <ListBullets size={15} />
+          </button>
+          <button
+            type="button"
+            title="Numbered List"
+            className={`editor-btn ${isOrderedList ? "is-active" : ""}`}
+            aria-label="Numbered List"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={handleOrderedList}
+          >
+            <ListNumbers size={15} />
+          </button>
+          <button
+            type="button"
+            title="Quote"
+            className={`editor-btn ${isBlockquote ? "is-active" : ""}`}
+            aria-label="Quote"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={handleBlockquote}
+          >
+            <Quotes size={15} />
+          </button>
+        </div>
+
+        {/* Divider */}
+        <div className="w-px h-4 mx-1.5 bg-white/10 shrink-0" />
+
+        {/* Group 3: Link & Emoji */}
+        <div className="flex items-center gap-0.5">
+          {/* Link Button & Popover */}
+          <div className="course-wizard-emoji-popover-wrap relative inline-flex shrink-0">
+            <button
+              ref={linkBtnRef}
+              type="button"
+              title="Add Link"
+              className={`editor-btn ${showLinkPopover ? "is-active" : ""}`}
+              aria-label="Add Link"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={handleOpenLinkPopover}
+            >
+              <Paperclip size={15} />
+            </button>
+            {showLinkPopover &&
+              linkPopoverPos &&
+              createPortal(
+                <div
+                  ref={linkPopoverRef}
+                  className="course-wizard-link-popover"
+                  style={{
+                    position: "fixed",
+                    top: `${linkPopoverPos.top}px`,
+                    left: `${linkPopoverPos.left}px`,
+                    zIndex: 99999,
+                  }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  <div className="course-wizard-link-popover__inner">
+                    <input
+                      type="url"
+                      className="course-wizard-link-input"
+                      placeholder="https://example.com"
+                      value={linkUrlInput}
+                      autoFocus
+                      onChange={(e) => setLinkUrlInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") { e.preventDefault(); handleApplyLink(); }
+                        else if (e.key === "Escape") { e.preventDefault(); setShowLinkPopover(false); }
+                      }}
+                    />
+                    <div className="course-wizard-link-actions">
+                      <button
+                        type="button"
+                        className="course-wizard-link-btn-secondary"
+                        onClick={() => setShowLinkPopover(false)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className="course-wizard-link-btn-primary"
+                        onClick={handleApplyLink}
+                      >
+                        Add Link
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </div>,
-              document.body,
-            )}
-        </div>
+                </div>,
+                document.body,
+              )}
+          </div>
 
-        {/* Emoji Button & Popover */}
-        <div className="course-wizard-emoji-popover-wrap relative inline-flex shrink-0">
-          <button
-            ref={emojiBtnRef}
-            type="button"
-            title="Emoji"
-            className={`editor-btn ${showEmojiPicker ? "is-active" : ""}`}
-            aria-label="Emoji"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={(e) => { e.preventDefault(); setShowEmojiPicker((p) => !p); }}
-          >
-            <Smiley size={16} />
-          </button>
+          {/* Emoji Button & Popover */}
+          <div className="course-wizard-emoji-popover-wrap relative inline-flex shrink-0">
+            <button
+              ref={emojiBtnRef}
+              type="button"
+              title="Emoji"
+              className={`editor-btn ${showEmojiPicker ? "is-active" : ""}`}
+              aria-label="Emoji"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={(e) => { e.preventDefault(); setShowEmojiPicker((p) => !p); }}
+            >
+              <Smiley size={15} />
+            </button>
           {showEmojiPicker &&
             emojiPickerPos &&
             createPortal(
@@ -735,6 +747,7 @@ export function RichTextEditor({
               </div>,
               document.body,
             )}
+          </div>
         </div>
       </div>
 

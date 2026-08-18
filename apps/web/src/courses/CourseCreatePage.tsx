@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from"react";
-import { createPortal } from"react-dom";
-import { RichTextEditor, RenderMarkdown } from"./RichTextEditor";
+import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
+import { RichTextEditor, RenderMarkdown } from "./RichTextEditor";
 import {
   ArrowLeft,
   ArrowRight,
@@ -36,7 +36,6 @@ import {
   Plus,
   Question,
   Quotes,
-  RocketLaunch,
   Smiley,
   Sparkle,
   Stack,
@@ -48,23 +47,26 @@ import {
   UserPlus,
   Video,
   X,
-} from"@phosphor-icons/react";
-import type { ComponentType } from"react";
-import { ThemedSelect } from"../ThemedSelect";
-import type { NavigateTo } from"../routing/navigation";
+} from "@phosphor-icons/react";
+import type { ComponentType } from "react";
+import { ThemedSelect } from "../ThemedSelect";
+import type { NavigateTo } from "../routing/navigation";
 
-import { ConfirmDeleteModal } from"../ConfirmDeleteModal";
-import { CourseOverviewPage } from"./CourseOverviewPage";
-import type { CourseInclude, CourseOverviewPricingProps } from"./CourseOverviewPage";
-import type { Course, CourseLevel, CourseCategory } from"./catalogue";
-import type { CourseSection, Lesson } from"../learning/courseContent";
+import { ConfirmDeleteModal } from "../ConfirmDeleteModal";
+import { CourseOverviewPage } from "./CourseOverviewPage";
+import type {
+  CourseInclude,
+  CourseOverviewPricingProps,
+} from "./CourseOverviewPage";
+import type { Course, CourseLevel, CourseCategory } from "./catalogue";
+import type { CourseSection, Lesson } from "../learning/courseContent";
 
 export type CourseWizardStepId =
-"basics" |"curriculum" |"access-rules" |"pricing" |"extras" |"publish";
+  "basics" | "curriculum" | "access-rules" | "pricing" | "extras" | "publish";
 
 type WizardStepIcon = ComponentType<{
   size?: number;
-  weight?:"bold" |"duotone" |"fill" |"regular";
+  weight?: "bold" | "duotone" | "fill" | "regular";
 }>;
 
 interface WizardStepDefinition {
@@ -74,12 +76,12 @@ interface WizardStepDefinition {
 }
 
 const WIZARD_STEPS: readonly WizardStepDefinition[] = [
-  { id:"basics", label:"Basics", Icon: BookOpen },
-  { id:"curriculum", label:"Curriculum", Icon: ListBullets },
-  { id:"access-rules", label:"Access Rules", Icon: LockKey },
-  { id:"pricing", label:"Pricing", Icon: Tag },
-  { id:"extras", label:"Extras", Icon: Sparkle },
-  { id:"publish", label:"Publish", Icon: Lightning },
+  { id: "basics", label: "Basics", Icon: BookOpen },
+  { id: "curriculum", label: "Curriculum", Icon: ListBullets },
+  { id: "access-rules", label: "Access Rules", Icon: LockKey },
+  { id: "pricing", label: "Pricing", Icon: Tag },
+  { id: "extras", label: "Extras", Icon: Sparkle },
+  { id: "publish", label: "Publish", Icon: Lightning },
 ];
 
 export interface CourseCreatePageProps {
@@ -88,8 +90,8 @@ export interface CourseCreatePageProps {
 
 export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   const [activeStep, setActiveStep] = useState<CourseWizardStepId>("basics");
-  const [slideDirection, setSlideDirection] = useState<"right" |"left">(
-"right",
+  const [slideDirection, setSlideDirection] = useState<"right" | "left">(
+    "right",
   );
 
   const [indicatorStyle, setIndicatorStyle] = useState<{
@@ -126,26 +128,33 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   };
 
   useEffect(() => {
-    const activeEl = tabRefs.current[activeStep];
-    if (activeEl) {
-      setIndicatorStyle({
-        left: activeEl.offsetLeft,
-        width: activeEl.offsetWidth,
-      });
-      // Automatically scroll active tab into view on mobile/narrow screens
-      if (stepsNavRef.current && activeEl) {
-        const nav = stepsNavRef.current;
-        const navWidth = nav.offsetWidth;
-        const elLeft = activeEl.offsetLeft;
-        const elWidth = activeEl.offsetWidth;
-        if (elLeft < nav.scrollLeft || elLeft + elWidth > nav.scrollLeft + navWidth) {
-          nav.scrollTo({
-            left: elLeft - navWidth / 2 + elWidth / 2,
-            behavior:"smooth",
-          });
+    const updateIndicator = () => {
+      const activeEl = tabRefs.current[activeStep];
+      if (activeEl) {
+        setIndicatorStyle({
+          left: activeEl.offsetLeft,
+          width: activeEl.offsetWidth,
+        });
+        if (stepsNavRef.current) {
+          const nav = stepsNavRef.current;
+          const navWidth = nav.offsetWidth;
+          const elLeft = activeEl.offsetLeft;
+          const elWidth = activeEl.offsetWidth;
+          if (
+            elLeft < nav.scrollLeft ||
+            elLeft + elWidth > nav.scrollLeft + navWidth
+          ) {
+            nav.scrollTo({
+              left: elLeft - navWidth / 2 + elWidth / 2,
+              behavior: "smooth",
+            });
+          }
         }
       }
-    }
+    };
+    updateIndicator();
+    window.addEventListener("resize", updateIndicator);
+    return () => window.removeEventListener("resize", updateIndicator);
   }, [activeStep]);
 
   // Basics Form state
@@ -158,7 +167,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   const [videoTrailerName, setVideoTrailerName] = useState<string>("");
   const videoTrailerInputRef = useRef<HTMLInputElement | null>(null);
 
-  const handleThumbnailFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleThumbnailFileSelect = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = e.target.files?.[0];
     if (file) {
       const imageUrl = URL.createObjectURL(file);
@@ -174,11 +185,13 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     e.stopPropagation();
     setThumbnail(null);
     if (thumbnailInputRef.current) {
-      thumbnailInputRef.current.value ="";
+      thumbnailInputRef.current.value = "";
     }
   };
 
-  const handleVideoTrailerFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVideoTrailerFileSelect = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = e.target.files?.[0];
     if (file) {
       const videoUrl = URL.createObjectURL(file);
@@ -196,7 +209,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     setVideoTrailer(null);
     setVideoTrailerName("");
     if (videoTrailerInputRef.current) {
-      videoTrailerInputRef.current.value ="";
+      videoTrailerInputRef.current.value = "";
     }
   };
 
@@ -204,24 +217,24 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   const [difficultyLevel, setDifficultyLevel] = useState("");
 
   const categoryOptions = [
-    ["","Select a category"],
-    ["Development","Development"],
-    ["Design","Design"],
-    ["Database","Database"],
-    ["Cloud","Cloud"],
+    ["", "Select a category"],
+    ["Development", "Development"],
+    ["Design", "Design"],
+    ["Database", "Database"],
+    ["Cloud", "Cloud"],
   ] as const;
 
   const difficultyOptions = [
-    ["","Select difficulty level"],
-    ["Beginner","Beginner"],
-    ["Intermediate","Intermediate"],
-    ["Advanced","Advanced"],
+    ["", "Select difficulty level"],
+    ["Beginner", "Beginner"],
+    ["Intermediate", "Intermediate"],
+    ["Advanced", "Advanced"],
   ] as const;
 
   const handleBack = () => {
     if (onNavigatePage) {
       onNavigatePage("courses");
-    } else if (typeof window !=="undefined") {
+    } else if (typeof window !== "undefined") {
       window.history.back();
     }
   };
@@ -230,7 +243,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   interface LessonResourceItem {
     id: string;
     name: string;
-    type:"PDF" |"TXT" |"DOC";
+    type: "PDF" | "TXT" | "DOC";
     size: string;
   }
 
@@ -238,7 +251,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     id: string;
     title: string;
     description: string;
-    contentType:"video" |"document";
+    contentType: "video" | "document";
     isExpanded: boolean;
     resources: LessonResourceItem[];
   }
@@ -252,9 +265,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   }
 
   // Access Rules interfaces
-  type AccessType ="everyone" |"restricted";
-  type AccessDurationMode ="lifetime" |"fixed" |"custom";
-  type DurationUnit ="Days" |"Weeks" |"Months" |"Years";
+  type AccessType = "everyone" | "restricted";
+  type AccessDurationMode = "lifetime" | "fixed" | "custom";
+  type DurationUnit = "Days" | "Weeks" | "Months" | "Years";
 
   interface AccessRequirement {
     id: string;
@@ -275,24 +288,24 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
   // Available prerequisite courses for dropdown
   const PREREQUISITE_COURSE_OPTIONS = [
-    { value:"node-fundamentals", label:"Node.js Fundamentals" },
-    { value:"js-basics", label:"JavaScript Basics & ES6+" },
-    { value:"react-core", label:"React Core Architecture" },
-    { value:"css-mastery", label:"Modern CSS & Responsive Web Design" },
+    { value: "node-fundamentals", label: "Node.js Fundamentals" },
+    { value: "js-basics", label: "JavaScript Basics & ES6+" },
+    { value: "react-core", label: "React Core Architecture" },
+    { value: "css-mastery", label: "Modern CSS & Responsive Web Design" },
   ];
 
   // Curriculum Step state
   const [sections, setSections] = useState<CurriculumSectionItem[]>([
     {
-      id:"section-1",
-      title:"Introduction to the Course",
+      id: "section-1",
+      title: "Introduction to the Course",
       isExpanded: true,
       lessons: [],
     },
   ]);
 
   // Pricing interfaces
-  type PricingType ="free" |"paid";
+  type PricingType = "free" | "paid";
 
   interface PricingState {
     pricingType: PricingType;
@@ -302,13 +315,13 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
   // Access Rules Step state
   const [accessRules, setAccessRules] = useState<AccessRulesState>({
-    accessType:"restricted",
-    requirements: [{ id:"req-1", courseId:"node-fundamentals" }],
-    durationMode:"lifetime",
+    accessType: "restricted",
+    requirements: [{ id: "req-1", courseId: "node-fundamentals" }],
+    durationMode: "lifetime",
     fixedDurationValue: 30,
-    fixedDurationUnit:"Days",
-    customStartDate:"2026-08-12",
-    customEndDate:"2026-09-12",
+    fixedDurationUnit: "Days",
+    customStartDate: "2026-08-12",
+    customEndDate: "2026-09-12",
     enableQA: true,
     enableComments: true,
   });
@@ -319,7 +332,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     text: string;
   }
 
-  type CertificateIssuanceType ="completion" |"percentage" |"custom";
+  type CertificateIssuanceType = "completion" | "percentage" | "custom";
 
   interface ExtrasState {
     inclusions: ExtrasInclusionItem[];
@@ -333,14 +346,14 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
   // Pricing Step state
   const [pricing, setPricing] = useState<PricingState>({
-    pricingType:"paid",
-    sellingPrice:"1999",
-    originalPrice:"2999",
+    pricingType: "paid",
+    sellingPrice: "1999",
+    originalPrice: "2999",
   });
 
   // Publish interfaces
-  type CourseVisibility ="public" |"private" |"unlisted";
-  type ScheduleOption ="now" |"later";
+  type CourseVisibility = "public" | "private" | "unlisted";
+  type ScheduleOption = "now" | "later";
 
   interface PublishState {
     visibility: CourseVisibility;
@@ -354,10 +367,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
   // Publish Step state
   const [publishSettings, setPublishSettings] = useState<PublishState>({
-    visibility:"public",
-    scheduleOption:"now",
-    scheduleDate:"2026-08-20",
-    scheduleTime:"10:00",
+    visibility: "public",
+    scheduleOption: "now",
+    scheduleDate: "2026-08-20",
+    scheduleTime: "10:00",
   });
 
   // Course Overview Live Full Preview Modal State
@@ -365,7 +378,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
   // Footer Action Loading States
   const [actionLoading, setActionLoading] = useState<
-"preview" |"draft" |"save" |"publish" | null
+    "preview" | "draft" | "save" | "publish" | null
   >(null);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -378,7 +391,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key ==="Escape" && isPreviewModalOpen) {
+      if (e.key === "Escape" && isPreviewModalOpen) {
         setIsPreviewModalOpen(false);
       }
     };
@@ -404,15 +417,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   // Extras Step state
   const [extras, setExtras] = useState<ExtrasState>({
     inclusions: [
-      { id:"inc-1", text:"Full lifetime access" },
-      { id:"inc-2", text:"Downloadable resources" },
-      { id:"inc-3", text:"Access on all devices" },
+      { id: "inc-1", text: "Full lifetime access" },
+      { id: "inc-2", text: "Downloadable resources" },
+      { id: "inc-3", text: "Access on all devices" },
     ],
     enableCertificate: true,
-    certificateTemplate:"purple-certificate",
-    issuanceType:"percentage",
+    certificateTemplate: "purple-certificate",
+    issuanceType: "percentage",
     minCompletionPercentage: 95,
-    customRuleText:"Complete all quizzes with > 80% score",
+    customRuleText: "Complete all quizzes with > 80% score",
     autoEmailCertificate: true,
   });
 
@@ -430,8 +443,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
       inclusions: [
         ...prev.inclusions,
         {
-          id:`inc-${Date.now()}`,
-          text:`New Inclusion ${prev.inclusions.length + 1}`,
+          id: `inc-${Date.now()}`,
+          text: `New Inclusion ${prev.inclusions.length + 1}`,
         },
       ],
     }));
@@ -533,9 +546,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
       requirements: [
         ...prev.requirements,
         {
-          id:`req-${Date.now()}`,
+          id: `req-${Date.now()}`,
           courseId:
-            PREREQUISITE_COURSE_OPTIONS[0]?.value ||"node-fundamentals",
+            PREREQUISITE_COURSE_OPTIONS[0]?.value || "node-fundamentals",
         },
       ],
     }));
@@ -603,9 +616,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     sectionId: string;
     lessonIndex: number;
   } | null>(null);
-  const [dragEnabledLessonId, setDragEnabledLessonId] = useState<
-    string | null
-  >(null);
+  const [dragEnabledLessonId, setDragEnabledLessonId] = useState<string | null>(
+    null,
+  );
 
   // Reusable Delete Confirmation Modal state
   const [deleteModalState, setDeleteModalState] = useState<{
@@ -615,19 +628,19 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     onConfirm: () => void;
   }>({
     isOpen: false,
-    title:"",
-    message:"",
+    title: "",
+    message: "",
     onConfirm: () => {},
   });
 
   // Section actions
   const handleAddSection = () => {
-    const newId =`section-${Date.now()}`;
+    const newId = `section-${Date.now()}`;
     setSections((prev) => [
       ...prev,
       {
         id: newId,
-        title:`Section ${prev.length + 1}`,
+        title: `Section ${prev.length + 1}`,
         isExpanded: true,
         isEditingTitle: true,
         lessons: [],
@@ -666,8 +679,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     if (!sec) return;
     setDeleteModalState({
       isOpen: true,
-      title:`Delete"${sec.title}"?`,
-      message:`Are you sure you want to delete"${sec.title}" and its ${sec.lessons.length} lessons? This action cannot be undone.`,
+      title: `Delete"${sec.title}"?`,
+      message: `Are you sure you want to delete"${sec.title}" and its ${sec.lessons.length} lessons? This action cannot be undone.`,
       onConfirm: () => {
         setSections((prev) => prev.filter((s) => s.id !== sectionId));
       },
@@ -700,7 +713,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
   // Lesson actions
   const handleAddLesson = (sectionId: string) => {
-    const newLessonId =`lesson-${Date.now()}`;
+    const newLessonId = `lesson-${Date.now()}`;
     setSections((prev) =>
       prev.map((sec) => {
         if (sec.id !== sectionId) return sec;
@@ -710,9 +723,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
             ...sec.lessons.map((l) => ({ ...l, isExpanded: false })),
             {
               id: newLessonId,
-              title:`New Lesson ${sec.lessons.length + 1}`,
-              description:"",
-              contentType:"video" as const,
+              title: `New Lesson ${sec.lessons.length + 1}`,
+              description: "",
+              contentType: "video" as const,
               isExpanded: true,
               resources: [],
             },
@@ -743,8 +756,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
     setDeleteModalState({
       isOpen: true,
-      title:`Delete"${les.title}"?`,
-      message:`Are you sure you want to delete lesson"${les.title}"? This action cannot be undone.`,
+      title: `Delete"${les.title}"?`,
+      message: `Are you sure you want to delete lesson"${les.title}"? This action cannot be undone.`,
       onConfirm: () => {
         setSections((prev) =>
           prev.map((s) => {
@@ -792,11 +805,11 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   };
 
   const handleAddLessonResource = (sectionId: string, lessonId: string) => {
-    const newResId =`res-${Date.now()}`;
+    const newResId = `res-${Date.now()}`;
     const sampleFiles = [
-      { name:"Lesson_Notes.pdf", type:"PDF" as const, size:"1.8 MB" },
-      { name:"Source_Code.txt", type:"TXT" as const, size:"850 B" },
-      { name:"Reference_Doc.pdf", type:"PDF" as const, size:"3.1 MB" },
+      { name: "Lesson_Notes.pdf", type: "PDF" as const, size: "1.8 MB" },
+      { name: "Source_Code.txt", type: "TXT" as const, size: "850 B" },
+      { name: "Reference_Doc.pdf", type: "PDF" as const, size: "3.1 MB" },
     ];
     const chosen = sampleFiles[Math.floor(Math.random() * sampleFiles.length)]!;
     setSections((prev) =>
@@ -894,56 +907,57 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   // Approximate course duration based on curriculum lessons
   const computedDuration =
     totalLessons === 0
-      ?"0h 0m"
+      ? "0h 0m"
       : totalLessons < 10
-        ?`${Math.floor(totalLessons * 12 / 60)}h ${(totalLessons * 12) % 60}m`
-        :`${Math.floor(totalLessons * 9 / 60)}h ${(totalLessons * 9) % 60}m`;
+        ? `${Math.floor((totalLessons * 12) / 60)}h ${(totalLessons * 12) % 60}m`
+        : `${Math.floor((totalLessons * 9) / 60)}h ${(totalLessons * 9) % 60}m`;
 
   // Student-facing Preview Object Adapter
   const previewCourse: Course = {
-    id:"preview-course",
-    title: courseTitle.trim() ||"Course Title",
-    description: courseDescription.trim() ||"This is a short description of your course.",
-    level: (difficultyLevel ||"Beginner") as CourseLevel,
-    category: (category ||"Development") as CourseCategory,
+    id: "preview-course",
+    title: courseTitle.trim() || "Course Title",
+    description:
+      courseDescription.trim() || "This is a short description of your course.",
+    level: (difficultyLevel || "Beginner") as CourseLevel,
+    category: (category || "Development") as CourseCategory,
     sections: Math.max(1, totalSections),
     lectures: Math.max(1, totalLessons),
     progress: null,
     enrolled: false,
     duration: computedDuration,
     students: 0,
-    thumbnail: thumbnail ||"/assets/instructor-poster.jpg",
+    thumbnail: thumbnail || "/assets/instructor-poster.jpg",
   };
 
   const previewSections: CourseSection[] =
     sections.length > 0
       ? sections.map((sec, secIdx) => ({
           id: secIdx + 1,
-          title: sec.title.trim() ||`Section ${secIdx + 1}`,
-          progress:`0/${sec.lessons.length}`,
+          title: sec.title.trim() || `Section ${secIdx + 1}`,
+          progress: `0/${sec.lessons.length}`,
           lessons:
             sec.lessons.length > 0
               ? sec.lessons.map((les, lesIdx) => [
                   lesIdx + 1,
-                  les.title.trim() ||`Lesson ${lesIdx + 1}`,
-"05:00",
-"todo",
+                  les.title.trim() || `Lesson ${lesIdx + 1}`,
+                  "05:00",
+                  "todo",
                 ])
               : [
                   [
                     1,
-`Introduction to ${sec.title.trim() ||`Section ${secIdx + 1}`}`,
-"05:00",
-"todo",
+                    `Introduction to ${sec.title.trim() || `Section ${secIdx + 1}`}`,
+                    "05:00",
+                    "todo",
                   ],
                 ],
         }))
       : [
           {
             id: 1,
-            title:"Introduction",
-            progress:"0/1",
-            lessons: [[1,"Course Overview","05:00","todo"]],
+            title: "Introduction",
+            progress: "0/1",
+            lessons: [[1, "Course Overview", "05:00", "todo"]],
           },
         ];
 
@@ -963,7 +977,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
   const previewIncludes: CourseInclude[] = [
     ...(extras.enableCertificate
-      ? [{ icon: Certificate, label:"Certificate of completion" }]
+      ? [{ icon: Certificate, label: "Certificate of completion" }]
       : []),
     ...nonCertInclusions.map((text) => ({
       icon: CheckCircle,
@@ -972,24 +986,24 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   ];
 
   const previewPricing: CourseOverviewPricingProps =
-    pricing.pricingType ==="free"
-      ? { price:"Free" }
+    pricing.pricingType === "free"
+      ? { price: "Free" }
       : {
           price: pricing.sellingPrice.trim()
-            ?`₹${pricing.sellingPrice.trim()}`
-            :"₹1,999",
+            ? `₹${pricing.sellingPrice.trim()}`
+            : "₹1,999",
           originalPrice: pricing.originalPrice.trim()
-            ?`₹${pricing.originalPrice.trim()}`
+            ? `₹${pricing.originalPrice.trim()}`
             : undefined,
           discount:
             pricing.originalPrice.trim() &&
             pricing.sellingPrice.trim() &&
-            parseFloat(pricing.originalPrice.replace(/,/g,"")) >
-              parseFloat(pricing.sellingPrice.replace(/,/g,""))
-              ?`${Math.round(
-                  ((parseFloat(pricing.originalPrice.replace(/,/g,"")) -
-                    parseFloat(pricing.sellingPrice.replace(/,/g,""))) /
-                    parseFloat(pricing.originalPrice.replace(/,/g,""))) *
+            parseFloat(pricing.originalPrice.replace(/,/g, "")) >
+              parseFloat(pricing.sellingPrice.replace(/,/g, ""))
+              ? `${Math.round(
+                  ((parseFloat(pricing.originalPrice.replace(/,/g, "")) -
+                    parseFloat(pricing.sellingPrice.replace(/,/g, ""))) /
+                    parseFloat(pricing.originalPrice.replace(/,/g, ""))) *
                     100,
                 )}% OFF`
               : undefined,
@@ -1000,11 +1014,11 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     courseTitle.trim().length > 0 && courseDescription.trim().length > 0;
   const isCurriculumValid = totalSections > 0;
   const isAccessRulesValid =
-    accessRules.accessType ==="everyone" ||
+    accessRules.accessType === "everyone" ||
     accessRules.requirements.length > 0;
   const isPricingValid =
-    pricing.pricingType ==="free" ||
-    parseFloat(pricing.sellingPrice.replace(/,/g,"")) > 0;
+    pricing.pricingType === "free" ||
+    parseFloat(pricing.sellingPrice.replace(/,/g, "")) > 0;
   const isExtrasValid = true;
 
   const isCourseReadyToPublish =
@@ -1046,19 +1060,19 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     if (!isCourseReadyToPublish) {
       if (!isBasicsValid)
         setPublishValidationError(
-"Please fill out required Basic Information fields (Title and Description).",
+          "Please fill out required Basic Information fields (Title and Description).",
         );
       else if (!isCurriculumValid)
         setPublishValidationError(
-"Please add at least one Section to the Curriculum.",
+          "Please add at least one Section to the Curriculum.",
         );
       else if (!isAccessRulesValid)
         setPublishValidationError(
-"Please configure at least one prerequisite requirement or select Everyone.",
+          "Please configure at least one prerequisite requirement or select Everyone.",
         );
       else if (!isPricingValid)
         setPublishValidationError(
-"Please set a valid Selling Price for paid course.",
+          "Please set a valid Selling Price for paid course.",
         );
       return;
     }
@@ -1070,8 +1084,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
       setIsPublished(true);
       setToastMessage(
         isPublished
-          ?"Course updated and published successfully!"
-          :"Course published successfully!",
+          ? "Course updated and published successfully!"
+          : "Course published successfully!",
       );
     }, 850);
   };
@@ -1080,59 +1094,161 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     <div className="relative flex w-full h-[calc(100vh-28px)] max-h-[calc(100vh-28px)] flex-col p-0 text-[var(--text)] bg-[color-mix(in_srgb,var(--surface)_18%,var(--canvas))] box-border overflow-hidden max-[768px]:pb-0">
       {/* Wizard Header */}
       <header className="relative shrink-0 p-[clamp(16px,2.2vw,24px)_clamp(16px,2.5vw,32px)_0] mb-5 max-[768px]:p-[16px_16px_0] max-[768px]:mb-2 max-[768px]:w-full max-[768px]:max-w-full max-[768px]:min-w-0 max-[768px]:box-border">
-        <div className="relative flex items-start mb-[18px] max-[768px]:block max-[768px]:mb-3">
-          <button
-            type="button"
-            className="absolute top-0 left-0 flex w-[38px] h-[38px] shrink-0 items-center justify-center border-none rounded-[10px] text-[var(--text)] bg-[var(--surface)] cursor-pointer transition-[background,color] duration-150 ease-out hover:bg-[var(--hover)] hover:text-white"
-            onClick={handleBack}
-            aria-label="Go back to courses"
-          >
-            <ArrowLeft size={18} weight="bold" />
-          </button>
-          <div className="ml-12 mr-[clamp(280px,30vw,420px)] pt-0.5 max-[768px]:ml-12 max-[768px]:mr-0 max-[768px]:pt-0 max-[768px]:w-[calc(100%-48px)]">
-            <div className="flex items-center gap-2.5 flex-wrap max-[768px]:flex max-[768px]:items-center max-[768px]:gap-2 max-[768px]:flex-nowrap">
-              <h1 className="m-0 text-[var(--text)] text-[clamp(1.2rem,1.8vw,1.55rem)] font-bold tracking-[-0.015em] max-[768px]:text-[1.35rem] max-[768px]:font-bold max-[768px]:leading-[1.25]">{isPublished ?"Edit Course" :"Create New Course"}</h1>
-              <span
-                className={`inline-flex items-center rounded-md px-2 py-0.5 text-[0.7rem] font-bold uppercase tracking-[0.04em] ${
-                  isPublished
-                    ?"is-published border border-green-500/35 text-green-500 bg-green-500/[0.12]"
-                    :"border border-white/20 text-[var(--muted)] bg-white/[0.04]"
-                }`}
-              >
-                {isPublished ?"Published" :"Draft"}
-              </span>
+        <div className="flex items-start justify-between gap-4 mb-[18px] max-[768px]:flex-col max-[768px]:gap-3 max-[768px]:mb-3">
+          <div className="flex items-start gap-3 min-w-0">
+            <button
+              type="button"
+              className="flex w-[36px] h-[36px] shrink-0 items-center justify-center border border-white/15 rounded-lg text-[var(--text-secondary)] bg-white/[0.04] cursor-pointer transition-[border-color,background-color,color] duration-150 ease-out hover:border-white/25 hover:bg-white/[0.08] hover:text-[var(--text)]"
+              onClick={handleBack}
+              aria-label="Go back to courses"
+            >
+              <ArrowLeft size={17} weight="bold" />
+            </button>
+            <div className="pt-0.5 min-w-0">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="m-0 text-[var(--text)] text-[clamp(1.2rem,1.8vw,1.55rem)] font-bold tracking-[-0.015em] leading-[1.2]">
+                  {isPublished ? "Edit Course" : "Create New Course"}
+                </h1>
+                <span
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[0.72rem] font-medium tracking-[0.02em] ${
+                    isPublished
+                      ? "is-published border border-green-500/35 text-green-400 bg-green-500/[0.12]"
+                      : "border border-white/15 text-[var(--muted)] bg-white/[0.04]"
+                  }`}
+                >
+                  {isPublished ? "Published" : "Draft"}
+                </span>
+              </div>
+              <p className="m-0 mt-1 text-[var(--muted)] text-[0.84rem] max-w-[620px] leading-[1.4]">
+                {activeStep === "curriculum"
+                  ? "Build your course structure by adding sections and lessons."
+                  : activeStep === "access-rules"
+                    ? "Control who can access this course and how long their access lasts."
+                    : activeStep === "pricing"
+                      ? "Set how learners will purchase this course."
+                      : activeStep === "extras"
+                        ? "Add extra information and settings to enhance your course."
+                        : activeStep === "publish"
+                          ? "Review your course and publish it when you're ready."
+                          : "Add the essential details of your course. You can always edit these later."}
+              </p>
             </div>
-            <p className="m-0 mt-1 text-[var(--muted)] text-[0.84rem] max-w-[620px] leading-[1.4]">
-              {activeStep ==="curriculum"
-                ?"Build your course structure by adding sections and lessons."
-                : activeStep ==="access-rules"
-                  ?"Control who can access this course and how long their access lasts."
-                  : activeStep ==="pricing"
-                    ?"Set how learners will purchase this course."
-                    : activeStep ==="extras"
-                      ?"Add extra information and settings to enhance your course."
-                      : activeStep ==="publish"
-                        ?"Review your course and publish it when you're ready."
-                        :"Add the essential details of your course. You can always edit these later."}
-            </p>
+          </div>
+
+          {/* Top Actions in Header (Desktop / Tablet) */}
+          <div className="flex items-center gap-2.5 shrink-0 pt-0.5 max-[768px]:hidden">
+            {/* Preview Button (Ghost) */}
+            <button
+              type="button"
+              style={{ fontSize: "0.80rem", fontWeight: 700, height: "34px", borderRadius: "8px", gap: "6px", paddingLeft: "14px", paddingRight: "14px" }}
+              className="inline-flex items-center border border-white/10 text-[var(--text-secondary)] bg-transparent cursor-pointer transition-all duration-150 hover:bg-white/[0.05] hover:text-[var(--text)] disabled:opacity-60"
+              onClick={handlePreviewAction}
+              disabled={actionLoading !== null}
+            >
+              {actionLoading === "preview" ? (
+                <>
+                  <CircleNotch
+                    size={14}
+                    className="animate-spin text-[var(--accent)]"
+                  />
+                  <span>Opening...</span>
+                </>
+              ) : (
+                <>
+                  <Eye size={15} />
+                  <span>Preview</span>
+                </>
+              )}
+            </button>
+
+            {/* Save Draft Button (Draft / Subtle Solid) */}
+            <button
+              type="button"
+              style={{ fontSize: "0.80rem", fontWeight: 700, height: "34px", borderRadius: "8px", gap: "6px", paddingLeft: "14px", paddingRight: "14px" }}
+              className="inline-flex items-center border border-white/10 text-[var(--text)] bg-white/[0.05] cursor-pointer transition-all duration-150 hover:bg-white/10 disabled:opacity-60"
+              onClick={handleSaveDraftAction}
+              disabled={actionLoading !== null}
+            >
+              {actionLoading === "draft" ? (
+                <>
+                  <CircleNotch
+                    size={14}
+                    className="animate-spin text-[var(--accent)]"
+                  />
+                  <span>Saving Draft...</span>
+                </>
+              ) : (
+                <>
+                  <FloppyDisk size={15} />
+                  <span>Save Draft</span>
+                </>
+              )}
+            </button>
+
+            {/* Save Changes / Publish Course Button (Primary Accent CTA) */}
+            <button
+              type="button"
+              style={{ fontSize: "0.80rem", fontWeight: 700, height: "34px", borderRadius: "8px", gap: "6px", paddingLeft: "18px", paddingRight: "18px" }}
+              className="inline-flex items-center justify-center border-none text-[var(--on-accent,#ffffff)] bg-[var(--accent)] cursor-pointer shadow-[0_3px_10px_var(--accent-shadow)] transition-all duration-150 ease-out hover:bg-[var(--accent-hover,var(--accent))] hover:shadow-[0_4px_14px_var(--accent-shadow)] disabled:opacity-60"
+              disabled={actionLoading !== null}
+              onClick={
+                activeStep === "publish"
+                  ? handleFinalPublishCourse
+                  : handleSaveChangesAction
+              }
+            >
+              {actionLoading === "publish" ? (
+                <>
+                  <CircleNotch size={15} className="animate-spin text-white" />
+                  <span>{isPublished ? "Updating..." : "Publishing..."}</span>
+                </>
+              ) : actionLoading === "save" ? (
+                <>
+                  <CircleNotch size={15} className="animate-spin text-white" />
+                  <span>Saving Changes...</span>
+                </>
+              ) : (
+                <>
+                  {activeStep === "publish" ? (
+                    isPublished ? (
+                      <span>Update Course</span>
+                    ) : (
+                      <span>Publish Course</span>
+                    )
+                  ) : (
+                    <span>Save Changes</span>
+                  )}
+                </>
+              )}
+            </button>
           </div>
         </div>
+
+        {/* Publish validation error toast if any */}
+        {publishValidationError && activeStep === "publish" && (
+          <div className="flex items-center gap-2.5 mb-3 border border-red-400/35 rounded-[10px] px-4 py-2 text-red-400 bg-red-500/[0.12] backdrop-blur-[12px] shadow-[0_4px_16px_rgba(239,68,68,0.15)] text-[0.84rem] font-semibold animate-[bannerSlideUp_0.3s_cubic-bezier(0.16,1,0.3,1)]">
+            <Info size={16} weight="bold" />
+            <span>{publishValidationError}</span>
+          </div>
+        )}
 
         {/* Wizard Steps Navigation */}
         <nav
           ref={stepsNavRef}
-          className="relative flex items-center gap-2 border-b border-white/[0.08] overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden max-[768px]:flex-row max-[768px]:flex-nowrap max-[768px]:w-full max-[768px]:max-w-full max-[768px]:min-w-0 max-[768px]:overflow-y-hidden max-[768px]:[touch-action:pan-x] max-[768px]:overscroll-x-contain max-[768px]:pt-1 max-[768px]:pb-2 max-[768px]:mb-3.5 max-[768px]:box-border"
+          className="settings-tabs relative !mt-0 !bg-transparent !pt-0 border-b border-[color-mix(in_srgb,var(--surface-strong)72%,transparent)] max-[768px]:w-full max-[768px]:box-border [&::after]:!hidden"
           aria-label="Course creation steps"
+          role="tablist"
           onMouseDown={handleNavMouseDown}
           onMouseLeave={handleNavMouseLeave}
           onMouseUp={handleNavMouseUp}
           onMouseMove={handleNavMouseMove}
         >
+          {/* Animated Sliding Bottom Indicator */}
           <div
-            className="absolute bottom-0 left-0 z-[3] h-[2.5px] rounded-[2px] bg-[var(--accent)] shadow-[0_0_10px_color-mix(in_srgb,var(--accent)_60%,transparent)] pointer-events-none transition-[transform,width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+            className="absolute bottom-0 left-0 z-[3] h-[2px] bg-[var(--accent)] shadow-[0_0_10px_color-mix(in_srgb,var(--accent)_60%,transparent)] pointer-events-none transition-[transform,width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
             style={{
-              transform:`translateX(${indicatorStyle.left}px)`,
-              width:`${indicatorStyle.width}px`,
+              transform: `translateX(${indicatorStyle.left}px)`,
+              width: `${indicatorStyle.width}px`,
             }}
           />
           {WIZARD_STEPS.map((step, idx) => {
@@ -1145,9 +1261,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   tabRefs.current[step.id] = el;
                 }}
                 type="button"
-                className={`relative z-[2] inline-flex items-center gap-2 px-[18px] py-3 border-none bg-transparent text-[0.88rem] font-semibold whitespace-nowrap cursor-pointer transition-colors duration-250 ease-out hover:text-[var(--text-secondary)] shrink-0 max-[768px]:px-4 max-[768px]:py-2.5 max-[768px]:text-[0.82rem] ${
-                  isActive ?"is-active text-[var(--accent)]" :"text-[var(--muted)]"
-                }`}
+                role="tab"
+                aria-selected={isActive}
+                tabIndex={isActive ? 0 : -1}
+                className={`!border-b-transparent shrink-0 whitespace-nowrap ${isActive ? "is-active" : ""}`}
                 onClick={() => {
                   const currentIdx = WIZARD_STEPS.findIndex(
                     (s) => s.id === activeStep,
@@ -1157,7 +1274,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   setActiveStep(step.id);
                 }}
               >
-                <Icon size={18} weight={isActive ?"fill" :"regular"} />
+                <Icon size={17} weight={isActive ? "fill" : "regular"} />
                 <span>{step.label}</span>
               </button>
             );
@@ -1167,23 +1284,31 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
       {/* Scrollable Step Content Region */}
       <div
-        className={`flex-1 min-h-0 px-[clamp(16px,2.5vw,32px)] pb-6 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden will-change-[transform,opacity] max-[768px]:p-[0_16px_12px] slide-from-${slideDirection}`}
+        className={`flex-1 min-h-0 px-[clamp(16px,2.5vw,32px)] pb-6 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden will-change-[transform,opacity] max-[768px]:p-[0_16px_110px] slide-from-${slideDirection}`}
         key={activeStep}
       >
-        {activeStep ==="basics" ? (
+        {activeStep === "basics" ? (
           <div className="relative z-10 grid grid-cols-[minmax(0,1.8fr)_minmax(300px,1fr)] gap-6 items-start max-[1024px]:grid-cols-[minmax(0,1fr)] max-[768px]:grid-cols-[minmax(0,1fr)] max-[768px]:gap-[18px]">
             {/* Left Column: Form Sections */}
             <div className="flex flex-col gap-5">
               {/* Basic Information Section */}
               <section className="relative z-10 rounded-[14px] p-6 bg-[var(--surface)] shadow-[var(--card-shadow)] max-[768px]:p-4">
                 <div className="mb-4.5">
-                  <h2 className="m-0 text-[var(--text)] text-[1.18rem] font-[650] tracking-[-0.015em]">Basic Information</h2>
-                  <p className="m-0 mt-1 mb-5 text-[var(--muted)] text-[0.82rem]">Add the essential details of your course.</p>
+                  <h2 className="m-0 text-[var(--text)] text-[1.18rem] font-[650] tracking-[-0.015em]">
+                    Basic Information
+                  </h2>
+                  <p className="m-0 mt-1 mb-5 text-[var(--muted)] text-[0.82rem]">
+                    Add the essential details of your course.
+                  </p>
                 </div>
 
                 <div className="flex flex-col gap-2 mb-5">
-                  <label htmlFor="course-title" className="text-[var(--text-secondary)] text-[0.84rem] font-semibold">
-                    Course Title <span className="text-[#ff5252] ml-0.5">*</span>
+                  <label
+                    htmlFor="course-title"
+                    className="text-[var(--text-secondary)] text-[0.84rem] font-semibold"
+                  >
+                    Course Title{" "}
+                    <span className="text-[#ff5252] ml-0.5">*</span>
                   </label>
                   <div className="relative flex items-center">
                     <input
@@ -1202,8 +1327,12 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                 </div>
 
                 <div className="flex flex-col gap-2 mb-5">
-                  <label htmlFor="course-description" className="text-[var(--text-secondary)] text-[0.84rem] font-semibold">
-                    Course Description <span className="text-[#ff5252] ml-0.5">*</span>
+                  <label
+                    htmlFor="course-description"
+                    className="text-[var(--text-secondary)] text-[0.84rem] font-semibold"
+                  >
+                    Course Description{" "}
+                    <span className="text-[#ff5252] ml-0.5">*</span>
                   </label>
                   <RichTextEditor
                     id="course-description"
@@ -1216,7 +1345,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                 <div className="grid grid-cols-2 gap-4 max-[640px]:grid-cols-1">
                   <div className="flex flex-col gap-2 mb-0">
-                    <label id="category-label" className="text-[var(--text-secondary)] text-[0.84rem] font-semibold">
+                    <label
+                      id="category-label"
+                      className="text-[var(--text-secondary)] text-[0.84rem] font-semibold"
+                    >
                       Category <span className="text-[#ff5252] ml-0.5">*</span>
                     </label>
                     <ThemedSelect
@@ -1229,8 +1361,12 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   </div>
 
                   <div className="flex flex-col gap-2 mb-0">
-                    <label id="difficulty-label" className="text-[var(--text-secondary)] text-[0.84rem] font-semibold">
-                      Difficulty Level <span className="text-[#ff5252] ml-0.5">*</span>
+                    <label
+                      id="difficulty-label"
+                      className="text-[var(--text-secondary)] text-[0.84rem] font-semibold"
+                    >
+                      Difficulty Level{" "}
+                      <span className="text-[#ff5252] ml-0.5">*</span>
                     </label>
                     <ThemedSelect
                       value={difficultyLevel}
@@ -1246,8 +1382,12 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
               {/* Course Media Section */}
               <section className="relative z-10 rounded-[14px] p-6 bg-[var(--surface)] shadow-[var(--card-shadow)] max-[768px]:p-4">
                 <div className="mb-4.5">
-                  <h2 className="m-0 text-[var(--text)] text-[1.18rem] font-[650] tracking-[-0.015em]">Course Media</h2>
-                  <p className="m-0 mt-1 mb-5 text-[var(--muted)] text-[0.82rem]">Add media that best represents your course.</p>
+                  <h2 className="m-0 text-[var(--text)] text-[1.18rem] font-[650] tracking-[-0.015em]">
+                    Course Media
+                  </h2>
+                  <p className="m-0 mt-1 mb-5 text-[var(--muted)] text-[0.82rem]">
+                    Add media that best represents your course.
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 max-[640px]:grid-cols-1">
@@ -1257,7 +1397,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     ref={thumbnailInputRef}
                     onChange={handleThumbnailFileSelect}
                     accept="image/*"
-                    style={{ display:"none" }}
+                    style={{ display: "none" }}
                   />
 
                   {/* Hidden Video Trailer File Input */}
@@ -1266,7 +1406,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     ref={videoTrailerInputRef}
                     onChange={handleVideoTrailerFileSelect}
                     accept="video/*"
-                    style={{ display:"none" }}
+                    style={{ display: "none" }}
                   />
 
                   {/* Thumbnail Upload */}
@@ -1287,14 +1427,14 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                         <div className="absolute inset-0 flex items-center justify-center gap-2.5 p-3 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity duration-200 backdrop-blur-sm">
                           <button
                             type="button"
-                            className="inline-flex items-center gap-1.5 border border-white/25 rounded-lg px-4 py-2 text-white bg-white/12 text-[0.82rem] font-semibold cursor-pointer backdrop-blur-md transition-[background,border-color,color] duration-150 hover:bg-[var(--accent)] hover:border-[var(--accent)] hover:text-[var(--on-accent,#ffffff)]"
+                            className="inline-flex items-center gap-1.5 h-[32px] border border-white/15 rounded-lg px-3 text-[var(--text)] bg-white/[0.10] backdrop-blur-md text-[0.78rem] font-bold cursor-pointer transition-all duration-150 hover:bg-[var(--accent)] hover:border-transparent hover:text-white"
                             onClick={triggerThumbnailUpload}
                           >
                             <ImageIcon size={15} /> Change Image
                           </button>
                           <button
                             type="button"
-                            className="inline-flex items-center gap-1.5 border border-red-500/40 rounded-lg px-3.5 py-2 text-red-400 bg-red-500/[0.18] text-[0.82rem] font-semibold cursor-pointer backdrop-blur-md transition-[background,border-color,color] duration-150 hover:bg-red-500 hover:border-red-500 hover:text-white"
+                            className="inline-flex items-center gap-1.5 h-[32px] border border-red-500/35 rounded-lg px-2.5 text-red-300 bg-red-500/[0.16] backdrop-blur-md text-[0.78rem] font-bold cursor-pointer transition-all duration-150 hover:bg-red-500 hover:border-red-500 hover:text-white"
                             onClick={handleRemoveThumbnail}
                             title="Remove Thumbnail"
                           >
@@ -1304,16 +1444,17 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       </div>
                     ) : (
                       <div className="relative flex flex-col items-center justify-center aspect-video w-full min-h-[175px] box-border border border-dashed border-white/[0.12] rounded-xl p-4 bg-black/15 text-center overflow-hidden transition-[border-color,background-color] duration-180 ease-out">
-                        <div className="mb-2 text-[var(--accent)]">
-                          <ImageIcon size={32} weight="light" />
+                        <div className="mb-2 text-[var(--muted)]">
+                          <ImageIcon size={30} weight="light" />
                         </div>
                         <div className="flex items-center justify-center gap-2.5 flex-wrap">
                           <button
                             type="button"
-                            className="inline-flex items-center gap-1.5 border border-white/[0.12] rounded-lg px-4 py-2 text-[var(--text)] bg-white/[0.05] text-[0.82rem] font-semibold cursor-pointer transition-[background,border-color] duration-150 hover:bg-white/10 hover:border-white/20"
+                            style={{ fontSize: "0.80rem", fontWeight: 700, height: "34px", borderRadius: "8px", gap: "6px", paddingLeft: "16px", paddingRight: "16px" }}
+                            className="inline-flex items-center justify-center border-none text-[var(--on-accent,#ffffff)] bg-[var(--accent)] cursor-pointer shadow-[0_3px_10px_var(--accent-shadow)] transition-all duration-150 ease-out hover:bg-[var(--accent-hover,var(--accent))] hover:shadow-[0_4px_14px_var(--accent-shadow)]"
                             onClick={triggerThumbnailUpload}
                           >
-                            <UploadSimple size={15} weight="bold" /> Upload
+                            <UploadSimple size={15} /> Upload
                           </button>
                         </div>
                         <p className="m-0 mt-2 text-[var(--muted)] text-[0.74rem]">
@@ -1325,7 +1466,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                   {/* Video Trailer Upload */}
                   <div className="flex flex-col min-w-0">
-                    <h3 className="m-0 mb-1 text-[var(--text-secondary)] text-[0.86rem] font-semibold">Video Trailer (Optional)</h3>
+                    <h3 className="m-0 mb-1 text-[var(--text-secondary)] text-[0.86rem] font-semibold">
+                      Video Trailer (Optional)
+                    </h3>
                     <p className="m-0 mb-3 text-[var(--muted)] text-[0.78rem] min-h-[1.15rem]">
                       Add a trailer video to showcase your course.
                     </p>
@@ -1339,14 +1482,14 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                         <div className="absolute inset-0 flex items-center justify-center gap-2.5 p-3 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity duration-200 backdrop-blur-sm">
                           <button
                             type="button"
-                            className="inline-flex items-center gap-1.5 border border-white/25 rounded-lg px-4 py-2 text-white bg-white/12 text-[0.82rem] font-semibold cursor-pointer backdrop-blur-md transition-[background,border-color,color] duration-150 hover:bg-[var(--accent)] hover:border-[var(--accent)] hover:text-[var(--on-accent,#ffffff)]"
+                            className="inline-flex items-center gap-1.5 h-[32px] border border-white/15 rounded-lg px-3 text-[var(--text)] bg-white/[0.10] backdrop-blur-md text-[0.78rem] font-bold cursor-pointer transition-all duration-150 hover:bg-[var(--accent)] hover:border-transparent hover:text-white"
                             onClick={triggerVideoTrailerUpload}
                           >
                             <PlayCircle size={15} /> Change Video
                           </button>
                           <button
                             type="button"
-                            className="inline-flex items-center gap-1.5 border border-red-500/40 rounded-lg px-3.5 py-2 text-red-400 bg-red-500/[0.18] text-[0.82rem] font-semibold cursor-pointer backdrop-blur-md transition-[background,border-color,color] duration-150 hover:bg-red-500 hover:border-red-500 hover:text-white"
+                            className="inline-flex items-center gap-1.5 h-[32px] border border-red-500/35 rounded-lg px-2.5 text-red-300 bg-red-500/[0.16] backdrop-blur-md text-[0.78rem] font-bold cursor-pointer transition-all duration-150 hover:bg-red-500 hover:border-red-500 hover:text-white"
                             onClick={handleRemoveVideoTrailer}
                             title="Remove Video Trailer"
                           >
@@ -1356,28 +1499,32 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       </div>
                     ) : (
                       <div className="relative flex flex-col items-center justify-center aspect-video w-full min-h-[175px] box-border border border-dashed border-white/[0.12] rounded-xl p-4 bg-black/15 text-center overflow-hidden transition-[border-color,background-color] duration-180 ease-out">
-                        <div className="mb-2 text-[var(--accent)]">
-                          <PlayCircle size={32} weight="light" />
+                        <div className="mb-2 text-[var(--muted)]">
+                          <PlayCircle size={30} weight="light" />
                         </div>
                         <div className="flex items-center justify-center gap-2.5 flex-wrap">
                           <button
                             type="button"
-                            className="inline-flex items-center gap-1.5 border border-white/[0.12] rounded-lg px-4 py-2 text-[var(--text)] bg-white/[0.05] text-[0.82rem] font-semibold cursor-pointer transition-[background,border-color] duration-150 hover:bg-white/10 hover:border-white/20"
+                            style={{ fontSize: "0.80rem", fontWeight: 700, height: "34px", borderRadius: "8px", gap: "6px", paddingLeft: "16px", paddingRight: "16px" }}
+                            className="inline-flex items-center justify-center border-none text-[var(--on-accent,#ffffff)] bg-[var(--accent)] cursor-pointer shadow-[0_3px_10px_var(--accent-shadow)] transition-all duration-150 ease-out hover:bg-[var(--accent-hover,var(--accent))] hover:shadow-[0_4px_14px_var(--accent-shadow)]"
                             onClick={triggerVideoTrailerUpload}
                           >
-                            <UploadSimple size={15} weight="bold" /> Upload
+                            <UploadSimple size={15} /> Upload
                           </button>
                           <button
                             type="button"
-                            className="inline-flex items-center gap-1.5 border border-white/[0.12] rounded-lg px-4 py-2 text-[var(--text)] bg-white/[0.05] text-[0.82rem] font-semibold cursor-pointer transition-[background,border-color] duration-150 hover:bg-white/10 hover:border-white/20"
+                            style={{ fontSize: "0.80rem", fontWeight: 500, height: "34px", borderRadius: "8px", gap: "6px", paddingLeft: "14px", paddingRight: "14px" }}
+                            className="inline-flex items-center border border-white/10 text-[var(--text)] bg-white/[0.05] cursor-pointer transition-all duration-150 hover:bg-white/10"
                             onClick={() => {
-                              // Select from media action will be none for now
+                              // Select from media action
                             }}
                           >
-                            Select from Media
+                            <PlayCircle size={15} /> Select from Media
                           </button>
                         </div>
-                        <p className="m-0 mt-2 text-[var(--muted)] text-[0.74rem]">Recommended: 16:9 video</p>
+                        <p className="m-0 mt-2 text-[var(--muted)] text-[0.74rem]">
+                          Recommended: 16:9 video
+                        </p>
                       </div>
                     )}
                   </div>
@@ -1388,7 +1535,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
             {/* Right Column: Live Course Preview */}
             <div className="">
               <section className="rounded-[14px] p-5 bg-[var(--surface)] shadow-[var(--card-shadow)]">
-                <h2 className="m-0 text-[var(--text)] text-[1.1rem] font-[650]">Course Preview</h2>
+                <h2 className="m-0 text-[var(--text)] text-[1.1rem] font-[650]">
+                  Course Preview
+                </h2>
                 <p className="m-0 mt-1 mb-4 text-[var(--muted)] text-[0.8rem]">
                   This is how your course will appear to students.
                 </p>
@@ -1396,17 +1545,17 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                 <div
                   className={`relative aspect-video border border-dashed border-[color-mix(in_srgb,var(--text)_14%,transparent)] rounded-[10px] overflow-hidden bg-[color-mix(in_srgb,var(--canvas)_40%,var(--surface))] transition-[border-color,background-color] duration-180 ease-out ${
                     !thumbnail
-                      ?"is-clickable cursor-pointer hover:border-[var(--accent)] hover:bg-[color-mix(in_srgb,var(--accent)_6%,var(--surface))]"
-                      :""
+                      ? "is-clickable cursor-pointer hover:border-[var(--accent)] hover:bg-[color-mix(in_srgb,var(--accent)_6%,var(--surface))]"
+                      : ""
                   }`}
                   onClick={!thumbnail ? triggerThumbnailUpload : undefined}
-                  title={!thumbnail ?"Click to upload thumbnail" : undefined}
-                  role={!thumbnail ?"button" : undefined}
+                  title={!thumbnail ? "Click to upload thumbnail" : undefined}
+                  role={!thumbnail ? "button" : undefined}
                   tabIndex={!thumbnail ? 0 : undefined}
                   onKeyDown={
                     !thumbnail
                       ? (e) => {
-                          if (e.key ==="Enter" || e.key ==="") {
+                          if (e.key === "Enter" || e.key === "") {
                             triggerThumbnailUpload();
                           }
                         }
@@ -1426,7 +1575,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       <div className="flex items-center justify-center text-[var(--muted)] opacity-60">
                         <ImageIcon size={32} weight="light" />
                       </div>
-                      <span className="text-[var(--muted)] opacity-70">Course thumbnail will appear here</span>
+                      <span className="text-[var(--muted)] opacity-70">
+                        Course thumbnail will appear here
+                      </span>
                       <span className="inline-block mt-0.5 rounded-md px-2 py-0.5 text-[0.72rem] font-semibold text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] transition-colors duration-150">
                         Click to upload
                       </span>
@@ -1436,7 +1587,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                 <div className="mt-4">
                   <h3 className="m-0 mb-2 text-[var(--text)] text-[1.15rem] font-bold leading-[1.3]">
-                    {courseTitle.trim() ? courseTitle :"Course Title"}
+                    {courseTitle.trim() ? courseTitle : "Course Title"}
                   </h3>
 
                   {difficultyLevel && (
@@ -1458,12 +1609,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   </div>
 
                   <div className="mt-3.5 min-w-0 max-w-full overflow-hidden [overflow-wrap:anywhere] break-words">
-                    <h4 className="m-0 mb-1.5 text-[var(--text-secondary)] text-[0.84rem] font-[650]">About this course</h4>
+                    <h4 className="m-0 mb-1.5 text-[var(--text-secondary)] text-[0.84rem] font-[650]">
+                      About this course
+                    </h4>
                     {courseDescription.trim() ? (
                       <RenderMarkdown content={courseDescription} />
                     ) : (
                       <p className="m-0 text-[var(--muted)] text-[0.82rem] leading-normal [overflow-wrap:anywhere] break-words">
-                        This is a short description of your course. It will appear here on the course card.
+                        This is a short description of your course. It will
+                        appear here on the course card.
                       </p>
                     )}
                   </div>
@@ -1471,12 +1625,14 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
               </section>
             </div>
           </div>
-        ) : activeStep ==="curriculum" ? (
+        ) : activeStep === "curriculum" ? (
           <div className="flex flex-col gap-4 w-full">
             {/* Header row */}
             <div className="flex items-center justify-between mb-2 max-[768px]:flex-col max-[768px]:items-start max-[768px]:gap-3">
               <div className="">
-                <h2 className="m-0 text-[var(--text)] text-[1.25rem] font-bold tracking-[-0.015em]">Course Curriculum</h2>
+                <h2 className="m-0 text-[var(--text)] text-[1.25rem] font-bold tracking-[-0.015em]">
+                  Course Curriculum
+                </h2>
                 <p className="m-0 mt-1 text-[var(--muted)] text-[0.85rem]">
                   Organize your course into sections and lessons. You can
                   reorder them anytime.
@@ -1485,10 +1641,11 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
               <div className="flex items-center gap-2.5">
                 <button
                   type="button"
-                  className="inline-flex items-center gap-1.5 border-none rounded-[9px] px-4 py-2 text-[var(--on-accent,#ffffff)] bg-[var(--accent)] text-[0.84rem] font-semibold cursor-pointer transition-colors duration-150 hover:bg-[var(--accent-hover,var(--accent))] max-[768px]:whitespace-nowrap max-[768px]:self-start"
+                  style={{ fontSize: "0.80rem", fontWeight: 700, height: "34px", borderRadius: "8px", gap: "6px", paddingLeft: "16px", paddingRight: "16px" }}
+                  className="inline-flex items-center justify-center border-none text-[var(--on-accent,#ffffff)] bg-[var(--accent)] cursor-pointer shadow-[0_3px_10px_var(--accent-shadow)] transition-all duration-150 ease-out hover:bg-[var(--accent-hover,var(--accent))] hover:shadow-[0_4px_14px_var(--accent-shadow)] max-[768px]:whitespace-nowrap max-[768px]:self-start"
                   onClick={handleAddSection}
                 >
-                  <Plus size={16} weight="bold" /> Add Section
+                  <Plus size={15} weight="bold" /> Add Section
                 </button>
               </div>
             </div>
@@ -1515,11 +1672,13 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       title="Drag to reorder section"
                       onMouseEnter={() => setDragEnabledSectionId(sec.id)}
                       onMouseLeave={() => {
-                        if (draggedSectionIndex === null) setDragEnabledSectionId(null);
+                        if (draggedSectionIndex === null)
+                          setDragEnabledSectionId(null);
                       }}
                       onMouseDown={() => setDragEnabledSectionId(sec.id)}
                       onMouseUp={() => {
-                        if (draggedSectionIndex === null) setDragEnabledSectionId(null);
+                        if (draggedSectionIndex === null)
+                          setDragEnabledSectionId(null);
                       }}
                       onClick={(e) => e.stopPropagation()}
                     >
@@ -1540,7 +1699,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                             handleSaveSectionTitle(sec.id, e.target.value)
                           }
                           onKeyDown={(e) => {
-                            if (e.key ==="Enter") {
+                            if (e.key === "Enter") {
                               handleSaveSectionTitle(
                                 sec.id,
                                 (e.target as HTMLInputElement).value,
@@ -1560,15 +1719,16 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                           {sec.title}
                         </span>
                       )}
-                      <span className="ml-1 text-[var(--accent)] text-[0.78rem] font-semibold">
-                        {sec.lessons.length} Lessons
+                      <span className="ml-1 text-[var(--muted)] text-[0.76rem] font-normal">
+                        {sec.lessons.length}{" "}
+                        {sec.lessons.length === 1 ? "Lesson" : "Lessons"}
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 max-[768px]:w-full max-[768px]:justify-between max-[768px]:pt-2 max-[768px]:border-t max-[768px]:border-white/[0.06]">
+                  <div className="flex items-center gap-1.5 max-[768px]:w-full max-[768px]:justify-between max-[768px]:pt-2 max-[768px]:border-t max-[768px]:border-white/[0.06]">
                     <button
                       type="button"
-                      className="inline-flex w-[34px] h-[34px] items-center justify-center border border-white/[0.08] rounded-lg text-[var(--muted)] bg-transparent cursor-pointer transition-[color,background] duration-150 hover:text-[var(--text)] hover:bg-white/[0.06]"
+                      className="inline-flex w-7 h-7 items-center justify-center rounded-[8px] border border-[color-mix(in_srgb,var(--surface-strong)60%,transparent)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--surface)48%,transparent)] hover:border-[color-mix(in_srgb,var(--surface-strong)90%,transparent)] transition-[color,background-color,border-color] duration-150 bg-transparent cursor-pointer p-0"
                       aria-label="Edit section title"
                       title="Edit section title"
                       onClick={(e) => {
@@ -1576,33 +1736,33 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                         handleStartEditSectionTitle(sec.id);
                       }}
                     >
-                      <PencilSimple size={16} />
+                      <PencilSimple size={15} />
                     </button>
                     <button
                       type="button"
-                      className="inline-flex w-[34px] h-[34px] items-center justify-center border border-white/[0.08] rounded-lg text-[var(--muted)] bg-transparent cursor-pointer transition-[color,background] duration-150 hover:!text-[#ff5252] hover:!bg-red-500/10"
+                      className="inline-flex w-7 h-7 items-center justify-center rounded-[8px] border border-[color-mix(in_srgb,var(--surface-strong)60%,transparent)] text-[var(--muted)] hover:!text-[#ef4444] hover:!bg-red-500/10 hover:!border-red-500/30 transition-all duration-150 bg-transparent cursor-pointer p-0"
                       aria-label="Delete section"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleDeleteSection(sec.id);
                       }}
                     >
-                      <Trash size={16} />
+                      <Trash size={15} />
                     </button>
                     <button
                       type="button"
-                      className={`inline-flex w-[34px] h-[34px] items-center justify-center border border-white/[0.08] rounded-lg text-[var(--muted)] bg-transparent cursor-pointer transition-[color,background] duration-150 hover:text-[var(--text)] hover:bg-white/[0.06] [&>svg]:transition-transform [&>svg]:duration-280 [&>svg]:ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                        sec.isExpanded ?"is-expanded [&>svg]:rotate-180" :""
+                      className={`inline-flex w-7 h-7 items-center justify-center rounded-[8px] border border-[color-mix(in_srgb,var(--surface-strong)60%,transparent)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--surface)48%,transparent)] hover:border-[color-mix(in_srgb,var(--surface-strong)90%,transparent)] transition-all duration-150 bg-transparent cursor-pointer p-0 [&>svg]:transition-transform [&>svg]:duration-200 ${
+                        sec.isExpanded ? "is-expanded [&>svg]:rotate-180" : ""
                       }`}
                       aria-label={
-                        sec.isExpanded ?"Collapse section" :"Expand section"
+                        sec.isExpanded ? "Collapse section" : "Expand section"
                       }
                       onClick={(e) => {
                         e.stopPropagation();
                         handleToggleSectionExpand(sec.id);
                       }}
                     >
-                      <CaretDown size={16} weight="bold" />
+                      <CaretDown size={15} />
                     </button>
                   </div>
                 </div>
@@ -1610,12 +1770,16 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                 {/* Section Body with CSS expand transition */}
                 <div
                   className={`grid transition-[grid-template-rows] duration-280 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                    sec.isExpanded ?"is-open grid-rows-[1fr]" :"grid-rows-[0fr]"
+                    sec.isExpanded
+                      ? "is-open grid-rows-[1fr]"
+                      : "grid-rows-[0fr]"
                   }`}
                 >
                   <div
                     className={`min-h-0 overflow-hidden border-t border-transparent transition-[padding,border-color] duration-280 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                      sec.isExpanded ?"px-4 pt-3 pb-4 border-t-white/[0.05]" :"px-4 py-0"
+                      sec.isExpanded
+                        ? "px-4 pt-3 pb-4 border-t-white/[0.05]"
+                        : "px-4 py-0"
                     }`}
                   >
                     <div className="flex flex-col gap-2.5">
@@ -1644,63 +1808,70 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                               <span
                                 className="flex items-center justify-center text-[var(--muted)] cursor-grab opacity-60 transition-opacity duration-150 hover:opacity-100"
                                 title="Drag to reorder lesson"
-                                onMouseEnter={() => setDragEnabledLessonId(les.id)}
+                                onMouseEnter={() =>
+                                  setDragEnabledLessonId(les.id)
+                                }
                                 onMouseLeave={() => {
-                                  if (!draggedLessonState) setDragEnabledLessonId(null);
+                                  if (!draggedLessonState)
+                                    setDragEnabledLessonId(null);
                                 }}
-                                onMouseDown={() => setDragEnabledLessonId(les.id)}
+                                onMouseDown={() =>
+                                  setDragEnabledLessonId(les.id)
+                                }
                                 onMouseUp={() => {
-                                  if (!draggedLessonState) setDragEnabledLessonId(null);
+                                  if (!draggedLessonState)
+                                    setDragEnabledLessonId(null);
                                 }}
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <DotsSixVertical size={18} />
                               </span>
-                              <span className="inline-flex min-w-[24px] h-6 items-center justify-center rounded-md text-[var(--text)] bg-white/[0.06] text-[0.8rem] font-bold">
+                              <span className="inline-flex min-w-[22px] h-[22px] items-center justify-center rounded text-[var(--muted)] bg-white/[0.04] text-[0.72rem] font-medium">
                                 {lesIndex + 1}
                               </span>
                               <span className="text-[var(--text)] text-[0.88rem] font-semibold max-[768px]:flex-1 max-[768px]:min-w-0 max-[768px]:break-words">
                                 {les.title}
                               </span>
                             </div>
-                            <div className="flex items-center gap-2.5 max-[768px]:w-full max-[768px]:justify-between max-[768px]:pt-2 max-[768px]:border-t max-[768px]:border-white/[0.06]">
-                              {les.contentType ==="video" ? (
-                                <span className="inline-flex items-center gap-1.25 border border-[color-mix(in_srgb,var(--accent)_30%,transparent)] rounded-md px-2 py-0.75 text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] text-[0.74rem] font-semibold">
-                                  <PlayCircle size={14} weight="fill" /> Video
+                            <div className="flex items-center gap-2 max-[768px]:w-full max-[768px]:justify-between max-[768px]:pt-2 max-[768px]:border-t max-[768px]:border-white/[0.06]">
+                              {les.contentType === "video" ? (
+                                <span className="inline-flex items-center gap-1.25 text-[var(--accent-ink,var(--accent))] text-[0.74rem] font-bold px-2 py-0.5 rounded-md bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] border border-[color-mix(in_srgb,var(--accent)_28%,transparent)]">
+                                  <PlayCircle size={13} weight="fill" /> Video
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1.25 border border-purple-500/35 rounded-md px-2 py-0.75 text-purple-300 bg-purple-500/[0.12] text-[0.74rem] font-semibold">
-                                  <FileText size={14} weight="fill" /> Document
-                                  / PDF
+                                <span className="inline-flex items-center gap-1.25 text-[var(--accent-ink,var(--accent))] text-[0.74rem] font-bold px-2 py-0.5 rounded-md bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] border border-[color-mix(in_srgb,var(--accent)_24%,transparent)]">
+                                  <FileText size={13} weight="fill" /> Document
                                 </span>
                               )}
                               <button
                                 type="button"
-                                className="inline-flex w-[34px] h-[34px] items-center justify-center border border-white/[0.08] rounded-lg text-[var(--muted)] bg-transparent cursor-pointer transition-[color,background] duration-150 hover:!text-[#ff5252] hover:!bg-red-500/10"
+                                className="inline-flex w-7 h-7 items-center justify-center rounded-[8px] border border-[color-mix(in_srgb,var(--surface-strong)60%,transparent)] text-[var(--muted)] hover:!text-[#ef4444] hover:!bg-red-500/10 hover:!border-red-500/30 transition-all duration-150 bg-transparent cursor-pointer p-0"
                                 aria-label="Delete lesson"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleDeleteLesson(sec.id, les.id);
                                 }}
                               >
-                                <Trash size={16} />
+                                <Trash size={15} />
                               </button>
                               <button
                                 type="button"
-                                className={`inline-flex w-[34px] h-[34px] items-center justify-center border border-white/[0.08] rounded-lg text-[var(--muted)] bg-transparent cursor-pointer transition-[color,background] duration-150 hover:text-[var(--text)] hover:bg-white/[0.06] [&>svg]:transition-transform [&>svg]:duration-280 [&>svg]:ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                                  les.isExpanded ?"is-expanded [&>svg]:rotate-180" :""
+                                className={`inline-flex w-7 h-7 items-center justify-center rounded-[8px] border border-[color-mix(in_srgb,var(--surface-strong)60%,transparent)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--surface)48%,transparent)] hover:border-[color-mix(in_srgb,var(--surface-strong)90%,transparent)] transition-all duration-150 bg-transparent cursor-pointer p-0 [&>svg]:transition-transform [&>svg]:duration-200 ${
+                                  les.isExpanded
+                                    ? "is-expanded [&>svg]:rotate-180"
+                                    : ""
                                 }`}
                                 aria-label={
                                   les.isExpanded
-                                    ?"Collapse lesson editor"
-                                    :"Expand lesson editor"
+                                    ? "Collapse lesson editor"
+                                    : "Expand lesson editor"
                                 }
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleToggleLessonExpand(sec.id, les.id);
                                 }}
                               >
-                                <CaretDown size={16} weight="bold" />
+                                <CaretDown size={15} />
                               </button>
                             </div>
                           </div>
@@ -1708,14 +1879,18 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                           {/* Expanded Lesson Editor with CSS transition */}
                           <div
                             className={`grid transition-[grid-template-rows] duration-280 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                              les.isExpanded ?"is-open grid-rows-[1fr]" :"grid-rows-[0fr]"
+                              les.isExpanded
+                                ? "is-open grid-rows-[1fr]"
+                                : "grid-rows-[0fr]"
                             }`}
                             draggable={false}
                             onMouseDown={(e) => e.stopPropagation()}
                           >
                             <div
                               className={`min-h-0 overflow-hidden border-t border-transparent bg-black/[0.24] transition-[padding,border-color] duration-280 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                                les.isExpanded ?"px-5 pt-4 pb-5 border-t-white/[0.06] max-[768px]:p-[14px_12px_16px]" :"px-5 py-0 max-[768px]:p-0"
+                                les.isExpanded
+                                  ? "px-5 pt-4 pb-5 border-t-white/[0.06] max-[768px]:p-[14px_12px_16px]"
+                                  : "px-5 py-0 max-[768px]:p-0"
                               }`}
                             >
                               <div className="grid grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-6 max-[1024px]:grid-cols-1 max-[768px]:gap-3.5">
@@ -1723,9 +1898,14 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                 <div className="flex flex-col gap-4.5">
                                   {/* Lesson Title */}
                                   <div className="flex flex-col gap-2 mb-5">
-                                    <label htmlFor={`les-title-${les.id}`} className="text-[var(--text-secondary)] text-[0.84rem] font-semibold">
+                                    <label
+                                      htmlFor={`les-title-${les.id}`}
+                                      className="text-[var(--text-secondary)] text-[0.84rem] font-semibold"
+                                    >
                                       Lesson Title{""}
-                                      <span className="text-[#ff5252] ml-0.5">*</span>
+                                      <span className="text-[#ff5252] ml-0.5">
+                                        *
+                                      </span>
                                     </label>
                                     <div className="relative flex items-center">
                                       <input
@@ -1749,7 +1929,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                                   {/* Lesson Description Rich Editor */}
                                   <div className="flex flex-col gap-2 mb-5">
-                                    <label id={`les-desc-label-${les.id}`} className="text-[var(--text-secondary)] text-[0.84rem] font-semibold">
+                                    <label
+                                      id={`les-desc-label-${les.id}`}
+                                      className="text-[var(--text-secondary)] text-[0.84rem] font-semibold"
+                                    >
                                       Lesson Description
                                     </label>
                                     <RichTextEditor
@@ -1771,23 +1954,27 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                   <div className="flex flex-col gap-2 mb-5">
                                     <label className="text-[var(--text-secondary)] text-[0.84rem] font-semibold">
                                       Content Type{""}
-                                      <span className="text-[#ff5252] ml-0.5">*</span>
+                                      <span className="text-[#ff5252] ml-0.5">
+                                        *
+                                      </span>
                                     </label>
                                     <div className="grid grid-cols-2 gap-3 max-[640px]:grid-cols-1">
                                       <div
                                         className={`relative flex items-center gap-3 border rounded-[10px] px-3.5 py-3 text-left cursor-pointer transition-[border-color,background-color] duration-150 ease-out hover:bg-white/[0.05] ${
-                                          les.contentType ==="video"
-                                            ?"is-selected border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)]"
-                                            :"border-white/10 bg-white/[0.02]"
+                                          les.contentType === "video"
+                                            ? "is-selected border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)]"
+                                            : "border-white/10 bg-white/[0.02]"
                                         }`}
                                         onClick={() =>
                                           handleUpdateLesson(sec.id, les.id, {
-                                            contentType:"video",
+                                            contentType: "video",
                                           })
                                         }
                                       >
-                                        <div className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] ${les.contentType ==="video" ?"border-[var(--accent)]" :"border-[var(--muted)]"}`}>
-                                          {les.contentType ==="video" && (
+                                        <div
+                                          className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] ${les.contentType === "video" ? "border-[var(--accent)]" : "border-[var(--muted)]"}`}
+                                        >
+                                          {les.contentType === "video" && (
                                             <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                                           )}
                                         </div>
@@ -1806,18 +1993,20 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                                       <div
                                         className={`relative flex items-center gap-3 border rounded-[10px] px-3.5 py-3 text-left cursor-pointer transition-[border-color,background-color] duration-150 ease-out hover:bg-white/[0.05] ${
-                                          les.contentType ==="document"
-                                            ?"is-selected border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)]"
-                                            :"border-white/10 bg-white/[0.02]"
+                                          les.contentType === "document"
+                                            ? "is-selected border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)]"
+                                            : "border-white/10 bg-white/[0.02]"
                                         }`}
                                         onClick={() =>
                                           handleUpdateLesson(sec.id, les.id, {
-                                            contentType:"document",
+                                            contentType: "document",
                                           })
                                         }
                                       >
-                                        <div className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] ${les.contentType ==="document" ?"border-[var(--accent)]" :"border-[var(--muted)]"}`}>
-                                          {les.contentType ==="document" && (
+                                        <div
+                                          className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] ${les.contentType === "document" ? "border-[var(--accent)]" : "border-[var(--muted)]"}`}
+                                        >
+                                          {les.contentType === "document" && (
                                             <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                                           )}
                                         </div>
@@ -1839,28 +2028,39 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                   {/* Content Source Controls (Video or Document) */}
                                   <div className="flex flex-col gap-2 mb-5">
                                     <label className="text-[var(--text-secondary)] text-[0.84rem] font-semibold">
-                                      {les.contentType ==="video"
-                                        ?"Video Source"
-                                        :"Document / PDF Source"}{""}
-                                        <span className="text-[#ff5252] ml-0.5">*</span>
+                                      {les.contentType === "video"
+                                        ? "Video Source"
+                                        : "Document / PDF Source"}
+                                      {""}
+                                      <span className="text-[#ff5252] ml-0.5">
+                                        *
+                                      </span>
                                     </label>
-                                    <div className="flex items-center gap-2.5 max-[768px]:w-full max-[768px]:flex max-[768px]:gap-2">
+                                    <div className="flex items-center gap-2 max-[768px]:w-full max-[768px]:flex max-[768px]:gap-2">
                                       <button
                                         type="button"
-                                        className="inline-flex items-center gap-1.5 border-none rounded-lg px-3.5 py-2 text-[var(--on-accent,#ffffff)] bg-[var(--accent)] text-[0.8rem] font-semibold cursor-pointer shadow-[0_2px_8px_var(--accent-shadow)] transition-[background,box-shadow,opacity] duration-150 hover:bg-[var(--accent-hover,var(--accent))] hover:shadow-[0_3px_12px_var(--accent-shadow)] max-[768px]:flex-1 max-[768px]:h-9 max-[768px]:px-2.5 max-[768px]:text-[0.78rem] max-[768px]:justify-center max-[768px]:whitespace-nowrap max-[768px]:box-border"
+                                        style={{ fontSize: "0.80rem", fontWeight: 700, height: "34px", borderRadius: "8px", gap: "6px", paddingLeft: "16px", paddingRight: "16px" }}
+                                        className="inline-flex items-center justify-center border-none text-[var(--on-accent,#ffffff)] bg-[var(--accent)] cursor-pointer shadow-[0_3px_10px_var(--accent-shadow)] transition-all duration-150 ease-out hover:bg-[var(--accent-hover,var(--accent))] hover:shadow-[0_4px_14px_var(--accent-shadow)] max-[768px]:flex-1 max-[768px]:justify-center max-[768px]:whitespace-nowrap"
                                       >
-                                        <UploadSimple size={16} weight="bold" />{""}
+                                        <UploadSimple size={15} />
                                         Upload New
                                       </button>
                                       <button
                                         type="button"
-                                        className="inline-flex items-center gap-1.5 border border-white/[0.12] rounded-lg px-3.5 py-2 text-[var(--text)] bg-white/[0.05] text-[0.8rem] font-semibold cursor-pointer transition-colors duration-150 hover:bg-white/10 max-[768px]:flex-1 max-[768px]:h-9 max-[768px]:px-2.5 max-[768px]:text-[0.78rem] max-[768px]:justify-center max-[768px]:whitespace-nowrap max-[768px]:box-border"
+                                        style={{ fontSize: "0.80rem", fontWeight: 500, height: "34px", borderRadius: "8px", gap: "6px", paddingLeft: "14px", paddingRight: "14px" }}
+                                        className="inline-flex items-center border border-white/10 text-[var(--text)] bg-white/[0.05] cursor-pointer transition-all duration-150 hover:bg-white/10 max-[768px]:flex-1 max-[768px]:justify-center max-[768px]:whitespace-nowrap"
                                       >
-                                        {les.contentType ==="video" ? (
-                                          <PlayCircle size={16} />
+                                        {les.contentType === "video" ? (
+                                          <PlayCircle
+                                            size={15}
+                                            className="text-[var(--text-secondary)]"
+                                          />
                                         ) : (
-                                          <FileText size={16} />
-                                        )}{""}
+                                          <FileText
+                                            size={15}
+                                            className="text-[var(--text-secondary)]"
+                                          />
+                                        )}
                                         Select from Media
                                       </button>
                                     </div>
@@ -1869,11 +2069,14 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                   {/* Lesson Resources Table */}
                                   <div className="flex flex-col gap-2 mb-5">
                                     <div className="flex items-center justify-between mb-2 max-[768px]:flex-col max-[768px]:items-start max-[768px]:gap-2.5">
-                                      <label className="flex items-center gap-1.5 text-[var(--text-secondary)] text-[0.84rem] font-semibold">Lesson Resources</label>
-                                      <div className="flex items-center gap-2.5 max-[768px]:w-full max-[768px]:flex max-[768px]:gap-2">
+                                      <label className="flex items-center gap-1.5 text-[var(--text-secondary)] text-[0.84rem] font-semibold">
+                                        Lesson Resources
+                                      </label>
+                                      <div className="flex items-center gap-2 max-[768px]:w-full max-[768px]:flex max-[768px]:gap-2">
                                         <button
                                           type="button"
-                                          className="inline-flex items-center gap-1.5 border-none rounded-lg px-3.5 py-2 text-[var(--on-accent,#ffffff)] bg-[var(--accent)] text-[0.8rem] font-semibold cursor-pointer shadow-[0_2px_8px_var(--accent-shadow)] transition-[background,box-shadow,opacity] duration-150 hover:bg-[var(--accent-hover,var(--accent))] hover:shadow-[0_3px_12px_var(--accent-shadow)] max-[768px]:flex-1 max-[768px]:h-9 max-[768px]:px-2.5 max-[768px]:text-[0.78rem] max-[768px]:justify-center max-[768px]:whitespace-nowrap max-[768px]:box-border"
+                                          style={{ fontSize: "0.80rem", fontWeight: 700, height: "34px", borderRadius: "8px", gap: "6px", paddingLeft: "16px", paddingRight: "16px" }}
+                                          className="inline-flex items-center justify-center border-none text-[var(--on-accent,#ffffff)] bg-[var(--accent)] cursor-pointer shadow-[0_3px_10px_var(--accent-shadow)] transition-all duration-150 ease-out hover:bg-[var(--accent-hover,var(--accent))] hover:shadow-[0_4px_14px_var(--accent-shadow)] max-[768px]:flex-1 max-[768px]:justify-center max-[768px]:whitespace-nowrap"
                                           onClick={() =>
                                             handleAddLessonResource(
                                               sec.id,
@@ -1881,15 +2084,13 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                             )
                                           }
                                         >
-                                          <UploadSimple
-                                            size={16}
-                                            weight="bold"
-                                          />{""}
+                                          <UploadSimple size={15} />
                                           Upload New
                                         </button>
                                         <button
                                           type="button"
-                                          className="inline-flex items-center gap-1.5 border border-white/[0.12] rounded-lg px-3.5 py-2 text-[var(--text)] bg-white/[0.05] text-[0.8rem] font-semibold cursor-pointer transition-colors duration-150 hover:bg-white/10 max-[768px]:flex-1 max-[768px]:h-9 max-[768px]:px-2.5 max-[768px]:text-[0.78rem] max-[768px]:justify-center max-[768px]:whitespace-nowrap max-[768px]:box-border"
+                                          style={{ fontSize: "0.80rem", fontWeight: 500, height: "34px", borderRadius: "8px", gap: "6px", paddingLeft: "14px", paddingRight: "14px" }}
+                                          className="inline-flex items-center border border-white/10 text-[var(--text)] bg-white/[0.05] cursor-pointer transition-all duration-150 hover:bg-white/10 max-[768px]:flex-1 max-[768px]:justify-center max-[768px]:whitespace-nowrap"
                                           onClick={() =>
                                             handleAddLessonResource(
                                               sec.id,
@@ -1897,56 +2098,127 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                             )
                                           }
                                         >
-                                          <PlayCircle size={16} /> Select from
-                                          Media
+                                          <PlayCircle
+                                            size={15}
+                                            className="text-[var(--text-secondary)]"
+                                          />
+                                          Select from Media
                                         </button>
                                       </div>
                                     </div>
 
                                     {les.resources.length > 0 ? (
-                                      <table className="w-full border border-white/[0.12] rounded-[10px] border-separate border-spacing-0 overflow-hidden bg-black/10 max-[768px]:block max-[768px]:w-full max-[768px]:overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden max-[768px]:rounded-lg">
-                                        <thead>
-                                          <tr>
-                                            <th className="px-3.5 py-2 text-[var(--muted)] bg-white/[0.03] text-[0.74rem] font-semibold text-left border-b border-white/[0.08] max-[768px]:p-[8px_10px] max-[768px]:text-[0.76rem] max-[768px]:whitespace-nowrap">File Name</th>
-                                            <th className="px-3.5 py-2 text-[var(--muted)] bg-white/[0.03] text-[0.74rem] font-semibold text-left border-b border-white/[0.08] max-[768px]:p-[8px_10px] max-[768px]:text-[0.76rem] max-[768px]:whitespace-nowrap">Type</th>
-                                            <th className="px-3.5 py-2 text-[var(--muted)] bg-white/[0.03] text-[0.74rem] font-semibold text-left border-b border-white/[0.08] max-[768px]:p-[8px_10px] max-[768px]:text-[0.76rem] max-[768px]:whitespace-nowrap">Size</th>
-                                            <th className="px-3.5 py-2 text-[var(--muted)] bg-white/[0.03] text-[0.74rem] font-semibold text-left border-b border-white/[0.08] max-[768px]:p-[8px_10px] max-[768px]:text-[0.76rem] max-[768px]:whitespace-nowrap">Actions</th>
-                                          </tr>
-                                        </thead>
-                                        <tbody>
+                                      <div className="w-full flex flex-col gap-2">
+                                        {/* Mobile view: Resource Card List (no side-scroll needed, delete icon always visible) */}
+                                        <div className="flex flex-col gap-2 sm:hidden">
                                           {les.resources.map((res) => (
-                                            <tr key={res.id}>
-                                              <td className="px-3.5 py-2.5 text-[var(--text)] text-[0.8rem] border-b border-white/[0.06] last:border-b-0 max-[768px]:p-[8px_10px] max-[768px]:text-[0.76rem] max-[768px]:whitespace-nowrap">
-                                                <div className="flex items-center gap-2 font-semibold [&>svg]:text-red-500">
-                                                  <FileText
-                                                    size={16}
-                                                    weight="fill"
-                                                  />
-                                                  <span>{res.name}</span>
+                                            <div
+                                              key={res.id}
+                                              className="flex items-center justify-between gap-2.5 border border-white/10 rounded-xl px-3 py-2.5 bg-black/25"
+                                            >
+                                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                                <FileText
+                                                  size={18}
+                                                  weight="fill"
+                                                  className="text-red-400 shrink-0"
+                                                />
+                                                <div className="flex flex-col min-w-0 flex-1">
+                                                  <span className="text-[var(--text)] text-[0.82rem] font-semibold truncate">
+                                                    {res.name}
+                                                  </span>
+                                                  <span className="text-[var(--muted)] text-[0.72rem] flex items-center gap-1.5 mt-0.5">
+                                                    <span className="uppercase text-[var(--text-secondary)] font-bold">{res.type}</span>
+                                                    <span>•</span>
+                                                    <span>{res.size}</span>
+                                                  </span>
                                                 </div>
-                                              </td>
-                                              <td className="px-3.5 py-2.5 text-[var(--text)] text-[0.8rem] border-b border-white/[0.06] last:border-b-0 max-[768px]:p-[8px_10px] max-[768px]:text-[0.76rem] max-[768px]:whitespace-nowrap">{res.type}</td>
-                                              <td className="px-3.5 py-2.5 text-[var(--text)] text-[0.8rem] border-b border-white/[0.06] last:border-b-0 max-[768px]:p-[8px_10px] max-[768px]:text-[0.76rem] max-[768px]:whitespace-nowrap">{res.size}</td>
-                                              <td className="px-3.5 py-2.5 text-[var(--text)] text-[0.8rem] border-b border-white/[0.06] last:border-b-0 max-[768px]:p-[8px_10px] max-[768px]:text-[0.76rem] max-[768px]:whitespace-nowrap">
-                                                <button
-                                                  type="button"
-                                                  className="inline-flex w-[34px] h-[34px] items-center justify-center border border-white/[0.08] rounded-lg text-[var(--muted)] bg-transparent cursor-pointer transition-[color,background] duration-150 hover:!text-[#ff5252] hover:!bg-red-500/10"
-                                                  onClick={() =>
-                                                    handleRemoveLessonResource(
-                                                      sec.id,
-                                                      les.id,
-                                                      res.id,
-                                                    )
-                                                  }
-                                                  aria-label="Remove resource"
-                                                >
-                                                  <X size={14} />
-                                                </button>
-                                              </td>
-                                            </tr>
+                                              </div>
+                                              <button
+                                                type="button"
+                                                className="inline-flex w-7 h-7 shrink-0 items-center justify-center rounded-lg text-[var(--muted)] hover:text-red-400 hover:bg-red-500/10 transition-colors border-0 bg-transparent cursor-pointer p-0"
+                                                onClick={() =>
+                                                  handleRemoveLessonResource(
+                                                    sec.id,
+                                                    les.id,
+                                                    res.id,
+                                                  )
+                                                }
+                                                aria-label="Remove resource"
+                                                title="Remove resource"
+                                              >
+                                                <X size={15} weight="bold" />
+                                              </button>
+                                            </div>
                                           ))}
-                                        </tbody>
-                                      </table>
+                                        </div>
+
+                                        {/* Desktop / Tablet view: Structured Data Table */}
+                                        <div className="hidden sm:block w-full border border-white/10 rounded-xl overflow-hidden bg-black/20">
+                                          <table className="w-full border-collapse text-left">
+                                            <thead>
+                                              <tr className="bg-white/[0.04] border-b border-white/10">
+                                                <th className="px-4 py-2.5 text-[var(--muted)] text-[0.74rem] font-bold tracking-wider uppercase">
+                                                  File Name
+                                                </th>
+                                                <th className="px-4 py-2.5 text-[var(--muted)] text-[0.74rem] font-bold tracking-wider uppercase">
+                                                  Type
+                                                </th>
+                                                <th className="px-4 py-2.5 text-[var(--muted)] text-[0.74rem] font-bold tracking-wider uppercase">
+                                                  Size
+                                                </th>
+                                                <th className="px-4 py-2.5 text-[var(--muted)] text-[0.74rem] font-bold tracking-wider uppercase text-right pr-4">
+                                                  Actions
+                                                </th>
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {les.resources.map((res) => (
+                                                <tr
+                                                  key={res.id}
+                                                  className="border-b border-white/[0.06] last:border-b-0 hover:bg-white/[0.02] transition-colors"
+                                                >
+                                                  <td className="px-4 py-3 text-[var(--text)] text-[0.82rem] font-semibold">
+                                                    <div className="flex items-center gap-2.5">
+                                                      <FileText
+                                                        size={16}
+                                                        weight="fill"
+                                                        className="text-red-400 shrink-0"
+                                                      />
+                                                      <span>{res.name}</span>
+                                                    </div>
+                                                  </td>
+                                                  <td className="px-4 py-3 text-[var(--text-secondary)] text-[0.80rem] font-medium">
+                                                    {res.type}
+                                                  </td>
+                                                  <td className="px-4 py-3 text-[var(--muted)] text-[0.80rem]">
+                                                    {res.size}
+                                                  </td>
+                                                  <td className="px-4 py-3 text-right pr-4">
+                                                    <button
+                                                      type="button"
+                                                      className="inline-flex w-7 h-7 items-center justify-center rounded-lg text-[var(--muted)] hover:text-red-400 hover:bg-red-500/10 transition-colors border-0 bg-transparent cursor-pointer p-0"
+                                                      onClick={() =>
+                                                        handleRemoveLessonResource(
+                                                          sec.id,
+                                                          les.id,
+                                                          res.id,
+                                                        )
+                                                      }
+                                                      aria-label="Remove resource"
+                                                      title="Remove resource"
+                                                    >
+                                                      <X
+                                                        size={14}
+                                                        weight="bold"
+                                                      />
+                                                    </button>
+                                                  </td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      </div>
                                     ) : (
                                       <p className="m-0 mb-3 text-[var(--muted)] text-[0.78rem] min-h-[1.15rem]">
                                         No resources added to this lesson yet.
@@ -1954,15 +2226,16 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                     )}
                                   </div>
 
-                                  <div className="flex justify-end mt-4">
+                                  <div className="flex justify-end mt-4 pt-3 border-t border-white/[0.06]">
                                     <button
                                       type="button"
-                                      className="border-none bg-transparent text-[var(--accent)] text-[0.84rem] font-semibold cursor-pointer hover:underline"
+                                      style={{ fontSize: "0.80rem", fontWeight: 700, height: "34px", borderRadius: "8px", gap: "6px", paddingLeft: "16px", paddingRight: "16px" }}
+                                      className="inline-flex items-center justify-center border border-white/10 text-[var(--text)] bg-white/[0.05] cursor-pointer transition-all duration-150 hover:bg-white/10 disabled:opacity-60"
                                       onClick={() =>
                                         handleSaveLesson(sec.id, les.id)
                                       }
                                     >
-                                      Save Lesson
+                                      <FloppyDisk size={15} /> Save Lesson
                                     </button>
                                   </div>
                                 </div>
@@ -1977,10 +2250,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     <div className="mt-3.5">
                       <button
                         type="button"
-                        className="inline-flex items-center gap-1.5 border-none bg-transparent text-[var(--muted)] text-[0.84rem] font-semibold cursor-pointer transition-colors duration-150 hover:text-[var(--text)]"
+                        className="inline-flex items-center gap-1.5 text-[var(--muted)] hover:text-white text-[0.82rem] font-medium border-0 bg-transparent cursor-pointer p-0 transition-colors"
                         onClick={() => handleAddLesson(sec.id)}
                       >
-                        <Plus size={16} weight="bold" /> Add Lesson
+                        <Plus size={16} /> Add Lesson
                       </button>
                     </div>
                   </div>
@@ -1988,36 +2261,46 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
               </div>
             ))}
           </div>
-        ) : activeStep ==="access-rules" ? (
+        ) : activeStep === "access-rules" ? (
           <div className="flex w-full flex-col gap-5">
             {/* Top Grid: 1. Who can access & 2. Access duration */}
             <div className="grid grid-cols-2 gap-5 max-[768px]:grid-cols-1 max-[768px]:gap-3.5">
               {/* Card 1: Who can access this course? */}
               <div className="flex flex-col border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
                 <div className="mb-4.5">
-                  <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">1. Who can access this course?</h3>
-                  <p className="m-0 text-[var(--muted)] text-[0.83rem]">Choose who is allowed to access this course.</p>
+                  <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">
+                    1. Who can access this course?
+                  </h3>
+                  <p className="m-0 text-[var(--muted)] text-[0.83rem]">
+                    Choose who is allowed to access this course.
+                  </p>
                 </div>
 
                 <div className="flex flex-col gap-3">
                   {/* Radio option: Everyone */}
                   <label
                     className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
-                      accessRules.accessType ==="everyone"
-                        ?"is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
-                        :"border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
+                      accessRules.accessType === "everyone"
+                        ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
+                        : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
                     }`}
                     onClick={() => handleAccessTypeChange("everyone")}
                   >
-                    <div className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
-                      accessRules.accessType ==="everyone" ?"border-[var(--accent)]" :"border-[var(--muted)]"
-                    }`}>
-                      {accessRules.accessType ==="everyone" && (
+                    <div
+                      className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
+                        accessRules.accessType === "everyone"
+                          ? "border-[var(--accent)]"
+                          : "border-[var(--muted)]"
+                      }`}
+                    >
+                      {accessRules.accessType === "everyone" && (
                         <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                       )}
                     </div>
                     <div className="flex flex-1 flex-col gap-0.75">
-                      <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">Everyone</strong>
+                      <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">
+                        Everyone
+                      </strong>
                       <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
                         Anyone with access to the platform can access this
                         course.
@@ -2028,21 +2311,27 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   {/* Radio option: Restricted access */}
                   <label
                     className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
-                      accessRules.accessType ==="restricted"
-                        ?"is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
-                        :"border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
+                      accessRules.accessType === "restricted"
+                        ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
+                        : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
                     }`}
                     onClick={() => handleAccessTypeChange("restricted")}
                   >
-                    <div className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
-                      accessRules.accessType ==="restricted" ?"border-[var(--accent)]" :"border-[var(--muted)]"
-                    }`}>
-                      {accessRules.accessType ==="restricted" && (
+                    <div
+                      className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
+                        accessRules.accessType === "restricted"
+                          ? "border-[var(--accent)]"
+                          : "border-[var(--muted)]"
+                      }`}
+                    >
+                      {accessRules.accessType === "restricted" && (
                         <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                       )}
                     </div>
                     <div className="flex flex-1 flex-col gap-0.75">
-                      <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">Restricted access</strong>
+                      <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">
+                        Restricted access
+                      </strong>
                       <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
                         Only users who meet the selected requirements can access
                         this course.
@@ -2052,11 +2341,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                 </div>
 
                 {/* Conditional Requirements Box */}
-                {accessRules.accessType ==="restricted" && (
+                {accessRules.accessType === "restricted" && (
                   <div className="flex flex-col gap-3 mt-3.5 border border-white/[0.06] rounded-[10px] p-3.5 bg-black/[0.16]">
                     <div className="flex flex-col gap-0.5">
-                      <label className="block mb-0.5 text-[var(--text)] text-[0.84rem] font-bold">Access requirement</label>
-                      <p className="m-0 text-[var(--muted)] text-[0.78rem]">Users must have access to:</p>
+                      <label className="block mb-0.5 text-[var(--text)] text-[0.84rem] font-bold">
+                        Access requirement
+                      </label>
+                      <p className="m-0 text-[var(--muted)] text-[0.78rem]">
+                        Users must have access to:
+                      </p>
                     </div>
 
                     <div className="flex flex-col gap-2">
@@ -2072,17 +2365,17 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                               c.label,
                             ])}
                             ariaLabel="Select prerequisite course requirement"
-                            triggerClassName="flex-1 min-w-0"
+                            triggerClassName="!w-full !h-10 !border !border-white/10 !rounded-lg !px-3.5 !py-0 !text-[var(--text)] !bg-black/25 !text-[0.84rem] font-semibold hover:!border-white/20 transition-all flex-1 min-w-0"
                           />
                           {accessRules.requirements.length > 1 && (
                             <button
                               type="button"
-                              className="inline-flex w-[34px] h-[34px] items-center justify-center border border-white/[0.08] rounded-lg text-[var(--muted)] bg-transparent cursor-pointer transition-[color,background] duration-150 hover:!text-[#ff5252] hover:!bg-red-500/10"
+                              className="inline-flex w-7 h-7 items-center justify-center rounded-[8px] border border-[color-mix(in_srgb,var(--surface-strong)60%,transparent)] text-[var(--muted)] hover:!text-[#ef4444] hover:!bg-red-500/10 hover:!border-red-500/30 transition-all duration-150 bg-transparent cursor-pointer p-0"
                               aria-label="Remove requirement"
                               title="Remove requirement"
                               onClick={() => handleRemoveRequirement(req.id)}
                             >
-                              <Trash size={16} />
+                              <Trash size={15} />
                             </button>
                           )}
                         </div>
@@ -2091,10 +2384,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                     <button
                       type="button"
-                      className="inline-flex self-start items-center gap-1.5 mt-1 border-none rounded-md px-2.5 py-1.5 text-[var(--accent)] bg-transparent text-[0.82rem] font-semibold cursor-pointer transition-colors duration-150 hover:bg-[color-mix(in_srgb,var(--accent)_12%,transparent)]"
+                      className="inline-flex self-start items-center gap-1.5 text-[var(--muted)] hover:text-white text-[0.82rem] font-medium border-0 bg-transparent cursor-pointer p-0 mt-1 transition-colors"
                       onClick={handleAddRequirement}
                     >
-                      <Plus size={15} weight="bold" /> Add another requirement
+                      <Plus size={15} /> Add another requirement
                     </button>
                   </div>
                 )}
@@ -2103,64 +2396,82 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
               {/* Card 2: Access duration */}
               <div className="flex flex-col border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
                 <div className="mb-4.5">
-                  <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">2. Access duration</h3>
-                  <p className="m-0 text-[var(--muted)] text-[0.83rem]">Set how long learners can access this course.</p>
+                  <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">
+                    2. Access duration
+                  </h3>
+                  <p className="m-0 text-[var(--muted)] text-[0.83rem]">
+                    Set how long learners can access this course.
+                  </p>
                 </div>
 
                 <div className="flex flex-col gap-3">
                   {/* Option 1: Lifetime access */}
                   <div
                     className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
-                      accessRules.durationMode ==="lifetime"
-                        ?"is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
-                        :"border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
+                      accessRules.durationMode === "lifetime"
+                        ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
+                        : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
                     }`}
                     onClick={() => handleDurationModeChange("lifetime")}
                   >
-                    <div className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
-                      accessRules.durationMode ==="lifetime" ?"border-[var(--accent)]" :"border-[var(--muted)]"
-                    }`}>
-                      {accessRules.durationMode ==="lifetime" && (
+                    <div
+                      className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
+                        accessRules.durationMode === "lifetime"
+                          ? "border-[var(--accent)]"
+                          : "border-[var(--muted)]"
+                      }`}
+                    >
+                      {accessRules.durationMode === "lifetime" && (
                         <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                       )}
                     </div>
                     <div className="flex flex-1 flex-col gap-0.75">
-                      <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">Lifetime access</strong>
-                      <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">Learners can access this course forever.</p>
+                      <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">
+                        Lifetime access
+                      </strong>
+                      <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
+                        Learners can access this course forever.
+                      </p>
                     </div>
                   </div>
 
                   {/* Option 2: Fixed duration */}
                   <div
                     className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
-                      accessRules.durationMode ==="fixed"
-                        ?"is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
-                        :"border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
+                      accessRules.durationMode === "fixed"
+                        ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
+                        : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
                     }`}
                     onClick={() => handleDurationModeChange("fixed")}
                   >
-                    <div className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
-                      accessRules.durationMode ==="fixed" ?"border-[var(--accent)]" :"border-[var(--muted)]"
-                    }`}>
-                      {accessRules.durationMode ==="fixed" && (
+                    <div
+                      className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
+                        accessRules.durationMode === "fixed"
+                          ? "border-[var(--accent)]"
+                          : "border-[var(--muted)]"
+                      }`}
+                    >
+                      {accessRules.durationMode === "fixed" && (
                         <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                       )}
                     </div>
                     <div className="flex flex-1 flex-col gap-0.75">
-                      <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">Fixed duration</strong>
+                      <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">
+                        Fixed duration
+                      </strong>
                       <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
                         Set a duration for how long learners can access this
                         course.
                       </p>
 
-                      {accessRules.durationMode ==="fixed" && (
+                      {accessRules.durationMode === "fixed" && (
                         <div
-                          className="flex items-center gap-2.5 mt-2.5"
+                          className="flex items-center gap-2.5 mt-3"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <input
                             type="number"
-                            className="w-[76px] border border-white/[0.12] rounded-lg px-3 py-1.75 text-[var(--text)] bg-black/25 text-[0.86rem] font-semibold outline-none transition-[border-color] duration-150 focus:border-[var(--accent)]"
+                            className="w-[80px] h-9 border border-white/10 rounded-lg px-3 py-0 text-[var(--text)] bg-black/25 text-[0.84rem] font-semibold outline-none transition-[border-color] duration-150 hover:border-white/20 focus:border-[var(--accent)] box-border text-center"
                             min={1}
                             value={accessRules.fixedDurationValue}
                             onChange={(e) =>
@@ -2175,13 +2486,13 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                               handleFixedDurationUnitChange(val as DurationUnit)
                             }
                             options={[
-                              ["Days","Days"],
-                              ["Weeks","Weeks"],
-                              ["Months","Months"],
-                              ["Years","Years"],
+                              ["Days", "Days"],
+                              ["Weeks", "Weeks"],
+                              ["Months", "Months"],
+                              ["Years", "Years"],
                             ]}
                             ariaLabel="Select duration unit"
-                            triggerClassName="min-w-[120px]"
+                            triggerClassName="!h-9 !min-w-[124px] !border !border-white/10 !rounded-lg !px-3.5 !py-0 !text-[var(--text)] !bg-black/25 !text-[0.84rem] font-semibold hover:!border-white/20 transition-all flex items-center justify-between"
                           />
                         </div>
                       )}
@@ -2191,30 +2502,40 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   {/* Option 3: Custom expiration */}
                   <div
                     className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
-                      accessRules.durationMode ==="custom"
-                        ?"is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
-                        :"border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
+                      accessRules.durationMode === "custom"
+                        ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
+                        : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
                     }`}
                     onClick={() => handleDurationModeChange("custom")}
                   >
-                    <div className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
-                      accessRules.durationMode ==="custom" ?"border-[var(--accent)]" :"border-[var(--muted)]"
-                    }`}>
-                      {accessRules.durationMode ==="custom" && (
+                    <div
+                      className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
+                        accessRules.durationMode === "custom"
+                          ? "border-[var(--accent)]"
+                          : "border-[var(--muted)]"
+                      }`}
+                    >
+                      {accessRules.durationMode === "custom" && (
                         <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                       )}
                     </div>
                     <div className="flex flex-1 flex-col gap-0.75">
-                      <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">Custom expiration</strong>
-                      <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">Set a specific start and end date for access.</p>
+                      <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">
+                        Custom expiration
+                      </strong>
+                      <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
+                        Set a specific start and end date for access.
+                      </p>
 
-                      {accessRules.durationMode ==="custom" && (
+                      {accessRules.durationMode === "custom" && (
                         <div
                           className="flex items-center gap-3.5 mt-3 max-[768px]:flex-col max-[768px]:items-stretch"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <div className="flex flex-col gap-1">
-                            <label className="text-[var(--muted)] text-[0.76rem] font-semibold">Start date</label>
+                            <label className="text-[var(--muted)] text-[0.76rem] font-semibold">
+                              Start date
+                            </label>
                             <input
                               type="date"
                               className="border border-white/[0.12] rounded-lg px-3 py-1.75 text-[var(--text)] bg-black/25 font-inherit text-[0.84rem] font-medium outline-none transition-[border-color] duration-150 focus:border-[var(--accent)] [color-scheme:dark]"
@@ -2230,7 +2551,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                           </div>
 
                           <div className="flex flex-col gap-1">
-                            <label className="text-[var(--muted)] text-[0.76rem] font-semibold">End date</label>
+                            <label className="text-[var(--muted)] text-[0.76rem] font-semibold">
+                              End date
+                            </label>
                             <input
                               type="date"
                               className="border border-white/[0.12] rounded-lg px-3 py-1.75 text-[var(--text)] bg-black/25 font-inherit text-[0.84rem] font-medium outline-none transition-[border-color] duration-150 focus:border-[var(--accent)] [color-scheme:dark]"
@@ -2251,8 +2574,12 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
             {/* Bottom Card: 3. Learner interactions */}
             <div className="flex flex-col border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)] w-full">
               <div className="mb-4.5">
-                <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">3. Learner interactions</h3>
-                <p className="m-0 text-[var(--muted)] text-[0.83rem]">Manage how learners can interact within this course.</p>
+                <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">
+                  3. Learner interactions
+                </h3>
+                <p className="m-0 text-[var(--muted)] text-[0.83rem]">
+                  Manage how learners can interact within this course.
+                </p>
               </div>
 
               <div className="flex flex-col gap-3">
@@ -2263,23 +2590,31 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       <Question size={20} weight="bold" />
                     </div>
                     <div>
-                      <strong className="block mb-0.5 text-[var(--text)] text-[0.9rem] font-[650]">Q&A</strong>
-                      <p className="m-0 text-[var(--muted)] text-[0.8rem]">Allow learners to ask questions about lessons.</p>
+                      <strong className="block mb-0.5 text-[var(--text)] text-[0.9rem] font-[650]">
+                        Q&A
+                      </strong>
+                      <p className="m-0 text-[var(--muted)] text-[0.8rem]">
+                        Allow learners to ask questions about lessons.
+                      </p>
                     </div>
                   </div>
                   <button
                     type="button"
                     className={`relative w-11 h-6 shrink-0 border-none rounded-full p-0.5 cursor-pointer transition-colors duration-200 ${
-                      accessRules.enableQA ?"is-active bg-[var(--accent)]" :"bg-white/16"
+                      accessRules.enableQA
+                        ? "is-active bg-[var(--accent)]"
+                        : "bg-white/16"
                     }`}
                     onClick={handleToggleQA}
                     role="switch"
                     aria-checked={accessRules.enableQA}
                     aria-label="Toggle Q&A"
                   >
-                    <div className={`w-5 h-5 rounded-full bg-white shadow-[0_2px_5px_rgba(0,0,0,0.3)] transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                      accessRules.enableQA ?"translate-x-5" :"translate-x-0"
-                    }`} />
+                    <div
+                      className={`w-5 h-5 rounded-full bg-white shadow-[0_2px_5px_rgba(0,0,0,0.3)] transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                        accessRules.enableQA ? "translate-x-5" : "translate-x-0"
+                      }`}
+                    />
                   </button>
                 </div>
 
@@ -2290,58 +2625,78 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       <ChatCircleText size={20} weight="fill" />
                     </div>
                     <div>
-                      <strong className="block mb-0.5 text-[var(--text)] text-[0.9rem] font-[650]">Comments</strong>
-                      <p className="m-0 text-[var(--muted)] text-[0.8rem]">Allow learners to comment on course content.</p>
+                      <strong className="block mb-0.5 text-[var(--text)] text-[0.9rem] font-[650]">
+                        Comments
+                      </strong>
+                      <p className="m-0 text-[var(--muted)] text-[0.8rem]">
+                        Allow learners to comment on course content.
+                      </p>
                     </div>
                   </div>
                   <button
                     type="button"
                     className={`relative w-11 h-6 shrink-0 border-none rounded-full p-0.5 cursor-pointer transition-colors duration-200 ${
-                      accessRules.enableComments ?"is-active" :""
+                      accessRules.enableComments
+                        ? "is-active bg-[var(--accent)]"
+                        : "bg-white/16"
                     }`}
                     onClick={handleToggleComments}
                     role="switch"
                     aria-checked={accessRules.enableComments}
                     aria-label="Toggle Comments"
                   >
-                    <div className={`w-5 h-5 rounded-full bg-white shadow-[0_2px_5px_rgba(0,0,0,0.3)] transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                      accessRules.enableComments ?"translate-x-5" :"translate-x-0"
-                    }`} />
+                    <div
+                      className={`w-5 h-5 rounded-full bg-white shadow-[0_2px_5px_rgba(0,0,0,0.3)] transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                        accessRules.enableComments
+                          ? "translate-x-5"
+                          : "translate-x-0"
+                      }`}
+                    />
                   </button>
                 </div>
               </div>
             </div>
           </div>
-        ) : activeStep ==="pricing" ? (
+        ) : activeStep === "pricing" ? (
           <div className="flex w-full flex-col gap-5">
             {/* Top 2-Column Grid: 1. Course pricing & 2. Price details */}
             <div className="grid grid-cols-2 gap-5 max-[768px]:grid-cols-1 max-[768px]:gap-3.5">
               {/* Card 1: Course pricing */}
               <div className="flex flex-col border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)] transition-opacity duration-200">
                 <div className="mb-4.5">
-                  <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">1. Course pricing</h3>
-                  <p className="m-0 text-[var(--muted)] text-[0.83rem]">Choose how you want to sell this course.</p>
+                  <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">
+                    1. Course pricing
+                  </h3>
+                  <p className="m-0 text-[var(--muted)] text-[0.83rem]">
+                    Choose how you want to sell this course.
+                  </p>
                 </div>
 
                 <div className="flex flex-col gap-3">
                   {/* Radio Option: Free */}
                   <div
                     className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
-                      pricing.pricingType ==="free"
-                        ?"is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
-                        :"border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
+                      pricing.pricingType === "free"
+                        ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
+                        : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
                     }`}
                     onClick={() => handlePricingTypeChange("free")}
                   >
-                    <div className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
-                      pricing.pricingType ==="free" ?"border-[var(--accent)]" :"border-[var(--muted)]"
-                    }`}>
-                      {pricing.pricingType ==="free" && (
+                    <div
+                      className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
+                        pricing.pricingType === "free"
+                          ? "border-[var(--accent)]"
+                          : "border-[var(--muted)]"
+                      }`}
+                    >
+                      {pricing.pricingType === "free" && (
                         <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                       )}
                     </div>
                     <div className="flex flex-1 flex-col gap-0.75">
-                      <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">Free</strong>
+                      <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">
+                        Free
+                      </strong>
                       <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
                         Anyone who can access the course can enroll for free.
                       </p>
@@ -2351,22 +2706,30 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   {/* Radio Option: Paid */}
                   <div
                     className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
-                      pricing.pricingType ==="paid"
-                        ?"is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
-                        :"border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
+                      pricing.pricingType === "paid"
+                        ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
+                        : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
                     }`}
                     onClick={() => handlePricingTypeChange("paid")}
                   >
-                    <div className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
-                      pricing.pricingType ==="paid" ?"border-[var(--accent)]" :"border-[var(--muted)]"
-                    }`}>
-                      {pricing.pricingType ==="paid" && (
+                    <div
+                      className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
+                        pricing.pricingType === "paid"
+                          ? "border-[var(--accent)]"
+                          : "border-[var(--muted)]"
+                      }`}
+                    >
+                      {pricing.pricingType === "paid" && (
                         <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                       )}
                     </div>
                     <div className="flex flex-1 flex-col gap-0.75">
-                      <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">Paid</strong>
-                      <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">Learners must purchase the course to get access.</p>
+                      <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">
+                        Paid
+                      </strong>
+                      <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
+                        Learners must purchase the course to get access.
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -2375,26 +2738,38 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
               {/* Card 2: Price details */}
               <div
                 className={`flex flex-col border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)] transition-opacity duration-200 ${
-                  pricing.pricingType ==="free" ?"is-disabled opacity-55 pointer-events-none" :""
+                  pricing.pricingType === "free"
+                    ? "is-disabled opacity-55 pointer-events-none"
+                    : ""
                 }`}
               >
                 <div className="mb-4.5">
-                  <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">2. Price details</h3>
-                  <p className="m-0 text-[var(--muted)] text-[0.83rem]">Set the pricing for your course.</p>
+                  <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">
+                    2. Price details
+                  </h3>
+                  <p className="m-0 text-[var(--muted)] text-[0.83rem]">
+                    Set the pricing for your course.
+                  </p>
                 </div>
 
                 <div className="flex flex-col gap-1.75">
                   {/* Selling Price Field */}
                   <div className="flex flex-col gap-2 mb-5">
-                    <label htmlFor="selling-price" className="text-[var(--text-secondary)] text-[0.84rem] font-semibold">
-                      Selling price <span className="text-[#ff5252] ml-0.5">*</span>
+                    <label
+                      htmlFor="selling-price"
+                      className="text-[var(--text-secondary)] text-[0.84rem] font-semibold"
+                    >
+                      Selling price{" "}
+                      <span className="text-[#ff5252] ml-0.5">*</span>
                     </label>
                     <div className="relative flex items-center w-full">
-                      <span className="absolute left-3.5 text-[var(--muted)] text-[0.9rem] font-semibold pointer-events-none">₹</span>
+                      <span className="absolute left-3.5 text-[var(--muted)] text-[0.9rem] font-semibold pointer-events-none">
+                        ₹
+                      </span>
                       <input
                         id="selling-price"
                         type="text"
-                        disabled={pricing.pricingType ==="free"}
+                        disabled={pricing.pricingType === "free"}
                         value={pricing.sellingPrice}
                         onChange={(e) =>
                           handleSellingPriceChange(e.target.value)
@@ -2410,13 +2785,20 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                   {/* Original Price Field */}
                   <div className="flex flex-col gap-2 mb-5">
-                    <label htmlFor="original-price" className="text-[var(--text-secondary)] text-[0.84rem] font-semibold">Original price</label>
+                    <label
+                      htmlFor="original-price"
+                      className="text-[var(--text-secondary)] text-[0.84rem] font-semibold"
+                    >
+                      Original price
+                    </label>
                     <div className="relative flex items-center w-full">
-                      <span className="absolute left-3.5 text-[var(--muted)] text-[0.9rem] font-semibold pointer-events-none">₹</span>
+                      <span className="absolute left-3.5 text-[var(--muted)] text-[0.9rem] font-semibold pointer-events-none">
+                        ₹
+                      </span>
                       <input
                         id="original-price"
                         type="text"
-                        disabled={pricing.pricingType ==="free"}
+                        disabled={pricing.pricingType === "free"}
                         value={pricing.originalPrice}
                         onChange={(e) =>
                           handleOriginalPriceChange(e.target.value)
@@ -2433,10 +2815,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   {/* Dynamic Discount Calculation Badge */}
                   {(() => {
                     const sell = parseFloat(
-                      pricing.sellingPrice.replace(/,/g,""),
+                      pricing.sellingPrice.replace(/,/g, ""),
                     );
                     const orig = parseFloat(
-                      pricing.originalPrice.replace(/,/g,""),
+                      pricing.originalPrice.replace(/,/g, ""),
                     );
                     let discountPercent = 0;
                     let isValidDiscount = false;
@@ -2454,22 +2836,22 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     }
 
                     return (
-                      <div className="flex items-center gap-3 mt-0.5">
+                      <div className="flex items-center gap-3 mt-1 flex-wrap">
                         <div
-                          className={`inline-flex items-center gap-1.5 border rounded-lg px-3 py-1.5 text-[0.82rem] font-bold transition-[border-color,background-color,color] duration-150 ease-out ${
-                            isValidDiscount && pricing.pricingType ==="paid"
-                              ?"is-active border-green-500/40 text-green-500 bg-green-500/[0.12]"
-                              :"border-white/[0.12] text-[var(--muted)] bg-white/[0.04]"
+                          className={`inline-flex items-center gap-1.5 shrink-0 whitespace-nowrap border rounded-lg px-2.5 py-1.5 text-[0.80rem] font-bold transition-[border-color,background-color,color] duration-150 ease-out ${
+                            isValidDiscount && pricing.pricingType === "paid"
+                              ? "is-active border-green-500/40 text-green-400 bg-green-500/[0.12]"
+                              : "border-white/[0.12] text-[var(--muted)] bg-white/[0.04]"
                           }`}
                         >
-                          <Tag size={15} weight="bold" />
-                          <span>
-                            {isValidDiscount && pricing.pricingType ==="paid"
-                              ?`${discountPercent}% OFF`
-                              :"0% OFF"}
+                          <Tag size={15} weight="bold" className="shrink-0" />
+                          <span className="whitespace-nowrap leading-none">
+                            {isValidDiscount && pricing.pricingType === "paid"
+                              ? `${discountPercent}% OFF`
+                              : "0% OFF"}
                           </span>
                         </div>
-                        <span className="text-[var(--muted)] text-[0.8rem]">
+                        <span className="text-[var(--muted)] text-[0.8rem] leading-tight">
                           Discount is calculated automatically.
                         </span>
                       </div>
@@ -2486,7 +2868,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   <Info size={20} weight="bold" />
                 </div>
                 <div>
-                  <strong className="block mb-0.5 text-[var(--text)] text-[0.92rem] font-[650]">Coupons</strong>
+                  <strong className="block mb-0.5 text-[var(--text)] text-[0.92rem] font-[650]">
+                    Coupons
+                  </strong>
                   <p className="m-0 text-[var(--muted)] text-[0.82rem]">
                     Create and manage coupon codes separately from the Coupons
                     section.
@@ -2496,25 +2880,28 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
               <button
                 type="button"
-                className="inline-flex items-center gap-1.5 border-none rounded-[9px] px-4.5 py-2.25 text-[var(--on-accent,#ffffff)] bg-[var(--accent)] text-[0.84rem] font-semibold cursor-pointer shadow-[0_2px_8px_var(--accent-shadow)] transition-[background,box-shadow,opacity] duration-150 hover:bg-[var(--accent-hover,var(--accent))] hover:shadow-[0_4px_12px_var(--accent-shadow)] max-[768px]:w-full max-[768px]:justify-center"
+                style={{ fontSize: "0.80rem", fontWeight: 700, height: "34px", borderRadius: "8px", gap: "6px", paddingLeft: "18px", paddingRight: "18px" }}
+                className="inline-flex items-center justify-center border-none text-[var(--on-accent,#ffffff)] bg-[var(--accent)] cursor-pointer shadow-[0_3px_10px_var(--accent-shadow)] transition-all duration-150 ease-out hover:bg-[var(--accent-hover,var(--accent))] hover:shadow-[0_4px_14px_var(--accent-shadow)] max-[768px]:w-full max-[768px]:justify-center"
                 onClick={() => {
                   if (onNavigatePage) {
                     onNavigatePage("settings");
                   }
                 }}
               >
-                Go to Coupons <ArrowUpRight size={16} weight="bold" />
+                Go to Coupons <ArrowUpRight size={15} weight="bold" />
               </button>
             </div>
           </div>
-        ) : activeStep ==="extras" ? (
+        ) : activeStep === "extras" ? (
           <div className="flex w-full flex-col gap-5">
             {/* Top 2-Column Grid: 1. Certificates & 2. This course includes */}
             <div className="grid grid-cols-2 items-start gap-5 max-[768px]:grid-cols-1 max-[768px]:gap-3.5">
               {/* Card 1: Certificates */}
               <div className="flex flex-col h-fit border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
                 <div className="mb-4.5">
-                  <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">1. Certificates</h3>
+                  <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">
+                    1. Certificates
+                  </h3>
                   <p className="m-0 text-[var(--muted)] text-[0.83rem]">
                     Configure how certificates will be issued for this course.
                   </p>
@@ -2523,34 +2910,48 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                 {/* Enable Certificate Toggle Row */}
                 <div className="flex items-center justify-between border border-white/[0.08] rounded-xl px-4.5 py-3.5 bg-white/[0.02] mb-4.5">
                   <div>
-                    <strong className="block mb-0.5 text-[var(--text)] text-[0.9rem] font-[650]">Enable certificate</strong>
-                    <p className="m-0 text-[var(--muted)] text-[0.8rem]">Issue certificates to learners on course completion.</p>
+                    <strong className="block mb-0.5 text-[var(--text)] text-[0.9rem] font-[650]">
+                      Enable certificate
+                    </strong>
+                    <p className="m-0 text-[var(--muted)] text-[0.8rem]">
+                      Issue certificates to learners on course completion.
+                    </p>
                   </div>
                   <button
                     type="button"
                     className={`relative w-11 h-6 shrink-0 border-none rounded-full p-0.5 cursor-pointer transition-colors duration-200 ${
-                      extras.enableCertificate ?"is-active bg-[var(--accent)]" :"bg-white/16"
+                      extras.enableCertificate
+                        ? "is-active bg-[var(--accent)]"
+                        : "bg-white/16"
                     }`}
                     onClick={handleToggleCertificate}
                     role="switch"
                     aria-checked={extras.enableCertificate}
                     aria-label="Toggle certificate"
                   >
-                    <div className={`w-5 h-5 rounded-full bg-white shadow-[0_2px_5px_rgba(0,0,0,0.3)] transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                      extras.enableCertificate ?"translate-x-5" :"translate-x-0"
-                    }`} />
+                    <div
+                      className={`w-5 h-5 rounded-full bg-white shadow-[0_2px_5px_rgba(0,0,0,0.3)] transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                        extras.enableCertificate
+                          ? "translate-x-5"
+                          : "translate-x-0"
+                      }`}
+                    />
                   </button>
                 </div>
 
                 {/* Certificate Configuration Controls */}
                 <div
                   className={`flex flex-col gap-4.5 transition-opacity duration-200 ${
-                    !extras.enableCertificate ?"is-disabled opacity-50 pointer-events-none" :""
+                    !extras.enableCertificate
+                      ? "is-disabled opacity-50 pointer-events-none"
+                      : ""
                   }`}
                 >
                   {/* Template Selector */}
                   <div className="flex flex-col gap-2 mb-5">
-                    <label className="text-[var(--text-secondary)] text-[0.84rem] font-semibold">Certificate template</label>
+                    <label className="text-[var(--text-secondary)] text-[0.84rem] font-semibold">
+                      Certificate template
+                    </label>
                     <p className="m-0 mt-0.5 mb-2 text-[var(--muted)] text-[0.78rem]">
                       Choose a layout for your certificate.
                     </p>
@@ -2558,18 +2959,20 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       value={extras.certificateTemplate}
                       onValueChange={handleCertificateTemplateChange}
                       options={[
-                        ["purple-certificate","Modern Purple Certificate"],
-                        ["blue-certificate","Classic Blue Certificate"],
-                        ["dark-certificate","Minimal Dark Certificate"],
+                        ["purple-certificate", "Modern Purple Certificate"],
+                        ["blue-certificate", "Classic Blue Certificate"],
+                        ["dark-certificate", "Minimal Dark Certificate"],
                       ]}
                       ariaLabel="Select certificate template"
-                      triggerClassName=""
+                      triggerClassName="!w-full !h-10 !border !border-white/10 !rounded-lg !px-3.5 !py-0 !text-[var(--text)] !bg-black/25 !text-[0.84rem] font-semibold hover:!border-white/20 transition-all"
                     />
                   </div>
 
                   {/* Certificate Issuance Options */}
                   <div className="flex flex-col gap-2 mb-5">
-                    <label className="text-[var(--text-secondary)] text-[0.84rem] font-semibold">Certificate issuance</label>
+                    <label className="text-[var(--text-secondary)] text-[0.84rem] font-semibold">
+                      Certificate issuance
+                    </label>
                     <p className="m-0 mt-0.5 mb-2 text-[var(--muted)] text-[0.78rem]">
                       Choose when the certificate should be issued.
                     </p>
@@ -2578,21 +2981,27 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       {/* Option 1: On course completion */}
                       <div
                         className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
-                          extras.issuanceType ==="completion"
-                            ?"is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
-                            :"border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
+                          extras.issuanceType === "completion"
+                            ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
+                            : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
                         }`}
                         onClick={() => handleIssuanceTypeChange("completion")}
                       >
-                        <div className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
-                          extras.issuanceType ==="completion" ?"border-[var(--accent)]" :"border-[var(--muted)]"
-                        }`}>
-                          {extras.issuanceType ==="completion" && (
+                        <div
+                          className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
+                            extras.issuanceType === "completion"
+                              ? "border-[var(--accent)]"
+                              : "border-[var(--muted)]"
+                          }`}
+                        >
+                          {extras.issuanceType === "completion" && (
                             <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                           )}
                         </div>
                         <div className="flex flex-1 flex-col gap-0.75">
-                          <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">On course completion</strong>
+                          <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">
+                            On course completion
+                          </strong>
                           <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
                             Issue certificate when the learner completes all
                             lessons.
@@ -2603,23 +3012,29 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       {/* Option 2: Minimum completion percentage */}
                       <div
                         className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
-                          extras.issuanceType ==="percentage"
-                            ?"is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
-                            :"border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
+                          extras.issuanceType === "percentage"
+                            ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
+                            : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
                         }`}
                         onClick={() => handleIssuanceTypeChange("percentage")}
                       >
-                        <div className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
-                          extras.issuanceType ==="percentage" ?"border-[var(--accent)]" :"border-[var(--muted)]"
-                        }`}>
-                          {extras.issuanceType ==="percentage" && (
+                        <div
+                          className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
+                            extras.issuanceType === "percentage"
+                              ? "border-[var(--accent)]"
+                              : "border-[var(--muted)]"
+                          }`}
+                        >
+                          {extras.issuanceType === "percentage" && (
                             <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                           )}
                         </div>
                         <div className="flex flex-1 flex-col gap-0.75">
                           <div className="flex items-center justify-between w-full">
-                            <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">Minimum completion percentage</strong>
-                            {extras.issuanceType ==="percentage" && (
+                            <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">
+                              Minimum completion percentage
+                            </strong>
+                            {extras.issuanceType === "percentage" && (
                               <div
                                 className="flex items-center gap-1.5"
                                 onClick={(e) => e.stopPropagation()}
@@ -2636,7 +3051,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                     )
                                   }
                                 />
-                                <span className="text-[var(--text)] text-[0.86rem] font-bold">%</span>
+                                <span className="text-[var(--text)] text-[0.86rem] font-bold">
+                                  %
+                                </span>
                               </div>
                             )}
                           </div>
@@ -2650,27 +3067,33 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       {/* Option 3: Custom rule */}
                       <div
                         className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
-                          extras.issuanceType ==="custom"
-                            ?"is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
-                            :"border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
+                          extras.issuanceType === "custom"
+                            ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
+                            : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
                         }`}
                         onClick={() => handleIssuanceTypeChange("custom")}
                       >
-                        <div className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
-                          extras.issuanceType ==="custom" ?"border-[var(--accent)]" :"border-[var(--muted)]"
-                        }`}>
-                          {extras.issuanceType ==="custom" && (
+                        <div
+                          className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
+                            extras.issuanceType === "custom"
+                              ? "border-[var(--accent)]"
+                              : "border-[var(--muted)]"
+                          }`}
+                        >
+                          {extras.issuanceType === "custom" && (
                             <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                           )}
                         </div>
                         <div className="flex flex-1 flex-col gap-0.75">
-                          <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">Custom rule</strong>
+                          <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">
+                            Custom rule
+                          </strong>
                           <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
                             Define your own custom rule for certificate
                             issuance.
                           </p>
 
-                          {extras.issuanceType ==="custom" && (
+                          {extras.issuanceType === "custom" && (
                             <div
                               className="mt-2 w-full"
                               onClick={(e) => e.stopPropagation()}
@@ -2694,22 +3117,32 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   {/* Delivery Toggle Row */}
                   <div className="flex items-center justify-between border-t border-white/[0.06] pt-3.5">
                     <div>
-                      <strong className="block mb-0.5 text-[var(--text)] text-[0.88rem] font-[650]">Delivery</strong>
-                      <p className="m-0 text-[var(--muted)] text-[0.78rem]">Automatically email the certificate to learners.</p>
+                      <strong className="block mb-0.5 text-[var(--text)] text-[0.88rem] font-[650]">
+                        Delivery
+                      </strong>
+                      <p className="m-0 text-[var(--muted)] text-[0.78rem]">
+                        Automatically email the certificate to learners.
+                      </p>
                     </div>
                     <button
                       type="button"
                       className={`relative w-11 h-6 shrink-0 border-none rounded-full p-0.5 cursor-pointer transition-colors duration-200 ${
-                        extras.autoEmailCertificate ?"is-active bg-[var(--accent)]" :"bg-white/16"
+                        extras.autoEmailCertificate
+                          ? "is-active bg-[var(--accent)]"
+                          : "bg-white/16"
                       }`}
                       onClick={handleToggleAutoEmailCertificate}
                       role="switch"
                       aria-checked={extras.autoEmailCertificate}
                       aria-label="Toggle certificate delivery"
                     >
-                      <div className={`w-5 h-5 rounded-full bg-white shadow-[0_2px_5px_rgba(0,0,0,0.3)] transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                        extras.autoEmailCertificate ?"translate-x-5" :"translate-x-0"
-                      }`} />
+                      <div
+                        className={`w-5 h-5 rounded-full bg-white shadow-[0_2px_5px_rgba(0,0,0,0.3)] transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                          extras.autoEmailCertificate
+                            ? "translate-x-5"
+                            : "translate-x-0"
+                        }`}
+                      />
                     </button>
                   </div>
                 </div>
@@ -2718,8 +3151,12 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
               {/* Card 2: This course includes */}
               <div className="flex flex-col h-fit border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
                 <div className="mb-4.5">
-                  <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">2. This course includes</h3>
-                  <p className="m-0 text-[var(--muted)] text-[0.83rem]">These details are calculated from your curriculum.</p>
+                  <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">
+                    2. This course includes
+                  </h3>
+                  <p className="m-0 text-[var(--muted)] text-[0.83rem]">
+                    These details are calculated from your curriculum.
+                  </p>
                 </div>
 
                 {/* Derived Live Stats Summary Grid */}
@@ -2729,8 +3166,12 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       <BookOpen size={20} weight="fill" />
                     </div>
                     <div className="flex flex-col">
-                      <strong className="text-[var(--text)] text-base font-[750] leading-[1.2] max-[768px]:text-[1.05rem]">{totalSections}</strong>
-                      <span className="text-[var(--muted)] text-[0.74rem] font-medium max-[768px]:text-[0.8rem] max-[768px]:whitespace-nowrap">Sections</span>
+                      <strong className="text-[var(--text)] text-base font-[750] leading-[1.2] max-[768px]:text-[1.05rem]">
+                        {totalSections}
+                      </strong>
+                      <span className="text-[var(--muted)] text-[0.74rem] font-medium max-[768px]:text-[0.8rem] max-[768px]:whitespace-nowrap">
+                        Sections
+                      </span>
                     </div>
                   </div>
 
@@ -2739,8 +3180,12 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       <PlayCircle size={20} weight="fill" />
                     </div>
                     <div className="flex flex-col">
-                      <strong className="text-[var(--text)] text-base font-[750] leading-[1.2] max-[768px]:text-[1.05rem]">{totalLessons}</strong>
-                      <span className="text-[var(--muted)] text-[0.74rem] font-medium max-[768px]:text-[0.8rem] max-[768px]:whitespace-nowrap">Lessons</span>
+                      <strong className="text-[var(--text)] text-base font-[750] leading-[1.2] max-[768px]:text-[1.05rem]">
+                        {totalLessons}
+                      </strong>
+                      <span className="text-[var(--muted)] text-[0.74rem] font-medium max-[768px]:text-[0.8rem] max-[768px]:whitespace-nowrap">
+                        Lessons
+                      </span>
                     </div>
                   </div>
 
@@ -2749,8 +3194,12 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       <Clock size={20} weight="bold" />
                     </div>
                     <div className="flex flex-col">
-                      <strong className="text-[var(--text)] text-base font-[750] leading-[1.2] max-[768px]:text-[1.05rem]">9h 24m</strong>
-                      <span className="text-[var(--muted)] text-[0.74rem] font-medium max-[768px]:text-[0.8rem] max-[768px]:whitespace-nowrap">Content length</span>
+                      <strong className="text-[var(--text)] text-base font-[750] leading-[1.2] max-[768px]:text-[1.05rem]">
+                        9h 24m
+                      </strong>
+                      <span className="text-[var(--muted)] text-[0.74rem] font-medium max-[768px]:text-[0.8rem] max-[768px]:whitespace-nowrap">
+                        Content length
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -2758,7 +3207,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                 {/* Additional Inclusions Section */}
                 <div className="flex flex-col gap-3">
                   <div className="mb-2">
-                    <h4 className="m-0 mb-0.5 text-[var(--text)] text-[0.9rem] font-bold">Additional inclusions</h4>
+                    <h4 className="m-0 mb-0.5 text-[var(--text)] text-[0.9rem] font-bold">
+                      Additional inclusions
+                    </h4>
                     <p className="m-0 text-[var(--muted)] text-[0.78rem]">
                       Add any additional benefits your learners will get with
                       this course.
@@ -2778,7 +3229,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                         <span
                           className="flex items-center justify-center text-[var(--muted)] cursor-grab opacity-60 transition-opacity duration-150 hover:opacity-100"
                           title="Drag to reorder inclusion"
-                          onMouseEnter={() => setDragEnabledInclusionId(item.id)}
+                          onMouseEnter={() =>
+                            setDragEnabledInclusionId(item.id)
+                          }
                           onMouseLeave={() => {
                             if (draggedInclusionIndex === null)
                               setDragEnabledInclusionId(null);
@@ -2802,12 +3255,12 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                         />
                         <button
                           type="button"
-                          className="inline-flex w-[34px] h-[34px] items-center justify-center border border-white/[0.08] rounded-lg text-[var(--muted)] bg-transparent cursor-pointer transition-[color,background] duration-150 hover:!text-[#ff5252] hover:!bg-red-500/10"
+                          className="inline-flex w-7 h-7 items-center justify-center rounded-[8px] border border-[color-mix(in_srgb,var(--surface-strong)60%,transparent)] text-[var(--muted)] hover:!text-[#ef4444] hover:!bg-red-500/10 hover:!border-red-500/30 transition-all duration-150 bg-transparent cursor-pointer p-0"
                           aria-label="Remove inclusion"
                           title="Remove inclusion"
                           onClick={() => handleDeleteInclusion(item.id)}
                         >
-                          <Trash size={16} />
+                          <Trash size={15} />
                         </button>
                       </div>
                     ))}
@@ -2815,50 +3268,57 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                   <button
                     type="button"
-                    className="inline-flex self-start items-center gap-1.5 mt-1 border border-dashed border-white/15 rounded-[9px] px-4 py-2.5 w-full justify-center text-[var(--accent)] bg-white/[0.015] text-[0.84rem] font-semibold cursor-pointer transition-[border-color,background-color] duration-150 ease-out hover:border-[var(--accent)] hover:bg-[color-mix(in_srgb,var(--accent)_8%,transparent)]"
+                    className="inline-flex items-center justify-center gap-1.5 h-[34px] w-full border border-dashed border-white/20 rounded-lg text-[var(--muted)] bg-transparent text-[0.82rem] font-medium cursor-pointer transition-colors duration-150 hover:border-[var(--accent)] hover:bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] hover:text-[var(--accent-ink,var(--accent))] mt-1"
                     onClick={handleAddInclusion}
                   >
-                    <Plus size={15} weight="bold" /> Add inclusion
+                    <Plus size={15} /> Add inclusion
                   </button>
                 </div>
               </div>
             </div>
           </div>
-        ) : activeStep ==="publish" ? (
+        ) : activeStep === "publish" ? (
           <div className="flex w-full flex-col gap-5">
             {/* Top 2-Column Grid: 1. Publish settings & 2. Final checklist */}
             <div className="grid grid-cols-2 items-start gap-5 max-[768px]:grid-cols-1 max-[768px]:gap-3.5">
               {/* Card 1: Publish settings */}
               <div className="flex flex-col h-fit border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
                 <div className="mb-4.5">
-                  <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">1. Publish settings</h3>
-                  <p className="m-0 text-[var(--muted)] text-[0.83rem]">Choose when and how your course becomes visible.</p>
+                  <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">
+                    1. Publish settings
+                  </h3>
+                  <p className="m-0 text-[var(--muted)] text-[0.83rem]">
+                    Choose when and how your course becomes visible.
+                  </p>
                 </div>
 
                 {/* Informational Course Status Display */}
                 <div className="flex flex-col gap-1.5 mb-4.5">
-                  <label className="text-[var(--text)] text-[0.86rem] font-[650]">Course status</label>
+                  <label className="text-[var(--text)] text-[0.86rem] font-[650]">
+                    Course status
+                  </label>
                   <div className="flex items-center mt-0.5">
                     <span
                       className={`inline-flex items-center rounded-md px-2.5 py-1 text-[0.8rem] font-bold uppercase tracking-[0.04em] ${
                         isPublished
-                          ?"is-published border border-green-500/35 text-green-500 bg-green-500/[0.12]"
-                          :"is-draft border border-white/15 text-[var(--muted)] bg-white/[0.04]"
+                          ? "is-published border border-green-500/35 text-green-500 bg-green-500/[0.12]"
+                          : "is-draft border border-white/15 text-[var(--muted)] bg-white/[0.04]"
                       }`}
                     >
-                      {isPublished ?"Published" :"Draft"}
+                      {isPublished ? "Published" : "Draft"}
                     </span>
                   </div>
                   <p className="m-0 mt-1 text-[var(--muted)] text-[0.78rem] leading-[1.4]">
                     {isPublished
-                      ?"Your course is currently published and visible to students according to your settings."
-                      :"Your course is currently a draft and hasn't been published yet."}
+                      ? "Your course is currently published and visible to students according to your settings."
+                      : "Your course is currently a draft and hasn't been published yet."}
                   </p>
                 </div>
-
                 {/* Course visibility select */}
                 <div className="flex flex-col gap-1.5 mb-4.5">
-                  <label className="text-[var(--text)] text-[0.86rem] font-[650]">Course visibility</label>
+                  <label className="text-[var(--text)] text-[0.86rem] font-[650]">
+                    Course visibility
+                  </label>
                   <ThemedSelect
                     value={publishSettings.visibility}
                     onValueChange={(val) =>
@@ -2869,81 +3329,100 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     }
                     options={[
                       [
-"public",
-"Public — Anyone on the platform can discover and enroll in this course.",
+                        "public",
+                        "Public — Anyone on the platform can discover and enroll in this course.",
                       ],
                       [
-"private",
-"Private — Only invited students can access this course.",
+                        "private",
+                        "Private — Only invited students can access this course.",
                       ],
                       [
-"unlisted",
-"Unlisted — Only users with a direct link can view this course.",
+                        "unlisted",
+                        "Unlisted — Only users with a direct link can view this course.",
                       ],
                     ]}
                     ariaLabel="Select course visibility"
-                    triggerClassName=""
+                    triggerClassName="!w-full !h-10 !border !border-white/10 !rounded-lg !px-3.5 !py-0 !text-[var(--text)] !bg-black/25 !text-[0.84rem] font-semibold hover:!border-white/20 transition-all"
                   />
                 </div>
 
                 {/* Publish on radio options */}
                 <div className="flex flex-col gap-1.5 mb-4.5">
-                  <label className="text-[var(--text)] text-[0.86rem] font-[650]">Publish on</label>
+                  <label className="text-[var(--text)] text-[0.86rem] font-[650]">
+                    Publish on
+                  </label>
 
                   <div className="flex flex-col gap-2.5">
-                    {/* Option 1: Publish now */}
+                    {/* Option 1: Publish immediately */}
                     <div
                       className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
-                        publishSettings.scheduleOption ==="now"
-                          ?"is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
-                          :"border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
+                        publishSettings.scheduleOption === "now"
+                          ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
+                          : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
                       }`}
                       onClick={() =>
                         setPublishSettings((prev) => ({
                           ...prev,
-                          scheduleOption:"now",
+                          scheduleOption: "now",
                         }))
                       }
                     >
-                      <div className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
-                        publishSettings.scheduleOption ==="now" ?"border-[var(--accent)]" :"border-[var(--muted)]"
-                      }`}>
-                        {publishSettings.scheduleOption ==="now" && (
+                      <div
+                        className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
+                          publishSettings.scheduleOption === "now"
+                            ? "border-[var(--accent)]"
+                            : "border-[var(--muted)]"
+                        }`}
+                      >
+                        {publishSettings.scheduleOption === "now" && (
                           <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                         )}
                       </div>
                       <div className="flex flex-1 flex-col gap-0.75">
-                        <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">Publish now</strong>
-                        <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">Make this course live immediately.</p>
+                        <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">
+                          Publish immediately
+                        </strong>
+                        <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
+                          Make this course live immediately upon saving.
+                        </p>
                       </div>
                     </div>
 
                     {/* Option 2: Schedule for later */}
                     <div
                       className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
-                        publishSettings.scheduleOption ==="later"
-                          ?"is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
-                          :"border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
+                        publishSettings.scheduleOption === "later"
+                          ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
+                          : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
                       }`}
                       onClick={() =>
                         setPublishSettings((prev) => ({
                           ...prev,
-                          scheduleOption:"later",
+                          scheduleOption: "later",
                         }))
                       }
                     >
-                      <div className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
-                        publishSettings.scheduleOption ==="later" ?"border-[var(--accent)]" :"border-[var(--muted)]"
-                      }`}>
-                        {publishSettings.scheduleOption ==="later" && (
+                      <div
+                        className={`flex w-[18px] h-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150 ${
+                          publishSettings.scheduleOption === "later"
+                            ? "border-[var(--accent)]"
+                            : "border-[var(--muted)]"
+                        }`}
+                      >
+                        {publishSettings.scheduleOption === "later" && (
                           <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                         )}
                       </div>
                       <div className="flex flex-1 flex-col gap-0.75">
-                        <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">Schedule for later</strong>
-                        <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">Choose a future date and time to publish.</p>
+                        <strong className="text-[var(--text)] text-[0.9rem] font-[650] leading-[18px]">
+                          Schedule for a future date
+                        </strong>
+                        <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
+                          Set a specific date and time when this course should
+                          go live.
+                        </p>
 
-                        {publishSettings.scheduleOption ==="later" && (
+                        {publishSettings.scheduleOption === "later" && (
                           <div
                             className="flex items-center gap-2.5 mt-2.5 max-[640px]:flex-col max-[640px]:items-stretch"
                             onClick={(e) => e.stopPropagation()}
@@ -2966,7 +3445,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                               />
                             </div>
                             <div className="relative flex items-center flex-1">
-                              <Clock size={16} className="absolute left-2.5 text-[var(--muted)] pointer-events-none" />
+                              <Clock
+                                size={16}
+                                className="absolute left-2.5 text-[var(--muted)] pointer-events-none"
+                              />
                               <input
                                 type="time"
                                 className="w-full border border-white/[0.12] rounded-lg py-1.75 pr-3 pl-8 text-[var(--text)] bg-black/25 font-inherit text-[0.84rem] font-medium outline-none transition-[border-color] duration-150 focus:border-[var(--accent)] [color-scheme:dark]"
@@ -2985,26 +3467,20 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     </div>
                   </div>
                 </div>
-
-                {/* Access rules informational banner */}
-                <div className="flex items-start gap-2.5 border border-white/[0.06] rounded-[10px] p-3 px-3.5 bg-black/[0.16] mt-1">
-                  <Info size={18} weight="bold" className="shrink-0 mt-0.5 text-[var(--accent)]" />
-                  <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
-                    Students will only see this course if they meet the access
-                    rules you have configured.
-                  </p>
-                </div>
               </div>
 
-              {/* Card 2: Final checklist & Ready-to-publish */}
-              <div className="flex flex-col h-fit border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
+              {/* Card 2: Pre-publish Checklist */}
+              <div className="flex flex-col border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
                 <div className="mb-4.5">
-                  <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">2. Final checklist</h3>
-                  <p className="m-0 text-[var(--muted)] text-[0.83rem]">Make sure everything is ready to go live.</p>
+                  <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">
+                    2. Pre-publish Checklist
+                  </h3>
+                  <p className="m-0 text-[var(--muted)] text-[0.83rem]">
+                    Review all required items before publishing your course.
+                  </p>
                 </div>
 
-                {/* Checklist items list */}
-                <div className="flex flex-col gap-2 mb-5">
+                <div className="flex flex-col gap-2.5 mb-5">
                   {/* Checklist Item: Basics */}
                   <div
                     className="flex items-center justify-between border border-white/[0.07] rounded-[10px] px-4 py-3 bg-white/[0.02] cursor-pointer transition-[border-color,background-color] duration-150 ease-out hover:border-[color-mix(in_srgb,var(--accent)_40%,transparent)] hover:bg-white/[0.04]"
@@ -3014,12 +3490,18 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       <CheckCircle
                         size={20}
                         weight="fill"
-                        className={isBasicsValid ?"is-valid text-green-500" :"is-invalid text-red-500"}
+                        className={
+                          isBasicsValid
+                            ? "is-valid text-green-500"
+                            : "is-invalid text-rose-400/50"
+                        }
                       />
-                      <strong className="text-[var(--text)] text-[0.9rem] font-[650]">Basics</strong>
+                      <strong className="text-[var(--text)] text-[0.9rem] font-[650]">
+                        Basics
+                      </strong>
                     </div>
                     <div className="flex items-center gap-2 text-[var(--muted)] text-[0.82rem]">
-                      <span>{isBasicsValid ?"Completed" :"Incomplete"}</span>
+                      <span>{isBasicsValid ? "Completed" : "Incomplete"}</span>
                       <CaretRight size={16} />
                     </div>
                   </div>
@@ -3034,10 +3516,14 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                         size={20}
                         weight="fill"
                         className={
-                          isCurriculumValid ?"is-valid text-green-500" :"is-invalid text-red-500"
+                          isCurriculumValid
+                            ? "is-valid text-green-500"
+                            : "is-invalid text-rose-400/50"
                         }
                       />
-                      <strong className="text-[var(--text)] text-[0.9rem] font-[650]">Curriculum</strong>
+                      <strong className="text-[var(--text)] text-[0.9rem] font-[650]">
+                        Curriculum
+                      </strong>
                     </div>
                     <div className="flex items-center gap-2 text-[var(--muted)] text-[0.82rem]">
                       <span>
@@ -3057,16 +3543,20 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                         size={20}
                         weight="fill"
                         className={
-                          isAccessRulesValid ?"is-valid text-green-500" :"is-invalid text-red-500"
+                          isAccessRulesValid
+                            ? "is-valid text-green-500"
+                            : "is-invalid text-rose-400/50"
                         }
                       />
-                      <strong className="text-[var(--text)] text-[0.9rem] font-[650]">Access Rules</strong>
+                      <strong className="text-[var(--text)] text-[0.9rem] font-[650]">
+                        Access Rules
+                      </strong>
                     </div>
                     <div className="flex items-center gap-2 text-[var(--muted)] text-[0.82rem]">
                       <span>
-                        {accessRules.accessType ==="everyone"
-                          ?"Everyone"
-                          :"Restricted Access"}
+                        {accessRules.accessType === "everyone"
+                          ? "Everyone"
+                          : "Restricted Access"}
                       </span>
                       <CaretRight size={16} />
                     </div>
@@ -3081,15 +3571,21 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       <CheckCircle
                         size={20}
                         weight="fill"
-                        className={isPricingValid ?"is-valid text-green-500" :"is-invalid text-red-500"}
+                        className={
+                          isPricingValid
+                            ? "is-valid text-green-500"
+                            : "is-invalid text-rose-400/50"
+                        }
                       />
-                      <strong className="text-[var(--text)] text-[0.9rem] font-[650]">Pricing</strong>
+                      <strong className="text-[var(--text)] text-[0.9rem] font-[650]">
+                        Pricing
+                      </strong>
                     </div>
                     <div className="flex items-center gap-2 text-[var(--muted)] text-[0.82rem]">
                       <span>
-                        {pricing.pricingType ==="free"
-                          ?"Free"
-                          :`₹${pricing.sellingPrice}`}
+                        {pricing.pricingType === "free"
+                          ? "Free"
+                          : `₹${pricing.sellingPrice}`}
                       </span>
                       <CaretRight size={16} />
                     </div>
@@ -3104,15 +3600,21 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       <CheckCircle
                         size={20}
                         weight="fill"
-                        className={isExtrasValid ?"is-valid text-green-500" :"is-invalid text-red-500"}
+                        className={
+                          isExtrasValid
+                            ? "is-valid text-green-500"
+                            : "is-invalid text-rose-400/50"
+                        }
                       />
-                      <strong className="text-[var(--text)] text-[0.9rem] font-[650]">Extras</strong>
+                      <strong className="text-[var(--text)] text-[0.9rem] font-[650]">
+                        Extras
+                      </strong>
                     </div>
                     <div className="flex items-center gap-2 text-[var(--muted)] text-[0.82rem]">
                       <span>
                         {extras.enableCertificate
-                          ?"Certificate Enabled"
-                          :"Disabled"}
+                          ? "Certificate Enabled"
+                          : "Disabled"}
                       </span>
                       <CaretRight size={16} />
                     </div>
@@ -3126,7 +3628,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       <BookOpen size={24} weight="fill" />
                     </div>
                     <div>
-                      <strong className="block mb-0.75 text-[var(--text)] text-[0.94rem] font-bold">Your course is ready to be published!</strong>
+                      <strong className="block mb-0.75 text-[var(--text)] text-[0.94rem] font-bold">
+                        Your course is ready to be published!
+                      </strong>
                       <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
                         Once published, students can see and enroll in this
                         course according to your settings.
@@ -3139,7 +3643,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       <Info size={24} weight="bold" />
                     </div>
                     <div>
-                      <strong className="block mb-0.75 text-[var(--text)] text-[0.94rem] font-bold">Course needs attention</strong>
+                      <strong className="block mb-0.75 text-[var(--text)] text-[0.94rem] font-bold">
+                        Course needs attention
+                      </strong>
                       <p className="m-0 text-[var(--muted)] text-[0.8rem]">
                         Please fix incomplete sections highlighted above before
                         publishing.
@@ -3152,7 +3658,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
             {/* Bottom Card 3: What happens after publishing? */}
             <div className="flex flex-col border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
-              <h3 className="m-0 mb-4.5 text-[var(--text)] text-[1.05rem] font-bold">3. What happens after publishing?</h3>
+              <h3 className="m-0 mb-4.5 text-[var(--text)] text-[1.05rem] font-bold">
+                3. What happens after publishing?
+              </h3>
 
               <div className="grid grid-cols-4 gap-4 max-[1024px]:grid-cols-2 max-[640px]:grid-cols-1">
                 {/* Feature 1: Visible to students */}
@@ -3161,7 +3669,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     <Eye size={22} weight="bold" />
                   </div>
                   <div>
-                    <strong className="block mb-1 text-[var(--text)] text-[0.9rem] font-[650]">Visible to students</strong>
+                    <strong className="block mb-1 text-[var(--text)] text-[0.9rem] font-[650]">
+                      Visible to students
+                    </strong>
                     <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
                       Students will be able to discover your course on the
                       platform.
@@ -3175,7 +3685,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     <UserPlus size={22} weight="bold" />
                   </div>
                   <div>
-                    <strong className="block mb-1 text-[var(--text)] text-[0.9rem] font-[650]">Enrollment starts</strong>
+                    <strong className="block mb-1 text-[var(--text)] text-[0.9rem] font-[650]">
+                      Enrollment starts
+                    </strong>
                     <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
                       Students who meet the access rules can enroll in your
                       course.
@@ -3189,7 +3701,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     <PlayCircle size={22} weight="fill" />
                   </div>
                   <div>
-                    <strong className="block mb-1 text-[var(--text)] text-[0.9rem] font-[650]">Track performance</strong>
+                    <strong className="block mb-1 text-[var(--text)] text-[0.9rem] font-[650]">
+                      Track performance
+                    </strong>
                     <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
                       Monitor enrollments, progress, and engagement in
                       real-time.
@@ -3203,8 +3717,12 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     <ChartBar size={22} weight="bold" />
                   </div>
                   <div>
-                    <strong className="block mb-1 text-[var(--text)] text-[0.9rem] font-[650]">Earn with every sale</strong>
-                    <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">Get paid for every successful enrollment.</p>
+                    <strong className="block mb-1 text-[var(--text)] text-[0.9rem] font-[650]">
+                      Earn with every sale
+                    </strong>
+                    <p className="m-0 text-[var(--muted)] text-[0.8rem] leading-[1.4]">
+                      Get paid for every successful enrollment.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -3214,111 +3732,112 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
           <div className="relative z-10 grid grid-cols-[minmax(0,1.8fr)_minmax(300px,1fr)] gap-6 items-start max-[1024px]:grid-cols-[minmax(0,1fr)] max-[768px]:grid-cols-[minmax(0,1fr)] max-[768px]:gap-[18px]">
             <section className="relative z-10 rounded-[14px] p-6 bg-[var(--surface)] shadow-[var(--card-shadow)] max-[768px]:p-4">
               <div className="mb-4.5">
-                <h2 className="m-0 text-[var(--text)] text-[1.18rem] font-[650] tracking-[-0.015em]">{WIZARD_STEPS.find((s) => s.id === activeStep)?.label}</h2>
-                <p className="m-0 mt-1 mb-5 text-[var(--muted)] text-[0.82rem]">This section will allow configuring course {activeStep}.</p>
+                <h2 className="m-0 text-[var(--text)] text-[1.18rem] font-[650] tracking-[-0.015em]">
+                  {WIZARD_STEPS.find((s) => s.id === activeStep)?.label}
+                </h2>
+                <p className="m-0 mt-1 mb-5 text-[var(--muted)] text-[0.82rem]">
+                  This section will allow configuring course {activeStep}.
+                </p>
               </div>
             </section>
           </div>
         )}
       </div>
 
-      {/* Persistent Shared Action Bar */}
-      <footer className="absolute top-[clamp(16px,2.2vw,24px)] right-[clamp(16px,2.5vw,32px)] z-30 flex items-center justify-end border-none rounded-none p-0 bg-transparent shadow-none opacity-100 pointer-events-auto shrink-0 max-[768px]:static max-[768px]:p-[12px_16px_calc(50px+env(safe-area-inset-bottom))_16px] max-[768px]:m-0 max-[768px]:w-full max-[768px]:box-border">
-        {publishValidationError && activeStep ==="publish" && (
-          <div className="flex items-center gap-2.5 mr-auto border border-red-400/35 rounded-[10px] px-4 py-2 text-red-400 bg-red-500/[0.12] backdrop-blur-[12px] shadow-[0_4px_16px_rgba(239,68,68,0.15)] text-[0.84rem] font-semibold animate-[bannerSlideUp_0.3s_cubic-bezier(0.16,1,0.3,1)] max-[768px]:fixed max-[768px]:top-[calc(14px+env(safe-area-inset-top))] max-[768px]:left-4 max-[768px]:right-4 max-[768px]:z-[100] max-[768px]:w-auto max-[768px]:m-0 max-[768px]:p-[12px_16px] max-[768px]:bg-[color-mix(in_srgb,#1a0f12_92%,var(--surface))] max-[768px]:border max-[768px]:border-red-400/45 max-[768px]:rounded-xl max-[768px]:shadow-[0_8px_30px_rgba(0,0,0,0.5),0_0_15px_rgba(239,68,68,0.2)] max-[768px]:backdrop-blur-[16px] max-[768px]:text-[0.82rem] max-[768px]:leading-[1.35] max-[768px]:animate-[bannerSlideDown_0.3s_cubic-bezier(0.16,1,0.3,1)]">
-            <Info size={16} weight="bold" />
-            <span>{publishValidationError}</span>
-          </div>
-        )}
-        <div className="flex items-center gap-2.5 max-[768px]:flex max-[768px]:flex-nowrap max-[768px]:w-full">
-          {/* Preview Button */}
-          <button
-            type="button"
-            className="inline-flex items-center gap-1.5 border border-white/[0.12] rounded-[9px] px-4 py-2 text-[var(--text)] bg-[var(--surface)] text-[0.84rem] font-semibold cursor-pointer transition-[border-color,background] duration-150 ease-out hover:border-white/25 hover:bg-white/[0.06] disabled:opacity-60 max-[768px]:flex-1 max-[768px]:h-9 max-[768px]:flex max-[768px]:items-center max-[768px]:justify-center max-[768px]:px-2 max-[768px]:text-[0.78rem] max-[768px]:font-semibold max-[768px]:rounded-lg max-[768px]:whitespace-nowrap max-[768px]:box-border"
-            onClick={handlePreviewAction}
-            disabled={actionLoading !== null}
-          >
-            {actionLoading ==="preview" ? (
-              <>
-                <CircleNotch size={16} className="animate-spin text-[var(--accent)]" />
-                <span>Opening...</span>
-              </>
-            ) : (
-              <>
-                <Eye size={16} />
-                <span>Preview</span>
-              </>
-            )}
-          </button>
+      {/* Mobile Sticky / Fixed Bottom Action Bar */}
+      <div className="fixed bottom-[calc(68px+env(safe-area-inset-bottom))] left-0 right-0 z-[135] px-3.5 py-2.5 bg-[color-mix(in_srgb,var(--canvas,black)_88%,transparent)] backdrop-blur-xl border-t border-white/10 flex items-center gap-2 min-[769px]:hidden">
+        {/* Preview Button */}
+        <button
+          type="button"
+          style={{ fontSize: "0.84rem", fontWeight: 500, height: "44px", borderRadius: "12px", gap: "6px" }}
+          className="flex-1 inline-flex items-center justify-center border border-white/10 text-[var(--text-secondary)] bg-transparent cursor-pointer transition-all hover:bg-white/[0.05] hover:text-[var(--text)] active:scale-[0.98] disabled:opacity-60"
+          onClick={handlePreviewAction}
+          disabled={actionLoading !== null}
+        >
+          {actionLoading === "preview" ? (
+            <>
+              <CircleNotch size={14} className="animate-spin text-[var(--accent)]" />
+              <span>Opening...</span>
+            </>
+          ) : (
+            <>
+              <Eye size={14} />
+              <span>Preview</span>
+            </>
+          )}
+        </button>
 
-          {/* Save Draft Button */}
-          <button
-            type="button"
-            className="inline-flex items-center gap-1.5 border border-white/[0.12] rounded-[9px] px-4 py-2 text-[var(--text)] bg-[var(--surface)] text-[0.84rem] font-semibold cursor-pointer transition-[border-color,background] duration-150 ease-out hover:border-white/25 hover:bg-white/[0.06] disabled:opacity-60 max-[768px]:flex-1 max-[768px]:h-9 max-[768px]:flex max-[768px]:items-center max-[768px]:justify-center max-[768px]:px-2 max-[768px]:text-[0.78rem] max-[768px]:font-semibold max-[768px]:rounded-lg max-[768px]:whitespace-nowrap max-[768px]:box-border"
-            onClick={handleSaveDraftAction}
-            disabled={actionLoading !== null}
-          >
-            {actionLoading ==="draft" ? (
-              <>
-                <CircleNotch size={16} className="animate-spin text-[var(--accent)]" />
-                <span>Saving Draft...</span>
-              </>
-            ) : (
-              <>
-                <FloppyDisk size={16} />
-                <span>Save Draft</span>
-              </>
-            )}
-          </button>
+        {/* Save Draft Button */}
+        <button
+          type="button"
+          style={{ fontSize: "0.84rem", fontWeight: 500, height: "44px", borderRadius: "12px", gap: "6px" }}
+          className="flex-1 inline-flex items-center justify-center border border-white/10 text-[var(--text)] bg-white/[0.05] cursor-pointer transition-all hover:bg-white/10 active:scale-[0.98] disabled:opacity-60"
+          onClick={handleSaveDraftAction}
+          disabled={actionLoading !== null}
+        >
+          {actionLoading === "draft" ? (
+            <>
+              <CircleNotch size={14} className="animate-spin text-[var(--accent)]" />
+              <span>Saving...</span>
+            </>
+          ) : (
+            <>
+              <FloppyDisk size={14} />
+              <span>Save Draft</span>
+            </>
+          )}
+        </button>
 
-          {/* Save Changes / Publish Course Primary Button */}
-          <button
-            type="button"
-            className="inline-flex items-center gap-1.5 border-none rounded-[9px] px-5 py-2 text-[var(--on-accent,#ffffff)] bg-[var(--accent)] text-[0.84rem] font-semibold cursor-pointer shadow-[0_2px_8px_var(--accent-shadow)] transition-[background,box-shadow,opacity] duration-150 ease-out hover:bg-[var(--accent-hover,var(--accent))] hover:shadow-[0_4px_14px_var(--accent-shadow)] disabled:opacity-60 max-[768px]:flex-1 max-[768px]:h-9 max-[768px]:flex max-[768px]:items-center max-[768px]:justify-center max-[768px]:px-2 max-[768px]:text-[0.78rem] max-[768px]:font-semibold max-[768px]:rounded-lg max-[768px]:whitespace-nowrap max-[768px]:box-border"
-            disabled={actionLoading !== null}
-            onClick={
-              activeStep ==="publish"
-                ? handleFinalPublishCourse
-                : handleSaveChangesAction
-            }
-          >
-            {actionLoading ==="publish" ? (
-              <>
-                <CircleNotch size={16} className="animate-spin text-[var(--accent)]" />
-                <span>{isPublished ?"Updating..." :"Publishing..."}</span>
-              </>
-            ) : actionLoading ==="save" ? (
-              <>
-                <CircleNotch size={16} className="animate-spin text-[var(--accent)]" />
-                <span>Saving Changes...</span>
-              </>
-            ) : (
-              <>
-                {activeStep ==="publish" ? (
-                  isPublished ? (
-                    <>
-                      <CheckCircle size={16} />
-                      <span>Update Course</span>
-                    </>
-                  ) : (
-                    <>
-                      <RocketLaunch size={16} />
-                      <span>Publish Course</span>
-                    </>
-                  )
+        {/* Save Changes / Publish Course Button */}
+        <button
+          type="button"
+          style={{ fontSize: "0.84rem", fontWeight: 600, height: "44px", borderRadius: "14px", gap: "6px" }}
+          className="flex-1 inline-flex items-center justify-center border-none text-[var(--on-accent,#ffffff)] bg-[var(--accent)] cursor-pointer shadow-[0_3px_10px_var(--accent-shadow)] transition-all hover:bg-[var(--accent-hover,var(--accent))] active:scale-[0.98] disabled:opacity-60"
+          disabled={actionLoading !== null}
+          onClick={
+            activeStep === "publish"
+              ? handleFinalPublishCourse
+              : handleSaveChangesAction
+          }
+        >
+          {actionLoading === "publish" ? (
+            <>
+              <CircleNotch size={14} className="animate-spin text-[var(--on-accent,#fff)]" />
+              <span>{isPublished ? "Updating..." : "Publishing..."}</span>
+            </>
+          ) : actionLoading === "save" ? (
+            <>
+              <CircleNotch size={14} className="animate-spin text-[var(--on-accent,#fff)]" />
+              <span>Saving...</span>
+            </>
+          ) : (
+            <>
+              {activeStep === "publish" ? (
+                isPublished ? (
+                  <span>Update Course</span>
                 ) : (
-                  <span>Save Changes</span>
-                )}
-              </>
-            )}
-          </button>
-        </div>
-      </footer>
+                  <span>Publish Course</span>
+                )
+              ) : (
+                <span>Save Changes</span>
+              )}
+            </>
+          )}
+        </button>
+      </div>
 
       {/* Floating Action Feedback Toast */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 border border-[color-mix(in_srgb,var(--accent)_45%,transparent)] rounded-xl px-4.5 py-3 text-[var(--text)] bg-[var(--surface)] shadow-[0_8px_30px_rgba(0,0,0,0.35)] text-[0.86rem] font-semibold animate-[toastPopIn_0.3s_cubic-bezier(0.16,1,0.3,1)]" role="status" aria-live="polite">
-          <CheckCircle size={18} weight="fill" className="text-[var(--accent)]" />
+        <div
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 border border-[color-mix(in_srgb,var(--accent)_45%,transparent)] rounded-xl px-4.5 py-3 text-[var(--text)] bg-[var(--surface)] shadow-[0_8px_30px_rgba(0,0,0,0.35)] text-[0.86rem] font-semibold animate-[toastPopIn_0.3s_cubic-bezier(0.16,1,0.3,1)]"
+          role="status"
+          aria-live="polite"
+        >
+          <CheckCircle
+            size={18}
+            weight="fill"
+            className="text-[var(--accent)]"
+          />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -3335,7 +3854,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
       {/* Realistic Student-Facing Course Overview Full Preview Modal */}
       {isPreviewModalOpen &&
-        typeof document !=="undefined" &&
+        typeof document !== "undefined" &&
         createPortal(
           <div
             className="fixed inset-0 z-[1200] flex flex-col bg-black/80 backdrop-blur-xl [animation:deleteModalFadeIn_0.2s_ease-out] p-4 box-border max-[640px]:p-0"
@@ -3361,11 +3880,11 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                 </div>
                 <button
                   type="button"
-                  className="inline-flex items-center justify-center w-8 h-8 shrink-0 border border-[color-mix(in_srgb,var(--text)_12%,transparent)] rounded-lg bg-transparent text-[var(--text-secondary)] cursor-pointer transition-all duration-150 ease-out hover:border-[color-mix(in_srgb,var(--text)_24%,transparent)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
+                  className="inline-flex w-7 h-7 items-center justify-center rounded-[8px] border border-[color-mix(in_srgb,var(--surface-strong)72%,transparent)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--surface)48%,transparent)] transition-all duration-150 bg-transparent cursor-pointer p-0"
                   onClick={() => setIsPreviewModalOpen(false)}
                   aria-label="Close Preview"
                 >
-                  <X size={18} weight="bold" />
+                  <X size={15} />
                 </button>
               </div>
 
