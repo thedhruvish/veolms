@@ -2,10 +2,12 @@ import { FleetApiClient } from "../client/fleet-client.ts";
 import { HeartbeatEmitter } from "../client/heartbeat-emitter.ts";
 import { loadWorkerConfig, type MediaWorkerConfig } from "../config/index.ts";
 import { ChunkTranscodingRunner } from "../runner/chunk-runner.ts";
+import { ManifestStitcher } from "../runner/manifest-stitcher.ts";
 import { createDualStorageAdapters } from "../storage/factory.ts";
 import type { StorageAdapter } from "../storage/types.ts";
 import { ScratchWorkspaceManager } from "../storage/workspace.ts";
 import { QueueJobConsumer, type WorkerQueueAdapterLike } from "./consumer.ts";
+import { SpotInterruptionListener } from "./spot-listener.ts";
 import type { WorkerDaemonStatus } from "./types.ts";
 
 export interface MediaWorkerDaemonOptions {
@@ -19,7 +21,7 @@ export interface MediaWorkerDaemonOptions {
 
 /**
  * MediaWorkerDaemon: Main daemon hosting the transcoding worker,
- * managing boot registration, queue polling, dual-storage resolution, heartbeats, and graceful shutdown.
+ * managing boot registration, queue polling, dual-storage resolution, heartbeats, Spot resilience, and graceful shutdown.
  */
 export class MediaWorkerDaemon {
   readonly config: MediaWorkerConfig;
@@ -31,6 +33,7 @@ export class MediaWorkerDaemon {
   readonly heartbeat: HeartbeatEmitter;
   readonly runner: ChunkTranscodingRunner;
   readonly consumer?: QueueJobConsumer;
+  readonly spotListener: SpotInterruptionListener;
 
   private isRunning = false;
   private readonly startedAt = new Date();
@@ -58,12 +61,27 @@ export class MediaWorkerDaemon {
       heartbeat: this.heartbeat,
     });
 
+    this.spotListener = new SpotInterruptionListener({
+      workerId: this.config.workerId,
+      client: this.client,
+      getCurrentChunkId: () => this.consumer?.activeChunkId,
+      onInterruptionDetected: async () => {
+        await this.stop();
+      },
+    });
+
+    const stitcher = new ManifestStitcher({
+      prodStorage: this.prodStorage,
+      tempStorage: this.tempStorage,
+      workspace: this.workspace,
+    });
+
     const queueAdapter: WorkerQueueAdapterLike = options.queue ?? {
       fetchNextJob: async () => {
         return this.client.fetchNextJob(this.config.workerId);
       },
-      completeJob: async (_queue, jobId) => {
-        return this.client.completeChunk(this.config.workerId, jobId);
+      completeJob: async (_queue, jobId, outputKey) => {
+        return this.client.completeChunk(this.config.workerId, jobId, outputKey);
       },
       failJob: async (_queue, jobId, error) => {
         return this.client.failChunk(this.config.workerId, jobId, error);
@@ -75,6 +93,7 @@ export class MediaWorkerDaemon {
       queue: queueAdapter,
       runner: this.runner,
       client: this.client,
+      manifestStitcher: stitcher,
       pollIntervalMs: options.pollIntervalMs ?? 1000,
       onShutdownRequested: async () => {
         await this.stop();
@@ -102,7 +121,10 @@ export class MediaWorkerDaemon {
     // 2. Start heartbeat emitter
     this.heartbeat.start();
 
-    // 3. Start queue consumer
+    // 3. Start Spot interruption poller
+    this.spotListener.start();
+
+    // 4. Start queue consumer
     if (this.consumer) {
       await this.consumer.start();
     }
@@ -118,13 +140,16 @@ export class MediaWorkerDaemon {
       return;
     }
 
-    // 1. Stop queue consumer
+    // 1. Stop Spot listener
+    this.spotListener.stop();
+
+    // 2. Stop queue consumer
     this.consumer?.stop();
 
-    // 2. Stop heartbeat emitter
+    // 3. Stop heartbeat emitter
     this.heartbeat.stop();
 
-    // 3. Purge scratch workspace
+    // 4. Purge scratch workspace
     await this.workspace.purgeWorkerWorkspace();
 
     this.isRunning = false;

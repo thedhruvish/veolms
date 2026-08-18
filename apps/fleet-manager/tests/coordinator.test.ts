@@ -127,4 +127,10 @@ describe("Fleet Coordinator & Worker Lifecycle Manager", () => {
     assert.equal(result.videosFinalized, 0);
     assert.equal(result.fleetStatus.isDrained, true);
   });
+
+  it("should initialize ManifestFinalizer and support finalizing completed video jobs", async () => {
+    assert.ok(coordinator.finalizer instanceof Object);
+    const finalized = await coordinator.finalizer.finalizeCompletedVideos();
+    assert.deepEqual(finalized, []);
+  });
 });

@@ -152,6 +152,76 @@ export function createLambdaHandler(
         return jsonResponse(200, { success: true });
       }
 
+      // Spot Interruption: POST /api/v1/workers/:id/interruption
+      const intMatch = pathname.match(
+        /^\/api\/v1\/workers\/([^/]+)\/interruption$/,
+      );
+      if (method === "POST" && intMatch && intMatch[1]) {
+        const workerId = intMatch[1];
+        const body = parseJsonBody<{ chunkId?: string }>(httpEvent.body);
+        if (body.chunkId) {
+          await coordinator.context.database
+            .updateTable("video_chunks")
+            .set({
+              status: "PENDING",
+              error: "Worker interrupted by EC2 Spot reclaim, task preserved",
+              updated_at: new Date(),
+            })
+            .where("id", "=", body.chunkId)
+            .execute()
+            .catch(() => {});
+        }
+        await coordinator.context.database
+          .updateTable("workers")
+          .set({
+            state: "TERMINATED",
+            current_chunk_id: null,
+            updated_at: new Date(),
+          })
+          .where("id", "=", workerId)
+          .execute()
+          .catch(() => {});
+        return jsonResponse(200, { success: true, action: "DRAINING" });
+      }
+
+      // Finalize Video: POST /api/v1/workers/:id/finalize-video
+      const finMatch = pathname.match(
+        /^\/api\/v1\/workers\/([^/]+)\/finalize-video$/,
+      );
+      if (method === "POST" && finMatch && finMatch[1]) {
+        const body = parseJsonBody<{
+          videoId: string;
+          masterManifestKey?: string;
+          error?: string;
+        }>(httpEvent.body);
+
+        if (body.error) {
+          await coordinator.context.database
+            .updateTable("video_jobs")
+            .set({
+              status: "FAILED",
+              error: `Master manifest finalization failed: ${body.error}`,
+              updated_at: new Date(),
+            })
+            .where("id", "=", body.videoId)
+            .execute()
+            .catch(() => {});
+        } else {
+          await coordinator.context.database
+            .updateTable("video_jobs")
+            .set({
+              status: "COMPLETED",
+              output_manifest_key:
+                body.masterManifestKey || `videos/${body.videoId}/master.m3u8`,
+              updated_at: new Date(),
+            })
+            .where("id", "=", body.videoId)
+            .execute()
+            .catch(() => {});
+        }
+        return jsonResponse(200, { success: true });
+      }
+
       // NO_WORK: POST /api/v1/workers/:id/no-work
       const nwMatch = pathname.match(/^\/api\/v1\/workers\/([^/]+)\/no-work$/);
       if (method === "POST" && nwMatch && nwMatch[1]) {

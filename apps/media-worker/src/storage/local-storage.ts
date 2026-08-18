@@ -40,6 +40,7 @@ export class LocalStorageAdapter implements StorageAdapter {
   async uploadDirectory(
     localSourceDir: string,
     remoteDestinationPrefix: string,
+    concurrency = 16,
   ): Promise<readonly string[]> {
     const uploadedKeys: string[] = [];
 
@@ -65,13 +66,25 @@ export class LocalStorageAdapter implements StorageAdapter {
     }
 
     const cleanPrefix = remoteDestinationPrefix.replace(/\/+$/, "");
-
-    for (const filePath of allFiles) {
+    const tasks = allFiles.map((filePath) => {
       const relPath = relative(localSourceDir, filePath);
       const remoteKey = `${cleanPrefix}/${relPath}`;
-      await this.uploadFile(filePath, remoteKey);
-      uploadedKeys.push(remoteKey);
-    }
+      return { filePath, remoteKey };
+    });
+
+    let currentIndex = 0;
+    const worker = async () => {
+      while (currentIndex < tasks.length) {
+        const item = tasks[currentIndex++];
+        if (!item) break;
+        await this.uploadFile(item.filePath, item.remoteKey);
+        uploadedKeys.push(item.remoteKey);
+      }
+    };
+
+    const workerCount = Math.min(concurrency, Math.max(1, tasks.length));
+    const workers = Array.from({ length: workerCount }, () => worker());
+    await Promise.all(workers);
 
     return uploadedKeys;
   }

@@ -5,6 +5,8 @@ import { createServer, type Server } from "node:http";
 import {
   FleetApiClient,
   HeartbeatEmitter,
+  callFleetManager,
+  createFleetClient,
   sampleSystemMetrics,
 } from "../src/client/index.ts";
 import { loadWorkerConfig } from "../src/config/index.ts";
@@ -132,5 +134,28 @@ describe("Media Worker Fleet Client & Heartbeat Emitter", () => {
 
     assert.equal(res.action, "TERMINATE");
     assert.ok(lastNoWork !== null);
+  });
+
+  it("should support createFleetClient factory function", () => {
+    const client = createFleetClient(baseUrl);
+    assert.ok(client instanceof FleetApiClient);
+  });
+
+  it("should execute quick requests with callFleetManager utility", async () => {
+    const res = await callFleetManager<{ action: string }>(
+      "/api/v1/workers/mw-worker-4/no-work",
+      {
+        baseUrl,
+        method: "POST",
+        body: {
+          instanceId: "mw-inst-4",
+          timestamp: new Date().toISOString(),
+        },
+      },
+    );
+
+    assert.equal(res.success, true);
+    assert.equal(res.status, 200);
+    assert.equal(res.data?.action, "TERMINATE");
   });
 });

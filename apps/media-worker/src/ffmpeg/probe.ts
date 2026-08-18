@@ -45,6 +45,7 @@ export async function probeMedia(filePath: string): Promise<ProbeResult> {
             ? Number(videoStream.duration)
             : 0;
 
+      const hasAudio = Boolean(audioStream);
       const audioChannels = audioStream?.channels ?? 2;
       const audioBitrateKbps = audioStream?.bit_rate
         ? Math.round(Number(audioStream.bit_rate) / 1000)
@@ -56,6 +57,7 @@ export async function probeMedia(filePath: string): Promise<ProbeResult> {
         fps,
         codec,
         durationSeconds: Math.max(0, durationSeconds),
+        hasAudio,
         audioChannels,
         audioBitrateKbps,
       });

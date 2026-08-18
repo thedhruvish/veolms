@@ -6,6 +6,7 @@ export interface ProbeResult {
   readonly fps: number;
   readonly codec: string;
   readonly durationSeconds: number;
+  readonly hasAudio: boolean;
   readonly audioChannels: number;
   readonly audioBitrateKbps: number;
 }

@@ -105,14 +105,21 @@ export class FluentFfmpegTranscoder {
                 `-bufsize ${rendition.bufSizeKbps}k`,
               ];
 
+        cmd.outputOptions(videoOptions);
+
+        if (probe.hasAudio) {
+          cmd
+            .audioCodec("aac")
+            .outputOptions([
+              `-b:a ${rendition.audioBitrateKbps}k`,
+              "-ar 48000",
+              "-ac 2",
+            ]);
+        } else {
+          cmd.noAudio();
+        }
+
         cmd
-          .outputOptions(videoOptions)
-          .audioCodec("aac")
-          .outputOptions([
-            `-b:a ${rendition.audioBitrateKbps}k`,
-            "-ar 48000",
-            "-ac 2",
-          ])
           .outputOptions([
             "-f hls",
             `-hls_time ${segmentDuration}`,
@@ -190,7 +197,8 @@ export class FluentFfmpegTranscoder {
     let masterContent = "#EXTM3U\n#EXT-X-VERSION:3\n";
 
     for (const spec of successfulRenditions) {
-      const bandwidth = (spec.maxBitrateKbps + spec.audioBitrateKbps) * 1000;
+      const audioBitrate = probe.hasAudio ? spec.audioBitrateKbps : 0;
+      const bandwidth = (spec.maxBitrateKbps + audioBitrate) * 1000;
       masterContent += `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth},RESOLUTION=${spec.width}x${spec.height}\n`;
       masterContent += `${spec.quality}.m3u8\n`;
     }

@@ -154,4 +154,77 @@ describe("Serverful Control Plane Daemon & Worker API", () => {
     assert.equal(body.workersLaunched, 0);
     assert.ok(body.fleetStatus !== undefined);
   });
+
+  it("should handle Spot interruption warning via POST /api/v1/workers/:id/interruption", async () => {
+    const res = await fetch(
+      `${baseUrl}/api/v1/workers/worker-spot-1/interruption`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chunkId: "chunk-spot-test",
+          timestamp: new Date().toISOString(),
+        }),
+      },
+    );
+
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as { success: boolean; action: string };
+    assert.equal(body.success, true);
+    assert.equal(body.action, "DRAINING");
+  });
+
+  it("should handle chunk completion via POST /api/v1/workers/:id/complete-chunk", async () => {
+    const res = await fetch(
+      `${baseUrl}/api/v1/workers/worker-api-1/complete-chunk`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chunkId: "chunk-test-1",
+          outputKey: "videos/vid-1/chunks/chunk-test-1/master.m3u8",
+        }),
+      },
+    );
+
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as { success: boolean };
+    assert.equal(body.success, true);
+  });
+
+  it("should handle chunk failure and retry recording via POST /api/v1/workers/:id/fail-chunk", async () => {
+    const res = await fetch(
+      `${baseUrl}/api/v1/workers/worker-api-1/fail-chunk`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chunkId: "chunk-test-fail-1",
+          error: "Encoder segfault",
+        }),
+      },
+    );
+
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as { success: boolean };
+    assert.equal(body.success, true);
+  });
+
+  it("should handle video finalization via POST /api/v1/workers/:id/finalize-video", async () => {
+    const res = await fetch(
+      `${baseUrl}/api/v1/workers/worker-api-1/finalize-video`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          videoId: "vid-test-1",
+          masterManifestKey: "videos/vid-test-1/master.m3u8",
+        }),
+      },
+    );
+
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as { success: boolean };
+    assert.equal(body.success, true);
+  });
 });

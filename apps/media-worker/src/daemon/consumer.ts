@@ -4,15 +4,21 @@ import {
   type QueueName,
 } from "@veolms/fleet-types";
 
+import type { CompleteChunkResponse } from "../client/types.ts";
 import type { FleetApiClient } from "../client/fleet-client.ts";
 import type { MediaWorkerConfig } from "../config/options.ts";
 import type { ChunkTranscodingRunner } from "../runner/chunk-runner.ts";
+import type { ManifestStitcher } from "../runner/manifest-stitcher.ts";
 
 export interface WorkerQueueAdapterLike {
   fetchNextJob<T extends object>(
     queue: QueueName,
   ): Promise<{ readonly id: string; readonly data: T } | null>;
-  completeJob(queue: QueueName, jobId: string): Promise<void>;
+  completeJob(
+    queue: QueueName,
+    jobId: string,
+    outputKey?: string,
+  ): Promise<CompleteChunkResponse | void>;
   failJob(queue: QueueName, jobId: string, errorMessage: string): Promise<void>;
 }
 
@@ -21,19 +27,21 @@ export interface ConsumerContext {
   readonly queue: WorkerQueueAdapterLike;
   readonly runner: ChunkTranscodingRunner;
   readonly client: FleetApiClient;
+  readonly manifestStitcher?: ManifestStitcher;
   readonly onShutdownRequested?: () => Promise<void>;
   readonly pollIntervalMs?: number;
 }
 
 /**
  * QueueJobConsumer: Polls Queue 2 (video-chunk-encoding), executes chunk jobs,
- * and handles the §32.2 NO_WORK lifecycle protocol when queue is empty.
+ * coordinates worker-side master manifest stitching, and handles the §32.2 NO_WORK lifecycle protocol.
  */
 export class QueueJobConsumer {
   private readonly config: MediaWorkerConfig;
   private readonly queue: WorkerQueueAdapterLike;
   private readonly runner: ChunkTranscodingRunner;
   private readonly client: FleetApiClient;
+  private readonly manifestStitcher?: ManifestStitcher;
   private readonly onShutdownRequested?: () => Promise<void>;
   private readonly pollIntervalMs: number;
 
@@ -48,6 +56,7 @@ export class QueueJobConsumer {
     this.queue = context.queue;
     this.runner = context.runner;
     this.client = context.client;
+    this.manifestStitcher = context.manifestStitcher;
     this.onShutdownRequested = context.onShutdownRequested;
     this.pollIntervalMs = context.pollIntervalMs ?? 1000;
   }
@@ -103,9 +112,56 @@ export class QueueJobConsumer {
             console.info(
               `[Worker ${this.config.workerId}] Chunk ${job.data.chunkId} completed successfully. Renditions: ${result.renditionsProduced.length}`,
             );
-            await this.queue.completeJob(VIDEO_CHUNK_ENCODING_QUEUE, job.id);
+            const compRes = await this.queue.completeJob(
+              VIDEO_CHUNK_ENCODING_QUEUE,
+              job.id,
+              result.uploadedKeys[0],
+            );
             this.completedCount += 1;
             this.lastCompletedChunkId = job.data.chunkId;
+
+            // If elected by Fleet Manager to finalize the video master manifest
+            if (
+              compRes &&
+              typeof compRes === "object" &&
+              compRes.shouldFinalize &&
+              compRes.videoId &&
+              compRes.requestedQualities &&
+              compRes.chunks &&
+              this.manifestStitcher
+            ) {
+              try {
+                console.info(
+                  `[Worker ${this.config.workerId}] Elected to finalize master manifest for video ${compRes.videoId} 🎬`,
+                );
+                const masterKey = await this.manifestStitcher.stitchAndUpload({
+                  videoId: compRes.videoId,
+                  requestedQualities: compRes.requestedQualities,
+                  chunks: compRes.chunks,
+                });
+                await this.client.finalizeVideo(
+                  this.config.workerId,
+                  compRes.videoId,
+                  masterKey,
+                );
+                console.info(
+                  `[Worker ${this.config.workerId}] Master manifest finalized successfully: ${masterKey} ✅`,
+                );
+              } catch (err: unknown) {
+                const message =
+                  err instanceof Error ? err.message : String(err);
+                console.error(
+                  `[Worker ${this.config.workerId}] Failed to stitch master manifest for video ${compRes.videoId}:`,
+                  message,
+                );
+                await this.client.finalizeVideo(
+                  this.config.workerId,
+                  compRes.videoId,
+                  undefined,
+                  message,
+                );
+              }
+            }
           } else {
             console.error(
               `[Worker ${this.config.workerId}] Chunk ${job.data.chunkId} failed: ${result.error}`,

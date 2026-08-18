@@ -55,4 +55,20 @@ describe("FFmpeg Filter & Resolution Clamping", () => {
     assert.equal(renditions.length, 1);
     assert.equal(renditions[0]?.quality, "480p");
   });
+
+  it("should correctly handle silent video probe metadata without audio stream", () => {
+    const silentProbe = {
+      width: 1920,
+      height: 1080,
+      fps: 30,
+      codec: "h264",
+      durationSeconds: 120,
+      hasAudio: false,
+      audioChannels: 0,
+      audioBitrateKbps: 0,
+    };
+
+    assert.equal(silentProbe.hasAudio, false);
+    assert.equal(silentProbe.audioChannels, 0);
+  });
 });

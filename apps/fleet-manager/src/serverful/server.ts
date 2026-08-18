@@ -290,8 +290,15 @@ export function createWorkerApiServer(coordinator: FleetCoordinator): Server {
               .where("id", "=", targetChunkId)
               .executeTakeFirst();
 
+            let shouldFinalize = false;
+            let finalizationPayload: {
+              videoId: string;
+              requestedQualities: readonly string[];
+              chunks: readonly { id: string; chunk_index: number }[];
+            } | null = null;
+
             if (chunkRow?.video_id) {
-              await coordinator.context.database
+              const updatedJob = await coordinator.context.database
                 .updateTable("video_jobs")
                 .set((eb) => ({
                   completed_chunks: eb("completed_chunks", "+", 1),
@@ -299,25 +306,115 @@ export function createWorkerApiServer(coordinator: FleetCoordinator): Server {
                   updated_at: new Date(),
                 }))
                 .where("id", "=", chunkRow.video_id)
-                .execute();
-            }
-          }
+                .returning([
+                  "id",
+                  "chunk_count",
+                  "completed_chunks",
+                  "requested_qualities",
+                ])
+                .executeTakeFirst();
 
-          await coordinator.context.database
-            .updateTable("workers")
-            .set({
-              state: "IDLE",
-              current_chunk_id: null,
-              progress_percent: 100,
-              updated_at: new Date(),
-            })
-            .where("id", "=", workerId)
-            .execute();
+              // If all chunks completed, elect this worker to stitch master manifest
+              if (
+                updatedJob &&
+                updatedJob.chunk_count > 0 &&
+                updatedJob.completed_chunks >= updatedJob.chunk_count
+              ) {
+                const videoChunks = await coordinator.context.database
+                  .selectFrom("video_chunks")
+                  .select(["id", "chunk_index"])
+                  .where("video_id", "=", updatedJob.id)
+                  .orderBy("chunk_index", "asc")
+                  .execute();
+
+                await coordinator.context.database
+                  .updateTable("video_jobs")
+                  .set({ status: "FINALIZING", updated_at: new Date() })
+                  .where("id", "=", updatedJob.id)
+                  .execute();
+
+                shouldFinalize = true;
+                finalizationPayload = {
+                  videoId: updatedJob.id,
+                  requestedQualities:
+                    (updatedJob.requested_qualities as unknown as string[]) || [
+                      "1080p",
+                      "720p",
+                      "480p",
+                    ],
+                  chunks: videoChunks,
+                };
+              }
+            }
+
+            await coordinator.context.database
+              .updateTable("workers")
+              .set({
+                state: "IDLE",
+                current_chunk_id: null,
+                progress_percent: 100,
+                updated_at: new Date(),
+              })
+              .where("id", "=", workerId)
+              .execute();
+
+            sendJson(res, 200, {
+              success: true,
+              shouldFinalize,
+              ...(finalizationPayload ?? {}),
+            });
+            return;
+          }
         } catch (err: unknown) {
           console.error(
             `[Fleet Control Plane] DB error on completeChunk:`,
             err,
           );
+        }
+
+        sendJson(res, 200, { success: true, shouldFinalize: false });
+        return;
+      }
+
+      // Worker Finalize Video: POST /api/v1/workers/:id/finalize-video
+      const finalizeVideoMatch = pathname.match(
+        /^\/api\/v1\/workers\/([^/]+)\/finalize-video$/,
+      );
+      if (method === "POST" && finalizeVideoMatch && finalizeVideoMatch[1]) {
+        const workerId = finalizeVideoMatch[1];
+        const body = await parseBody<{
+          videoId: string;
+          masterManifestKey?: string;
+          error?: string;
+        }>(req);
+
+        console.log(
+          `[Fleet Control Plane] Received video finalization from worker ${workerId} for video ${body.videoId} (master key: ${body.masterManifestKey ?? "default"})`,
+        );
+
+        if (body.error) {
+          await coordinator.context.database
+            .updateTable("video_jobs")
+            .set({
+              status: "FAILED",
+              error: `Master manifest finalization failed: ${body.error}`,
+              updated_at: new Date(),
+            })
+            .where("id", "=", body.videoId)
+            .execute()
+            .catch(() => {});
+        } else {
+          await coordinator.context.database
+            .updateTable("video_jobs")
+            .set({
+              status: "COMPLETED",
+              output_manifest_key:
+                body.masterManifestKey || `videos/${body.videoId}/master.m3u8`,
+              updated_at: new Date(),
+            })
+            .where("id", "=", body.videoId)
+            .execute()
+            .catch(() => {});
         }
 
         sendJson(res, 200, { success: true });
@@ -367,15 +464,57 @@ export function createWorkerApiServer(coordinator: FleetCoordinator): Server {
             );
 
           if (isTargetUuid) {
-            await coordinator.context.database
-              .updateTable("video_chunks")
-              .set({
-                status: "FAILED",
-                error: body.error ?? "Transcoding failed",
-                updated_at: new Date(),
-              })
+            const chunkRecord = await coordinator.context.database
+              .selectFrom("video_chunks")
+              .select(["id", "video_id", "retry_count", "chunk_index"])
               .where("id", "=", targetChunkId)
-              .execute();
+              .executeTakeFirst();
+
+            const currentRetries = (chunkRecord?.retry_count ?? 0) + 1;
+            const maxRetries = 3;
+
+            if (currentRetries >= maxRetries) {
+              // Dead-letter the chunk
+              await coordinator.context.database
+                .updateTable("video_chunks")
+                .set({
+                  status: "FAILED",
+                  retry_count: currentRetries,
+                  error:
+                    body.error ??
+                    `Transcoding failed after ${currentRetries} attempts`,
+                  updated_at: new Date(),
+                })
+                .where("id", "=", targetChunkId)
+                .execute();
+
+              // Escalate video job to FAILED
+              if (chunkRecord?.video_id) {
+                await coordinator.context.database
+                  .updateTable("video_jobs")
+                  .set({
+                    status: "FAILED",
+                    error: `Video job failed due to chunk failure (Chunk index: ${chunkRecord.chunk_index}): ${body.error ?? "Max retries exceeded"}`,
+                    updated_at: new Date(),
+                  })
+                  .where("id", "=", chunkRecord.video_id)
+                  .execute();
+              }
+            } else {
+              // Retry the chunk: reset to PENDING
+              await coordinator.context.database
+                .updateTable("video_chunks")
+                .set({
+                  status: "PENDING",
+                  retry_count: currentRetries,
+                  error:
+                    body.error ??
+                    `Attempt ${currentRetries} failed, retrying...`,
+                  updated_at: new Date(),
+                })
+                .where("id", "=", targetChunkId)
+                .execute();
+            }
           }
 
           await coordinator.context.database
@@ -392,6 +531,46 @@ export function createWorkerApiServer(coordinator: FleetCoordinator): Server {
         }
 
         sendJson(res, 200, { success: true });
+        return;
+      }
+
+      // Worker Spot Interruption Warning: POST /api/v1/workers/:id/interruption
+      const interruptionMatch = pathname.match(
+        /^\/api\/v1\/workers\/([^/]+)\/interruption$/,
+      );
+      if (method === "POST" && interruptionMatch && interruptionMatch[1]) {
+        const workerId = interruptionMatch[1];
+        const body = await parseBody<{ chunkId?: string }>(req);
+
+        console.warn(
+          `[Fleet Control Plane] Spot interruption warning received from worker ${workerId} (active chunk: ${body.chunkId ?? "none"})`,
+        );
+
+        if (body.chunkId) {
+          await coordinator.context.database
+            .updateTable("video_chunks")
+            .set({
+              status: "PENDING",
+              error: "Worker interrupted by EC2 Spot reclaim, task preserved",
+              updated_at: new Date(),
+            })
+            .where("id", "=", body.chunkId)
+            .execute()
+            .catch(() => {});
+        }
+
+        await coordinator.context.database
+          .updateTable("workers")
+          .set({
+            state: "TERMINATED",
+            current_chunk_id: null,
+            updated_at: new Date(),
+          })
+          .where("id", "=", workerId)
+          .execute()
+          .catch(() => {});
+
+        sendJson(res, 200, { success: true, action: "DRAINING" });
         return;
       }
 

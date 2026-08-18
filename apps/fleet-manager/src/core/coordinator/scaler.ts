@@ -90,23 +90,38 @@ export class FleetScaler {
       }
 
       // Provision missing workers
+      const is4K = job.sourceHeight >= 2160 || job.sourceWidth >= 3840;
+      const complexityScore = Number(
+        (job.qualityComplexity * job.sourceComplexity).toFixed(2),
+      );
+      const isGpuPreferred = is4K || complexityScore > 25;
+
       for (let i = 0; i < allocation.workersToLaunch; i++) {
         const workerId = randomUUID();
 
         const launchResult = await this.context.driver.launchWorker({
           workerId,
           provider: this.context.driver.providerType,
-          instanceType: "c5.2xlarge",
           managerApiUrl: this.context.managerApiUrl,
           queueConnectionString: this.context.queueConnectionString,
+          environment: {
+            COMPLEXITY_SCORE: String(complexityScore),
+            IS_4K: is4K ? "true" : "false",
+            GPU_PREFERRED: isGpuPreferred ? "true" : "false",
+          },
         });
+
+        const effectiveInstanceType =
+          (launchResult.metadata?.instanceType as string) ||
+          (launchResult.metadata?.instance_type as string) ||
+          "standard";
 
         // Register initial worker record in persistence layer
         await registerWorker(this.context.database, {
           id: workerId,
           instanceId: launchResult.instanceId,
           provider: launchResult.provider,
-          instanceType: "c5.2xlarge",
+          instanceType: effectiveInstanceType,
         });
 
         launchedWorkers.push(launchResult);
