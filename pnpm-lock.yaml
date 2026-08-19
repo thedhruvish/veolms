@@ -265,11 +265,29 @@ importers:
 
   packages/fleet-provider-aws:
     dependencies:
+      '@aws-sdk/client-cloudwatch-logs':
+        specifier: ^3.1112.0
+        version: 3.1112.0
       '@aws-sdk/client-ec2':
         specifier: ^3.750.0
         version: 3.1112.0
+      '@aws-sdk/client-iam':
+        specifier: ^3.1112.0
+        version: 3.1112.0
+      '@aws-sdk/client-imagebuilder':
+        specifier: ^3.1112.0
+        version: 3.1112.0
+      '@aws-sdk/client-lambda':
+        specifier: ^3.1112.0
+        version: 3.1112.0
+      '@aws-sdk/client-s3':
+        specifier: ^3.1112.0
+        version: 3.1112.0
       '@aws-sdk/client-ssm':
         specifier: ^3.750.0
+        version: 3.1112.0
+      '@aws-sdk/client-sts':
+        specifier: ^3.1112.0
         version: 3.1112.0
       '@veolms/fleet-types':
         specifier: workspace:*
@@ -310,8 +328,24 @@ packages:
     resolution: {integrity: sha512-VCpnmyHQ1IH49ni3LXnQj7DPr7rmcJmzYeiCkYdCcfgNtkvOj38cdcL9lapBWoItZWFACJPFJlymqC7/gem3Gw==}
     engines: {node: '>=20.0.0'}
 
+  '@aws-sdk/client-cloudwatch-logs@3.1112.0':
+    resolution: {integrity: sha512-g3x8EMgjsInKt2on6D2C21gzTUGud8J6wjnvJpEoGI7Ghc3tD5lyJAb5hOb8b+EWaxa+YugEubGPU/k8f5ykQQ==}
+    engines: {node: '>=20.0.0'}
+
   '@aws-sdk/client-ec2@3.1112.0':
     resolution: {integrity: sha512-wLhwFptTL5Si39vnK8LwIRfF6WUe92Yq4DeVvDw5YdssfEu+KaHNWfO8W6m18lzr/IAclwid7fzoxwuwXUvGRg==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/client-iam@3.1112.0':
+    resolution: {integrity: sha512-D6vzRE9PJckdvS70jZasqVtDavBEPcyuKUEayMvSSfAwejEgmClVl/Omc8UcaffKqzNIxsa0oMa8wOXLmEHkSQ==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/client-imagebuilder@3.1112.0':
+    resolution: {integrity: sha512-x2584+nl9PUXFLibaXaJRc5dhtJAE+hARt+JEMaI9Q2kOGC2fZS04z9OzurTtfrOPPuOe2xAk7YO8xuK+2xBpg==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/client-lambda@3.1112.0':
+    resolution: {integrity: sha512-7DeE4t3ENa53m8AmWa/oTe2+JVAo8ctqB3pUNTxUaSiMqLbsNCdSIVSUtgDET3nMUkAotz9oc9unnQvXKBmIxA==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/client-s3@3.1112.0':
@@ -320,6 +354,10 @@ packages:
 
   '@aws-sdk/client-ssm@3.1112.0':
     resolution: {integrity: sha512-hRIqk2SA4KZZnft15mhYthIaye1FOBpYeOWts5nmAEQKW1jaEpuvl/IrWo/hFeAZ1CpEzC+xlwFPL2BNOaEvcw==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/client-sts@3.1112.0':
+    resolution: {integrity: sha512-q+BR9W348cfu9jL2bkDN1X2eYMi4GPDMeLFjLYWGCxbLoox1R2RHlqNbCNvAf1WPkcHiW/fnx5yMbLgS30mGlw==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/core@3.977.8':
@@ -3513,11 +3551,55 @@ snapshots:
       '@smithy/types': 4.17.2
       tslib: 2.8.1
 
+  '@aws-sdk/client-cloudwatch-logs@3.1112.0':
+    dependencies:
+      '@aws-sdk/core': 3.977.8
+      '@aws-sdk/credential-provider-node': 3.972.80
+      '@aws-sdk/types': 3.974.4
+      '@smithy/core': 3.33.2
+      '@smithy/fetch-http-handler': 5.7.2
+      '@smithy/node-http-handler': 4.11.2
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
   '@aws-sdk/client-ec2@3.1112.0':
     dependencies:
       '@aws-sdk/core': 3.977.8
       '@aws-sdk/credential-provider-node': 3.972.80
       '@aws-sdk/middleware-sdk-ec2': 3.972.57
+      '@aws-sdk/types': 3.974.4
+      '@smithy/core': 3.33.2
+      '@smithy/fetch-http-handler': 5.7.2
+      '@smithy/node-http-handler': 4.11.2
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+  '@aws-sdk/client-iam@3.1112.0':
+    dependencies:
+      '@aws-sdk/core': 3.977.8
+      '@aws-sdk/credential-provider-node': 3.972.80
+      '@aws-sdk/types': 3.974.4
+      '@smithy/core': 3.33.2
+      '@smithy/fetch-http-handler': 5.7.2
+      '@smithy/node-http-handler': 4.11.2
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+  '@aws-sdk/client-imagebuilder@3.1112.0':
+    dependencies:
+      '@aws-sdk/core': 3.977.8
+      '@aws-sdk/credential-provider-node': 3.972.80
+      '@aws-sdk/types': 3.974.4
+      '@smithy/core': 3.33.2
+      '@smithy/fetch-http-handler': 5.7.2
+      '@smithy/node-http-handler': 4.11.2
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+  '@aws-sdk/client-lambda@3.1112.0':
+    dependencies:
+      '@aws-sdk/core': 3.977.8
+      '@aws-sdk/credential-provider-node': 3.972.80
       '@aws-sdk/types': 3.974.4
       '@smithy/core': 3.33.2
       '@smithy/fetch-http-handler': 5.7.2
@@ -3543,6 +3625,18 @@ snapshots:
     dependencies:
       '@aws-sdk/core': 3.977.8
       '@aws-sdk/credential-provider-node': 3.972.80
+      '@aws-sdk/types': 3.974.4
+      '@smithy/core': 3.33.2
+      '@smithy/fetch-http-handler': 5.7.2
+      '@smithy/node-http-handler': 4.11.2
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+  '@aws-sdk/client-sts@3.1112.0':
+    dependencies:
+      '@aws-sdk/core': 3.977.8
+      '@aws-sdk/credential-provider-node': 3.972.80
+      '@aws-sdk/signature-v4-multi-region': 3.996.45
       '@aws-sdk/types': 3.974.4
       '@smithy/core': 3.33.2
       '@smithy/fetch-http-handler': 5.7.2
