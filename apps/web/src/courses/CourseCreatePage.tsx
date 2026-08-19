@@ -1642,7 +1642,7 @@ export function CourseCreatePage({
                 aria-keyshortcuts={`Alt+${idx + 1}`}
                 tabIndex={isActive ? 0 : -1}
                 data-page-tab-tone={step.tone}
-                className={`!border-b-transparent !outline-none focus:!outline-none focus-visible:!outline-none shrink-0 whitespace-nowrap ${isActive ? "is-active" : ""}`}
+                className={`!border-b-transparent shrink-0 whitespace-nowrap ${isActive ? "is-active" : ""}`}
                 onClick={() => {
                   const currentIdx = WIZARD_STEPS.findIndex(
                     (s) => s.id === activeStep,

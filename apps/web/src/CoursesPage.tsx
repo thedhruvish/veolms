@@ -38,8 +38,6 @@ import { StudentHome } from "./StudentHome";
 import { MyCoursesPage, type LearningCourse } from "./StudentPages";
 import { SettingsPage } from "./SettingsPage";
 import { CourseCatalogue } from "./courses/CourseCatalogue";
-import { CourseCreatePage } from "./courses/CourseCreatePage";
-import { CourseOverviewPage } from "./courses/CourseOverviewPage";
 import { PlaceholderPage } from "./courses/PlaceholderPage";
 import { WorkspacePage } from "./workspace/WorkspacePages";
 import { courses, getVisibleCourses } from "./courses/catalogue";
@@ -129,6 +127,16 @@ const ReadingModeQuickMenu = lazy(() =>
     default: module.ReadingModeQuickMenu,
   })),
 );
+const CourseCreatePage = lazy(() =>
+  import("./courses/CourseCreatePage").then((module) => ({
+    default: module.CourseCreatePage,
+  })),
+);
+const CourseOverviewPage = lazy(() =>
+  import("./courses/CourseOverviewPage").then((module) => ({
+    default: module.CourseOverviewPage,
+  })),
+);
 
 type ThemePreference = "light" | "dark" | "device";
 type AppearanceOption = ThemePreference | "theme";
@@ -143,6 +151,7 @@ interface CoursesPageProps {
   section?: string | null;
   settingsTab?: string;
   discussionTab?: string;
+  courseSlug?: string;
   renderMain?: (() => ReactNode) | null;
 }
 
@@ -423,6 +432,7 @@ export function CoursesPage({
   section: requestedSection = null,
   settingsTab = "profile",
   discussionTab = "q-and-a",
+  courseSlug,
   renderMain = null,
 }: CoursesPageProps) {
   const [role, setRole] = useState<CourseRole>("student");
@@ -2995,15 +3005,20 @@ export function CoursesPage({
               }}
             />
           ) : page === "course-create" ? (
-            <CourseCreatePage
-              onNavigatePage={onNavigatePage}
-              bottomNavHidden={mobileBottomNavHidden}
-            />
+            <Suspense fallback={null}>
+              <CourseCreatePage
+                onNavigatePage={onNavigatePage}
+                bottomNavHidden={mobileBottomNavHidden}
+              />
+            </Suspense>
           ) : page === "course-overview" ? (
-            <CourseOverviewPage
-              onNavigateCourses={() => onNavigatePage("explore-courses")}
-              onNavigatePage={onNavigatePage}
-            />
+            <Suspense fallback={null}>
+              <CourseOverviewPage
+                courseSlug={courseSlug}
+                onNavigateCourses={() => onNavigatePage("/courses")}
+                onNavigatePage={onNavigatePage}
+              />
+            </Suspense>
           ) : page === "placeholder" ? (
             <PlaceholderPage
               section={requestedSection || activeSection}

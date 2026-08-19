@@ -110,9 +110,9 @@ export function getSectionTitle(course: Course, index: number): string {
 }
 
 function getCourseSections(courseSlug: string | undefined): CourseSection[] {
-  if (!courseSlug || courseSlug === "ui-ux-design-mastery") return sections;
-  const course = courses.find((c) => c.id === courseSlug);
-  if (!course) return sections;
+  if (courseSlug === "ui-ux-design-mastery") return sections;
+  const course = courseSlug ? courses.find((c) => c.id === courseSlug) : undefined;
+  if (!course) return [];
   return buildFallbackSections(course);
 }
 
@@ -156,6 +156,8 @@ function CurriculumSectionItem({
   isOpen,
   onToggle,
 }: CurriculumSectionProps) {
+  const panelId = `cov-section-panel-${section.id}`;
+  const buttonId = `cov-section-toggle-${section.id}`;
   const lectureCount = section.lessons.length || Math.max(3, 5 - (index % 3));
   const minutes = 20 + index * 7 + (index % 4) * 5;
   const hours = Math.floor(minutes / 60);
@@ -172,9 +174,11 @@ function CurriculumSectionItem({
       role="listitem"
     >
       <button
+        id={buttonId}
         type="button"
         className="flex w-full min-h-[52px] items-center gap-3.5 border-0 px-[18px] py-3 text-[var(--text)] bg-transparent text-[0.92rem] font-semibold text-left cursor-pointer transition-colors duration-140 hover:bg-[var(--hover)] max-[640px]:p-[10px_14px] max-[640px]:text-[0.88rem]"
         aria-expanded={isOpen}
+        aria-controls={panelId}
         onClick={onToggle}
       >
         <span
@@ -200,14 +204,18 @@ function CurriculumSectionItem({
       </button>
 
       <div
-        className={`overflow-hidden motion-reduce:transition-none ${
-          isOpen
-            ? "max-h-[800px] opacity-100 visible transition-[max-height,opacity,visibility] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
-            : "max-h-0 opacity-0 invisible transition-[max-height,opacity,visibility] duration-250 ease-[cubic-bezier(0,1,0,1)]"
-        }`}
+        id={panelId}
+        role="region"
+        aria-labelledby={buttonId}
         aria-hidden={!isOpen}
+        className={`grid motion-reduce:transition-none ${
+          isOpen
+            ? "grid-rows-[1fr] opacity-100 visible transition-[grid-template-rows,opacity,visibility] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+            : "grid-rows-[0fr] opacity-0 invisible transition-[grid-template-rows,opacity,visibility] duration-250 ease-[cubic-bezier(0,1,0,1)]"
+        }`}
       >
-        <div className="min-h-0 px-3.5 pt-1 pb-2.5 border-t border-[color-mix(in_srgb,var(--text)_8%,transparent)] bg-[color-mix(in_srgb,var(--surface)_95%,var(--text))]">
+        <div className="overflow-hidden min-h-0">
+          <div className="px-3.5 pt-1 pb-2.5 border-t border-[color-mix(in_srgb,var(--text)_8%,transparent)] bg-[color-mix(in_srgb,var(--surface)_95%,var(--text))]">
           {section.lessons.length > 0
             ? section.lessons.map(([number, title, duration, status]) => {
                 const isDoc =
@@ -308,6 +316,7 @@ function CurriculumSectionItem({
                   </div>
                 );
               })}
+          </div>
         </div>
       </div>
     </div>
@@ -772,11 +781,38 @@ export function CourseOverviewPage({
   const courseSlug = propCourseSlug ?? routeCourseSlug;
 
   const course =
-    customCourse ?? courses.find((c) => c.id === courseSlug) ?? courses[0]!;
+    customCourse ??
+    (courseSlug ? courses.find((c) => c.id === courseSlug) : undefined);
 
-  const title = customCourse?.title ?? getCourseTitle(courseSlug);
-  const thumbnail = customCourse?.thumbnail ?? getCourseThumbnail(courseSlug);
-  const courseSections = customSections ?? getCourseSections(courseSlug);
+  if (!course) {
+    return (
+      <div className="w-full max-w-[1100px] mx-auto box-border text-[var(--text)]">
+        <div className="courses-empty">
+          <BookOpen size={34} />
+          <h2>Course not found</h2>
+          <p>
+            The course you are looking for does not exist or may have been removed.
+          </p>
+          {onNavigateCourses ? (
+            <button type="button" onClick={onNavigateCourses}>
+              Explore courses
+            </button>
+          ) : onNavigatePage ? (
+            <button
+              type="button"
+              onClick={() => onNavigatePage("/explore-courses")}
+            >
+              Explore courses
+            </button>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  const title = customCourse?.title ?? course.title;
+  const thumbnail = customCourse?.thumbnail ?? course.thumbnail;
+  const courseSections = customSections ?? getCourseSections(course.id);
   const inclusions: string[] | undefined =
     customInclusions !== undefined
       ? Array.from(
