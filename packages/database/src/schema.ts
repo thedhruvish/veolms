@@ -1,4 +1,12 @@
-import type { Generated } from "kysely";
+import type { Generated, JSONColumnType } from "kysely";
+import type {
+  Architecture,
+  FleetEventType,
+  JobRequirements,
+  JobStatus,
+  ProviderType,
+  WorkerStatus,
+} from "@veolms/fleet-types";
 
 export type CourseStatus = "draft" | "published" | "archived";
 export type OtpIdentifierType = "email" | "phone";
@@ -153,6 +161,63 @@ export interface WebauthnChallengeTable {
   created_at: Generated<Date>;
 }
 
+export interface JobTable {
+  id: string;
+  status: JobStatus;
+  video_key: string;
+  output_prefix: string;
+  requirements: JSONColumnType<JobRequirements>;
+  worker_id: string | null;
+  attempts: Generated<number>;
+  max_attempts: Generated<number>;
+  error_message: string | null;
+  created_at: Generated<Date>;
+  started_at: Date | null;
+  completed_at: Date | null;
+  failed_at: Date | null;
+  updated_at: Generated<Date>;
+}
+
+export interface WorkerTable {
+  id: string;
+  provider: ProviderType;
+  provider_worker_id: string;
+  status: WorkerStatus;
+  architecture: Architecture;
+  cpu: number;
+  memory_mb: number;
+  storage_gb: Generated<number>;
+  region: Generated<string>;
+  job_id: string | null;
+  metadata: JSONColumnType<Record<string, unknown>>;
+  last_heartbeat_at: Date | null;
+  created_at: Generated<Date>;
+  started_at: Date | null;
+  terminated_at: Date | null;
+  updated_at: Generated<Date>;
+}
+
+export interface WorkerMonitoringTable {
+  worker_id: string;
+  next_check_at: Date;
+  last_check_at: Date | null;
+  estimated_duration_sec: number;
+  progress_percent: Generated<number>;
+  last_progress_at: Date | null;
+  monitoring_attempts: Generated<number>;
+  check_interval_sec: Generated<number>;
+  updated_at: Generated<Date>;
+}
+
+export interface WorkerEventTable {
+  id: string;
+  worker_id: string | null;
+  job_id: string | null;
+  event: FleetEventType;
+  metadata: JSONColumnType<Record<string, unknown>>;
+  created_at: Generated<Date>;
+}
+
 export interface Database {
   courses: CourseTable;
   academy: AcademyTable;
@@ -168,4 +233,8 @@ export interface Database {
   user_totp_credentials: UserTotpCredentialTable;
   mfa_backup_codes: MfaBackupCodeTable;
   webauthn_challenges: WebauthnChallengeTable;
+  jobs: JobTable;
+  workers: WorkerTable;
+  worker_monitoring: WorkerMonitoringTable;
+  worker_events: WorkerEventTable;
 }
