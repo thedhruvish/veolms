@@ -1,5 +1,6 @@
 import { execFile, spawn } from "node:child_process";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { copyFile, cp, mkdir, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import type { VideoQualityLevel } from "@veolms/fleet-types";
@@ -11,6 +12,7 @@ import {
   uploadDirectoryToS3,
 } from "./s3.ts";
 import type { MediaWorkerContext } from "./worker.ts";
+import { resolve } from "node:url";
 
 const execFileAsync = promisify(execFile);
 
@@ -112,13 +114,36 @@ export async function executeTranscodeJob(
     await mkdir(jobScratchDir, { recursive: true });
     await mkdir(outputHlsDir, { recursive: true });
 
-    // 3. Download source video from S3
-    await downloadS3File(
-      s3Client,
-      config.S3_BUCKET,
+    // 3. Obtain source video (local file or S3 download)
+    const localCandidates = [
       job.video_key,
-      inputVideoPath,
-    );
+      join(process.cwd(), job.video_key),
+      join(process.cwd(), "s3-bucket", job.video_key),
+    ];
+    let isLocalFile = false;
+    for (const candidate of localCandidates) {
+      if (existsSync(candidate)) {
+        try {
+          const s = await stat(candidate);
+          if (s.isFile()) {
+            await copyFile(candidate, inputVideoPath);
+            isLocalFile = true;
+            break;
+          }
+        } catch {
+          // Ignore
+        }
+      }
+    }
+
+    if (!isLocalFile) {
+      await downloadS3File(
+        s3Client,
+        config.S3_BUCKET,
+        job.video_key,
+        inputVideoPath,
+      );
+    }
 
     // 4. Probe Video Metadata
     const metadata = await probeVideoMetadata(
@@ -210,13 +235,49 @@ export async function executeTranscodeJob(
     const masterPlaylistPath = join(outputHlsDir, "master.m3u8");
     await writeFile(masterPlaylistPath, masterPlaylistContent, "utf-8");
 
-    // 9. Sync HLS artifacts to S3
-    await uploadDirectoryToS3(
-      s3Client,
-      config.S3_BUCKET,
-      outputHlsDir,
-      job.output_prefix,
-    );
+    // 9. Sync HLS artifacts to local folder
+    try {
+      const cleanPrefix = job.output_prefix.replace(/^s3-bucket\//, "");
+      const targets = [
+        join(process.cwd(), "s3-bucket", cleanPrefix),
+        join(process.cwd(), "veolms", "s3-bucket", cleanPrefix),
+        join(process.cwd(), "..", "s3-bucket", cleanPrefix),
+        join(process.cwd(), "..", "veolms", "s3-bucket", cleanPrefix),
+      ];
+      for (const localTargetDir of targets) {
+        try {
+          await mkdir(localTargetDir, { recursive: true });
+          await cp(outputHlsDir, localTargetDir, {
+            recursive: true,
+            force: true,
+          });
+          console.info(
+            `[media-worker] HLS artifacts saved locally to ${localTargetDir}`,
+          );
+        } catch (targetErr) {
+          console.warn("[media-worker] Target sync attempt notice:", targetErr);
+        }
+      }
+    } catch (localErr) {
+      console.warn("[media-worker] Local sync notice:", localErr);
+    }
+
+    // 10. Sync HLS artifacts to S3 if AWS credentials or S3 endpoint configured
+    if (
+      (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) ||
+      process.env.S3_ENDPOINT
+    ) {
+      try {
+        await uploadDirectoryToS3(
+          s3Client,
+          config.S3_BUCKET,
+          outputHlsDir,
+          job.output_prefix,
+        );
+      } catch (s3Err) {
+        console.warn("[media-worker] S3 upload notice:", s3Err);
+      }
+    }
 
     // 10. Mark COMPLETED in DB
     await db

@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { createDatabase } from "@veolms/database";
 import { createAwsProvider } from "@veolms/fleet-provider-aws";
 import { createLocalProvider } from "@veolms/fleet-provider-local";
@@ -22,11 +24,17 @@ export function startServerfulFleetManager(
 
   const db = createDatabase(config.DATABASE_URL);
 
+  const workerScript =
+    config.MEDIA_WORKER_SCRIPT_PATH ??
+    (existsSync(join(process.cwd(), "apps/media-worker/src/index.ts"))
+      ? join(process.cwd(), "apps/media-worker/src/index.ts")
+      : undefined);
+
   const provider: FleetProvider =
     config.PROVIDER === "aws"
       ? createAwsProvider()
       : createLocalProvider({
-          workerScriptPath: config.MEDIA_WORKER_SCRIPT_PATH,
+          workerScriptPath: workerScript,
         });
 
   const fleet = createFleetManager({

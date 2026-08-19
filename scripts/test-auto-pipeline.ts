@@ -1,0 +1,213 @@
+import { randomUUID } from "node:crypto";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { createDatabase } from "../packages/database/src/index.ts";
+import { loadServerConfig } from "../packages/config/src/index.ts";
+import { createFleetManager } from "../apps/fleet-manager/src/core/fleet-manager.ts";
+import { createLocalProvider } from "../packages/fleet-provider-local/src/provider.ts";
+import { loadFleetManagerConfig } from "../apps/fleet-manager/src/config/config.ts";
+import type { VideoQualityLevel } from "../packages/fleet-types/src/index.ts";
+
+async function main() {
+  const serverConfig = loadServerConfig(process.env);
+  const fleetConfig = loadFleetManagerConfig({
+    ...process.env,
+    POLL_INTERVAL_MS: 1000,
+    HEARTBEAT_TIMEOUT_SECONDS: 90,
+  });
+
+  const db = createDatabase(serverConfig.DATABASE_URL);
+
+  const workerScript = existsSync(
+    join(process.cwd(), "apps/media-worker/src/index.ts"),
+  )
+    ? join(process.cwd(), "apps/media-worker/src/index.ts")
+    : undefined;
+
+  const provider = createLocalProvider({
+    workerScriptPath: workerScript,
+    defaultEnv: {
+      DATABASE_URL: serverConfig.DATABASE_URL,
+    },
+  });
+
+  const fleet = createFleetManager({
+    provider,
+    db,
+    config: fleetConfig,
+  });
+
+  const jobId = randomUUID();
+  const videoKey = "s3-bucket/raw/video.mp4";
+  const outputPrefix = "output/auto-demo/";
+  const qualities: VideoQualityLevel[] = ["240p", "144p"];
+
+  console.info(
+    "===============================================================",
+  );
+  console.info(
+    "=== AUTONOMOUS END-TO-END FLEET & TRANSCODER PIPELINE TEST ===",
+  );
+  console.info(
+    "===============================================================",
+  );
+  console.info(`Job ID:        ${jobId}`);
+  console.info(`Video Key:     ${videoKey}`);
+  console.info(`Output Folder: s3-bucket/${outputPrefix}`);
+  console.info(`Qualities:     ${qualities.join(", ")}`);
+  console.info(
+    "---------------------------------------------------------------\n",
+  );
+
+  // Cancel any stale pending jobs from prior runs
+  await db
+    .updateTable("jobs")
+    .set({ status: "CANCELLED", updated_at: new Date() })
+    .where("status", "in", ["QUEUED", "PROCESSING"])
+    .execute();
+
+  // Step 1: User/System inserts JUST a video task in the queue
+  console.info(
+    "[1/4] User queues a new transcode task directly into PostgreSQL `jobs` table...",
+  );
+  await db
+    .insertInto("jobs")
+    .values({
+      id: jobId,
+      status: "QUEUED",
+      video_key: videoKey,
+      output_prefix: outputPrefix,
+      requirements: {
+        qualities,
+        videoCodec: "h264",
+        audioCodec: "aac",
+        segmentDurationSeconds: 4,
+        hardware: {
+          minCpu: 2,
+          minMemoryMb: 2048,
+          architecture: "arm64",
+          storageGb: 10,
+          estimatedDurationSeconds: 120,
+        },
+      },
+      worker_id: null,
+      attempts: 0,
+      max_attempts: 3,
+      error_message: null,
+      created_at: new Date(),
+      started_at: null,
+      completed_at: null,
+      failed_at: null,
+      updated_at: new Date(),
+    })
+    .execute();
+  console.info(`✓ Job [${jobId}] is now QUEUED in PostgreSQL.\n`);
+
+  // Step 2: Fleet Manager starts daemon loop and automatically picks up the job
+  console.info(
+    "[2/4] Starting Fleet Manager daemon (auto-claiming & worker provisioning)...",
+  );
+  const abortController = new AbortController();
+  const fleetLoopPromise = fleet.startServerfulLoop(abortController.signal);
+
+  // Step 3: Monitor job completion
+  console.info("[3/4] Watching job progress and heartbeats in database...");
+  const startTime = Date.now();
+  let completed = false;
+
+  while (!completed) {
+    await new Promise((res) => setTimeout(res, 2000));
+
+    const currentJob = await db
+      .selectFrom("jobs")
+      .select(["status", "worker_id", "error_message"])
+      .where("id", "=", jobId)
+      .executeTakeFirst();
+
+    if (!currentJob) continue;
+
+    if (currentJob.worker_id) {
+      const monitoring = await db
+        .selectFrom("worker_monitoring")
+        .select(["progress_percent", "check_interval_sec"])
+        .where("worker_id", "=", currentJob.worker_id)
+        .executeTakeFirst();
+
+      const progress = monitoring?.progress_percent ?? 0;
+      process.stdout.write(
+        `\r  [Progress] Status: ${currentJob.status} | Worker: ${currentJob.worker_id.slice(0, 8)} | Progress: ${Number(progress).toFixed(1)}%   `,
+      );
+    }
+
+    if (currentJob.status === "COMPLETED") {
+      completed = true;
+      console.info("\n\n✓ Job successfully COMPLETED!");
+      break;
+    }
+
+    if (currentJob.status === "FAILED") {
+      throw new Error(`Job FAILED: ${currentJob.error_message}`);
+    }
+
+    // Safety timeout: 120s
+    if (Date.now() - startTime > 120000) {
+      throw new Error("Timeout: Job took longer than 120s");
+    }
+  }
+
+  // Stop fleet daemon loop
+  abortController.abort();
+  await fleetLoopPromise.catch(() => {});
+
+  // Step 4: Verify generated HLS files on disk
+  console.info(
+    "\n[4/4] Verifying generated HLS files in `s3-bucket/output/auto-demo/` on disk...",
+  );
+  const outputDir = resolve(process.cwd(), "s3-bucket", outputPrefix);
+
+  if (!existsSync(outputDir)) {
+    throw new Error(`Output directory not found: ${outputDir}`);
+  }
+
+  const masterPlaylist = join(outputDir, "master.m3u8");
+  if (!existsSync(masterPlaylist)) {
+    throw new Error(`master.m3u8 missing at ${masterPlaylist}`);
+  }
+
+  console.info(`✓ Found master.m3u8 (${statSync(masterPlaylist).size} bytes)`);
+  console.info("\n--- master.m3u8 ---");
+  console.info(readFileSync(masterPlaylist, "utf-8").trim());
+
+  for (const q of qualities) {
+    const qDir = join(outputDir, q);
+    const hasPlaylist =
+      existsSync(join(qDir, `${q}.m3u8`)) ||
+      existsSync(join(qDir, "prog_index.m3u8"));
+    if (!hasPlaylist) {
+      throw new Error(`Playlist missing in ${qDir}`);
+    }
+    const playlistName = existsSync(join(qDir, `${q}.m3u8`))
+      ? `${q}.m3u8`
+      : "prog_index.m3u8";
+    const segments = readdirSync(qDir).filter((f) => f.endsWith(".ts"));
+    console.info(
+      `✓ Quality ${q}: Found playlist (${playlistName}) and ${segments.length} segment (.ts) chunks`,
+    );
+  }
+
+  console.info(
+    "\n===============================================================",
+  );
+  console.info("🎉 FULL AUTONOMOUS PIPELINE TEST PASSED SUCCESSFULLY!");
+  console.info(
+    "===============================================================",
+  );
+
+  await db.destroy();
+  process.exit(0);
+}
+
+main().catch((err) => {
+  console.error("\n❌ Pipeline test error:", err);
+  process.exit(1);
+});

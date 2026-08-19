@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { createDatabase } from "@veolms/database";
 import { loadMediaWorkerConfig } from "./config.ts";
 import { executeTranscodeJob } from "./processor.ts";
@@ -33,7 +34,11 @@ export async function run(): Promise<void> {
   }
 }
 
-if (process.argv[1] && import.meta.url.endsWith(process.argv[1])) {
+if (
+  process.argv[1] &&
+  (import.meta.url.endsWith(process.argv[1]) ||
+    import.meta.url === `file://${resolve(process.argv[1])}`)
+) {
   run().catch((err) => {
     console.error("[media-worker] Fatal error during startup:", err);
     process.exit(1);

@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { createDatabase } from "@veolms/database";
 import { createAwsProvider } from "@veolms/fleet-provider-aws";
 import { createLocalProvider } from "@veolms/fleet-provider-local";
@@ -61,12 +63,17 @@ export async function runCli(
   const { command, positional, flags } = parseCliArgs(argv);
   const config = loadFleetManagerConfig();
   const db = createDatabase(config.DATABASE_URL);
+  const workerScript =
+    config.MEDIA_WORKER_SCRIPT_PATH ??
+    (existsSync(join(process.cwd(), "apps/media-worker/src/index.ts"))
+      ? join(process.cwd(), "apps/media-worker/src/index.ts")
+      : undefined);
 
   const provider: FleetProvider =
     config.PROVIDER === "aws"
       ? createAwsProvider()
       : createLocalProvider({
-          workerScriptPath: config.MEDIA_WORKER_SCRIPT_PATH,
+          workerScriptPath: workerScript,
         });
 
   const heartbeatTimeoutMs = config.HEARTBEAT_TIMEOUT_SECONDS * 1000;
@@ -259,4 +266,15 @@ Usage:
 `);
       break;
   }
+}
+
+if (
+  process.argv[1] &&
+  (import.meta.url.endsWith(process.argv[1]) ||
+    import.meta.url === `file://${resolve(process.argv[1])}`)
+) {
+  runCli().catch((err) => {
+    console.error("[fleet-cli] Fatal error:", err);
+    process.exit(1);
+  });
 }

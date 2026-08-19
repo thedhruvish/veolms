@@ -4,6 +4,7 @@ export async function up(database: Kysely<unknown>): Promise<void> {
   // 1. Create jobs table
   await database.schema
     .createTable("jobs")
+    .ifNotExists()
     .addColumn("id", "uuid", (column) => column.primaryKey())
     .addColumn("status", "text", (column) =>
       column.notNull().defaultTo("QUEUED"),
@@ -41,6 +42,7 @@ export async function up(database: Kysely<unknown>): Promise<void> {
   // Index on jobs status and created_at for fast queue fetching
   await database.schema
     .createIndex("idx_jobs_status_created")
+    .ifNotExists()
     .on("jobs")
     .columns(["status", "created_at"])
     .execute();
@@ -48,6 +50,7 @@ export async function up(database: Kysely<unknown>): Promise<void> {
   // 2. Create workers table
   await database.schema
     .createTable("workers")
+    .ifNotExists()
     .addColumn("id", "uuid", (column) => column.primaryKey())
     .addColumn("provider", "text", (column) => column.notNull())
     .addColumn("provider_worker_id", "text", (column) => column.notNull())
@@ -97,12 +100,14 @@ export async function up(database: Kysely<unknown>): Promise<void> {
   // Indexes on workers table
   await database.schema
     .createIndex("idx_workers_status")
+    .ifNotExists()
     .on("workers")
     .column("status")
     .execute();
 
   await database.schema
     .createIndex("idx_workers_heartbeat")
+    .ifNotExists()
     .on("workers")
     .columns(["status", "last_heartbeat_at"])
     .execute();
@@ -110,6 +115,7 @@ export async function up(database: Kysely<unknown>): Promise<void> {
   // 3. Create worker_monitoring table
   await database.schema
     .createTable("worker_monitoring")
+    .ifNotExists()
     .addColumn("worker_id", "uuid", (column) =>
       column.primaryKey().references("workers.id").onDelete("cascade"),
     )
@@ -135,6 +141,7 @@ export async function up(database: Kysely<unknown>): Promise<void> {
 
   await database.schema
     .createIndex("idx_monitoring_next_check")
+    .ifNotExists()
     .on("worker_monitoring")
     .column("next_check_at")
     .execute();
@@ -142,6 +149,7 @@ export async function up(database: Kysely<unknown>): Promise<void> {
   // 4. Create worker_events table
   await database.schema
     .createTable("worker_events")
+    .ifNotExists()
     .addColumn("id", "uuid", (column) => column.primaryKey())
     .addColumn("worker_id", "uuid", (column) =>
       column.references("workers.id").onDelete("cascade"),
@@ -178,12 +186,14 @@ export async function up(database: Kysely<unknown>): Promise<void> {
 
   await database.schema
     .createIndex("idx_worker_events_worker")
+    .ifNotExists()
     .on("worker_events")
     .columns(["worker_id", "created_at"])
     .execute();
 
   await database.schema
     .createIndex("idx_worker_events_job")
+    .ifNotExists()
     .on("worker_events")
     .columns(["job_id", "created_at"])
     .execute();

@@ -108,20 +108,30 @@ export async function getJobDiagnostics(
     createdAt: new Date(e.created_at),
   }));
 
-  const monitorRows = await db
-    .selectFrom("worker_monitoring")
-    .selectAll()
-    .where("worker_id", "=", job.workerId ?? "")
-    .orderBy("updated_at", "asc")
-    .execute();
+  let progressHistory: {
+    progressPercent: number;
+    checkIntervalSec: number;
+    nextCheckAt: Date;
+    lastCheckAt: Date | null;
+    updatedAt: Date;
+  }[] = [];
 
-  const progressHistory = monitorRows.map((m) => ({
-    progressPercent: Number(m.progress_percent),
-    checkIntervalSec: m.check_interval_sec,
-    nextCheckAt: new Date(m.next_check_at),
-    lastCheckAt: m.last_check_at ? new Date(m.last_check_at) : null,
-    updatedAt: new Date(m.updated_at),
-  }));
+  if (job.workerId) {
+    const monitorRows = await db
+      .selectFrom("worker_monitoring")
+      .selectAll()
+      .where("worker_id", "=", job.workerId)
+      .orderBy("updated_at", "asc")
+      .execute();
+
+    progressHistory = monitorRows.map((m) => ({
+      progressPercent: Number(m.progress_percent),
+      checkIntervalSec: m.check_interval_sec,
+      nextCheckAt: new Date(m.next_check_at),
+      lastCheckAt: m.last_check_at ? new Date(m.last_check_at) : null,
+      updatedAt: new Date(m.updated_at),
+    }));
+  }
 
   return {
     job,
