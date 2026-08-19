@@ -363,201 +363,222 @@ function CourseHeroSection({
 
   return (
     <div className="flex flex-col w-full">
-      {/* Two-column Hero: Course Info & Pricing on Left, Trailer on Right */}
-      <div className="grid grid-cols-[minmax(0,1.25fr)_minmax(320px,560px)] gap-7 items-stretch w-full box-border max-[900px]:flex max-[900px]:flex-col max-[900px]:gap-4">
-        <div className="flex flex-col min-w-0 w-full gap-3 max-[900px]:contents">
-          {/* Header Info: Back Button, Badge, Title, Metadata */}
-          <div className="flex flex-col min-w-0 shrink-0 max-[900px]:order-1 max-[900px]:gap-1.5 max-[900px]:w-full">
-            {/* Top Row: Back Button + Level Badge */}
-            <div className="flex items-center gap-3 mb-1.5">
-              {onNavigateCourses && (
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center w-[38px] h-[38px] rounded-xl border border-[color-mix(in_srgb,var(--text)_14%,transparent)] bg-[color-mix(in_srgb,var(--surface)_90%,#000)] text-[var(--text)] cursor-pointer p-0 shadow-[0_2px_8px_rgba(0,0,0,0.14)] transition-[border-color,background-color,color] duration-160 ease-out hover:border-[color-mix(in_srgb,var(--text)_30%,transparent)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
-                  aria-label="Back to courses"
-                  onClick={onNavigateCourses}
-                  title="Back to courses"
-                >
-                  <ArrowLeft size={18} weight="bold" />
-                </button>
-              )}
-
-              <span
-                className="inline-flex items-center border border-[var(--accent-border,color-mix(in_srgb,var(--accent)_35%,transparent))] rounded-full px-[13px] py-[5px] text-[var(--accent-ink,var(--accent))] bg-[var(--accent-soft,color-mix(in_srgb,var(--accent)_15%,transparent))] text-[0.74rem] font-[750] tracking-[0.06em] leading-none"
-                aria-label={`Level: ${course.level}`}
+      {/* Responsive Hero: 2 columns on desktop (>=1200px) with ~42/58 ratio and bottom-aligned lower content; stacked (Info -> Trailer -> Price) on tablet and mobile */}
+      <div className="flex flex-col min-[1200px]:grid min-[1200px]:grid-cols-[minmax(0,42%)_minmax(0,58%)] gap-5 min-[1200px]:gap-7 min-[1200px]:items-stretch w-full box-border">
+        {/* Left Column: Top row at top, Lower group (Title + Meta + Pricing) pushed to bottom on desktop */}
+        <div className="flex flex-col min-w-0 w-full min-[1200px]:h-full min-[1200px]:justify-between gap-3.5 max-[1200px]:contents">
+          {/* Top Row: Back Button + Level Badge */}
+          <div className="flex items-center gap-3 shrink-0 max-[1200px]:order-1">
+            {onNavigateCourses && (
+              <button
+                type="button"
+                className="inline-flex items-center justify-center w-[38px] h-[38px] rounded-xl border border-[color-mix(in_srgb,var(--text)_14%,transparent)] bg-[color-mix(in_srgb,var(--surface)_90%,#000)] text-[var(--text)] cursor-pointer p-0 shadow-[0_2px_8px_rgba(0,0,0,0.14)] transition-[border-color,background-color,color] duration-160 ease-out hover:border-[color-mix(in_srgb,var(--text)_30%,transparent)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
+                aria-label="Back to courses"
+                onClick={onNavigateCourses}
+                title="Back to courses"
               >
-                {course.level.toUpperCase()}
-              </span>
-            </div>
+                <ArrowLeft size={18} weight="bold" />
+              </button>
+            )}
 
-            {/* Title */}
-            <h1 className="m-0 mb-1.5 text-[var(--text)] text-[2.15rem] font-extrabold leading-[1.16] tracking-[-0.025em] max-[900px]:text-[1.85rem] max-[640px]:text-[1.65rem]">
-              {title}
-            </h1>
-
-            {/* Meta row */}
-            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[var(--text-secondary)] text-[0.88rem] max-[900px]:gap-x-3 max-[900px]:gap-y-1.5 max-[640px]:text-[0.86rem] max-[640px]:gap-x-2.5 max-[640px]:gap-y-1.25">
-              <span className="inline-flex items-center gap-1.5 text-[var(--text)] font-[650]">
-                <User size={17} weight="bold" aria-hidden="true" />
-                <span>Instructor</span>
-              </span>
-              <span className="text-[color-mix(in_srgb,var(--text)_30%,transparent)] text-[0.8rem]" aria-hidden="true">
-                •
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <Stack size={17} aria-hidden="true" />
-                <span>{course.sections} Sections</span>
-              </span>
-              <span className="text-[color-mix(in_srgb,var(--text)_30%,transparent)] text-[0.8rem]" aria-hidden="true">
-                •
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <BookOpen size={17} aria-hidden="true" />
-                <span>{course.lectures} Lectures</span>
-              </span>
-              <span className="text-[color-mix(in_srgb,var(--text)_30%,transparent)] text-[0.8rem]" aria-hidden="true">
-                •
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <Clock size={17} aria-hidden="true" />
-                <span>{course.duration}</span>
-              </span>
-            </div>
+            <span
+              className="inline-flex items-center border border-[var(--accent-border,color-mix(in_srgb,var(--accent)_35%,transparent))] rounded-full px-[13px] py-[5px] text-[var(--accent-ink,var(--accent))] bg-[var(--accent-soft,color-mix(in_srgb,var(--accent)_15%,transparent))] text-[0.74rem] font-[750] tracking-[0.06em] leading-none"
+              aria-label={`Level: ${course.level}`}
+            >
+              {course.level.toUpperCase()}
+            </span>
           </div>
 
-          {/* Full-width Rich Pricing Section in Left Column */}
-          <div
-            className={`flex flex-col min-h-0 rounded-[14px] border border-[color-mix(in_srgb,var(--text)_12%,transparent)] bg-[color-mix(in_srgb,var(--surface)_95%,transparent)] shadow-[0_4px_16px_rgba(0,0,0,0.12)] w-full box-border max-[900px]:order-3 max-[900px]:flex-initial max-[900px]:w-full max-[900px]:mt-0 max-[640px]:p-[16px_14px] max-[640px]:gap-3 ${
-              perksList.length > 0
-                ? "flex-1 justify-between gap-3 p-[18px_20px]"
-                : "flex-initial gap-4 p-[18px_20px]"
-            }`}
-            aria-label="Course pricing and enrollment"
-          >
-            {/* Top Row: Prominent Price + Original Price + Discount (Left) and Favourite Button (Top Right) */}
-            <div className="flex items-center justify-between gap-3 w-full">
-              <div className="flex items-baseline gap-2.5">
-                <span className="text-[var(--text)] text-[2.15rem] font-[850] tracking-[-0.03em] leading-none max-[640px]:text-[1.95rem]">
-                  {price}
-                </span>
-                {originalPrice && (
-                  <span className="text-[var(--muted)] text-[1.05rem] font-medium line-through">
-                    {originalPrice}
-                  </span>
-                )}
-                {discount && (
-                  <span className="inline-flex items-center rounded-md px-2 py-[3px] bg-[var(--accent-soft,color-mix(in_srgb,var(--accent)_18%,transparent))] text-[var(--accent-ink,var(--accent))] text-[0.75rem] font-[750] leading-none">
-                    {discount}
-                  </span>
-                )}
-              </div>
+          {/* Lower Content Group: Title, Meta row, Pricing Card */}
+          <div className="flex flex-col min-w-0 w-full gap-3.5 max-[1200px]:contents">
+            {/* Title & Metadata */}
+            <div className="flex flex-col min-w-0 shrink-0 max-[1200px]:order-1 max-[900px]:gap-1.5 max-[1200px]:w-full">
+              {/* Title */}
+              <h1 className="m-0 mb-1.5 text-[var(--text)] text-[2.15rem] font-extrabold leading-[1.16] tracking-[-0.025em] max-[900px]:text-[1.85rem] max-[640px]:text-[1.65rem]">
+                {title}
+              </h1>
 
-              <button
-                type="button"
-                className={`inline-flex items-center justify-center w-[38px] h-[38px] shrink-0 rounded-full border border-[color-mix(in_srgb,var(--text)_16%,transparent)] bg-[color-mix(in_srgb,var(--surface)_80%,transparent)] text-[var(--muted)] cursor-pointer transition-[border-color,color,background-color,transform] duration-160 ease-out hover:border-[color-mix(in_srgb,var(--text)_32%,transparent)] hover:text-[var(--text)] hover:bg-[var(--hover)] hover:scale-[1.06] ${
-                  wishlisted
-                    ? "!border-[#ec4899] !text-[#ec4899] !bg-[rgba(236,72,153,0.14)]"
-                    : ""
-                }`}
-                aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
-                aria-pressed={wishlisted}
-                disabled={isReadOnlyPreview}
-                onClick={onToggleWishlist}
-                title={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
-              >
-                <Heart
-                  size={20}
-                  weight={wishlisted ? "fill" : "regular"}
+              {/* Meta row */}
+              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[var(--text-secondary)] text-[0.88rem] max-[900px]:gap-x-3 max-[900px]:gap-y-1.5 max-[640px]:text-[0.86rem] max-[640px]:gap-x-2.5 max-[640px]:gap-y-1.25">
+                <span className="inline-flex items-center gap-1.5 text-[var(--text)] font-[650]">
+                  <User size={17} weight="bold" aria-hidden="true" />
+                  <span>Instructor</span>
+                </span>
+                <span
+                  className="text-[color-mix(in_srgb,var(--text)_30%,transparent)] text-[0.8rem]"
                   aria-hidden="true"
-                />
-              </button>
-            </div>
-
-            {/* Middle Row: Actions (Apply Coupon + Buy Now) */}
-            <div className="flex items-center gap-2.5 w-full max-[640px]:flex-wrap max-[640px]:gap-2">
-              <button
-                type="button"
-                className="inline-flex items-center justify-center gap-1.5 min-h-[40px] border border-dashed border-[color-mix(in_srgb,var(--text)_25%,transparent)] rounded-[9px] px-4 py-[9px] text-[var(--text)] bg-[color-mix(in_srgb,var(--surface)_60%,transparent)] text-[0.86rem] font-bold font-[750] cursor-pointer whitespace-nowrap transition-[border-color,color,background-color,transform] duration-160 ease-out hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft,color-mix(in_srgb,var(--accent)_12%,transparent))] hover:-translate-y-px max-[640px]:flex-1 max-[640px]:min-w-[120px] max-[640px]:px-3.5 max-[640px]:py-2.5 max-[640px]:text-[0.84rem]"
-                disabled={isReadOnlyPreview}
-              >
-                <Ticket size={18} weight="bold" aria-hidden="true" />
-                <span className="font-bold font-[750]">Apply coupon</span>
-              </button>
-
-              <button
-                type="button"
-                className="inline-flex items-center justify-center gap-[7px] flex-1 min-h-[42px] px-5 py-2.5 border-0 rounded-[9px] text-[var(--on-accent,#ffffff)] bg-[var(--accent)] shadow-[0_4px_14px_var(--accent-shadow,color-mix(in_srgb,var(--accent)_28%,transparent))] text-[0.94rem] font-extrabold font-[800] tracking-[-0.01em] cursor-pointer whitespace-nowrap transition-[background-color,transform,box-shadow] duration-160 ease-out hover:bg-[var(--accent-hover,color-mix(in_srgb,var(--accent)_85%,var(--text)))] hover:-translate-y-px hover:shadow-[0_6px_18px_var(--accent-shadow,color-mix(in_srgb,var(--accent)_38%,transparent))] max-[640px]:min-w-[140px] max-[640px]:px-4 max-[640px]:py-2.5 max-[640px]:text-[0.88rem]"
-                disabled={isReadOnlyPreview}
-                onClick={() => {
-                  if (!isReadOnlyPreview && onNavigatePage) {
-                    onNavigatePage(`/learn/${encodeURIComponent(course.id)}`);
-                  }
-                }}
-              >
-                <ShoppingBag size={19} weight="bold" aria-hidden="true" />
-                <span className="font-extrabold font-[800]">
-                  {price.toLowerCase() === "free"
-                    ? "Enroll for Free"
-                    : course.enrolled
-                      ? "Continue Learning"
-                      : "Buy Now"}
+                >
+                  •
                 </span>
-              </button>
+                <span className="inline-flex items-center gap-1.5">
+                  <Stack size={17} aria-hidden="true" />
+                  <span>{course.sections} Sections</span>
+                </span>
+                <span
+                  className="text-[color-mix(in_srgb,var(--text)_30%,transparent)] text-[0.8rem]"
+                  aria-hidden="true"
+                >
+                  •
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <BookOpen size={17} aria-hidden="true" />
+                  <span>{course.lectures} Lectures</span>
+                </span>
+                <span
+                  className="text-[color-mix(in_srgb,var(--text)_30%,transparent)] text-[0.8rem]"
+                  aria-hidden="true"
+                >
+                  •
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Clock size={17} aria-hidden="true" />
+                  <span>{course.duration}</span>
+                </span>
+              </div>
             </div>
 
-            {/* Bottom Row: Additional Inclusions / Value Perks */}
-            {perksList.length > 0 && (
-              <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 pt-2.5 border-t border-[color-mix(in_srgb,var(--text)_8%,transparent)] text-[var(--muted)] text-[0.82rem] max-[640px]:text-[0.78rem] max-[640px]:gap-x-3 max-[640px]:gap-y-2">
-                {perksList.map((perk, idx) => (
-                  <span key={idx} className="inline-flex items-center gap-1.5">
-                    <CheckCircle size={16} weight="fill" className="text-[#10b981] shrink-0" />
-                    <span>{perk}</span>
+            {/* Full-width Rich Pricing Section in Left Column */}
+            <div
+              className={`flex flex-col min-h-0 rounded-[14px] border border-[color-mix(in_srgb,var(--text)_12%,transparent)] bg-[color-mix(in_srgb,var(--surface)_95%,transparent)] shadow-[0_4px_16px_rgba(0,0,0,0.12)] w-full box-border max-[1200px]:order-3 max-[1200px]:w-full max-[1200px]:mt-0 max-[640px]:p-[16px_14px] max-[640px]:gap-3 p-[18px_20px] gap-3.5`}
+              aria-label="Course pricing and enrollment"
+            >
+              {/* Top Row: Prominent Price + Original Price + Discount (Left) and Favourite Button (Top Right) */}
+              <div className="flex items-center justify-between gap-3 w-full">
+                <div className="flex items-baseline gap-2.5">
+                  <span className="text-[var(--text)] text-[2.15rem] font-[850] tracking-[-0.03em] leading-none max-[640px]:text-[1.95rem]">
+                    {price}
                   </span>
-                ))}
+                  {originalPrice && (
+                    <span className="text-[var(--muted)] text-[1.05rem] font-medium line-through">
+                      {originalPrice}
+                    </span>
+                  )}
+                  {discount && (
+                    <span className="inline-flex items-center rounded-md px-2 py-[3px] bg-[var(--accent-soft,color-mix(in_srgb,var(--accent)_18%,transparent))] text-[var(--accent-ink,var(--accent))] text-[0.75rem] font-[750] leading-none">
+                      {discount}
+                    </span>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  className={`inline-flex items-center justify-center w-[38px] h-[38px] shrink-0 rounded-full border border-[color-mix(in_srgb,var(--text)_16%,transparent)] bg-[color-mix(in_srgb,var(--surface)_80%,transparent)] text-[var(--muted)] cursor-pointer transition-[border-color,color,background-color,transform] duration-160 ease-out hover:border-[color-mix(in_srgb,var(--text)_32%,transparent)] hover:text-[var(--text)] hover:bg-[var(--hover)] hover:scale-[1.06] ${
+                    wishlisted
+                      ? "!border-[#ec4899] !text-[#ec4899] !bg-[rgba(236,72,153,0.14)]"
+                      : ""
+                  }`}
+                  aria-label={
+                    wishlisted ? "Remove from wishlist" : "Add to wishlist"
+                  }
+                  aria-pressed={wishlisted}
+                  disabled={isReadOnlyPreview}
+                  onClick={onToggleWishlist}
+                  title={
+                    wishlisted ? "Remove from wishlist" : "Add to wishlist"
+                  }
+                >
+                  <Heart
+                    size={20}
+                    weight={wishlisted ? "fill" : "regular"}
+                    aria-hidden="true"
+                  />
+                </button>
               </div>
-            )}
+
+              {/* Middle Row: Actions (Apply Coupon + Buy Now) */}
+              <div className="flex flex-wrap items-center gap-2.5 w-full min-w-0 max-[640px]:gap-2">
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center gap-1.5 min-h-[40px] border border-dashed border-[color-mix(in_srgb,var(--text)_25%,transparent)] rounded-[9px] px-4 py-[9px] text-[var(--text)] bg-[color-mix(in_srgb,var(--surface)_60%,transparent)] text-[0.86rem] font-bold font-[750] cursor-pointer whitespace-nowrap transition-[border-color,color,background-color,transform] duration-160 ease-out hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft,color-mix(in_srgb,var(--accent)_12%,transparent))] hover:-translate-y-px shrink-0 max-[480px]:flex-1 max-[480px]:min-w-[120px] max-[640px]:px-3.5 max-[640px]:py-2.5 max-[640px]:text-[0.84rem]"
+                  disabled={isReadOnlyPreview}
+                >
+                  <Ticket size={18} weight="bold" aria-hidden="true" />
+                  <span className="font-bold font-[750]">Apply coupon</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center gap-[7px] flex-1 min-h-[42px] min-w-[140px] px-5 py-2.5 border-0 rounded-[9px] text-[var(--on-accent,#ffffff)] bg-[var(--accent)] shadow-[0_4px_14px_var(--accent-shadow,color-mix(in_srgb,var(--accent)_28%,transparent))] text-[0.94rem] font-extrabold font-[800] tracking-[-0.01em] cursor-pointer whitespace-nowrap transition-[background-color,transform,box-shadow] duration-160 ease-out hover:bg-[var(--accent-hover,color-mix(in_srgb,var(--accent)_85%,var(--text)))] hover:-translate-y-px hover:shadow-[0_6px_18px_var(--accent-shadow,color-mix(in_srgb,var(--accent)_38%,transparent))] max-[640px]:min-w-[140px] max-[640px]:px-4 max-[640px]:py-2.5 max-[640px]:text-[0.88rem]"
+                  disabled={isReadOnlyPreview}
+                  onClick={() => {
+                    if (!isReadOnlyPreview && onNavigatePage) {
+                      onNavigatePage(`/learn/${encodeURIComponent(course.id)}`);
+                    }
+                  }}
+                >
+                  <ShoppingBag size={19} weight="bold" aria-hidden="true" />
+                  <span className="font-extrabold font-[800]">
+                    {price.toLowerCase() === "free"
+                      ? "Enroll for Free"
+                      : course.enrolled
+                        ? "Continue Learning"
+                        : "Buy Now"}
+                  </span>
+                </button>
+              </div>
+
+              {/* Bottom Row: Additional Inclusions / Value Perks */}
+              {perksList.length > 0 && (
+                <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 pt-2.5 border-t border-[color-mix(in_srgb,var(--text)_8%,transparent)] text-[var(--muted)] text-[0.82rem] max-[640px]:text-[0.78rem] max-[640px]:gap-x-3 max-[640px]:gap-y-2">
+                  {perksList.map((perk, idx) => (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center gap-1.5"
+                    >
+                      <CheckCircle
+                        size={16}
+                        weight="fill"
+                        className="text-[#10b981] shrink-0"
+                      />
+                      <span>{perk}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Right Column: 16:9 Course Trailer */}
-        <div className="flex items-start justify-end w-full min-w-0 max-[900px]:order-2 max-[900px]:w-full">
-          <div className="group w-full rounded-[14px] overflow-hidden border border-[color-mix(in_srgb,var(--text)_10%,transparent)] bg-[color-mix(in_srgb,var(--surface)_60%,#000)] shadow-[0_4px_18px_rgba(0,0,0,0.14)]" aria-label="Course preview player">
-            <div className="relative w-full aspect-video overflow-hidden flex items-center justify-center">
-              <img
-                src={thumbnail}
-                alt={`Preview thumbnail for ${title}`}
-                className="w-full h-full object-cover opacity-90 transition-[transform,opacity] duration-300 motion-reduce:transition-none group-hover:scale-[1.015] group-hover:opacity-[0.98]"
-              />
-              <div className="absolute inset-0 bg-gradient-to-b from-black/[0.08] to-black/[0.45] pointer-events-none" />
+        <div className="flex items-end justify-center w-full min-w-0 min-[1200px]:h-full max-[1200px]:order-2 max-[1200px]:w-full">
+          <div
+            className="group w-full aspect-video rounded-[14px] overflow-hidden border border-[color-mix(in_srgb,var(--text)_10%,transparent)] bg-[color-mix(in_srgb,var(--surface)_60%,#000)] shadow-[0_4px_18px_rgba(0,0,0,0.14)] relative flex items-center justify-center"
+            aria-label="Course preview player"
+          >
+            <img
+              src={thumbnail}
+              alt={`Preview thumbnail for ${title}`}
+              className="w-full h-full object-cover opacity-90 transition-[transform,opacity] duration-300 motion-reduce:transition-none group-hover:scale-[1.015] group-hover:opacity-[0.98]"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/[0.08] to-black/[0.45] pointer-events-none" />
 
-              {/* Center Play Button */}
-              <button
-                type="button"
-                className="group/play absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 border-0 bg-transparent cursor-pointer p-0 z-[2]"
-                aria-label={`Play preview for ${title}`}
-                onClick={handlePreviewClick}
-                disabled={isReadOnlyPreview}
+            {/* Center Play Button */}
+            <button
+              type="button"
+              className="group/play absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 border-0 bg-transparent cursor-pointer p-0 z-[2]"
+              aria-label={`Play preview for ${title}`}
+              onClick={handlePreviewClick}
+              disabled={isReadOnlyPreview}
+            >
+              <span
+                className="inline-flex w-[54px] h-[54px] items-center justify-center rounded-full bg-black/55 backdrop-blur-md border-[1.5px] border-white/25 text-white shadow-[0_4px_18px_rgba(0,0,0,0.35)] transition-[transform,background-color,border-color] duration-180 ease-out motion-reduce:transition-none group-hover/play:scale-[1.08] group-hover/play:bg-black/75 group-hover/play:border-white/50 max-[640px]:w-[50px] max-[640px]:h-[50px]"
+                aria-hidden="true"
               >
-                <span
-                  className="inline-flex w-[54px] h-[54px] items-center justify-center rounded-full bg-black/55 backdrop-blur-md border-[1.5px] border-white/25 text-white shadow-[0_4px_18px_rgba(0,0,0,0.35)] transition-[transform,background-color,border-color] duration-180 ease-out motion-reduce:transition-none group-hover/play:scale-[1.08] group-hover/play:bg-black/75 group-hover/play:border-white/50 max-[640px]:w-[50px] max-[640px]:h-[50px]"
-                  aria-hidden="true"
-                >
-                  <Play size={22} weight="fill" />
-                </span>
-              </button>
+                <Play size={22} weight="fill" />
+              </span>
+            </button>
 
-              {/* Bottom Left Pill Button */}
-              <button
-                type="button"
-                className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 bg-black/65 backdrop-blur-[10px] border border-white/[0.18] text-white text-[0.78rem] font-semibold px-[13px] py-1.5 rounded-full cursor-pointer z-[2] transition-[background-color,border-color,transform] duration-160 ease-out hover:bg-black/85 hover:border-white/40 hover:-translate-y-px"
-                onClick={handlePreviewClick}
-                disabled={isReadOnlyPreview}
-                aria-label="View trailer"
-              >
-                <Play size={13} weight="fill" aria-hidden="true" />
-                <span>View trailer</span>
-              </button>
-            </div>
+            {/* Bottom Left Pill Button */}
+            <button
+              type="button"
+              className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 bg-black/65 backdrop-blur-[10px] border border-white/[0.18] text-white text-[0.78rem] font-semibold px-[13px] py-1.5 rounded-full cursor-pointer z-[2] transition-[background-color,border-color,transform] duration-160 ease-out hover:bg-black/85 hover:border-white/40 hover:-translate-y-px"
+              onClick={handlePreviewClick}
+              disabled={isReadOnlyPreview}
+              aria-label="View trailer"
+            >
+              <Play size={13} weight="fill" aria-hidden="true" />
+              <span>View trailer</span>
+            </button>
           </div>
         </div>
       </div>
@@ -602,9 +623,21 @@ function CourseAboutCard({
           </div>
         ) : (
           <>
-            {aboutLead && <p className="m-0 text-[var(--text-secondary)] text-[0.87rem] leading-[1.6]">{aboutLead}</p>}
-            {aboutBody && <p className="m-0 text-[var(--text-secondary)] text-[0.87rem] leading-[1.6]">{aboutBody}</p>}
-            {showMore && aboutExtra && <p className="m-0 text-[var(--text-secondary)] text-[0.87rem] leading-[1.6]">{aboutExtra}</p>}
+            {aboutLead && (
+              <p className="m-0 text-[var(--text-secondary)] text-[0.87rem] leading-[1.6]">
+                {aboutLead}
+              </p>
+            )}
+            {aboutBody && (
+              <p className="m-0 text-[var(--text-secondary)] text-[0.87rem] leading-[1.6]">
+                {aboutBody}
+              </p>
+            )}
+            {showMore && aboutExtra && (
+              <p className="m-0 text-[var(--text-secondary)] text-[0.87rem] leading-[1.6]">
+                {aboutExtra}
+              </p>
+            )}
           </>
         )}
       </div>
@@ -711,9 +744,7 @@ export function CourseOverviewPage({
   const courseSlug = propCourseSlug ?? routeCourseSlug;
 
   const course =
-    customCourse ??
-    courses.find((c) => c.id === courseSlug) ??
-    courses[0]!;
+    customCourse ?? courses.find((c) => c.id === courseSlug) ?? courses[0]!;
 
   const title = customCourse?.title ?? getCourseTitle(courseSlug);
   const thumbnail = customCourse?.thumbnail ?? getCourseThumbnail(courseSlug);
@@ -788,59 +819,43 @@ export function CourseOverviewPage({
 
   return (
     <div
-      className={`w-full p-0 text-[var(--text)] box-border overflow-hidden flex flex-col ${
+      className={`w-full max-w-[1100px] mx-auto flex flex-col gap-6 box-border text-[var(--text)] ${
         isReadOnlyPreview
-          ? "h-full min-h-full max-h-none rounded-none bg-transparent"
-          : "h-[calc(100vh-28px)] max-h-[calc(100vh-28px)] rounded-[18px] bg-[color-mix(in_srgb,var(--surface)_18%,var(--canvas))] max-[640px]:h-full max-[640px]:rounded-none"
+          ? "p-[36px_24px_48px] max-[900px]:p-[24px_16px_48px] max-[900px]:gap-[18px] max-[640px]:p-[16px_14px_40px] max-[640px]:gap-4"
+          : "max-[900px]:gap-[18px] max-[640px]:gap-4"
       }`}
     >
-      <div
-        className={`flex-[1_1_auto] min-h-0 w-full overflow-y-auto overflow-x-hidden box-border [scrollbar-width:thin] [scrollbar-color:color-mix(in_srgb,var(--text)_20%,transparent)_transparent] ${
-          isReadOnlyPreview ? "h-full" : ""
-        }`}
-      >
-        <div
-          className={`w-full max-w-[1220px] mx-auto flex flex-col gap-6 box-border ${
-            isReadOnlyPreview
-              ? "p-[36px_24px_48px] max-[900px]:p-[24px_16px_48px] max-[900px]:gap-[18px] max-[640px]:p-[16px_14px_40px] max-[640px]:gap-4"
-              : "p-[36px_24px_48px] max-[900px]:p-[24px_16px_48px] max-[900px]:gap-[18px] max-[640px]:p-[20px_14px_72px] max-[640px]:gap-4"
-          }`}
-        >
-          {/* 1. Two-Column Hero Section with Info & Pricing on Left, Trailer on Right */}
-          <CourseHeroSection
-            course={course}
-            title={title}
-            thumbnail={thumbnail}
-            wishlisted={wishlisted}
-            pricing={customPricing}
-            inclusions={inclusions}
-            onNavigateCourses={onNavigateCourses}
-            onToggleWishlist={toggleWishlist}
-            onNavigatePage={onNavigatePage}
-            isReadOnlyPreview={isReadOnlyPreview}
-          />
+      {/* 1. Two-Column Hero Section with Info & Pricing on Left, Trailer on Right */}
+      <CourseHeroSection
+        course={course}
+        title={title}
+        thumbnail={thumbnail}
+        wishlisted={wishlisted}
+        pricing={customPricing}
+        inclusions={inclusions}
+        onNavigateCourses={onNavigateCourses}
+        onToggleWishlist={toggleWishlist}
+        onNavigatePage={onNavigatePage}
+        isReadOnlyPreview={isReadOnlyPreview}
+      />
 
-          {/* 2. About This Course */}
-          <CourseAboutCard
-            description={customDescription}
-            aboutLead={aboutLead}
-            aboutBody={aboutBody}
-            aboutExtra={aboutExtra}
-            showMore={showMore}
-            onToggleShowMore={() => setShowMore((v) => !v)}
-          />
+      {/* 2. About This Course */}
+      <CourseAboutCard
+        description={customDescription}
+        aboutLead={aboutLead}
+        aboutBody={aboutBody}
+        aboutExtra={aboutExtra}
+        showMore={showMore}
+        onToggleShowMore={() => setShowMore((v) => !v)}
+      />
 
-          {/* 3. Course Curriculum */}
-          <CourseCurriculumCard
-            course={course}
-            courseSections={courseSections}
-            openSections={openSections}
-            onToggleSection={toggleSection}
-          />
-        </div>
-      </div>
+      {/* 3. Course Curriculum */}
+      <CourseCurriculumCard
+        course={course}
+        courseSections={courseSections}
+        openSections={openSections}
+        onToggleSection={toggleSection}
+      />
     </div>
   );
 }
-
-
