@@ -26,14 +26,15 @@
     "fleet:queue:test": "node --env-file-if-exists=.env scripts/queue-local-test-job.ts",
     "fleet:cli": "node --env-file-if-exists=.env apps/fleet-manager/src/cli.ts",
     "test:pipeline": "node --env-file-if-exists=.env scripts/test-auto-pipeline.ts",
+    "fleet:infra": "node --env-file-if-exists=apps/fleet-manager/.env apps/fleet-manager/src/infra.ts",
     "compose:up": "docker compose up -d",
     "compose:down": "docker compose down",
     "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm build"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
-    "@typescript/native": "catalog:",
     "@types/node": "^24.10.13",
+    "@typescript/native": "catalog:",
     "eslint": "^9.39.2",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
