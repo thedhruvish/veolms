@@ -1,3 +1,11 @@
 export { createDatabase } from "./client.ts";
 export { findPublishedCourseBySlug, listPublishedCourses } from "./courses.ts";
-export type { CourseStatus, Database, AcademyTable } from "./schema.ts";
+export type {
+  AcademyTable,
+  CourseStatus,
+  Database,
+  JobTable,
+  WorkerEventTable,
+  WorkerMonitoringTable,
+  WorkerTable,
+} from "./schema.ts";

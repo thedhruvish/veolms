@@ -13,6 +13,7 @@
   "dependencies": {
     "@veolms/config": "workspace:*",
     "@veolms/contracts": "workspace:*",
+    "@veolms/fleet-types": "workspace:*",
     "kysely": "catalog:",
     "pg": "^8.22.0"
   },
