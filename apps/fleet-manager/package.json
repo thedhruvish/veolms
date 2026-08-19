@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@veolms/database": "workspace:*",
+    "@veolms/fleet-provider-aws": "workspace:*",
     "@veolms/fleet-provider-local": "workspace:*",
     "@veolms/fleet-types": "workspace:*",
     "kysely": "catalog:",

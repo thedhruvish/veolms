@@ -1,5 +1,7 @@
 import { createDatabase } from "@veolms/database";
+import { createAwsProvider } from "@veolms/fleet-provider-aws";
 import { createLocalProvider } from "@veolms/fleet-provider-local";
+import type { FleetProvider } from "@veolms/fleet-types";
 import {
   loadFleetManagerConfig,
   type FleetManagerConfig,
@@ -19,9 +21,13 @@ export function startServerfulFleetManager(
   };
 
   const db = createDatabase(config.DATABASE_URL);
-  const provider = createLocalProvider({
-    workerScriptPath: config.MEDIA_WORKER_SCRIPT_PATH,
-  });
+
+  const provider: FleetProvider =
+    config.PROVIDER === "aws"
+      ? createAwsProvider()
+      : createLocalProvider({
+          workerScriptPath: config.MEDIA_WORKER_SCRIPT_PATH,
+        });
 
   const fleet = createFleetManager({
     provider,
