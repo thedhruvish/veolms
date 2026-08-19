@@ -22,6 +22,10 @@
     "db:migrate": "pnpm --filter @veolms/database migrate",
     "db:seed": "pnpm --filter @veolms/database seed",
     "db:reset": "pnpm --filter @veolms/database reset",
+    "fleet:run": "node --env-file-if-exists=.env apps/fleet-manager/src/cli.ts run",
+    "fleet:queue:test": "node --env-file-if-exists=.env scripts/queue-local-test-job.ts",
+    "fleet:cli": "node --env-file-if-exists=.env apps/fleet-manager/src/cli.ts",
+    "test:pipeline": "node --env-file-if-exists=.env scripts/test-auto-pipeline.ts",
     "compose:up": "docker compose up -d",
     "compose:down": "docker compose down",
     "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm build"
