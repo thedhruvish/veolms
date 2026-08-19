@@ -5,6 +5,7 @@ import type {
   FleetEventType,
   FleetProvider,
   Job,
+  JobRequirements,
   WorkerHandle,
   WorkerSpec,
 } from "@veolms/fleet-types";
@@ -21,6 +22,45 @@ export interface WorkerManager {
     jobId: string | null,
     metadata?: Readonly<Record<string, unknown>>,
   ): Promise<void>;
+}
+
+export function calculateWorkerSpec(
+  requirements: JobRequirements,
+  options: { databaseUrl?: string; jobId?: string } = {},
+): WorkerSpec {
+  const hw = requirements.hardware;
+  const qualities = requirements.qualities;
+
+  let cpu = hw.minCpu;
+  let memoryMb = hw.minMemoryMb;
+  let storageGb = hw.storageGb;
+
+  // Scale CPU and memory if heavy resolutions are requested
+  const has2160p = qualities.includes("2160p");
+  const has1440p = qualities.includes("1440p");
+  const numQualities = qualities.length;
+
+  if (has2160p) {
+    cpu = Math.max(cpu, 8);
+    memoryMb = Math.max(memoryMb, 16384);
+    storageGb = Math.max(storageGb, 80);
+  } else if (has1440p || numQualities >= 5) {
+    cpu = Math.max(cpu, 4);
+    memoryMb = Math.max(memoryMb, 8192);
+    storageGb = Math.max(storageGb, 50);
+  }
+
+  return {
+    cpu,
+    memoryMb,
+    architecture: hw.architecture,
+    storageGb,
+    region: "local",
+    environmentVariables: {
+      ...(options.jobId ? { JOB_ID: options.jobId } : {}),
+      ...(options.databaseUrl ? { DATABASE_URL: options.databaseUrl } : {}),
+    },
+  };
 }
 
 export function createWorkerManager(options: {
@@ -58,39 +98,10 @@ export function createWorkerManager(options: {
     recordEvent,
 
     calculateWorkerSpec(job: Job): WorkerSpec {
-      const hw = job.requirements.hardware;
-      const qualities = job.requirements.qualities;
-
-      let cpu = hw.minCpu;
-      let memoryMb = hw.minMemoryMb;
-      let storageGb = hw.storageGb;
-
-      // Scale CPU and memory if heavy resolutions are requested
-      const has2160p = qualities.includes("2160p");
-      const has1440p = qualities.includes("1440p");
-      const numQualities = qualities.length;
-
-      if (has2160p) {
-        cpu = Math.max(cpu, 8);
-        memoryMb = Math.max(memoryMb, 16384);
-        storageGb = Math.max(storageGb, 80);
-      } else if (has1440p || numQualities >= 5) {
-        cpu = Math.max(cpu, 4);
-        memoryMb = Math.max(memoryMb, 8192);
-        storageGb = Math.max(storageGb, 50);
-      }
-
-      return {
-        cpu,
-        memoryMb,
-        architecture: hw.architecture,
-        storageGb,
-        region: "local",
-        environmentVariables: {
-          JOB_ID: job.id,
-          DATABASE_URL: config.DATABASE_URL,
-        },
-      };
+      return calculateWorkerSpec(job.requirements, {
+        databaseUrl: config.DATABASE_URL,
+        jobId: job.id,
+      });
     },
 
     async provisionWorker(job: Job): Promise<WorkerHandle> {

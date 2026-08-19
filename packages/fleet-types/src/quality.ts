@@ -135,6 +135,9 @@ export const DEFAULT_QUALITIES: readonly VideoQualityLevel[] = [
   "360p",
 ] as const;
 
+export const DEFAULT_VIDEO_QUALITIES = DEFAULT_QUALITIES;
+export const VideoQualityLevelSchema = videoQualityLevelSchema;
+
 export function isValidQualityLevel(value: string): value is VideoQualityLevel {
   return (VIDEO_QUALITY_LEVELS as readonly string[]).includes(value);
 }

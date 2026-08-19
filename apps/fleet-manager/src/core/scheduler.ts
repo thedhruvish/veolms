@@ -15,40 +15,47 @@ export interface Scheduler {
   calculateNextCheck(options: CalculateNextCheckOptions): NextCheckResult;
 }
 
+export function calculateNextCheckInterval(options: {
+  progressPercentage: number;
+  estimatedDurationSeconds: number;
+  minIntervalSeconds: number;
+  maxIntervalSeconds: number;
+}): number {
+  const {
+    progressPercentage,
+    estimatedDurationSeconds,
+    minIntervalSeconds,
+    maxIntervalSeconds,
+  } = options;
+
+  if (progressPercentage >= 99.0) {
+    return minIntervalSeconds;
+  }
+
+  const remainingPercent =
+    (100 - Math.min(100, Math.max(0, progressPercentage))) / 100;
+  const estimatedRemainingSec =
+    Math.max(10, estimatedDurationSeconds) * remainingPercent;
+  const targetInterval = Math.round(estimatedRemainingSec / 2);
+
+  return Math.max(
+    minIntervalSeconds,
+    Math.min(maxIntervalSeconds, targetInterval),
+  );
+}
+
 export function createScheduler(config: FleetManagerConfig): Scheduler {
   const minInterval = config.MIN_CHECK_INTERVAL_SECONDS;
   const maxInterval = config.MAX_CHECK_INTERVAL_SECONDS;
-  const defaultInterval = config.DEFAULT_CHECK_INTERVAL_SECONDS;
 
   return {
     calculateNextCheck(options: CalculateNextCheckOptions): NextCheckResult {
-      const { estimatedDurationSec, progressPercent } = options;
-
-      const safeEstimated = Math.max(10, estimatedDurationSec);
-      const safeProgress = Math.min(100, Math.max(0, progressPercent));
-
-      if (safeProgress >= 99.0) {
-        return {
-          nextCheckAt: new Date(Date.now() + minInterval * 1000),
-          checkIntervalSec: minInterval,
-        };
-      }
-
-      // Estimate remaining seconds based on progress
-      const remainingPercent = (100 - safeProgress) / 100;
-      const estimatedRemainingSec = safeEstimated * remainingPercent;
-
-      // Check halfway through remaining estimated time, bounded by [minInterval, maxInterval]
-      let targetInterval = Math.round(estimatedRemainingSec / 2);
-
-      if (targetInterval <= 0) {
-        targetInterval = defaultInterval;
-      }
-
-      const checkIntervalSec = Math.max(
-        minInterval,
-        Math.min(maxInterval, targetInterval),
-      );
+      const checkIntervalSec = calculateNextCheckInterval({
+        progressPercentage: options.progressPercent,
+        estimatedDurationSeconds: options.estimatedDurationSec,
+        minIntervalSeconds: minInterval,
+        maxIntervalSeconds: maxInterval,
+      });
 
       return {
         nextCheckAt: new Date(Date.now() + checkIntervalSec * 1000),

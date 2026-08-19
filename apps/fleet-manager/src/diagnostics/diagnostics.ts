@@ -1,0 +1,236 @@
+import type { Kysely } from "kysely";
+import type { Database } from "@veolms/database";
+import type {
+  FleetEvent,
+  FleetProvider,
+  Job,
+  JobRequirements,
+  WorkerHandle,
+  WorkerSpec,
+  WorkerStatus,
+} from "@veolms/fleet-types";
+
+export interface JobDiagnostics {
+  readonly job: Job;
+  readonly worker: WorkerHandle | null;
+  readonly events: readonly FleetEvent[];
+  readonly progressHistory: readonly {
+    readonly progressPercent: number;
+    readonly checkIntervalSec: number;
+    readonly nextCheckAt: Date;
+    readonly lastCheckAt: Date | null;
+    readonly updatedAt: Date;
+  }[];
+}
+
+export interface FleetHealthSummary {
+  readonly queuedJobsCount: number;
+  readonly processingJobsCount: number;
+  readonly completedJobsCount: number;
+  readonly failedJobsCount: number;
+  readonly activeWorkersCount: number;
+  readonly stalledWorkersCount: number;
+}
+
+export async function getJobDiagnostics(
+  db: Kysely<Database>,
+  jobId: string,
+): Promise<JobDiagnostics | null> {
+  const jobRow = await db
+    .selectFrom("jobs")
+    .selectAll()
+    .where("id", "=", jobId)
+    .executeTakeFirst();
+
+  if (!jobRow) {
+    return null;
+  }
+
+  const requirements: JobRequirements =
+    typeof jobRow.requirements === "string"
+      ? JSON.parse(jobRow.requirements)
+      : (jobRow.requirements as unknown as JobRequirements);
+
+  const job: Job = {
+    id: jobRow.id,
+    status: jobRow.status,
+    videoKey: jobRow.video_key,
+    outputPrefix: jobRow.output_prefix,
+    requirements,
+    workerId: jobRow.worker_id,
+    attempts: jobRow.attempts,
+    maxAttempts: jobRow.max_attempts,
+    errorMessage: jobRow.error_message,
+    createdAt: new Date(jobRow.created_at),
+    startedAt: jobRow.started_at ? new Date(jobRow.started_at) : null,
+    completedAt: jobRow.completed_at ? new Date(jobRow.completed_at) : null,
+    failedAt: jobRow.failed_at ? new Date(jobRow.failed_at) : null,
+    updatedAt: new Date(jobRow.updated_at),
+  };
+
+  let worker: WorkerHandle | null = null;
+  if (job.workerId) {
+    const workerRow = await db
+      .selectFrom("workers")
+      .selectAll()
+      .where("id", "=", job.workerId)
+      .executeTakeFirst();
+
+    if (workerRow) {
+      worker = {
+        id: workerRow.id,
+        providerWorkerId: workerRow.provider_worker_id,
+        provider: workerRow.provider as "local" | "aws",
+        status: workerRow.status as WorkerStatus,
+        privateIp: null,
+        publicIp: null,
+        createdAt: new Date(workerRow.created_at),
+      };
+    }
+  }
+
+  const eventRows = await db
+    .selectFrom("worker_events")
+    .selectAll()
+    .where("job_id", "=", jobId)
+    .orderBy("created_at", "asc")
+    .execute();
+
+  const events: FleetEvent[] = eventRows.map((e) => ({
+    id: e.id,
+    workerId: e.worker_id,
+    jobId: e.job_id,
+    event: e.event,
+    metadata:
+      typeof e.metadata === "string"
+        ? JSON.parse(e.metadata)
+        : (e.metadata ?? {}),
+    createdAt: new Date(e.created_at),
+  }));
+
+  const monitorRows = await db
+    .selectFrom("worker_monitoring")
+    .selectAll()
+    .where("worker_id", "=", job.workerId ?? "")
+    .orderBy("updated_at", "asc")
+    .execute();
+
+  const progressHistory = monitorRows.map((m) => ({
+    progressPercent: Number(m.progress_percent),
+    checkIntervalSec: m.check_interval_sec,
+    nextCheckAt: new Date(m.next_check_at),
+    lastCheckAt: m.last_check_at ? new Date(m.last_check_at) : null,
+    updatedAt: new Date(m.updated_at),
+  }));
+
+  return {
+    job,
+    worker,
+    events,
+    progressHistory,
+  };
+}
+
+export async function getFleetHealthSummary(
+  db: Kysely<Database>,
+  heartbeatTimeoutMs: number = 90000,
+): Promise<FleetHealthSummary> {
+  const jobs = await db.selectFrom("jobs").select(["status"]).execute();
+
+  const queuedJobsCount = jobs.filter((j) => j.status === "QUEUED").length;
+  const processingJobsCount = jobs.filter(
+    (j) => j.status === "PROCESSING",
+  ).length;
+  const completedJobsCount = jobs.filter(
+    (j) => j.status === "COMPLETED",
+  ).length;
+  const failedJobsCount = jobs.filter((j) => j.status === "FAILED").length;
+
+  const workers = await db
+    .selectFrom("workers")
+    .selectAll()
+    .where("status", "in", ["STARTING", "READY", "PROCESSING"])
+    .execute();
+
+  const now = Date.now();
+  let stalledWorkersCount = 0;
+
+  for (const w of workers) {
+    if (!w.last_heartbeat_at) {
+      if (now - new Date(w.created_at).getTime() > heartbeatTimeoutMs) {
+        stalledWorkersCount++;
+      }
+    } else {
+      if (now - new Date(w.last_heartbeat_at).getTime() > heartbeatTimeoutMs) {
+        stalledWorkersCount++;
+      }
+    }
+  }
+
+  return {
+    queuedJobsCount,
+    processingJobsCount,
+    completedJobsCount,
+    failedJobsCount,
+    activeWorkersCount: workers.length,
+    stalledWorkersCount,
+  };
+}
+
+export async function pruneZombieWorkers(
+  db: Kysely<Database>,
+  provider: FleetProvider,
+  heartbeatTimeoutMs: number = 90000,
+): Promise<readonly string[]> {
+  const cutoff = new Date(Date.now() - heartbeatTimeoutMs);
+
+  const stalledWorkers = await db
+    .selectFrom("workers")
+    .selectAll()
+    .where("status", "in", ["STARTING", "READY", "PROCESSING"])
+    .where((eb) =>
+      eb.or([
+        eb("last_heartbeat_at", "<", cutoff),
+        eb.and([
+          eb("last_heartbeat_at", "is", null),
+          eb("created_at", "<", cutoff),
+        ]),
+      ]),
+    )
+    .execute();
+
+  const prunedIds: string[] = [];
+
+  for (const worker of stalledWorkers) {
+    await db
+      .updateTable("workers")
+      .set({ status: "TERMINATING" })
+      .where("id", "=", worker.id)
+      .execute();
+
+    if (worker.provider_worker_id && worker.provider_worker_id !== "pending") {
+      try {
+        await provider.terminateWorker(worker.provider_worker_id);
+      } catch (err) {
+        console.error(
+          `Failed to terminate provider worker ${worker.provider_worker_id}:`,
+          err,
+        );
+      }
+    }
+
+    await db
+      .updateTable("workers")
+      .set({
+        status: "TERMINATED",
+        terminated_at: new Date(),
+        updated_at: new Date(),
+      })
+      .where("id", "=", worker.id)
+      .execute();
+
+    prunedIds.push(worker.id);
+  }
+
+  return prunedIds;
+}
