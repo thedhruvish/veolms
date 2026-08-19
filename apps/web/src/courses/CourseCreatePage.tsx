@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { useLocation } from "react-router";
 import { createPortal } from "react-dom";
 import { RichTextEditor, RenderMarkdown } from "./RichTextEditor";
 import {
@@ -59,12 +60,14 @@ import {
 } from "../keyboardShortcuts";
 
 import { ConfirmDeleteModal } from "../ConfirmDeleteModal";
-import { CourseOverviewPage } from "./CourseOverviewPage";
+import { CourseOverviewPage, getSectionTitle } from "./CourseOverviewPage";
 import type {
   CourseInclude,
   CourseOverviewPricingProps,
 } from "./CourseOverviewPage";
+import { courses } from "./catalogue";
 import type { Course, CourseLevel, CourseCategory } from "./catalogue";
+import { sections as initialCourseSections } from "../learning/courseContent";
 import type { CourseSection, Lesson } from "../learning/courseContent";
 
 export type CourseWizardStepId =
@@ -255,14 +258,35 @@ const inclusionGhostHtml = (text: string) => `
 `;
 
 export interface CourseCreatePageProps {
+  courseId?: string;
+  editCourseId?: string;
   onNavigatePage?: NavigateTo;
   bottomNavHidden?: boolean;
 }
 
 export function CourseCreatePage({
+  courseId: propCourseId,
+  editCourseId: propEditCourseId,
   onNavigatePage,
   bottomNavHidden = false,
 }: CourseCreatePageProps) {
+  const location = useLocation();
+  const searchParams = useMemo(
+    () => new URLSearchParams(location?.search ?? ""),
+    [location?.search],
+  );
+  const activeEditId =
+    propCourseId ||
+    propEditCourseId ||
+    searchParams.get("edit") ||
+    searchParams.get("courseId") ||
+    null;
+
+  const targetCourse = useMemo(() => {
+    if (!activeEditId) return null;
+    return courses.find((c) => c.id === activeEditId) ?? null;
+  }, [activeEditId]);
+
   const [activeStep, setActiveStep] = useState<CourseWizardStepId>("basics");
   const [slideDirection, setSlideDirection] = useState<"right" | "left">(
     "right",
@@ -660,6 +684,78 @@ export function CourseCreatePage({
     customRuleText: "Complete all quizzes with > 80% score",
     autoEmailCertificate: true,
   });
+
+  // Pre-populate fields when editing an existing course
+  useEffect(() => {
+    if (!targetCourse) {
+      setIsPublished(false);
+      return;
+    }
+
+    setIsPublished(true);
+    setCourseTitle(targetCourse.title);
+    setCourseDescription(targetCourse.description);
+    setThumbnail(targetCourse.thumbnail);
+    setCategory(targetCourse.category);
+    setDifficultyLevel(targetCourse.level);
+    setPricing({
+      pricingType: "paid",
+      sellingPrice: "1999",
+      originalPrice: "2999",
+    });
+
+    if (targetCourse.id === "ui-ux-design-mastery") {
+      setSections(
+        initialCourseSections.map((s, sIdx) => ({
+          id: `section-${s.id}`,
+          title: s.title,
+          isExpanded: sIdx === 0,
+          lessons: s.lessons.map(([num, title]) => ({
+            id: `lesson-${s.id}-${num}`,
+            title,
+            description: "",
+            contentType: "video" as const,
+            isExpanded: false,
+            resources: [],
+          })),
+        })),
+      );
+    } else {
+      const sectionCount = Math.max(1, targetCourse.sections || 1);
+      const generatedSections: CurriculumSectionItem[] = Array.from(
+        { length: sectionCount },
+        (_, i) => ({
+          id: `section-${i + 1}`,
+          title: getSectionTitle(targetCourse, i),
+          isExpanded: i === 0,
+          lessons: [
+            {
+              id: `lesson-${i + 1}-1`,
+              title: `${getSectionTitle(targetCourse, i)} - Overview`,
+              description: "",
+              contentType: "video" as const,
+              isExpanded: false,
+              resources: [],
+            },
+          ],
+        }),
+      );
+      setSections(generatedSections);
+    }
+
+    setExtras((prev) => ({
+      ...prev,
+      inclusions: [
+        { id: "inc-1", text: "Full lifetime access" },
+        { id: "inc-2", text: "Downloadable resources" },
+        {
+          id: "inc-3",
+          text: `${targetCourse.sections} Sections & ${targetCourse.lectures} Lectures`,
+        },
+        { id: "inc-4", text: "Certificate of completion" },
+      ],
+    }));
+  }, [targetCourse]);
 
   // Extras Inclusions Handlers
   const [draggedInclusionIndex, setDraggedInclusionIndex] = useState<
