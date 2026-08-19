@@ -131,6 +131,16 @@ const ReadingModeQuickMenu = lazy(() =>
     default: module.ReadingModeQuickMenu,
   })),
 );
+const CourseCreatePage = lazy(() =>
+  import("./courses/CourseCreatePage").then((module) => ({
+    default: module.CourseCreatePage,
+  })),
+);
+const CourseOverviewPage = lazy(() =>
+  import("./courses/CourseOverviewPage").then((module) => ({
+    default: module.CourseOverviewPage,
+  })),
+);
 
 type ThemePreference = "light" | "dark" | "device";
 type AppearanceOption = ThemePreference | "theme";
@@ -145,6 +155,7 @@ interface CoursesPageProps {
   section?: string | null;
   settingsTab?: string;
   discussionTab?: string;
+  courseSlug?: string;
   renderMain?: (() => ReactNode) | null;
 }
 
@@ -425,6 +436,7 @@ export function CoursesPage({
   section: requestedSection = null,
   settingsTab = "profile",
   discussionTab = "q-and-a",
+  courseSlug,
   renderMain = null,
 }: CoursesPageProps) {
   const [role, setRole] = useState<CourseRole>("student");
@@ -2996,6 +3008,21 @@ export function CoursesPage({
                 setRole("student");
               }}
             />
+          ) : page === "course-create" ? (
+            <Suspense fallback={null}>
+              <CourseCreatePage
+                onNavigatePage={onNavigatePage}
+                bottomNavHidden={mobileBottomNavHidden}
+              />
+            </Suspense>
+          ) : page === "course-overview" ? (
+            <Suspense fallback={null}>
+              <CourseOverviewPage
+                courseSlug={courseSlug}
+                onNavigateCourses={() => onNavigatePage("/courses")}
+                onNavigatePage={onNavigatePage}
+              />
+            </Suspense>
           ) : page === "reviews" || requestedSection === "Reviews" || activeSection === "Reviews" ? (
             <ReviewsPage
               onNavigatePage={onNavigatePage}
