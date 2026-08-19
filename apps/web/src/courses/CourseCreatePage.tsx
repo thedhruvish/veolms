@@ -1091,9 +1091,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   };
 
   return (
-    <div className="relative flex w-full h-[calc(100vh-28px)] max-h-[calc(100vh-28px)] flex-col p-0 text-[var(--text)] bg-[color-mix(in_srgb,var(--surface)_18%,var(--canvas))] box-border overflow-hidden max-[768px]:pb-0">
+    <div className="relative flex w-full flex-col p-0 text-[var(--text)] box-border max-[768px]:pb-0">
       {/* Wizard Header */}
-      <header className="relative shrink-0 p-[clamp(16px,2.2vw,24px)_clamp(16px,2.5vw,32px)_0] mb-5 max-[768px]:p-[16px_16px_0] max-[768px]:mb-2 max-[768px]:w-full max-[768px]:max-w-full max-[768px]:min-w-0 max-[768px]:box-border">
+      <header className="relative shrink-0 mb-5 max-[768px]:mb-2 max-[768px]:w-full max-[768px]:max-w-full max-[768px]:min-w-0 max-[768px]:box-border">
         <div className="flex items-start justify-between gap-4 mb-[18px] max-[768px]:flex-col max-[768px]:gap-3 max-[768px]:mb-3">
           <div className="flex items-start gap-3 min-w-0">
             <button
@@ -1306,9 +1306,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
         </nav>
       </header>
 
-      {/* Scrollable Step Content Region */}
+      {/* Step Content Region */}
       <div
-        className={`flex-1 min-h-0 px-[clamp(16px,2.5vw,32px)] pb-6 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden will-change-[transform,opacity] max-[768px]:p-[0_16px_110px] slide-from-${slideDirection}`}
+        className={`w-full pb-12 will-change-[transform,opacity] max-[768px]:pb-[110px] slide-from-${slideDirection}`}
         key={activeStep}
       >
         {activeStep === "basics" ? (
