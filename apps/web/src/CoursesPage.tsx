@@ -40,6 +40,10 @@ import { SettingsPage } from "./SettingsPage";
 import { CourseCatalogue } from "./courses/CourseCatalogue";
 import { PlaceholderPage } from "./courses/PlaceholderPage";
 import { WorkspacePage } from "./workspace/WorkspacePages";
+import { ReviewsPage } from "./reviews/ReviewsPage";
+import { OrdersPage } from "./orders/OrdersPage";
+import { OrderHistoryPage } from "./order-history/OrderHistoryPage";
+import { NotificationsPage } from "./notifications/NotificationsPage";
 import { courses, getVisibleCourses } from "./courses/catalogue";
 import type {
   Course,
@@ -3019,6 +3023,26 @@ export function CoursesPage({
                 onNavigatePage={onNavigatePage}
               />
             </Suspense>
+          ) : page === "reviews" || requestedSection === "Reviews" || activeSection === "Reviews" ? (
+            <ReviewsPage
+              onNavigatePage={onNavigatePage}
+              setNotice={setNotice}
+            />
+          ) : page === "orders" || requestedSection === "Orders" || activeSection === "Orders" ? (
+            <OrdersPage
+              onNavigatePage={onNavigatePage}
+              setNotice={setNotice}
+            />
+          ) : page === "order-history" || requestedSection === "Order History" || activeSection === "Order History" ? (
+            <OrderHistoryPage
+              onNavigatePage={onNavigatePage}
+              setNotice={setNotice}
+            />
+          ) : page === "notifications" || requestedSection === "Notifications" || activeSection === "Notifications" || requestedSection === "Notification" || activeSection === "Notification" ? (
+            <NotificationsPage
+              onNavigatePage={onNavigatePage}
+              setNotice={setNotice}
+            />
           ) : page === "placeholder" ? (
             <PlaceholderPage
               section={requestedSection || activeSection}
