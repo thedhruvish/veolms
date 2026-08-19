@@ -103,14 +103,25 @@ export function createFleetManager(
     async runMonitoringCycle(): Promise<{
       dueProcessed: number;
       timeoutsProcessed: number;
+      orphansProcessed: number;
     }> {
+      const orphansProcessed = await monitor.checkOrphanedJobs();
       const timeoutsProcessed = await monitor.checkHeartbeatTimeouts();
       const dueProcessed = await monitor.checkDueWorkers();
-      return { dueProcessed, timeoutsProcessed };
+      return { dueProcessed, timeoutsProcessed, orphansProcessed };
     },
 
     async runTick(): Promise<void> {
-      await this.processNextJob();
+      // Process pending queued jobs in batch up to 5 per tick if available
+      let processedAny = false;
+      let count = 0;
+      while (count < 5) {
+        const claimed = await this.processNextJob();
+        if (!claimed) break;
+        processedAny = true;
+        count++;
+      }
+
       await this.runMonitoringCycle();
     },
 

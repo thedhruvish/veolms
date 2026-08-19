@@ -187,12 +187,6 @@ export async function executeTranscodeJob(
             })
             .where("worker_id", "=", workerId)
             .execute();
-
-          await recordEvent("PROGRESS_UPDATED", jobId, {
-            progressPercent: progress.progressPercent,
-            fps: progress.fps,
-            speed: progress.speed,
-          });
         } catch (err) {
           console.error("Error persisting progress to DB:", err);
         }

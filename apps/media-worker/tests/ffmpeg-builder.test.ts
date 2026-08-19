@@ -81,4 +81,33 @@ describe("FFmpeg Dynamic HLS Command Builder", () => {
     );
     assert.ok(master.includes("720p/720p.m3u8"));
   });
+
+  it("should handle portrait / vertical videos without falling back to low resolution", () => {
+    // 1080x1920 portrait video
+    const requested = ["1080p", "720p", "480p", "360p"] as const;
+    const applicable = filterApplicableQualities(requested, 1080, 1920);
+
+    assert.deepEqual(applicable, ["1080p", "720p", "480p", "360p"]);
+  });
+
+  it("should include GOP alignment, sc_threshold 0 and independent segments flags", () => {
+    const result = buildFfmpegHlsArgs({
+      inputPath: "/tmp/source.mp4",
+      outputDir: "/tmp/hls_out",
+      qualities: ["1080p"],
+      metadata: {
+        durationSeconds: 60,
+        width: 1920,
+        height: 1080,
+      },
+      segmentDurationSeconds: 6,
+    });
+
+    assert.ok(result.args.includes("-g"));
+    assert.ok(result.args.includes("-keyint_min"));
+    assert.ok(result.args.includes("-sc_threshold"));
+    assert.ok(result.args.includes("0"));
+    assert.ok(result.args.includes("-hls_flags"));
+    assert.ok(result.args.includes("independent_segments"));
+  });
 });

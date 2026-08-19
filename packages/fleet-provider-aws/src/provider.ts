@@ -254,12 +254,16 @@ export function createAwsProvider(
         return { exitCode: 0, stdout: "", stderr: "" };
       }
 
+      const shellSafeCommand = command
+        .map((arg) => `'${arg.replace(/'/g, "'\\''")}'`)
+        .join(" ");
+
       try {
         const sendCmd = new SendCommandCommand({
           InstanceIds: [providerWorkerId],
           DocumentName: "AWS-RunShellScript",
           Parameters: {
-            commands: [command.join(" ")],
+            commands: [shellSafeCommand],
           },
         });
 
@@ -302,9 +306,9 @@ export function createAwsProvider(
         }
 
         return {
-          exitCode: 0,
-          stdout: `Dispatched SSM command ${commandId}`,
-          stderr: "",
+          exitCode: 124,
+          stdout: "",
+          stderr: `SSM command ${commandId} timed out after ${maxWaitMs / 1000}s`,
         };
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);

@@ -31,11 +31,16 @@ export function filterApplicableQualities(
   sourceWidth: number,
   sourceHeight: number,
 ): VideoQualityLevel[] {
+  const sourceMinDim = Math.min(sourceWidth, sourceHeight);
+  const sourceMaxDim = Math.max(sourceWidth, sourceHeight);
+
   const filtered = requestedQualities.filter((quality) => {
     const profile = getQualityProfile(quality);
-    // Allow if source height/width is >= 90% of target resolution (prevents excessive upscaling)
+    const profileMinDim = Math.min(profile.width, profile.height);
+    const profileMaxDim = Math.max(profile.width, profile.height);
+    // Allow if source dimensions are >= 90% of target resolution in both min and max orientations (supports horizontal and vertical)
     return (
-      sourceHeight >= profile.height * 0.9 && sourceWidth >= profile.width * 0.9
+      sourceMinDim >= profileMinDim * 0.9 && sourceMaxDim >= profileMaxDim * 0.9
     );
   });
 
@@ -98,12 +103,13 @@ export function buildFfmpegHlsArgs(options: {
   // Build FFmpeg multi-output HLS transcode command
   for (const quality of applicableQualities) {
     const profile = getQualityProfile(quality);
+    const gopSize = Math.round(profile.fps * segmentDuration);
 
     const qualityOutputDir = `${outputDir}/${quality}`;
     const playlistPath = `${qualityOutputDir}/${quality}.m3u8`;
     const segmentPattern = `${qualityOutputDir}/segment_%03d.ts`;
 
-    // Video options
+    // Video options with strict GOP alignment and even dimension scaling for ABR compatibility
     args.push(
       "-map",
       "0:v:0",
@@ -117,8 +123,14 @@ export function buildFfmpegHlsArgs(options: {
       `${profile.maxBitrateKbps}k`,
       "-bufsize",
       `${profile.bufferSizeKbps}k`,
+      "-g",
+      String(gopSize),
+      "-keyint_min",
+      String(gopSize),
+      "-sc_threshold",
+      "0",
       "-vf",
-      `scale=w=${profile.width}:h=${profile.height}:force_original_aspect_ratio=decrease,pad=${profile.width}:${profile.height}:(ow-iw)/2:(oh-ih)/2`,
+      `scale=w=${profile.width}:h=${profile.height}:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=${profile.width}:${profile.height}:(ow-iw)/2:(oh-ih)/2:black`,
     );
 
     // Audio options
@@ -141,6 +153,8 @@ export function buildFfmpegHlsArgs(options: {
       String(segmentDuration),
       "-hls_playlist_type",
       "vod",
+      "-hls_flags",
+      "independent_segments",
       "-hls_segment_filename",
       segmentPattern,
       playlistPath,

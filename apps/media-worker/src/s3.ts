@@ -68,11 +68,13 @@ export async function uploadDirectoryToS3(
   bucket: string,
   localDirectory: string,
   s3Prefix: string,
+  concurrency = 16,
 ): Promise<number> {
   const cleanPrefix = s3Prefix.endsWith("/") ? s3Prefix : `${s3Prefix}/`;
-  let uploadedCount = 0;
+  const fileList: Array<{ fullPath: string; s3Key: string; filename: string }> =
+    [];
 
-  async function walkAndUpload(
+  async function collectFiles(
     currentDir: string,
     relativePath: string,
   ): Promise<void> {
@@ -84,28 +86,70 @@ export async function uploadDirectoryToS3(
       const fileStat = await stat(fullPath);
 
       if (fileStat.isDirectory()) {
-        await walkAndUpload(fullPath, entryRelPath);
+        await collectFiles(fullPath, entryRelPath);
       } else if (fileStat.isFile()) {
-        const fileBuffer = await readFile(fullPath);
-        const s3Key = `${cleanPrefix}${entryRelPath}`;
-        const contentType = getMimeTypeForFile(entry);
-
-        await s3.send(
-          new PutObjectCommand({
-            Bucket: bucket,
-            Key: s3Key,
-            Body: fileBuffer,
-            ContentType: contentType,
-            CacheControl: entry.endsWith(".m3u8")
-              ? "no-cache, no-store, must-revalidate"
-              : "public, max-age=31536000, immutable",
-          }),
-        );
-        uploadedCount++;
+        fileList.push({
+          fullPath,
+          s3Key: `${cleanPrefix}${entryRelPath}`,
+          filename: entry,
+        });
       }
     }
   }
 
-  await walkAndUpload(localDirectory, "");
+  await collectFiles(localDirectory, "");
+
+  if (fileList.length === 0) {
+    return 0;
+  }
+
+  let uploadedCount = 0;
+  let cursor = 0;
+
+  async function uploadWorker(): Promise<void> {
+    while (cursor < fileList.length) {
+      const itemIndex = cursor++;
+      const item = fileList[itemIndex];
+      if (!item) {
+        break;
+      }
+
+      const fileBuffer = await readFile(item.fullPath);
+      const contentType = getMimeTypeForFile(item.filename);
+
+      let attempts = 0;
+      const maxRetries = 3;
+      while (true) {
+        try {
+          await s3.send(
+            new PutObjectCommand({
+              Bucket: bucket,
+              Key: item.s3Key,
+              Body: fileBuffer,
+              ContentType: contentType,
+              CacheControl: item.filename.endsWith(".m3u8")
+                ? "no-cache, no-store, must-revalidate"
+                : "public, max-age=31536000, immutable",
+            }),
+          );
+          uploadedCount++;
+          break;
+        } catch (err) {
+          attempts++;
+          if (attempts >= maxRetries) {
+            throw err;
+          }
+          await new Promise((resolve) =>
+            setTimeout(resolve, 200 * Math.pow(2, attempts)),
+          );
+        }
+      }
+    }
+  }
+
+  const workerCount = Math.min(concurrency, fileList.length);
+  const workers = Array.from({ length: workerCount }, () => uploadWorker());
+  await Promise.all(workers);
+
   return uploadedCount;
 }

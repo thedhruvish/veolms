@@ -9,6 +9,7 @@ import type { WorkerManager } from "./worker-manager.ts";
 export interface Monitor {
   checkHeartbeatTimeouts(): Promise<number>;
   checkDueWorkers(): Promise<number>;
+  checkOrphanedJobs(): Promise<number>;
 }
 
 export function createMonitor(options: {
@@ -23,13 +24,49 @@ export function createMonitor(options: {
   const timeoutMs = config.HEARTBEAT_TIMEOUT_SECONDS * 1000;
 
   return {
+    async checkOrphanedJobs(): Promise<number> {
+      const cutoff = new Date(Date.now() - timeoutMs);
+
+      const orphanedJobs = await db
+        .selectFrom("jobs")
+        .select(["id", "video_key", "started_at"])
+        .where("status", "=", "PROCESSING")
+        .where("worker_id", "is", null)
+        .where((eb) =>
+          eb.or([
+            eb("started_at", "<", cutoff),
+            eb.and([
+              eb("started_at", "is", null),
+              eb("created_at", "<", cutoff),
+            ]),
+          ]),
+        )
+        .execute();
+
+      for (const job of orphanedJobs) {
+        console.warn(`Recovering orphaned processing job ${job.id}`);
+        await jobManager.markJobFailed(
+          job.id,
+          `Recovered orphaned job: worker assignment timed out or was interrupted`,
+        );
+      }
+
+      return orphanedJobs.length;
+    },
+
     async checkHeartbeatTimeouts(): Promise<number> {
       const cutoff = new Date(Date.now() - timeoutMs);
 
       const staleWorkers = await db
         .selectFrom("workers")
         .select(["id", "job_id", "status", "last_heartbeat_at", "created_at"])
-        .where("status", "in", ["READY", "PROCESSING"])
+        .where("status", "in", [
+          "PENDING",
+          "PROVISIONING",
+          "STARTING",
+          "READY",
+          "PROCESSING",
+        ])
         .where((eb) =>
           eb.or([
             eb("last_heartbeat_at", "<", cutoff),

@@ -11,6 +11,16 @@ export async function run(): Promise<void> {
   console.info(`[media-worker] Initializing worker ${config.WORKER_ID}...`);
   const workerCtx = await initMediaWorker({ config, db });
 
+  const cleanup = () => {
+    console.info(
+      `[media-worker] Shutdown signal received for worker ${config.WORKER_ID}...`,
+    );
+    workerCtx.stopHeartbeat();
+  };
+
+  process.on("SIGTERM", cleanup);
+  process.on("SIGINT", cleanup);
+
   if (config.JOB_ID) {
     console.info(`[media-worker] Processing assigned job ${config.JOB_ID}...`);
     try {
@@ -25,6 +35,8 @@ export async function run(): Promise<void> {
       );
       process.exitCode = 1;
     } finally {
+      process.off("SIGTERM", cleanup);
+      process.off("SIGINT", cleanup);
       workerCtx.stopHeartbeat();
     }
   } else {

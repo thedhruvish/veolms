@@ -159,7 +159,13 @@ export async function getFleetHealthSummary(
   const workers = await db
     .selectFrom("workers")
     .selectAll()
-    .where("status", "in", ["STARTING", "READY", "PROCESSING"])
+    .where("status", "in", [
+      "PENDING",
+      "PROVISIONING",
+      "STARTING",
+      "READY",
+      "PROCESSING",
+    ])
     .execute();
 
   const now = Date.now();
@@ -197,7 +203,13 @@ export async function pruneZombieWorkers(
   const stalledWorkers = await db
     .selectFrom("workers")
     .selectAll()
-    .where("status", "in", ["STARTING", "READY", "PROCESSING"])
+    .where("status", "in", [
+      "PENDING",
+      "PROVISIONING",
+      "STARTING",
+      "READY",
+      "PROCESSING",
+    ])
     .where((eb) =>
       eb.or([
         eb("last_heartbeat_at", "<", cutoff),

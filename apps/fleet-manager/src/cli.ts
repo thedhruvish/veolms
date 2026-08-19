@@ -101,17 +101,31 @@ export async function runCli(
     }
 
     case "queue": {
-      const videoKey = positional[0] ?? (flags["video"] as string);
-      if (!videoKey) {
+      const rawVideoKey = positional[0] ?? (flags["video"] as string);
+      if (!rawVideoKey) {
         console.error(
           "Error: Missing video key. Usage: fleet queue <video-key> [--prefix <prefix>] [--qualities 1080p,720p]",
         );
         process.exit(1);
       }
 
-      const outputPrefix =
-        (flags["prefix"] as string) ??
-        `transcoded/${videoKey.replace(/\.[^/.]+$/, "")}/`;
+      // Sanitize videoKey: prevent directory traversal and leading slashes
+      const videoKey = rawVideoKey
+        .replace(/^[/\\]+/, "")
+        .replace(/\.\.[/\\]/g, "");
+      if (!videoKey || videoKey.includes("..")) {
+        console.error(`Error: Invalid video key '${rawVideoKey}'`);
+        process.exit(1);
+      }
+
+      const rawPrefix = flags["prefix"] as string | undefined;
+      const cleanPrefix = rawPrefix
+        ? rawPrefix.replace(/^[/\\]+/, "").replace(/\.\.[/\\]/g, "")
+        : `transcoded/${videoKey.replace(/\.[^/.]+$/, "")}/`;
+      const outputPrefix = cleanPrefix.endsWith("/")
+        ? cleanPrefix
+        : `${cleanPrefix}/`;
+
       const rawQualities = flags["qualities"] as string | undefined;
 
       let qualities: readonly VideoQualityLevel[] = DEFAULT_QUALITIES;

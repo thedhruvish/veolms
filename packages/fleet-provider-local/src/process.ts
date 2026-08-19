@@ -22,13 +22,14 @@ export class LocalProcessRegistry {
   }): ManagedProcess {
     const { workerId, command, args, env, cwd } = options;
 
+    const isPosix = process.platform !== "win32";
     const child = spawn(command, [...args], {
       env: {
         ...process.env,
         ...env,
       },
       cwd: cwd ?? process.cwd(),
-      detached: false,
+      detached: isPosix,
       stdio: ["ignore", "pipe", "pipe"],
     });
 
@@ -100,6 +101,23 @@ export class LocalProcessRegistry {
     }
   }
 
+  private killProcessOrGroup(pid: number, signal: "SIGTERM" | "SIGKILL"): void {
+    if (process.platform !== "win32") {
+      try {
+        process.kill(-pid, signal);
+        return;
+      } catch {
+        // Fallback to direct PID if group kill fails
+      }
+    }
+
+    try {
+      process.kill(pid, signal);
+    } catch {
+      // Process already terminated
+    }
+  }
+
   public async terminate(pid: number, gracePeriodMs = 5000): Promise<void> {
     if (!this.isAlive(pid)) {
       const managed = this.getByPid(pid);
@@ -109,11 +127,7 @@ export class LocalProcessRegistry {
       return;
     }
 
-    try {
-      process.kill(pid, "SIGTERM");
-    } catch {
-      return;
-    }
+    this.killProcessOrGroup(pid, "SIGTERM");
 
     const checkInterval = 100;
     const start = Date.now();
@@ -131,11 +145,7 @@ export class LocalProcessRegistry {
 
     // Force kill if still alive after grace period
     if (this.isAlive(pid)) {
-      try {
-        process.kill(pid, "SIGKILL");
-      } catch {
-        // Ignored
-      }
+      this.killProcessOrGroup(pid, "SIGKILL");
     }
 
     const managed = this.getByPid(pid);
