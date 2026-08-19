@@ -1,9 +1,5 @@
 import type { ReactNode } from "react";
 import { Links, Meta, Outlet, Scripts } from "react-router";
-// import "./styles.css";
-// import "./shell-theme.css";
-import "./styles/features/course-wizard.css";
-import "./styles/components/confirm-delete-modal.css";
 import { fullAppStylesheet } from "./appStylesheet";
 import manropeFontUrl from "./assets/fonts/manrope-core.woff2?url";
 import procodrrLogoMark from "./assets/procodrr-logo-mark.svg";
