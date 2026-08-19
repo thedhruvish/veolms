@@ -36,7 +36,7 @@ function buildFallbackSections(course: Course): CourseSection[] {
   }));
 }
 
-function getSectionTitle(course: Course, index: number): string {
+export function getSectionTitle(course: Course, index: number): string {
   const generic = [
     "Introduction",
     "Getting Started",
