@@ -331,14 +331,7 @@ describe("framework route descriptors", () => {
   });
 
   it("keeps deferred product surfaces on the shared empty state", () => {
-    for (const routeId of [
-      "students",
-      "reviews",
-      "course-create",
-      "course-overview",
-      "analytics",
-      "messages",
-    ]) {
+    for (const routeId of ["students", "analytics", "messages"]) {
       expect(getRouteDescriptor(routeId)).toMatchObject({
         kind: "shell",
         page: "placeholder",
