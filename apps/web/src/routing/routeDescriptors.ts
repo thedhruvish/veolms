@@ -12,6 +12,10 @@ export type ShellPage =
   | "home"
   | "my-courses"
   | "explore-courses"
+  | "reviews"
+  | "orders"
+  | "order-history"
+  | "notifications"
   | "placeholder"
   | "settings"
   | "workspace";
@@ -107,7 +111,7 @@ export const routeDescriptors = {
   },
   reviews: {
     kind: "shell",
-    page: "placeholder",
+    page: "reviews",
     section: "Reviews",
     title: "Reviews",
     description: "Keep an eye on learner feedback and course sentiment.",
@@ -146,7 +150,7 @@ export const routeDescriptors = {
   },
   orders: {
     kind: "shell",
-    page: "placeholder",
+    page: "orders",
     section: "Orders",
     title: "Orders",
     description: "Review purchases, refunds, and commerce activity.",
@@ -160,14 +164,14 @@ export const routeDescriptors = {
   },
   "order-history": {
     kind: "shell",
-    page: "placeholder",
+    page: "order-history",
     section: "Order History",
     title: "Order History",
     description: "Review your academy purchases and payment activity.",
   },
   notifications: {
     kind: "shell",
-    page: "placeholder",
+    page: "notifications",
     section: "Notifications",
     title: "Notifications",
     description: "See important updates about your learning journey.",
