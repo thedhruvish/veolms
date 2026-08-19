@@ -76,10 +76,7 @@ import { config } from "../../config.ts";
 import type { RoutePlugin } from "../../lib/route-plugin.ts";
 
 const sessionParamsSchema = z.object({
-  id: z
-    .string()
-    .uuid()
-    .describe("The UUID of the session to revoke."),
+  id: z.string().uuid().describe("The UUID of the session to revoke."),
 });
 
 interface OauthProfile {
@@ -199,7 +196,8 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
         if (emailRes.ok) {
           const emails = (await emailRes.json()) as any[];
           const verifiedEmails = emails.filter((e) => e.verified);
-          const selectedEmailObj = verifiedEmails.find((e) => e.primary) || verifiedEmails[0];
+          const selectedEmailObj =
+            verifiedEmails.find((e) => e.primary) || verifiedEmails[0];
           email = selectedEmailObj?.email || "";
         } else {
           email = payload.email || "";
@@ -296,7 +294,7 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
     });
   }
 
-  // Helper to find weather any active MFA factor is there 
+  // Helper to find weather any active MFA factor is there
   async function userHasAnyMfaFactor(userId: string): Promise<boolean> {
     const totpCred = await database
       .selectFrom("user_totp_credentials")
@@ -926,7 +924,8 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
       }
 
       let codeVerifier: string | undefined = undefined;
-      const isMockOauthCode = config.NODE_ENV === "development" && oauthCode.startsWith("mock_");
+      const isMockOauthCode =
+        config.NODE_ENV === "development" && oauthCode.startsWith("mock_");
 
       // CSRF and state verification (if state is provided or not a mock code)
       if (!isMockOauthCode) {
@@ -984,12 +983,16 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
       );
       if (reply.sent) return;
 
-     let user = await database
+      let user = await database
         .selectFrom("users")
         .innerJoin("oauth_accounts", "oauth_accounts.user_id", "users.id")
         .selectAll("users")
         .where("oauth_accounts.provider", "=", provider)
-        .where("oauth_accounts.provider_user_id", "=", oauthDetails.providerUserId)
+        .where(
+          "oauth_accounts.provider_user_id",
+          "=",
+          oauthDetails.providerUserId,
+        )
         .executeTakeFirst();
 
       if (!user) {
@@ -1055,7 +1058,8 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
       }
 
       let codeVerifier: string | undefined = undefined;
-      const isMockOauthCode = config.NODE_ENV === "development" && oauthCode.startsWith("mock_");
+      const isMockOauthCode =
+        config.NODE_ENV === "development" && oauthCode.startsWith("mock_");
       // CSRF and state verification (if not mock)
       if (!isMockOauthCode) {
         const stateCookie = request.cookies["veolms-oauth-state"];
@@ -1264,7 +1268,8 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
       }
 
       let codeVerifier: string | undefined = undefined;
-      const isMockOauthCode = config.NODE_ENV === "development" && oauthCode.startsWith("mock_");
+      const isMockOauthCode =
+        config.NODE_ENV === "development" && oauthCode.startsWith("mock_");
       // CSRF and state verification (if not mock)
       if (!isMockOauthCode) {
         const stateCookie = request.cookies["veolms-oauth-state"];
@@ -1326,7 +1331,11 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
         .innerJoin("oauth_accounts", "oauth_accounts.user_id", "users.id")
         .selectAll("users")
         .where("oauth_accounts.provider", "=", provider)
-        .where("oauth_accounts.provider_user_id", "=", oauthDetails.providerUserId)
+        .where(
+          "oauth_accounts.provider_user_id",
+          "=",
+          oauthDetails.providerUserId,
+        )
         .executeTakeFirst();
 
       if (!user) {
@@ -1732,7 +1741,9 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
           ),
           400: errorResponse("Verification failed."),
           401: errorResponse("Unauthorized."),
-          403: errorResponse("Step-up MFA required to replace existing factor."),
+          403: errorResponse(
+            "Step-up MFA required to replace existing factor.",
+          ),
         },
       },
       preHandler: [
@@ -1745,7 +1756,15 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
       const hasAnyFactor = await userHasAnyMfaFactor(request.user!.id);
 
       if (hasAnyFactor && !request.session!.mfa_verified) {
-        return reply.code(403).send(httpError(403, "MFA_STEP_UP_REQUIRED", "Verify an existing MFA factor before adding or replacing another."));
+        return reply
+          .code(403)
+          .send(
+            httpError(
+              403,
+              "MFA_STEP_UP_REQUIRED",
+              "Verify an existing MFA factor before adding or replacing another.",
+            ),
+          );
       }
 
       const totpResult = verifyTotp(secret, code, {
@@ -1848,23 +1867,42 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
       const { code } = request.body;
       const userId = request.user!.id;
 
-        const totpCred = await database
-          .selectFrom("user_totp_credentials")
-          .select(["id", "secret_encrypted", "enabled", "last_used_step", "failed_attempts", "locked_until"])
-          .where("user_id", "=", userId)
-          .executeTakeFirst();
+      const totpCred = await database
+        .selectFrom("user_totp_credentials")
+        .select([
+          "id",
+          "secret_encrypted",
+          "enabled",
+          "last_used_step",
+          "failed_attempts",
+          "locked_until",
+        ])
+        .where("user_id", "=", userId)
+        .executeTakeFirst();
 
       if (!totpCred || !totpCred.enabled) {
-        return reply.code(400).send(httpError(400, "MFA_NOT_ENABLED", "TOTP MFA is not enabled for this user."));
+        return reply
+          .code(400)
+          .send(
+            httpError(
+              400,
+              "MFA_NOT_ENABLED",
+              "TOTP MFA is not enabled for this user.",
+            ),
+          );
       }
 
       if (totpCred.locked_until && totpCred.locked_until > new Date()) {
         return reply
           .code(429)
-          .send(httpError(429, "TOTP_LOCKED", "Too many failed attempts. Try again later."));
+          .send(
+            httpError(
+              429,
+              "TOTP_LOCKED",
+              "Too many failed attempts. Try again later.",
+            ),
+          );
       }
-
-
 
       const plaintextSecret = decryptSecret(
         totpCred.secret_encrypted,
@@ -1963,7 +2001,8 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
         .updateTable("user_totp_credentials")
         .set({
           failed_attempts: newAttempts,
-          locked_until: newAttempts >= 5 ? new Date(Date.now() + 5 * 60 * 1000) : null,
+          locked_until:
+            newAttempts >= 5 ? new Date(Date.now() + 5 * 60 * 1000) : null,
         })
         .where("id", "=", totpCred.id)
         .execute();
@@ -1990,7 +2029,9 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
             passkeyOptionsResponseSchema,
           ),
           401: errorResponse("Unauthorized."),
-          403: errorResponse("Step-up MFA required to replace existing factor."),
+          403: errorResponse(
+            "Step-up MFA required to replace existing factor.",
+          ),
         },
       },
       preHandler: [
@@ -1999,17 +2040,25 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
       ],
     },
     async (request, reply) => {
-    const userPasskeys = await database
-      .selectFrom("passkeys")
-      .select("credential_id")
-      .where("user_id", "=", request.user!.id)
-      .execute();
+      const userPasskeys = await database
+        .selectFrom("passkeys")
+        .select("credential_id")
+        .where("user_id", "=", request.user!.id)
+        .execute();
 
-    const hasAnyFactor = await userHasAnyMfaFactor(request.user!.id);
+      const hasAnyFactor = await userHasAnyMfaFactor(request.user!.id);
 
-    if (hasAnyFactor && !request.session!.mfa_verified) {
-      return reply.code(403).send(httpError(403, "MFA_STEP_UP_REQUIRED", "Verify an existing MFA factor before adding another passkey."));
-    }
+      if (hasAnyFactor && !request.session!.mfa_verified) {
+        return reply
+          .code(403)
+          .send(
+            httpError(
+              403,
+              "MFA_STEP_UP_REQUIRED",
+              "Verify an existing MFA factor before adding another passkey.",
+            ),
+          );
+      }
       const userIdentifier =
         request.user!.email ||
         request.user!.username ||
@@ -2034,23 +2083,23 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
 
       // Clear any old registration challenges for this user
       await database.transaction().execute(async (trx) => {
-        await trx.deleteFrom("webauthn_challenges")
+        await trx
+          .deleteFrom("webauthn_challenges")
           .where("user_id", "=", request.user!.id)
           .where("type", "=", "registration")
           .execute();
-          await trx
-            .insertInto("webauthn_challenges")
-            .values({
-              id: crypto.randomUUID(),  
-              user_id: request.user!.id,
-              challenge: options.challenge,
-              type: "registration",
-              expires_at: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes expiry
-              consumed_at: null,
-            })
-            .execute();
-      })
-
+        await trx
+          .insertInto("webauthn_challenges")
+          .values({
+            id: crypto.randomUUID(),
+            user_id: request.user!.id,
+            challenge: options.challenge,
+            type: "registration",
+            expires_at: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes expiry
+            consumed_at: null,
+          })
+          .execute();
+      });
 
       return options;
     },
@@ -2413,13 +2462,19 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
     if (academy?.setup_completed) {
       reply
         .code(403)
-        .send(httpError(403, "SETUP_ALREADY_COMPLETED", "The platform setup has already been finalized and locked."));
+        .send(
+          httpError(
+            403,
+            "SETUP_ALREADY_COMPLETED",
+            "The platform setup has already been finalized and locked.",
+          ),
+        );
       return true;
     }
     return false;
   }
 
-  // helper 
+  // helper
   const SETUP_COOKIE = "veolms-setup-token";
 
   function requireValidSetupCookie(request: any, reply: any): boolean {
@@ -2433,11 +2488,17 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
     ) {
       reply
         .code(401)
-        .send(httpError(401, "SETUP_TOKEN_REQUIRED", "A valid setup session is required for this action."));
+        .send(
+          httpError(
+            401,
+            "SETUP_TOKEN_REQUIRED",
+            "A valid setup session is required for this action.",
+          ),
+        );
       return false;
     }
     return true;
-}
+  }
   // A. Verify Setup Token
   app.post(
     "/auth/verify-token",
@@ -2467,9 +2528,20 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
 
       if (
         token.length !== config.SETUP_TOKEN.length ||
-        !crypto.timingSafeEqual(Buffer.from(token), Buffer.from(config.SETUP_TOKEN))
+        !crypto.timingSafeEqual(
+          Buffer.from(token),
+          Buffer.from(config.SETUP_TOKEN),
+        )
       ) {
-        return reply.code(401).send(httpError(401, "INVALID_SETUP_TOKEN", "The setup token provided is incorrect."));
+        return reply
+          .code(401)
+          .send(
+            httpError(
+              401,
+              "INVALID_SETUP_TOKEN",
+              "The setup token provided is incorrect.",
+            ),
+          );
       }
 
       reply.setCookie(SETUP_COOKIE, token, {
@@ -2481,7 +2553,7 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
       });
 
       return { message: "Setup token verified successfully." };
-    }
+    },
   );
 
   // B. Configure Academy Brand
@@ -2601,7 +2673,6 @@ const authRoutes: RoutePlugin = async (app, { database }) => {
         .set({ setup_completed: true, updated_at: new Date() })
         .where("id", "=", existing.id)
         .execute();
-
 
       reply.clearCookie(SETUP_COOKIE, { path: "/" }); // burn it once setup is locked
       return { message: "Academy setup finalized successfully." };

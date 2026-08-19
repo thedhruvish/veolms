@@ -58,7 +58,14 @@ export function createAuthMiddleware(
     // Look up user
     const user = await database
       .selectFrom("users")
-      .select(["id", "username", "display_name", "email", "phone_no", "mfa_mandatory"])
+      .select([
+        "id",
+        "username",
+        "display_name",
+        "email",
+        "phone_no",
+        "mfa_mandatory",
+      ])
       .where("id", "=", session.user_id)
       .executeTakeFirst();
 
@@ -87,29 +94,21 @@ export function createAuthMiddleware(
     // Resolve permissions from the new RBAC schema (menus + boolean flags)
     const permissionsRows = await database
       .selectFrom("user_roles")
-      .innerJoin(
-        "permissions",
-        "permissions.role_id",
-        "user_roles.role_id",
-      )
-      .innerJoin(
-        "menus",
-        "menus.id",
-        "permissions.menu_id",
-      )
+      .innerJoin("permissions", "permissions.role_id", "user_roles.role_id")
+      .innerJoin("menus", "menus.id", "permissions.menu_id")
       .select([
         "menus.route_link",
         "permissions.can_create",
         "permissions.can_read",
         "permissions.can_update",
-        "permissions.can_delete"
+        "permissions.can_delete",
       ])
       .where("user_roles.user_id", "=", user.id)
       .execute();
 
     const permsSet = new Set<string>();
     for (const row of permissionsRows) {
-      const baseRoute = row.route_link.replace(/^\//, '') || "home";
+      const baseRoute = row.route_link.replace(/^\//, "") || "home";
       if (row.can_create) permsSet.add(`${baseRoute}:create`);
       if (row.can_read) permsSet.add(`${baseRoute}:read`);
       if (row.can_update) permsSet.add(`${baseRoute}:update`);
@@ -184,7 +183,10 @@ export function createAuthMiddleware(
       }
 
       // 2. Enforce MFA check for users who have MFA enabled or mandatory
-      const mfaRequired = request.user.mfaMandatory || request.user.totpEnabled || request.user.passkeyEnabled;
+      const mfaRequired =
+        request.user.mfaMandatory ||
+        request.user.totpEnabled ||
+        request.user.passkeyEnabled;
       if (mfaRequired && !request.session.mfa_verified) {
         return reply
           .code(403)
