@@ -1,0 +1,154 @@
+import { spawn, type ChildProcess } from "node:child_process";
+
+export interface ManagedProcess {
+  readonly workerId: string;
+  readonly pid: number;
+  readonly child: ChildProcess;
+  readonly startedAt: Date;
+  exitCode: number | null;
+  terminated: boolean;
+}
+
+export class LocalProcessRegistry {
+  private readonly processes = new Map<string, ManagedProcess>();
+  private readonly pidToWorkerId = new Map<number, string>();
+
+  public spawnProcess(options: {
+    workerId: string;
+    command: string;
+    args: readonly string[];
+    env: Readonly<Record<string, string>>;
+    cwd?: string;
+  }): ManagedProcess {
+    const { workerId, command, args, env, cwd } = options;
+
+    const child = spawn(command, [...args], {
+      env: {
+        ...process.env,
+        ...env,
+      },
+      cwd: cwd ?? process.cwd(),
+      detached: false,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    if (!child.pid) {
+      throw new Error(`Failed to spawn child process for worker ${workerId}`);
+    }
+
+    const managed: ManagedProcess = {
+      workerId,
+      pid: child.pid,
+      child,
+      startedAt: new Date(),
+      exitCode: null,
+      terminated: false,
+    };
+
+    child.on("exit", (code) => {
+      managed.exitCode = code;
+      managed.terminated = true;
+    });
+
+    child.on("error", (err) => {
+      console.error(
+        `Local worker process error for ${workerId} (pid ${child.pid}):`,
+        err,
+      );
+      managed.terminated = true;
+    });
+
+    // Pipe stdout and stderr to parent console with worker prefix if available
+    child.stdout?.on("data", (data: Buffer) => {
+      const line = data.toString().trimEnd();
+      if (line.length > 0) {
+        console.info(`[worker:${workerId.slice(0, 8)}] ${line}`);
+      }
+    });
+
+    child.stderr?.on("data", (data: Buffer) => {
+      const line = data.toString().trimEnd();
+      if (line.length > 0) {
+        console.error(`[worker:${workerId.slice(0, 8)}] ${line}`);
+      }
+    });
+
+    this.processes.set(workerId, managed);
+    this.pidToWorkerId.set(child.pid, workerId);
+
+    return managed;
+  }
+
+  public getByWorkerId(workerId: string): ManagedProcess | undefined {
+    return this.processes.get(workerId);
+  }
+
+  public getByPid(pid: number): ManagedProcess | undefined {
+    const workerId = this.pidToWorkerId.get(pid);
+    if (!workerId) {
+      return undefined;
+    }
+    return this.processes.get(workerId);
+  }
+
+  public isAlive(pid: number): boolean {
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  public async terminate(pid: number, gracePeriodMs = 5000): Promise<void> {
+    if (!this.isAlive(pid)) {
+      const managed = this.getByPid(pid);
+      if (managed) {
+        managed.terminated = true;
+      }
+      return;
+    }
+
+    try {
+      process.kill(pid, "SIGTERM");
+    } catch {
+      return;
+    }
+
+    const checkInterval = 100;
+    const start = Date.now();
+
+    while (Date.now() - start < gracePeriodMs) {
+      await new Promise((resolve) => setTimeout(resolve, checkInterval));
+      if (!this.isAlive(pid)) {
+        const managed = this.getByPid(pid);
+        if (managed) {
+          managed.terminated = true;
+        }
+        return;
+      }
+    }
+
+    // Force kill if still alive after grace period
+    if (this.isAlive(pid)) {
+      try {
+        process.kill(pid, "SIGKILL");
+      } catch {
+        // Ignored
+      }
+    }
+
+    const managed = this.getByPid(pid);
+    if (managed) {
+      managed.terminated = true;
+    }
+  }
+
+  public remove(workerId: string): void {
+    const managed = this.processes.get(workerId);
+    if (managed) {
+      this.pidToWorkerId.delete(managed.pid);
+      this.processes.delete(workerId);
+    }
+  }
+}

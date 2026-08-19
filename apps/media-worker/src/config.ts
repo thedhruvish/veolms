@@ -1,0 +1,29 @@
+import { z } from "zod";
+
+export const mediaWorkerConfigSchema = z.object({
+  WORKER_ID: z.string().uuid(),
+  JOB_ID: z.string().uuid().optional(),
+  DATABASE_URL: z
+    .string()
+    .default("postgresql://veolms:veolms@localhost:5433/veolms"),
+  S3_BUCKET: z.string().default("veolms-media"),
+  S3_ENDPOINT: z.string().optional(),
+  S3_REGION: z.string().default("us-east-1"),
+  S3_FORCE_PATH_STYLE: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((val) => val === "true"),
+  SCRATCH_DIR: z.string().default("/tmp/veolms-worker"),
+  HEARTBEAT_INTERVAL_MS: z.coerce.number().int().min(1000).default(15000),
+  PROGRESS_UPDATE_INTERVAL_MS: z.coerce.number().int().min(1000).default(5000),
+  FFMPEG_PATH: z.string().default("ffmpeg"),
+  FFPROBE_PATH: z.string().default("ffprobe"),
+});
+
+export type MediaWorkerConfig = z.infer<typeof mediaWorkerConfigSchema>;
+
+export function loadMediaWorkerConfig(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): MediaWorkerConfig {
+  return mediaWorkerConfigSchema.parse(env);
+}

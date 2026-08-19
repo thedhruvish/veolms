@@ -166,7 +166,11 @@ export interface JobTable {
   status: JobStatus;
   video_key: string;
   output_prefix: string;
-  requirements: JSONColumnType<JobRequirements>;
+  requirements: JSONColumnType<
+    JobRequirements,
+    JobRequirements | string,
+    JobRequirements | string
+  >;
   worker_id: string | null;
   attempts: Generated<number>;
   max_attempts: Generated<number>;
@@ -189,7 +193,11 @@ export interface WorkerTable {
   storage_gb: Generated<number>;
   region: Generated<string>;
   job_id: string | null;
-  metadata: JSONColumnType<Record<string, unknown>>;
+  metadata: JSONColumnType<
+    Record<string, unknown>,
+    Record<string, unknown> | string,
+    Record<string, unknown> | string
+  >;
   last_heartbeat_at: Date | null;
   created_at: Generated<Date>;
   started_at: Date | null;
@@ -214,7 +222,11 @@ export interface WorkerEventTable {
   worker_id: string | null;
   job_id: string | null;
   event: FleetEventType;
-  metadata: JSONColumnType<Record<string, unknown>>;
+  metadata: JSONColumnType<
+    Record<string, unknown>,
+    Record<string, unknown> | string,
+    Record<string, unknown> | string
+  >;
   created_at: Generated<Date>;
 }
 

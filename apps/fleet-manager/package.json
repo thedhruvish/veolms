@@ -2,9 +2,22 @@
   "name": "@veolms/fleet-manager",
   "private": true,
   "type": "module",
+  "exports": "./src/index.ts",
   "scripts": {
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
+    "test": "node --test tests/**/*.test.ts",
     "start": "node src/index.ts"
+  },
+  "dependencies": {
+    "@veolms/database": "workspace:*",
+    "@veolms/fleet-provider-local": "workspace:*",
+    "@veolms/fleet-types": "workspace:*",
+    "kysely": "catalog:",
+    "pg": "^8.22.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/pg": "8.15.5"
   }
 }
