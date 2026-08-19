@@ -72,11 +72,27 @@ export function NotificationSettings() {
           </div>
         </header>
         <div className="settings-row-list">
-          <SettingRow icon={Bell} label="In-app notifications" note="Show activity and reminders in the notification center.">
-            <SettingsToggle checked={preferences.inApp} onChange={(inApp) => update({ inApp })} label="In-app notifications" />
+          <SettingRow
+            icon={Bell}
+            label="In-app notifications"
+            note="Show activity and reminders in the notification center."
+          >
+            <SettingsToggle
+              checked={preferences.inApp}
+              onChange={(inApp) => update({ inApp })}
+              label="In-app notifications"
+            />
           </SettingRow>
-          <SettingRow icon={BellRinging} label="Email digest" note="Receive a concise daily summary of course activity.">
-            <SettingsToggle checked={preferences.email} onChange={(email) => update({ email })} label="Email digest" />
+          <SettingRow
+            icon={BellRinging}
+            label="Email digest"
+            note="Receive a concise daily summary of course activity."
+          >
+            <SettingsToggle
+              checked={preferences.email}
+              onChange={(email) => update({ email })}
+              label="Email digest"
+            />
           </SettingRow>
         </div>
       </section>
@@ -86,21 +102,55 @@ export function NotificationSettings() {
           <ChatCircleDots size={20} weight="duotone" />
           <div>
             <h3 id="activity-heading">Course activity</h3>
-            <p>Fine-tune updates from the courses and communities you follow.</p>
+            <p>
+              Fine-tune updates from the courses and communities you follow.
+            </p>
           </div>
         </header>
         <div className="settings-row-list">
-          <SettingRow icon={BookOpen} label="Course updates" note="New lessons, materials, and changes to enrolled courses.">
-            <SettingsToggle checked={preferences.courseUpdates} onChange={(courseUpdates) => update({ courseUpdates })} label="Course updates" />
+          <SettingRow
+            icon={BookOpen}
+            label="Course updates"
+            note="New lessons, materials, and changes to enrolled courses."
+          >
+            <SettingsToggle
+              checked={preferences.courseUpdates}
+              onChange={(courseUpdates) => update({ courseUpdates })}
+              label="Course updates"
+            />
           </SettingRow>
-          <SettingRow icon={ChatCircleDots} label="Discussion replies" note="Replies, mentions, and answers in conversations you follow.">
-            <SettingsToggle checked={preferences.discussionReplies} onChange={(discussionReplies) => update({ discussionReplies })} label="Discussion replies" />
+          <SettingRow
+            icon={ChatCircleDots}
+            label="Discussion replies"
+            note="Replies, mentions, and answers in conversations you follow."
+          >
+            <SettingsToggle
+              checked={preferences.discussionReplies}
+              onChange={(discussionReplies) => update({ discussionReplies })}
+              label="Discussion replies"
+            />
           </SettingRow>
-          <SettingRow icon={BellRinging} label="Learning reminders" note="Gentle prompts to make time for your next lesson.">
-            <SettingsToggle checked={preferences.learningReminders} onChange={(learningReminders) => update({ learningReminders })} label="Learning reminders" />
+          <SettingRow
+            icon={BellRinging}
+            label="Learning reminders"
+            note="Gentle prompts to make time for your next lesson."
+          >
+            <SettingsToggle
+              checked={preferences.learningReminders}
+              onChange={(learningReminders) => update({ learningReminders })}
+              label="Learning reminders"
+            />
           </SettingRow>
-          <SettingRow icon={Trophy} label="Milestones & achievements" note="Celebrate course completions and learning streaks.">
-            <SettingsToggle checked={preferences.achievements} onChange={(achievements) => update({ achievements })} label="Milestones and achievements" />
+          <SettingRow
+            icon={Trophy}
+            label="Milestones & achievements"
+            note="Celebrate course completions and learning streaks."
+          >
+            <SettingsToggle
+              checked={preferences.achievements}
+              onChange={(achievements) => update({ achievements })}
+              label="Milestones and achievements"
+            />
           </SettingRow>
         </div>
       </section>

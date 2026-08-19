@@ -74,7 +74,9 @@ const INSECURE_DEFAULTS: Record<string, string> = {
   SETUP_TOKEN: "veo_setup_token_123",
 };
 
-export function loadServerConfig(environment: Record<string, string | undefined>) {
+export function loadServerConfig(
+  environment: Record<string, string | undefined>,
+) {
   const parsed = serverConfigSchema.parse(environment);
 
   if (parsed.NODE_ENV === "production") {
