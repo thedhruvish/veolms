@@ -2995,7 +2995,10 @@ export function CoursesPage({
               }}
             />
           ) : page === "course-create" ? (
-            <CourseCreatePage onNavigatePage={onNavigatePage} />
+            <CourseCreatePage
+              onNavigatePage={onNavigatePage}
+              bottomNavHidden={mobileBottomNavHidden}
+            />
           ) : page === "course-overview" ? (
             <CourseOverviewPage
               onNavigateCourses={() => onNavigatePage("explore-courses")}

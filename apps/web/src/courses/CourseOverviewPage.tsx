@@ -164,7 +164,7 @@ function CurriculumSectionItem({
 
   return (
     <div
-      className={`rounded-xl border bg-[var(--surface)] overflow-hidden transition-[border-color] duration-150 ${
+      className={`rounded-xl border bg-[var(--surface)] shadow-[var(--card-shadow)] overflow-hidden transition-[border-color,box-shadow] duration-150 ${
         isOpen
           ? "border-[color-mix(in_srgb,var(--accent)_35%,transparent)]"
           : "border-[color-mix(in_srgb,var(--text)_10%,transparent)]"
@@ -439,7 +439,7 @@ function CourseHeroSection({
 
             {/* Full-width Rich Pricing Section in Left Column */}
             <div
-              className={`flex flex-col min-h-0 rounded-[14px] border border-[color-mix(in_srgb,var(--text)_12%,transparent)] bg-[color-mix(in_srgb,var(--surface)_95%,transparent)] shadow-[0_4px_16px_rgba(0,0,0,0.12)] w-full box-border max-[1200px]:order-3 max-[1200px]:w-full max-[1200px]:mt-0 max-[640px]:p-[16px_14px] max-[640px]:gap-3 p-[18px_20px] gap-3.5`}
+              className={`flex flex-col min-h-0 rounded-[14px] border border-[color-mix(in_srgb,var(--text)_12%,transparent)] bg-[color-mix(in_srgb,var(--surface)_95%,transparent)] shadow-[var(--card-shadow)] w-full box-border max-[1200px]:order-3 max-[1200px]:w-full max-[1200px]:mt-0 max-[640px]:p-[16px_14px] max-[640px]:gap-3 p-[18px_20px] gap-3.5`}
               aria-label="Course pricing and enrollment"
             >
               {/* Top Row: Prominent Price + Original Price + Discount (Left) and Favourite Button (Top Right) */}
@@ -485,20 +485,27 @@ function CourseHeroSection({
                 </button>
               </div>
 
-              {/* Middle Row: Actions (Apply Coupon + Buy Now) */}
+              {/* Middle Row: Actions (Apply Coupon + Buy Now / Continue Learning) */}
               <div className="flex flex-wrap items-center gap-2.5 w-full min-w-0 max-[640px]:gap-2">
                 <button
                   type="button"
-                  className="inline-flex items-center justify-center gap-1.5 min-h-[40px] border border-dashed border-[color-mix(in_srgb,var(--text)_25%,transparent)] rounded-[9px] px-4 py-[9px] text-[var(--text)] bg-[color-mix(in_srgb,var(--surface)_60%,transparent)] text-[0.86rem] font-bold font-[750] cursor-pointer whitespace-nowrap transition-[border-color,color,background-color,transform] duration-160 ease-out hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft,color-mix(in_srgb,var(--accent)_12%,transparent))] hover:-translate-y-px shrink-0 max-[480px]:flex-1 max-[480px]:min-w-[120px] max-[640px]:px-3.5 max-[640px]:py-2.5 max-[640px]:text-[0.84rem]"
+                  className="inline-flex items-center justify-center gap-1.5 min-h-[40px] border border-dashed border-[color-mix(in_srgb,var(--text)_25%,transparent)] rounded-[9px] px-3.5 sm:px-4 py-2 text-[var(--text)] bg-[color-mix(in_srgb,var(--surface)_60%,transparent)] text-[0.86rem] font-bold font-[750] cursor-pointer whitespace-nowrap min-w-0 transition-[border-color,color,background-color,transform] duration-160 ease-out hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft,color-mix(in_srgb,var(--accent)_12%,transparent))] hover:-translate-y-px shrink-0 max-[480px]:flex-1 max-[480px]:min-w-[120px] max-[640px]:px-3 max-[640px]:text-[0.84rem]"
                   disabled={isReadOnlyPreview}
                 >
-                  <Ticket size={18} weight="bold" aria-hidden="true" />
-                  <span className="font-bold font-[750]">Apply coupon</span>
+                  <Ticket
+                    size="1.15em"
+                    weight="bold"
+                    className="shrink-0"
+                    aria-hidden="true"
+                  />
+                  <span className="font-bold font-[750] truncate">
+                    Apply coupon
+                  </span>
                 </button>
 
                 <button
                   type="button"
-                  className="inline-flex items-center justify-center gap-[7px] flex-1 min-h-[42px] min-w-[140px] px-5 py-2.5 border-0 rounded-[9px] text-[var(--on-accent,#ffffff)] bg-[var(--accent)] shadow-[0_4px_14px_var(--accent-shadow,color-mix(in_srgb,var(--accent)_28%,transparent))] text-[0.94rem] font-extrabold font-[800] tracking-[-0.01em] cursor-pointer whitespace-nowrap transition-[background-color,transform,box-shadow] duration-160 ease-out hover:bg-[var(--accent-hover,color-mix(in_srgb,var(--accent)_85%,var(--text)))] hover:-translate-y-px hover:shadow-[0_6px_18px_var(--accent-shadow,color-mix(in_srgb,var(--accent)_38%,transparent))] max-[640px]:min-w-[140px] max-[640px]:px-4 max-[640px]:py-2.5 max-[640px]:text-[0.88rem]"
+                  className="inline-flex items-center justify-center gap-2 flex-1 min-h-[42px] min-w-[140px] px-4 sm:px-5 py-2.5 border-0 rounded-[9px] text-[var(--on-accent,#ffffff)] bg-[var(--accent)] shadow-[0_4px_14px_var(--accent-shadow,color-mix(in_srgb,var(--accent)_28%,transparent))] text-[0.94rem] font-extrabold font-[800] tracking-[-0.01em] cursor-pointer whitespace-nowrap min-w-0 transition-[background-color,transform,box-shadow] duration-160 ease-out hover:bg-[var(--accent-hover,color-mix(in_srgb,var(--accent)_85%,var(--text)))] hover:-translate-y-px hover:shadow-[0_6px_18px_var(--accent-shadow,color-mix(in_srgb,var(--accent)_38%,transparent))] max-[640px]:text-[0.88rem]"
                   disabled={isReadOnlyPreview}
                   onClick={() => {
                     if (!isReadOnlyPreview && onNavigatePage) {
@@ -506,8 +513,29 @@ function CourseHeroSection({
                     }
                   }}
                 >
-                  <ShoppingBag size={19} weight="bold" aria-hidden="true" />
-                  <span className="font-extrabold font-[800]">
+                  {course.enrolled ? (
+                    <Play
+                      size="1.15em"
+                      weight="fill"
+                      className="shrink-0"
+                      aria-hidden="true"
+                    />
+                  ) : price.toLowerCase() === "free" ? (
+                    <BookOpen
+                      size="1.15em"
+                      weight="bold"
+                      className="shrink-0"
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <ShoppingBag
+                      size="1.15em"
+                      weight="bold"
+                      className="shrink-0"
+                      aria-hidden="true"
+                    />
+                  )}
+                  <span className="font-extrabold font-[800] truncate">
                     {price.toLowerCase() === "free"
                       ? "Enroll for Free"
                       : course.enrolled
@@ -542,7 +570,7 @@ function CourseHeroSection({
         {/* Right Column: 16:9 Course Trailer */}
         <div className="flex items-end justify-center w-full min-w-0 min-[1200px]:h-full max-[1200px]:order-2 max-[1200px]:w-full">
           <div
-            className="group w-full aspect-video rounded-[14px] overflow-hidden border border-[color-mix(in_srgb,var(--text)_10%,transparent)] bg-[color-mix(in_srgb,var(--surface)_60%,#000)] shadow-[0_4px_18px_rgba(0,0,0,0.14)] relative flex items-center justify-center"
+            className="group w-full aspect-video rounded-[14px] overflow-hidden border border-[color-mix(in_srgb,var(--text)_10%,transparent)] bg-[color-mix(in_srgb,var(--surface)_60%,#000)] shadow-[var(--card-shadow)] relative flex items-center justify-center"
             aria-label="Course preview player"
           >
             <img
@@ -607,7 +635,7 @@ function CourseAboutCard({
 }: CourseAboutCardProps) {
   return (
     <section
-      className="p-[18px_22px] rounded-xl border border-[color-mix(in_srgb,var(--text)_10%,transparent)] bg-[var(--surface)] shadow-[0_2px_6px_rgba(0,0,0,0.06)] max-[640px]:p-[18px_16px]"
+      className="p-[18px_22px] rounded-xl border border-[color-mix(in_srgb,var(--text)_10%,transparent)] bg-[var(--surface)] shadow-[var(--card-shadow)] max-[640px]:p-[18px_16px]"
       aria-labelledby="cov-about-heading"
     >
       <h2

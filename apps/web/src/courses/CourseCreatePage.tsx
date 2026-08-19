@@ -50,7 +50,13 @@ import {
 } from "@phosphor-icons/react";
 import type { ComponentType } from "react";
 import { ThemedSelect } from "../ThemedSelect";
+import { SettingsToggle } from "../settings/SettingsControls";
 import type { NavigateTo } from "../routing/navigation";
+import { handleRovingTabKeyDown } from "../accessibility/rovingTabFocus";
+import {
+  getNumberShortcutIndex,
+  isEditingShortcutTarget,
+} from "../keyboardShortcuts";
 
 import { ConfirmDeleteModal } from "../ConfirmDeleteModal";
 import { CourseOverviewPage } from "./CourseOverviewPage";
@@ -73,22 +79,190 @@ interface WizardStepDefinition {
   id: CourseWizardStepId;
   label: string;
   Icon: WizardStepIcon;
+  tone: "blue" | "cyan" | "gold" | "green" | "orange" | "rose" | "violet";
 }
 
 const WIZARD_STEPS: readonly WizardStepDefinition[] = [
-  { id: "basics", label: "Basics", Icon: BookOpen },
-  { id: "curriculum", label: "Curriculum", Icon: ListBullets },
-  { id: "access-rules", label: "Access Rules", Icon: LockKey },
-  { id: "pricing", label: "Pricing", Icon: Tag },
-  { id: "extras", label: "Extras", Icon: Sparkle },
-  { id: "publish", label: "Publish", Icon: Lightning },
+  { id: "basics", label: "Basics", Icon: BookOpen, tone: "blue" },
+  { id: "curriculum", label: "Curriculum", Icon: ListBullets, tone: "violet" },
+  { id: "access-rules", label: "Access Rules", Icon: LockKey, tone: "gold" },
+  { id: "pricing", label: "Pricing", Icon: Tag, tone: "green" },
+  { id: "extras", label: "Extras", Icon: Sparkle, tone: "orange" },
+  { id: "publish", label: "Publish", Icon: Lightning, tone: "rose" },
 ];
+
+const escapeHtml = (str: string) => {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+};
+
+const setCustomDragImage = (
+  e: React.DragEvent,
+  sourceElement: HTMLElement,
+  htmlContent: string,
+) => {
+  if (!e.dataTransfer) return;
+  const rect = sourceElement.getBoundingClientRect();
+  const ghost = document.createElement("div");
+  ghost.style.position = "fixed";
+  ghost.style.top = "-9999px";
+  ghost.style.left = "-9999px";
+  ghost.style.width = `${Math.round(rect.width)}px`;
+  ghost.style.boxSizing = "border-box";
+  ghost.style.pointerEvents = "none";
+  ghost.style.zIndex = "999999";
+  ghost.innerHTML = htmlContent;
+  document.body.appendChild(ghost);
+
+  const offsetX = Math.min(
+    Math.max(e.clientX - rect.left, 24),
+    Math.max(rect.width - 24, 24),
+  );
+  const offsetY = 24;
+
+  e.dataTransfer.effectAllowed = "move";
+  try {
+    e.dataTransfer.setData("text/plain", "");
+    e.dataTransfer.setDragImage(ghost, offsetX, offsetY);
+  } catch {
+    // fallback if dataTransfer is restricted
+  }
+
+  setTimeout(() => {
+    if (ghost.parentNode) {
+      ghost.parentNode.removeChild(ghost);
+    }
+  }, 0);
+};
+
+const sectionGhostHtml = (
+  title: string,
+  index: number,
+  lessonCount: number,
+) => `
+  <div style="
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 18px;
+    border-radius: 12px;
+    border: 1.5px solid var(--accent, #6366f1);
+    background: var(--surface, #1e1e24);
+    color: var(--text, #ffffff);
+    box-shadow: 0 14px 32px rgba(0,0,0,0.45);
+    box-sizing: border-box;
+    font-family: inherit;
+  ">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <span style="display: flex; align-items: center; color: var(--muted, #888); opacity: 0.85;">
+        <svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor">
+          <path d="M100,60a16,16,0,1,1-16-16A16,16,0,0,1,100,60Zm72-16a16,16,0,1,0,16,16A16,16,0,0,0,172,44ZM84,112a16,16,0,1,0,16,16A16,16,0,0,0,84,112Zm88,0a16,16,0,1,0,16,16A16,16,0,0,0,172,112ZM84,180a16,16,0,1,0,16,16A16,16,0,0,0,84,180Zm88,0a16,16,0,1,0,16,16A16,16,0,0,0,172,180Z"/>
+        </svg>
+      </span>
+      <span style="font-weight: 700; font-size: 0.92rem; color: var(--text, #fff);">
+        Section ${index + 1}
+      </span>
+      <span style="font-weight: 600; font-size: 0.92rem; color: var(--text, #fff);">
+        ${escapeHtml(title)}
+      </span>
+      <span style="font-size: 0.76rem; color: var(--muted, #888); margin-left: 4px;">
+        ${lessonCount} ${lessonCount === 1 ? "Lesson" : "Lessons"}
+      </span>
+    </div>
+  </div>
+`;
+
+const lessonGhostHtml = (
+  title: string,
+  index: number,
+  contentType: "video" | "document",
+) => {
+  const isVideo = contentType === "video";
+  return `
+  <div style="
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: 1.5px solid var(--accent, #6366f1);
+    background: var(--surface, #1e1e24);
+    color: var(--text, #ffffff);
+    box-shadow: 0 12px 28px rgba(0,0,0,0.4);
+    box-sizing: border-box;
+    font-family: inherit;
+  ">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <span style="display: flex; align-items: center; color: var(--muted, #888); opacity: 0.85;">
+        <svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor">
+          <path d="M100,60a16,16,0,1,1-16-16A16,16,0,0,1,100,60Zm72-16a16,16,0,1,0,16,16A16,16,0,0,0,172,44ZM84,112a16,16,0,1,0,16,16A16,16,0,0,0,84,112Zm88,0a16,16,0,1,0,16,16A16,16,0,0,0,172,112ZM84,180a16,16,0,1,0,16,16A16,16,0,0,0,84,180Zm88,0a16,16,0,1,0,16,16A16,16,0,0,0,172,180Z"/>
+        </svg>
+      </span>
+      <span style="display: inline-flex; min-width: 22px; height: 22px; align-items: center; justify-content: center; border-radius: 4px; background: rgba(128,128,128,0.18); color: var(--muted, #888); font-size: 0.72rem; font-weight: 600;">
+        ${index + 1}
+      </span>
+      <span style="font-weight: 600; font-size: 0.88rem; color: var(--text, #fff);">
+        ${escapeHtml(title)}
+      </span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.74rem;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 6px;
+        color: var(--accent-ink, var(--accent, #6366f1));
+        background: color-mix(in srgb, var(--accent, #6366f1) 12%, transparent);
+        border: 1px solid color-mix(in srgb, var(--accent, #6366f1) 28%, transparent);
+      ">
+        ${isVideo ? "Video" : "Document"}
+      </span>
+    </div>
+  </div>
+`;
+};
+
+const inclusionGhostHtml = (text: string) => `
+  <div style="
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1.5px solid var(--accent, #6366f1);
+    background: var(--surface, #1e1e24);
+    color: var(--text, #ffffff);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+    box-sizing: border-box;
+    font-family: inherit;
+  ">
+    <span style="display: flex; align-items: center; color: var(--muted, #888); opacity: 0.85;">
+      <svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor">
+        <path d="M100,60a16,16,0,1,1-16-16A16,16,0,0,1,100,60Zm72-16a16,16,0,1,0,16,16A16,16,0,0,0,172,44ZM84,112a16,16,0,1,0,16,16A16,16,0,0,0,84,112Zm88,0a16,16,0,1,0,16,16A16,16,0,0,0,172,112ZM84,180a16,16,0,1,0,16,16A16,16,0,0,0,84,180Zm88,0a16,16,0,1,0,16,16A16,16,0,0,0,172,180Z"/>
+      </svg>
+    </span>
+    <span style="font-weight: 500; font-size: 0.86rem; color: var(--text, #fff);">
+      ${escapeHtml(text || "Inclusion item")}
+    </span>
+  </div>
+`;
 
 export interface CourseCreatePageProps {
   onNavigatePage?: NavigateTo;
+  bottomNavHidden?: boolean;
 }
 
-export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
+export function CourseCreatePage({
+  onNavigatePage,
+  bottomNavHidden = false,
+}: CourseCreatePageProps) {
   const [activeStep, setActiveStep] = useState<CourseWizardStepId>("basics");
   const [slideDirection, setSlideDirection] = useState<"right" | "left">(
     "right",
@@ -130,31 +304,89 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   useEffect(() => {
     const updateIndicator = () => {
       const activeEl = tabRefs.current[activeStep];
-      if (activeEl) {
-        setIndicatorStyle({
-          left: activeEl.offsetLeft,
-          width: activeEl.offsetWidth,
-        });
-        if (stepsNavRef.current) {
-          const nav = stepsNavRef.current;
-          const navWidth = nav.offsetWidth;
-          const elLeft = activeEl.offsetLeft;
-          const elWidth = activeEl.offsetWidth;
-          if (
-            elLeft < nav.scrollLeft ||
-            elLeft + elWidth > nav.scrollLeft + navWidth
-          ) {
-            nav.scrollTo({
-              left: elLeft - navWidth / 2 + elWidth / 2,
-              behavior: "smooth",
-            });
-          }
+      if (!activeEl) return;
+      setIndicatorStyle({
+        left: activeEl.offsetLeft,
+        width: activeEl.offsetWidth,
+      });
+      const nav = stepsNavRef.current;
+      if (nav) {
+        const style = getComputedStyle(activeEl);
+        const indicatorToken = style
+          .getPropertyValue("--page-tab-active-indicator")
+          .trim();
+        const toneToken = style.getPropertyValue("--page-tab-tone").trim();
+        const color =
+          indicatorToken.includes("--page-tab-tone") ||
+          indicatorToken === "var(--page-tab-tone)"
+            ? toneToken
+            : indicatorToken || "var(--accent)";
+
+        nav.style.setProperty(
+          "--page-tab-indicator-left",
+          `${activeEl.offsetLeft}px`,
+        );
+        nav.style.setProperty(
+          "--page-tab-indicator-width",
+          `${activeEl.offsetWidth}px`,
+        );
+        nav.style.setProperty("--page-tab-indicator-color", color);
+
+        const navWidth = nav.offsetWidth;
+        const elLeft = activeEl.offsetLeft;
+        const elWidth = activeEl.offsetWidth;
+        if (
+          elLeft < nav.scrollLeft ||
+          elLeft + elWidth > nav.scrollLeft + navWidth
+        ) {
+          nav.scrollTo({
+            left: elLeft - navWidth / 2 + elWidth / 2,
+            behavior: "smooth",
+          });
         }
       }
     };
     updateIndicator();
     window.addEventListener("resize", updateIndicator);
-    return () => window.removeEventListener("resize", updateIndicator);
+
+    const observer = new MutationObserver(updateIndicator);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: [
+        "data-page-tab-colors",
+        "data-theme",
+        "data-palette",
+        "data-sidebar-icon-style",
+      ],
+    });
+
+    return () => {
+      window.removeEventListener("resize", updateIndicator);
+      observer.disconnect();
+    };
+  }, [activeStep]);
+
+  useEffect(() => {
+    const navigateWizardTab = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        !event.altKey ||
+        isEditingShortcutTarget(event.target)
+      )
+        return;
+      const index = getNumberShortcutIndex(event);
+      if (index === null) return;
+      const destination = WIZARD_STEPS[index];
+      if (!destination) return;
+      event.preventDefault();
+      const currentIdx = WIZARD_STEPS.findIndex((s) => s.id === activeStep);
+      if (index > currentIdx) setSlideDirection("right");
+      else if (index < currentIdx) setSlideDirection("left");
+      setActiveStep(destination.id);
+    };
+
+    document.addEventListener("keydown", navigateWizardTab);
+    return () => document.removeEventListener("keydown", navigateWizardTab);
   }, [activeStep]);
 
   // Basics Form state
@@ -466,8 +698,17 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
     }));
   };
 
-  const handleInclusionDragStart = (index: number) => {
+  const handleInclusionDragStart = (
+    e: React.DragEvent,
+    index: number,
+    text: string,
+  ) => {
     setDraggedInclusionIndex(index);
+    setCustomDragImage(
+      e,
+      e.currentTarget as HTMLElement,
+      inclusionGhostHtml(text),
+    );
   };
 
   const handleInclusionDragOver = (e: React.DragEvent, index: number) => {
@@ -688,8 +929,17 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   };
 
   // Section Drag and Drop handlers
-  const handleSectionDragStart = (index: number) => {
+  const handleSectionDragStart = (
+    e: React.DragEvent,
+    index: number,
+    section: CurriculumSectionItem,
+  ) => {
     setDraggedSectionIndex(index);
+    setCustomDragImage(
+      e,
+      e.currentTarget as HTMLElement,
+      sectionGhostHtml(section.title, index, section.lessons.length),
+    );
   };
 
   const handleSectionDragOver = (e: React.DragEvent, index: number) => {
@@ -852,8 +1102,18 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
   };
 
   // Lesson Drag and Drop handlers
-  const handleLessonDragStart = (sectionId: string, lessonIndex: number) => {
+  const handleLessonDragStart = (
+    e: React.DragEvent,
+    sectionId: string,
+    lessonIndex: number,
+    lesson: CurriculumLessonItem,
+  ) => {
     setDraggedLessonState({ sectionId, lessonIndex });
+    setCustomDragImage(
+      e,
+      e.currentTarget as HTMLElement,
+      lessonGhostHtml(lesson.title, lessonIndex, lesson.contentType),
+    );
   };
 
   const handleLessonDragOver = (
@@ -1098,7 +1358,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
           <div className="flex items-start gap-3 min-w-0">
             <button
               type="button"
-              className="flex w-[36px] h-[36px] shrink-0 items-center justify-center border border-white/15 rounded-lg text-[var(--text-secondary)] bg-white/[0.04] cursor-pointer transition-[border-color,background-color,color] duration-150 ease-out hover:border-white/25 hover:bg-white/[0.08] hover:text-[var(--text)]"
+              className="flex w-[36px] h-[36px] shrink-0 items-center justify-center border border-[color-mix(in_srgb,var(--text)_12%,transparent)] rounded-lg text-[var(--text-secondary)] bg-[color-mix(in_srgb,var(--text)_4%,transparent)] cursor-pointer transition-[border-color,background-color,color] duration-150 ease-out hover:border-[color-mix(in_srgb,var(--text)_24%,transparent)] hover:bg-[color-mix(in_srgb,var(--text)_8%,transparent)] hover:text-[var(--text)]"
               onClick={handleBack}
               aria-label="Go back to courses"
             >
@@ -1113,7 +1373,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[0.72rem] font-medium tracking-[0.02em] ${
                     isPublished
                       ? "is-published border border-green-500/35 text-green-400 bg-green-500/[0.12]"
-                      : "border border-white/15 text-[var(--muted)] bg-white/[0.04]"
+                      : "border border-[color-mix(in_srgb,var(--text)_14%,transparent)] text-[var(--muted)] bg-[color-mix(in_srgb,var(--text)_5%,transparent)]"
                   }`}
                 >
                   {isPublished ? "Published" : "Draft"}
@@ -1149,7 +1409,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                 paddingLeft: "14px",
                 paddingRight: "14px",
               }}
-              className="inline-flex items-center border border-white/10 text-[var(--text-secondary)] bg-transparent cursor-pointer transition-all duration-150 hover:bg-white/[0.05] hover:text-[var(--text)] disabled:opacity-60"
+              className="inline-flex items-center border border-[color-mix(in_srgb,var(--text)_14%,transparent)] text-[var(--text-secondary)] bg-transparent cursor-pointer transition-all duration-150 hover:bg-[color-mix(in_srgb,var(--text)_6%,transparent)] hover:text-[var(--text)] disabled:opacity-60"
               onClick={handlePreviewAction}
               disabled={actionLoading !== null}
             >
@@ -1181,7 +1441,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                 paddingLeft: "14px",
                 paddingRight: "14px",
               }}
-              className="inline-flex items-center border border-white/10 text-[var(--text)] bg-white/[0.05] cursor-pointer transition-all duration-150 hover:bg-white/10 disabled:opacity-60"
+              className="inline-flex items-center border border-[color-mix(in_srgb,var(--text)_14%,transparent)] text-[var(--text)] bg-[color-mix(in_srgb,var(--text)_5%,transparent)] cursor-pointer transition-all duration-150 hover:bg-[color-mix(in_srgb,var(--text)_10%,transparent)] disabled:opacity-60"
               onClick={handleSaveDraftAction}
               disabled={actionLoading !== null}
             >
@@ -1259,7 +1519,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
         {/* Wizard Steps Navigation */}
         <nav
           ref={stepsNavRef}
-          className="settings-tabs relative !mt-0 !bg-transparent !pt-0 border-b border-[color-mix(in_srgb,var(--surface-strong)72%,transparent)] max-[768px]:w-full max-[768px]:box-border [&::after]:!hidden"
+          className="course-wizard-steps-nav settings-tabs page-tabs relative !mt-0 !bg-transparent !pt-0 border-b border-[color-mix(in_srgb,var(--surface-strong)72%,transparent)] max-[768px]:w-full max-[768px]:box-border [&::after]:!hidden"
           aria-label="Course creation steps"
           role="tablist"
           onMouseDown={handleNavMouseDown}
@@ -1267,28 +1527,26 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
           onMouseUp={handleNavMouseUp}
           onMouseMove={handleNavMouseMove}
         >
-          {/* Animated Sliding Bottom Indicator */}
-          <div
-            className="absolute bottom-0 left-0 z-[3] h-[2px] bg-[var(--accent)] shadow-[0_0_10px_color-mix(in_srgb,var(--accent)_60%,transparent)] pointer-events-none transition-[transform,width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
-            style={{
-              transform: `translateX(${indicatorStyle.left}px)`,
-              width: `${indicatorStyle.width}px`,
-            }}
-          />
+          {/* Standard page-tabs indicator — driven by --page-tab-indicator-* CSS vars */}
+          <span className="page-tabs__indicator" aria-hidden="true" />
           {WIZARD_STEPS.map((step, idx) => {
             const Icon = step.Icon;
             const isActive = activeStep === step.id;
             return (
               <button
                 key={step.id}
+                id={`course-wizard-tab-${step.id}`}
                 ref={(el) => {
                   tabRefs.current[step.id] = el;
                 }}
                 type="button"
                 role="tab"
                 aria-selected={isActive}
+                aria-controls="course-wizard-tab-panel"
+                aria-keyshortcuts={`Alt+${idx + 1}`}
                 tabIndex={isActive ? 0 : -1}
-                className={`!border-b-transparent shrink-0 whitespace-nowrap ${isActive ? "is-active" : ""}`}
+                data-page-tab-tone={step.tone}
+                className={`!border-b-transparent !outline-none focus:!outline-none focus-visible:!outline-none shrink-0 whitespace-nowrap ${isActive ? "is-active" : ""}`}
                 onClick={() => {
                   const currentIdx = WIZARD_STEPS.findIndex(
                     (s) => s.id === activeStep,
@@ -1297,6 +1555,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   else if (idx < currentIdx) setSlideDirection("left");
                   setActiveStep(step.id);
                 }}
+                onKeyDown={handleRovingTabKeyDown}
               >
                 <Icon size={17} weight={isActive ? "fill" : "regular"} />
                 <span>{step.label}</span>
@@ -1338,14 +1597,14 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     <input
                       id="course-title"
                       type="text"
-                      maxLength={120}
+                      maxLength={60}
                       placeholder="e.g. Complete Backend with Node.js"
                       value={courseTitle}
-                      onChange={(e) => setCourseTitle(e.target.value)}
-                      className="w-full h-11 border border-white/[0.08] rounded-[10px] pl-3.5 pr-[70px] py-0 text-[var(--text)] bg-black/20 text-[0.88rem] outline-none transition-[border-color] duration-150 focus:border-[var(--accent)]"
+                      onChange={(e) => setCourseTitle(e.target.value.slice(0, 60))}
+                      className="w-full h-11 border border-[color-mix(in_srgb,var(--text)_12%,transparent)] rounded-[10px] pl-3.5 pr-[70px] py-0 text-[var(--text)] bg-[color-mix(in_srgb,var(--canvas)_60%,var(--surface))] text-[0.88rem] outline-none transition-[border-color] duration-150 focus:border-[var(--accent)]"
                     />
                     <span className="absolute right-3.5 text-[var(--muted)] text-[0.76rem] pointer-events-none">
-                      {courseTitle.length} / 120
+                      {courseTitle.length} / 60
                     </span>
                   </div>
                 </div>
@@ -1380,7 +1639,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       onValueChange={setCategory}
                       options={categoryOptions}
                       ariaLabel="Select category"
-                      triggerClassName="!w-full !h-11 !border !border-white/[0.08] !rounded-[10px] !px-3.5 !py-0 !text-[var(--text)] !bg-black/20 !text-[0.88rem]"
+                      triggerClassName="!w-full !h-11 !border !border-[color-mix(in_srgb,var(--text)_12%,transparent)] !rounded-[10px] !px-3.5 !py-0 !text-[var(--text)] !bg-[color-mix(in_srgb,var(--canvas)_60%,var(--surface))] !text-[0.88rem]"
                     />
                   </div>
 
@@ -1397,7 +1656,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       onValueChange={setDifficultyLevel}
                       options={difficultyOptions}
                       ariaLabel="Select difficulty level"
-                      triggerClassName="!w-full !h-11 !border !border-white/[0.08] !rounded-[10px] !px-3.5 !py-0 !text-[var(--text)] !bg-black/20 !text-[0.88rem]"
+                      triggerClassName="!w-full !h-11 !border !border-[color-mix(in_srgb,var(--text)_12%,transparent)] !rounded-[10px] !px-3.5 !py-0 !text-[var(--text)] !bg-[color-mix(in_srgb,var(--canvas)_60%,var(--surface))] !text-[0.88rem]"
                     />
                   </div>
                 </div>
@@ -1442,23 +1701,41 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       Upload a thumbnail for your course.
                     </p>
                     {thumbnail ? (
-                      <div className="group relative flex flex-col items-center justify-center aspect-video w-full min-h-[175px] box-border border border-solid border-white/15 rounded-xl p-0 bg-black/15 text-center overflow-hidden">
+                      <div className="group relative flex flex-col items-center justify-center aspect-video w-full min-h-[175px] box-border border border-solid border-[color-mix(in_srgb,var(--text)_14%,transparent)] rounded-xl p-0 bg-[color-mix(in_srgb,var(--canvas)_60%,var(--surface))] text-center overflow-hidden">
                         <img
                           src={thumbnail}
                           alt="Course thumbnail preview"
                           className="w-full h-full object-cover block"
                         />
-                        <div className="absolute inset-0 flex items-center justify-center gap-2.5 p-3 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity duration-200 backdrop-blur-sm">
+                        <div className="absolute inset-0 flex items-center justify-center gap-2 p-3 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity duration-200 backdrop-blur-[2px]">
                           <button
                             type="button"
-                            className="inline-flex items-center gap-1.5 h-[32px] border border-white/15 rounded-lg px-3 text-[var(--text)] bg-white/[0.10] backdrop-blur-md text-[0.78rem] font-bold cursor-pointer transition-all duration-150 hover:bg-[var(--accent)] hover:border-transparent hover:text-white"
+                            style={{
+                              fontSize: "0.80rem",
+                              fontWeight: 700,
+                              height: "34px",
+                              borderRadius: "8px",
+                              gap: "6px",
+                              paddingLeft: "16px",
+                              paddingRight: "16px",
+                            }}
+                            className="inline-flex items-center justify-center border-none text-[var(--on-accent,#ffffff)] bg-[var(--accent)] cursor-pointer shadow-[0_3px_10px_var(--accent-shadow)] transition-all duration-150 ease-out hover:brightness-110"
                             onClick={triggerThumbnailUpload}
                           >
                             <ImageIcon size={15} /> Change Image
                           </button>
                           <button
                             type="button"
-                            className="inline-flex items-center gap-1.5 h-[32px] border border-red-500/35 rounded-lg px-2.5 text-red-300 bg-red-500/[0.16] backdrop-blur-md text-[0.78rem] font-bold cursor-pointer transition-all duration-150 hover:bg-red-500 hover:border-red-500 hover:text-white"
+                            style={{
+                              fontSize: "0.80rem",
+                              fontWeight: 500,
+                              height: "34px",
+                              borderRadius: "8px",
+                              gap: "6px",
+                              paddingLeft: "14px",
+                              paddingRight: "14px",
+                            }}
+                            className="inline-flex items-center border-none text-white bg-red-500 cursor-pointer transition-all duration-150 hover:bg-red-600"
                             onClick={handleRemoveThumbnail}
                             title="Remove Thumbnail"
                           >
@@ -1467,7 +1744,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                         </div>
                       </div>
                     ) : (
-                      <div className="relative flex flex-col items-center justify-center aspect-video w-full min-h-[175px] box-border border border-dashed border-white/[0.12] rounded-xl p-4 bg-black/15 text-center overflow-hidden transition-[border-color,background-color] duration-180 ease-out">
+                      <div className="relative flex flex-col items-center justify-center aspect-video w-full min-h-[175px] box-border border border-dashed border-[color-mix(in_srgb,var(--text)_16%,transparent)] rounded-xl p-4 bg-[color-mix(in_srgb,var(--canvas)_60%,var(--surface))] text-center overflow-hidden transition-[border-color,background-color] duration-180 ease-out">
                         <div className="mb-2 text-[var(--muted)]">
                           <ImageIcon size={30} weight="light" />
                         </div>
@@ -1505,23 +1782,41 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       Add a trailer video to showcase your course.
                     </p>
                     {videoTrailer ? (
-                      <div className="group relative flex flex-col items-center justify-center aspect-video w-full min-h-[175px] box-border border border-solid border-white/15 rounded-xl p-0 bg-black/15 text-center overflow-hidden">
+                      <div className="group relative flex flex-col items-center justify-center aspect-video w-full min-h-[175px] box-border border border-solid border-[color-mix(in_srgb,var(--text)_14%,transparent)] rounded-xl p-0 bg-[color-mix(in_srgb,var(--canvas)_60%,var(--surface))] text-center overflow-hidden">
                         <video
                           src={videoTrailer}
                           className="w-full h-full object-cover block"
                           controls
                         />
-                        <div className="absolute inset-0 flex items-center justify-center gap-2.5 p-3 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity duration-200 backdrop-blur-sm">
+                        <div className="absolute inset-0 flex items-center justify-center gap-2 p-3 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity duration-200 backdrop-blur-[2px]">
                           <button
                             type="button"
-                            className="inline-flex items-center gap-1.5 h-[32px] border border-white/15 rounded-lg px-3 text-[var(--text)] bg-white/[0.10] backdrop-blur-md text-[0.78rem] font-bold cursor-pointer transition-all duration-150 hover:bg-[var(--accent)] hover:border-transparent hover:text-white"
+                            style={{
+                              fontSize: "0.80rem",
+                              fontWeight: 700,
+                              height: "34px",
+                              borderRadius: "8px",
+                              gap: "6px",
+                              paddingLeft: "16px",
+                              paddingRight: "16px",
+                            }}
+                            className="inline-flex items-center justify-center border-none text-[var(--on-accent,#ffffff)] bg-[var(--accent)] cursor-pointer shadow-[0_3px_10px_var(--accent-shadow)] transition-all duration-150 ease-out hover:brightness-110"
                             onClick={triggerVideoTrailerUpload}
                           >
                             <PlayCircle size={15} /> Change Video
                           </button>
                           <button
                             type="button"
-                            className="inline-flex items-center gap-1.5 h-[32px] border border-red-500/35 rounded-lg px-2.5 text-red-300 bg-red-500/[0.16] backdrop-blur-md text-[0.78rem] font-bold cursor-pointer transition-all duration-150 hover:bg-red-500 hover:border-red-500 hover:text-white"
+                            style={{
+                              fontSize: "0.80rem",
+                              fontWeight: 500,
+                              height: "34px",
+                              borderRadius: "8px",
+                              gap: "6px",
+                              paddingLeft: "14px",
+                              paddingRight: "14px",
+                            }}
+                            className="inline-flex items-center border-none text-white bg-red-500 cursor-pointer transition-all duration-150 hover:bg-red-600"
                             onClick={handleRemoveVideoTrailer}
                             title="Remove Video Trailer"
                           >
@@ -1530,7 +1825,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                         </div>
                       </div>
                     ) : (
-                      <div className="relative flex flex-col items-center justify-center aspect-video w-full min-h-[175px] box-border border border-dashed border-white/[0.12] rounded-xl p-4 bg-black/15 text-center overflow-hidden transition-[border-color,background-color] duration-180 ease-out">
+                      <div className="relative flex flex-col items-center justify-center aspect-video w-full min-h-[175px] box-border border border-dashed border-[color-mix(in_srgb,var(--text)_16%,transparent)] rounded-xl p-4 bg-[color-mix(in_srgb,var(--canvas)_60%,var(--surface))] text-center overflow-hidden transition-[border-color,background-color] duration-180 ease-out">
                         <div className="mb-2 text-[var(--muted)]">
                           <PlayCircle size={30} weight="light" />
                         </div>
@@ -1562,7 +1857,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                               paddingLeft: "14px",
                               paddingRight: "14px",
                             }}
-                            className="inline-flex items-center border border-white/10 text-[var(--text)] bg-white/[0.05] cursor-pointer transition-all duration-150 hover:bg-white/10"
+                            className="inline-flex items-center border border-[color-mix(in_srgb,var(--text)_14%,transparent)] text-[var(--text)] bg-[color-mix(in_srgb,var(--text)_5%,transparent)] cursor-pointer transition-all duration-150 hover:bg-[color-mix(in_srgb,var(--text)_10%,transparent)]"
                             onClick={() => {
                               // Select from media action
                             }}
@@ -1640,13 +1935,13 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                   {difficultyLevel && (
                     <div className="inline-block mb-3">
-                      <span className="rounded-md px-2.5 py-0.75 text-[#a78bfa] bg-[#8b68ff]/15 text-[0.74rem] font-semibold">
+                      <span className="rounded-md px-2.5 py-0.75 text-[var(--accent-ink,var(--accent))] bg-[color-mix(in_srgb,var(--accent)_15%,transparent)] text-[0.74rem] font-semibold">
                         {difficultyLevel}
                       </span>
                     </div>
                   )}
 
-                  <div className="flex items-center gap-3.5 border-b border-white/[0.08] pb-3.5 text-[var(--muted)] text-[0.8rem]">
+                  <div className="flex items-center gap-3.5 border-b border-[color-mix(in_srgb,var(--text)_10%,transparent)] pb-3.5 text-[var(--muted)] text-[0.8rem]">
                     <span className="flex items-center gap-1.25">
                       <BookOpen size={15} /> {totalSections} Sections
                     </span>
@@ -1710,15 +2005,19 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
             {sections.map((sec, secIndex) => (
               <div
                 key={sec.id}
-                className="border border-white/[0.07] rounded-[14px] bg-[var(--surface)] overflow-hidden transition-[border-color] duration-150"
+                className={`border rounded-[14px] bg-[var(--surface)] shadow-[var(--card-shadow)] overflow-hidden transition-[border-color,box-shadow,opacity] duration-150 ${
+                  draggedSectionIndex === secIndex
+                    ? "opacity-35 border-dashed border-[var(--accent)]"
+                    : "border-[color-mix(in_srgb,var(--text)_8%,transparent)]"
+                }`}
                 draggable={dragEnabledSectionId === sec.id}
-                onDragStart={() => handleSectionDragStart(secIndex)}
+                onDragStart={(e) => handleSectionDragStart(e, secIndex, sec)}
                 onDragOver={(e) => handleSectionDragOver(e, secIndex)}
                 onDragEnd={handleSectionDragEnd}
               >
                 {/* Section Header */}
                 <div
-                  className="flex items-center justify-between px-[18px] py-3.5 bg-white/[0.02] select-none cursor-pointer max-[768px]:flex-wrap max-[768px]:gap-2.5 max-[768px]:p-[12px_14px]"
+                  className="flex items-center justify-between px-[18px] py-3.5 bg-[color-mix(in_srgb,var(--text)_2%,transparent)] select-none cursor-pointer max-[768px]:flex-wrap max-[768px]:gap-2.5 max-[768px]:p-[12px_14px]"
                   onClick={() => handleToggleSectionExpand(sec.id)}
                   title="Click to toggle section"
                 >
@@ -1747,7 +2046,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       {sec.isEditingTitle ? (
                         <input
                           type="text"
-                          className="border border-[var(--accent)] rounded-md px-2 py-0.75 text-[var(--text)] bg-black/30 text-[0.9rem] font-semibold outline-none"
+                          className="border border-[var(--accent)] rounded-md px-2 py-0.75 text-[var(--text)] bg-[color-mix(in_srgb,var(--canvas)_60%,var(--surface))] text-[0.9rem] font-semibold outline-none"
                           defaultValue={sec.title}
                           autoFocus
                           onClick={(e) => e.stopPropagation()}
@@ -1781,7 +2080,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5 max-[768px]:w-full max-[768px]:justify-between max-[768px]:pt-2 max-[768px]:border-t max-[768px]:border-white/[0.06]">
+                  <div className="flex items-center gap-1.5 max-[768px]:w-full max-[768px]:justify-between max-[768px]:pt-2 max-[768px]:border-t max-[768px]:border-[color-mix(in_srgb,var(--text)_8%,transparent)]">
                     <button
                       type="button"
                       className="inline-flex w-7 h-7 items-center justify-center rounded-[8px] border border-[color-mix(in_srgb,var(--surface-strong)60%,transparent)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--surface)48%,transparent)] hover:border-[color-mix(in_srgb,var(--surface-strong)90%,transparent)] transition-[color,background-color,border-color] duration-150 bg-transparent cursor-pointer p-0"
@@ -1834,7 +2133,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   <div
                     className={`min-h-0 overflow-hidden border-t border-transparent transition-[padding,border-color] duration-280 ease-[cubic-bezier(0.16,1,0.3,1)] ${
                       sec.isExpanded
-                        ? "px-4 pt-3 pb-4 border-t-white/[0.05]"
+                        ? "px-4 pt-3 pb-4 border-t-[color-mix(in_srgb,var(--text)_8%,transparent)]"
                         : "px-4 py-0"
                     }`}
                   >
@@ -1842,10 +2141,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       {sec.lessons.map((les, lesIndex) => (
                         <div
                           key={les.id}
-                          className="border border-white/[0.06] rounded-[10px] bg-black/[0.18] overflow-hidden"
+                          className={`border rounded-[10px] bg-[color-mix(in_srgb,var(--canvas)_50%,var(--surface))] shadow-[var(--card-shadow)] overflow-hidden transition-[border-color,box-shadow,opacity] duration-150 ${
+                            draggedLessonState?.sectionId === sec.id &&
+                            draggedLessonState?.lessonIndex === lesIndex
+                              ? "opacity-35 border-dashed border-[var(--accent)]"
+                              : "border-[color-mix(in_srgb,var(--text)_10%,transparent)]"
+                          }`}
                           draggable={dragEnabledLessonId === les.id}
-                          onDragStart={() =>
-                            handleLessonDragStart(sec.id, lesIndex)
+                          onDragStart={(e) =>
+                            handleLessonDragStart(e, sec.id, lesIndex, les)
                           }
                           onDragOver={(e) =>
                             handleLessonDragOver(e, sec.id, lesIndex)
@@ -1854,7 +2158,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                         >
                           {/* Lesson Header */}
                           <div
-                            className="flex items-center justify-between px-4 py-3 cursor-pointer max-[768px]:flex-wrap max-[768px]:gap-2.5 max-[768px]:p-[10px_12px]"
+                            className="flex items-center justify-between px-4 py-3 select-none cursor-pointer max-[768px]:flex-wrap max-[768px]:gap-2.5 max-[768px]:p-[10px_12px]"
                             onClick={() =>
                               handleToggleLessonExpand(sec.id, les.id)
                             }
@@ -1882,14 +2186,14 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                               >
                                 <DotsSixVertical size={18} />
                               </span>
-                              <span className="inline-flex min-w-[22px] h-[22px] items-center justify-center rounded text-[var(--muted)] bg-white/[0.04] text-[0.72rem] font-medium">
+                              <span className="inline-flex min-w-[22px] h-[22px] items-center justify-center rounded text-[var(--muted)] bg-[color-mix(in_srgb,var(--text)_6%,transparent)] text-[0.72rem] font-medium">
                                 {lesIndex + 1}
                               </span>
                               <span className="text-[var(--text)] text-[0.88rem] font-semibold max-[768px]:flex-1 max-[768px]:min-w-0 max-[768px]:break-words">
                                 {les.title}
                               </span>
                             </div>
-                            <div className="flex items-center gap-2 max-[768px]:w-full max-[768px]:justify-between max-[768px]:pt-2 max-[768px]:border-t max-[768px]:border-white/[0.06]">
+                            <div className="flex items-center gap-2 max-[768px]:w-full max-[768px]:justify-between max-[768px]:pt-2 max-[768px]:border-t max-[768px]:border-[color-mix(in_srgb,var(--text)_8%,transparent)]">
                               {les.contentType === "video" ? (
                                 <span className="inline-flex items-center gap-1.25 text-[var(--accent-ink,var(--accent))] text-[0.74rem] font-bold px-2 py-0.5 rounded-md bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] border border-[color-mix(in_srgb,var(--accent)_28%,transparent)]">
                                   <PlayCircle size={13} weight="fill" /> Video
@@ -1943,9 +2247,9 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                             onMouseDown={(e) => e.stopPropagation()}
                           >
                             <div
-                              className={`min-h-0 overflow-hidden border-t border-transparent bg-black/[0.24] transition-[padding,border-color] duration-280 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                              className={`min-h-0 overflow-hidden border-t border-transparent bg-[color-mix(in_srgb,var(--canvas)_75%,var(--surface))] transition-[padding,border-color] duration-280 ease-[cubic-bezier(0.16,1,0.3,1)] ${
                                 les.isExpanded
-                                  ? "px-5 pt-4 pb-5 border-t-white/[0.06] max-[768px]:p-[14px_12px_16px]"
+                                  ? "px-5 pt-4 pb-5 border-t-[color-mix(in_srgb,var(--text)_8%,transparent)] max-[768px]:p-[14px_12px_16px]"
                                   : "px-5 py-0 max-[768px]:p-0"
                               }`}
                             >
@@ -1975,7 +2279,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                           })
                                         }
                                         placeholder="e.g. Introduction to React Hooks"
-                                        className="w-full h-11 border border-white/[0.08] rounded-[10px] pl-3.5 pr-[70px] py-0 text-[var(--text)] bg-black/20 text-[0.88rem] outline-none transition-[border-color] duration-150 focus:border-[var(--accent)]"
+                                        className="w-full h-11 border border-[color-mix(in_srgb,var(--text)_12%,transparent)] rounded-[10px] pl-3.5 pr-[70px] py-0 text-[var(--text)] bg-[color-mix(in_srgb,var(--canvas)_60%,var(--surface))] text-[0.88rem] outline-none transition-[border-color] duration-150 focus:border-[var(--accent)]"
                                       />
                                       <span className="absolute right-3.5 text-[var(--muted)] text-[0.76rem] pointer-events-none">
                                         {les.title.length} / 120
@@ -2016,10 +2320,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                     </label>
                                     <div className="grid grid-cols-2 gap-3 max-[640px]:grid-cols-1">
                                       <div
-                                        className={`relative flex items-center gap-3 border rounded-[10px] px-3.5 py-3 text-left cursor-pointer transition-[border-color,background-color] duration-150 ease-out hover:bg-white/[0.05] ${
+                                        className={`relative flex items-center gap-3 border rounded-[10px] px-3.5 py-3 text-left cursor-pointer transition-[border-color,background-color] duration-150 ease-out hover:bg-[color-mix(in_srgb,var(--text)_6%,transparent)] ${
                                           les.contentType === "video"
-                                            ? "is-selected border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)]"
-                                            : "border-white/10 bg-white/[0.02]"
+                                            ? "is-selected border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,var(--surface))]"
+                                            : "border-[color-mix(in_srgb,var(--text)_12%,transparent)] bg-[color-mix(in_srgb,var(--surface)_80%,transparent)]"
                                         }`}
                                         onClick={() =>
                                           handleUpdateLesson(sec.id, les.id, {
@@ -2048,10 +2352,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                       </div>
 
                                       <div
-                                        className={`relative flex items-center gap-3 border rounded-[10px] px-3.5 py-3 text-left cursor-pointer transition-[border-color,background-color] duration-150 ease-out hover:bg-white/[0.05] ${
+                                        className={`relative flex items-center gap-3 border rounded-[10px] px-3.5 py-3 text-left cursor-pointer transition-[border-color,background-color] duration-150 ease-out hover:bg-[color-mix(in_srgb,var(--text)_6%,transparent)] ${
                                           les.contentType === "document"
-                                            ? "is-selected border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)]"
-                                            : "border-white/10 bg-white/[0.02]"
+                                            ? "is-selected border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,var(--surface))]"
+                                            : "border-[color-mix(in_srgb,var(--text)_12%,transparent)] bg-[color-mix(in_srgb,var(--surface)_80%,transparent)]"
                                         }`}
                                         onClick={() =>
                                           handleUpdateLesson(sec.id, les.id, {
@@ -2120,7 +2424,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                           paddingLeft: "14px",
                                           paddingRight: "14px",
                                         }}
-                                        className="inline-flex items-center border border-white/10 text-[var(--text)] bg-white/[0.05] cursor-pointer transition-all duration-150 hover:bg-white/10 max-[768px]:flex-1 max-[768px]:justify-center max-[768px]:whitespace-nowrap"
+                                        className="inline-flex items-center border border-[color-mix(in_srgb,var(--text)_14%,transparent)] text-[var(--text)] bg-[color-mix(in_srgb,var(--text)_5%,transparent)] cursor-pointer transition-all duration-150 hover:bg-[color-mix(in_srgb,var(--text)_10%,transparent)] max-[768px]:flex-1 max-[768px]:justify-center max-[768px]:whitespace-nowrap"
                                       >
                                         {les.contentType === "video" ? (
                                           <PlayCircle
@@ -2178,7 +2482,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                             paddingLeft: "14px",
                                             paddingRight: "14px",
                                           }}
-                                          className="inline-flex items-center border border-white/10 text-[var(--text)] bg-white/[0.05] cursor-pointer transition-all duration-150 hover:bg-white/10 max-[768px]:flex-1 max-[768px]:justify-center max-[768px]:whitespace-nowrap"
+                                          className="inline-flex items-center border border-[color-mix(in_srgb,var(--text)_14%,transparent)] text-[var(--text)] bg-[color-mix(in_srgb,var(--text)_5%,transparent)] cursor-pointer transition-all duration-150 hover:bg-[color-mix(in_srgb,var(--text)_10%,transparent)] max-[768px]:flex-1 max-[768px]:justify-center max-[768px]:whitespace-nowrap"
                                           onClick={() =>
                                             handleAddLessonResource(
                                               sec.id,
@@ -2202,7 +2506,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                           {les.resources.map((res) => (
                                             <div
                                               key={res.id}
-                                              className="flex items-center justify-between gap-2.5 border border-white/10 rounded-xl px-3 py-2.5 bg-black/25"
+                                              className="flex items-center justify-between gap-2.5 border border-[color-mix(in_srgb,var(--text)_12%,transparent)] rounded-xl px-3 py-2.5 bg-[color-mix(in_srgb,var(--canvas)_60%,var(--surface))]"
                                             >
                                               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                                 <FileText
@@ -2243,10 +2547,10 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                         </div>
 
                                         {/* Desktop / Tablet view: Structured Data Table */}
-                                        <div className="hidden sm:block w-full border border-white/10 rounded-xl overflow-hidden bg-black/20">
+                                        <div className="hidden sm:block w-full border border-[color-mix(in_srgb,var(--text)_12%,transparent)] rounded-xl overflow-hidden bg-[color-mix(in_srgb,var(--canvas)_60%,var(--surface))]">
                                           <table className="w-full border-collapse text-left">
                                             <thead>
-                                              <tr className="bg-white/[0.04] border-b border-white/10">
+                                              <tr className="bg-[color-mix(in_srgb,var(--text)_4%,transparent)] border-b border-[color-mix(in_srgb,var(--text)_10%,transparent)]">
                                                 <th className="px-4 py-2.5 text-[var(--muted)] text-[0.74rem] font-bold tracking-wider uppercase">
                                                   File Name
                                                 </th>
@@ -2265,7 +2569,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                               {les.resources.map((res) => (
                                                 <tr
                                                   key={res.id}
-                                                  className="border-b border-white/[0.06] last:border-b-0 hover:bg-white/[0.02] transition-colors"
+                                                  className="border-b border-[color-mix(in_srgb,var(--text)_8%,transparent)] last:border-b-0 hover:bg-[color-mix(in_srgb,var(--text)_4%,transparent)] transition-colors"
                                                 >
                                                   <td className="px-4 py-3 text-[var(--text)] text-[0.82rem] font-semibold">
                                                     <div className="flex items-center gap-2.5">
@@ -2316,7 +2620,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                     )}
                                   </div>
 
-                                  <div className="flex justify-end mt-4 pt-3 border-t border-white/[0.06]">
+                                  <div className="flex justify-end mt-4 pt-3 border-t border-[color-mix(in_srgb,var(--text)_8%,transparent)]">
                                     <button
                                       type="button"
                                       style={{
@@ -2328,7 +2632,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                                         paddingLeft: "16px",
                                         paddingRight: "16px",
                                       }}
-                                      className="inline-flex items-center justify-center border border-white/10 text-[var(--text)] bg-white/[0.05] cursor-pointer transition-all duration-150 hover:bg-white/10 disabled:opacity-60"
+                                      className="inline-flex items-center justify-center border border-[color-mix(in_srgb,var(--text)_14%,transparent)] text-[var(--text)] bg-[color-mix(in_srgb,var(--text)_5%,transparent)] cursor-pointer transition-all duration-150 hover:bg-[color-mix(in_srgb,var(--text)_10%,transparent)] disabled:opacity-60"
                                       onClick={() =>
                                         handleSaveLesson(sec.id, les.id)
                                       }
@@ -2348,7 +2652,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     <div className="mt-3.5">
                       <button
                         type="button"
-                        className="inline-flex items-center gap-1.5 text-[var(--muted)] hover:text-white text-[0.82rem] font-medium border-0 bg-transparent cursor-pointer p-0 transition-colors"
+                        className="inline-flex items-center gap-1.5 text-[var(--muted)] hover:text-[var(--text)] text-[0.82rem] font-medium border-0 bg-transparent cursor-pointer p-0 transition-colors"
                         onClick={() => handleAddLesson(sec.id)}
                       >
                         <Plus size={16} /> Add Lesson
@@ -2364,7 +2668,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
             {/* Top Grid: 1. Who can access & 2. Access duration */}
             <div className="grid grid-cols-2 gap-5 max-[768px]:grid-cols-1 max-[768px]:gap-3.5">
               {/* Card 1: Who can access this course? */}
-              <div className="flex flex-col border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
+              <div className="flex flex-col border border-[color-mix(in_srgb,var(--text)_8%,transparent)] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
                 <div className="mb-4.5">
                   <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">
                     1. Who can access this course?
@@ -2379,8 +2683,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   <label
                     className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
                       accessRules.accessType === "everyone"
-                        ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
-                        : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
+                        ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_8%,var(--surface))]"
+                        : "border-[color-mix(in_srgb,var(--text)_12%,transparent)] bg-[color-mix(in_srgb,var(--canvas)_40%,var(--surface))] hover:bg-[color-mix(in_srgb,var(--canvas)_70%,var(--surface))]"
                     }`}
                     onClick={() => handleAccessTypeChange("everyone")}
                   >
@@ -2410,8 +2714,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   <label
                     className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
                       accessRules.accessType === "restricted"
-                        ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
-                        : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
+                        ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_8%,var(--surface))]"
+                        : "border-[color-mix(in_srgb,var(--text)_12%,transparent)] bg-[color-mix(in_srgb,var(--canvas)_40%,var(--surface))] hover:bg-[color-mix(in_srgb,var(--canvas)_70%,var(--surface))]"
                     }`}
                     onClick={() => handleAccessTypeChange("restricted")}
                   >
@@ -2440,7 +2744,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                 {/* Conditional Requirements Box */}
                 {accessRules.accessType === "restricted" && (
-                  <div className="flex flex-col gap-3 mt-3.5 border border-white/[0.06] rounded-[10px] p-3.5 bg-black/[0.16]">
+                  <div className="flex flex-col gap-3 mt-3.5 border border-[color-mix(in_srgb,var(--text)_10%,transparent)] rounded-[10px] p-3.5 bg-[color-mix(in_srgb,var(--canvas)_60%,var(--surface))]">
                     <div className="flex flex-col gap-0.5">
                       <label className="block mb-0.5 text-[var(--text)] text-[0.84rem] font-bold">
                         Access requirement
@@ -2463,7 +2767,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                               c.label,
                             ])}
                             ariaLabel="Select prerequisite course requirement"
-                            triggerClassName="!w-full !h-10 !border !border-white/10 !rounded-lg !px-3.5 !py-0 !text-[var(--text)] !bg-black/25 !text-[0.84rem] font-semibold hover:!border-white/20 transition-all flex-1 min-w-0"
+                            triggerClassName="!w-full !h-10 !border !border-[color-mix(in_srgb,var(--text)_12%,transparent)] !rounded-lg !px-3.5 !py-0 !text-[var(--text)] !bg-[color-mix(in_srgb,var(--canvas)_60%,var(--surface))] !text-[0.84rem] font-semibold hover:!border-[color-mix(in_srgb,var(--text)_24%,transparent)] transition-all flex-1 min-w-0"
                           />
                           {accessRules.requirements.length > 1 && (
                             <button
@@ -2482,7 +2786,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                     <button
                       type="button"
-                      className="inline-flex self-start items-center gap-1.5 text-[var(--muted)] hover:text-white text-[0.82rem] font-medium border-0 bg-transparent cursor-pointer p-0 mt-1 transition-colors"
+                      className="inline-flex self-start items-center gap-1.5 text-[var(--muted)] hover:text-[var(--text)] text-[0.82rem] font-medium border-0 bg-transparent cursor-pointer p-0 mt-1 transition-colors"
                       onClick={handleAddRequirement}
                     >
                       <Plus size={15} /> Add another requirement
@@ -2492,7 +2796,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
               </div>
 
               {/* Card 2: Access duration */}
-              <div className="flex flex-col border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
+              <div className="flex flex-col border border-[color-mix(in_srgb,var(--text)_8%,transparent)] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
                 <div className="mb-4.5">
                   <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">
                     2. Access duration
@@ -2507,8 +2811,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   <div
                     className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
                       accessRules.durationMode === "lifetime"
-                        ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
-                        : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
+                        ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_8%,var(--surface))]"
+                        : "border-[color-mix(in_srgb,var(--text)_12%,transparent)] bg-[color-mix(in_srgb,var(--canvas)_40%,var(--surface))] hover:bg-[color-mix(in_srgb,var(--canvas)_70%,var(--surface))]"
                     }`}
                     onClick={() => handleDurationModeChange("lifetime")}
                   >
@@ -2537,8 +2841,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   <div
                     className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
                       accessRules.durationMode === "fixed"
-                        ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
-                        : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
+                        ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_8%,var(--surface))]"
+                        : "border-[color-mix(in_srgb,var(--text)_12%,transparent)] bg-[color-mix(in_srgb,var(--canvas)_40%,var(--surface))] hover:bg-[color-mix(in_srgb,var(--canvas)_70%,var(--surface))]"
                     }`}
                     onClick={() => handleDurationModeChange("fixed")}
                   >
@@ -2569,7 +2873,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                         >
                           <input
                             type="number"
-                            className="w-[80px] h-9 border border-white/10 rounded-lg px-3 py-0 text-[var(--text)] bg-black/25 text-[0.84rem] font-semibold outline-none transition-[border-color] duration-150 hover:border-white/20 focus:border-[var(--accent)] box-border text-center"
+                            className="w-[80px] h-9 border border-[color-mix(in_srgb,var(--text)_12%,transparent)] rounded-lg px-3 py-0 text-[var(--text)] bg-[color-mix(in_srgb,var(--canvas)_60%,var(--surface))] text-[0.84rem] font-semibold outline-none transition-[border-color] duration-150 hover:border-[color-mix(in_srgb,var(--text)_24%,transparent)] focus:border-[var(--accent)] box-border text-center"
                             min={1}
                             value={accessRules.fixedDurationValue}
                             onChange={(e) =>
@@ -2590,7 +2894,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                               ["Years", "Years"],
                             ]}
                             ariaLabel="Select duration unit"
-                            triggerClassName="!h-9 !min-w-[124px] !border !border-white/10 !rounded-lg !px-3.5 !py-0 !text-[var(--text)] !bg-black/25 !text-[0.84rem] font-semibold hover:!border-white/20 transition-all flex items-center justify-between"
+                            triggerClassName="!w-[130px] !h-9 !border !border-[color-mix(in_srgb,var(--text)_12%,transparent)] !rounded-lg !px-3.5 !py-0 !text-[var(--text)] !bg-[color-mix(in_srgb,var(--canvas)_60%,var(--surface))] !text-[0.84rem] font-semibold hover:!border-[color-mix(in_srgb,var(--text)_24%,transparent)] transition-all flex items-center justify-between"
                           />
                         </div>
                       )}
@@ -2601,8 +2905,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   <div
                     className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
                       accessRules.durationMode === "custom"
-                        ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
-                        : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
+                        ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_8%,var(--surface))]"
+                        : "border-[color-mix(in_srgb,var(--text)_12%,transparent)] bg-[color-mix(in_srgb,var(--canvas)_40%,var(--surface))] hover:bg-[color-mix(in_srgb,var(--canvas)_70%,var(--surface))]"
                     }`}
                     onClick={() => handleDurationModeChange("custom")}
                   >
@@ -2636,7 +2940,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                             </label>
                             <input
                               type="date"
-                              className="border border-white/[0.12] rounded-lg px-3 py-1.75 text-[var(--text)] bg-black/25 font-inherit text-[0.84rem] font-medium outline-none transition-[border-color] duration-150 focus:border-[var(--accent)] [color-scheme:dark]"
+                              className="border border-[color-mix(in_srgb,var(--text)_12%,transparent)] rounded-lg px-3 py-1.75 text-[var(--text)] bg-[color-mix(in_srgb,var(--canvas)_60%,var(--surface))] font-inherit text-[0.84rem] font-medium outline-none transition-[border-color] duration-150 focus:border-[var(--accent)]"
                               value={accessRules.customStartDate}
                               onChange={(e) =>
                                 handleCustomStartDateChange(e.target.value)
@@ -2654,7 +2958,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                             </label>
                             <input
                               type="date"
-                              className="border border-white/[0.12] rounded-lg px-3 py-1.75 text-[var(--text)] bg-black/25 font-inherit text-[0.84rem] font-medium outline-none transition-[border-color] duration-150 focus:border-[var(--accent)] [color-scheme:dark]"
+                              className="border border-[color-mix(in_srgb,var(--text)_12%,transparent)] rounded-lg px-3 py-1.75 text-[var(--text)] bg-[color-mix(in_srgb,var(--canvas)_60%,var(--surface))] font-inherit text-[0.84rem] font-medium outline-none transition-[border-color] duration-150 focus:border-[var(--accent)]"
                               value={accessRules.customEndDate}
                               onChange={(e) =>
                                 handleCustomEndDateChange(e.target.value)
@@ -2670,7 +2974,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
             </div>
 
             {/* Bottom Card: 3. Learner interactions */}
-            <div className="flex flex-col border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)] w-full">
+            <div className="flex flex-col border border-[color-mix(in_srgb,var(--text)_8%,transparent)] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)] w-full">
               <div className="mb-4.5">
                 <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">
                   3. Learner interactions
@@ -2682,7 +2986,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
               <div className="flex flex-col gap-3">
                 {/* Toggle 1: Q&A */}
-                <div className="flex items-center justify-between border border-white/[0.08] rounded-xl px-4.5 py-3.5 bg-white/[0.02]">
+                <div className="flex items-center justify-between border border-[color-mix(in_srgb,var(--text)_10%,transparent)] rounded-xl px-4.5 py-3.5 bg-[color-mix(in_srgb,var(--canvas)_40%,var(--surface))]">
                   <div className="flex items-center gap-3.5">
                     <div className="flex w-[38px] h-[38px] items-center justify-center rounded-[10px] text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)]">
                       <Question size={20} weight="bold" />
@@ -2696,28 +3000,15 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       </p>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    className={`relative w-11 h-6 shrink-0 border-none rounded-full p-0.5 cursor-pointer transition-colors duration-200 ${
-                      accessRules.enableQA
-                        ? "is-active bg-[var(--accent)]"
-                        : "bg-white/16"
-                    }`}
-                    onClick={handleToggleQA}
-                    role="switch"
-                    aria-checked={accessRules.enableQA}
-                    aria-label="Toggle Q&A"
-                  >
-                    <div
-                      className={`w-5 h-5 rounded-full bg-white shadow-[0_2px_5px_rgba(0,0,0,0.3)] transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                        accessRules.enableQA ? "translate-x-5" : "translate-x-0"
-                      }`}
-                    />
-                  </button>
+                  <SettingsToggle
+                    checked={accessRules.enableQA}
+                    onChange={handleToggleQA}
+                    label="Toggle Q&A"
+                  />
                 </div>
 
                 {/* Toggle 2: Comments */}
-                <div className="flex items-center justify-between border border-white/[0.08] rounded-xl px-4.5 py-3.5 bg-white/[0.02]">
+                <div className="flex items-center justify-between border border-[color-mix(in_srgb,var(--text)_10%,transparent)] rounded-xl px-4.5 py-3.5 bg-[color-mix(in_srgb,var(--canvas)_40%,var(--surface))]">
                   <div className="flex items-center gap-3.5">
                     <div className="flex w-[38px] h-[38px] items-center justify-center rounded-[10px] text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)]">
                       <ChatCircleText size={20} weight="fill" />
@@ -2731,26 +3022,11 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       </p>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    className={`relative w-11 h-6 shrink-0 border-none rounded-full p-0.5 cursor-pointer transition-colors duration-200 ${
-                      accessRules.enableComments
-                        ? "is-active bg-[var(--accent)]"
-                        : "bg-white/16"
-                    }`}
-                    onClick={handleToggleComments}
-                    role="switch"
-                    aria-checked={accessRules.enableComments}
-                    aria-label="Toggle Comments"
-                  >
-                    <div
-                      className={`w-5 h-5 rounded-full bg-white shadow-[0_2px_5px_rgba(0,0,0,0.3)] transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                        accessRules.enableComments
-                          ? "translate-x-5"
-                          : "translate-x-0"
-                      }`}
-                    />
-                  </button>
+                  <SettingsToggle
+                    checked={accessRules.enableComments}
+                    onChange={handleToggleComments}
+                    label="Toggle Comments"
+                  />
                 </div>
               </div>
             </div>
@@ -2760,7 +3036,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
             {/* Top 2-Column Grid: 1. Course pricing & 2. Price details */}
             <div className="grid grid-cols-2 gap-5 max-[768px]:grid-cols-1 max-[768px]:gap-3.5">
               {/* Card 1: Course pricing */}
-              <div className="flex flex-col border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)] transition-opacity duration-200">
+              <div className="flex flex-col border border-[color-mix(in_srgb,var(--text)_8%,transparent)] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)] transition-opacity duration-200">
                 <div className="mb-4.5">
                   <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">
                     1. Course pricing
@@ -2775,8 +3051,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   <div
                     className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
                       pricing.pricingType === "free"
-                        ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
-                        : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
+                        ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_8%,var(--surface))]"
+                        : "border-[color-mix(in_srgb,var(--text)_12%,transparent)] bg-[color-mix(in_srgb,var(--canvas)_40%,var(--surface))] hover:bg-[color-mix(in_srgb,var(--canvas)_70%,var(--surface))]"
                     }`}
                     onClick={() => handlePricingTypeChange("free")}
                   >
@@ -2805,8 +3081,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   <div
                     className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
                       pricing.pricingType === "paid"
-                        ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
-                        : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
+                        ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_8%,var(--surface))]"
+                        : "border-[color-mix(in_srgb,var(--text)_12%,transparent)] bg-[color-mix(in_srgb,var(--canvas)_40%,var(--surface))] hover:bg-[color-mix(in_srgb,var(--canvas)_70%,var(--surface))]"
                     }`}
                     onClick={() => handlePricingTypeChange("paid")}
                   >
@@ -2835,7 +3111,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
               {/* Card 2: Price details */}
               <div
-                className={`flex flex-col border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)] transition-opacity duration-200 ${
+                className={`flex flex-col border border-[color-mix(in_srgb,var(--text)_8%,transparent)] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)] transition-opacity duration-200 ${
                   pricing.pricingType === "free"
                     ? "is-disabled opacity-55 pointer-events-none"
                     : ""
@@ -2873,7 +3149,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                           handleSellingPriceChange(e.target.value)
                         }
                         placeholder="1,999"
-                        className="w-full border border-white/10 rounded-[10px] py-2.5 pr-3.5 pl-8 text-[var(--text)] bg-black/[0.22] text-[0.9rem] font-semibold outline-none transition-[border-color] duration-150 focus:border-[var(--accent)] disabled:opacity-60"
+                        className="w-full border border-[color-mix(in_srgb,var(--text)_12%,transparent)] rounded-[10px] py-2.5 pr-3.5 pl-8 text-[var(--text)] bg-[color-mix(in_srgb,var(--canvas)_60%,var(--surface))] text-[0.9rem] font-semibold outline-none transition-[border-color] duration-150 focus:border-[var(--accent)] disabled:opacity-60"
                       />
                     </div>
                     <p className="m-0 mt-1 text-[var(--muted)] text-[0.78rem]">
@@ -2902,7 +3178,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                           handleOriginalPriceChange(e.target.value)
                         }
                         placeholder="2,999"
-                        className="w-full border border-white/10 rounded-[10px] py-2.5 pr-3.5 pl-8 text-[var(--text)] bg-black/[0.22] text-[0.9rem] font-semibold outline-none transition-[border-color] duration-150 focus:border-[var(--accent)] disabled:opacity-60"
+                        className="w-full border border-[color-mix(in_srgb,var(--text)_12%,transparent)] rounded-[10px] py-2.5 pr-3.5 pl-8 text-[var(--text)] bg-[color-mix(in_srgb,var(--canvas)_60%,var(--surface))] text-[0.9rem] font-semibold outline-none transition-[border-color] duration-150 focus:border-[var(--accent)] disabled:opacity-60"
                       />
                     </div>
                     <p className="m-0 mt-1 text-[var(--muted)] text-[0.78rem]">
@@ -2939,7 +3215,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                           className={`inline-flex items-center gap-1.5 shrink-0 whitespace-nowrap border rounded-lg px-2.5 py-1.5 text-[0.80rem] font-bold transition-[border-color,background-color,color] duration-150 ease-out ${
                             isValidDiscount && pricing.pricingType === "paid"
                               ? "is-active border-green-500/40 text-green-400 bg-green-500/[0.12]"
-                              : "border-white/[0.12] text-[var(--muted)] bg-white/[0.04]"
+                              : "border-[color-mix(in_srgb,var(--text)_12%,transparent)] text-[var(--muted)] bg-[color-mix(in_srgb,var(--text)_5%,transparent)]"
                           }`}
                         >
                           <Tag size={15} weight="bold" className="shrink-0" />
@@ -2960,7 +3236,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
             </div>
 
             {/* Bottom Card: Coupons Banner */}
-            <div className="flex items-center justify-between border border-white/[0.08] rounded-[14px] px-5.5 py-4 bg-[var(--surface)] shadow-[var(--card-shadow)] max-[768px]:flex-col max-[768px]:items-start max-[768px]:gap-3.5">
+            <div className="flex items-center justify-between border border-[color-mix(in_srgb,var(--text)_10%,transparent)] rounded-[14px] px-5.5 py-4 bg-[var(--surface)] shadow-[var(--card-shadow)] max-[768px]:flex-col max-[768px]:items-start max-[768px]:gap-3.5">
               <div className="flex items-center gap-3.5">
                 <div className="flex w-[38px] h-[38px] items-center justify-center rounded-[10px] text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] shrink-0">
                   <Info size={20} weight="bold" />
@@ -3003,7 +3279,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
             {/* Top 2-Column Grid: 1. Certificates & 2. This course includes */}
             <div className="grid grid-cols-2 items-start gap-5 max-[768px]:grid-cols-1 max-[768px]:gap-3.5">
               {/* Card 1: Certificates */}
-              <div className="flex flex-col h-fit border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
+              <div className="flex flex-col h-fit border border-[color-mix(in_srgb,var(--text)_8%,transparent)] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
                 <div className="mb-4.5">
                   <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">
                     1. Certificates
@@ -3014,7 +3290,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                 </div>
 
                 {/* Enable Certificate Toggle Row */}
-                <div className="flex items-center justify-between border border-white/[0.08] rounded-xl px-4.5 py-3.5 bg-white/[0.02] mb-4.5">
+                <div className="flex items-center justify-between border border-[color-mix(in_srgb,var(--text)_10%,transparent)] rounded-xl px-4.5 py-3.5 bg-[color-mix(in_srgb,var(--canvas)_40%,var(--surface))] mb-4.5">
                   <div>
                     <strong className="block mb-0.5 text-[var(--text)] text-[0.9rem] font-[650]">
                       Enable certificate
@@ -3023,26 +3299,11 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       Issue certificates to learners on course completion.
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    className={`relative w-11 h-6 shrink-0 border-none rounded-full p-0.5 cursor-pointer transition-colors duration-200 ${
-                      extras.enableCertificate
-                        ? "is-active bg-[var(--accent)]"
-                        : "bg-white/16"
-                    }`}
-                    onClick={handleToggleCertificate}
-                    role="switch"
-                    aria-checked={extras.enableCertificate}
-                    aria-label="Toggle certificate"
-                  >
-                    <div
-                      className={`w-5 h-5 rounded-full bg-white shadow-[0_2px_5px_rgba(0,0,0,0.3)] transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                        extras.enableCertificate
-                          ? "translate-x-5"
-                          : "translate-x-0"
-                      }`}
-                    />
-                  </button>
+                  <SettingsToggle
+                    checked={extras.enableCertificate}
+                    onChange={handleToggleCertificate}
+                    label="Toggle certificate"
+                  />
                 </div>
 
                 {/* Certificate Configuration Controls */}
@@ -3059,7 +3320,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       Certificate template
                     </label>
                     <p className="m-0 mt-0.5 mb-2 text-[var(--muted)] text-[0.78rem]">
-                      Choose a layout for your certificate.
+                      Choose from pre-designed certificate templates.
                     </p>
                     <ThemedSelect
                       value={extras.certificateTemplate}
@@ -3070,7 +3331,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                         ["dark-certificate", "Minimal Dark Certificate"],
                       ]}
                       ariaLabel="Select certificate template"
-                      triggerClassName="!w-full !h-10 !border !border-white/10 !rounded-lg !px-3.5 !py-0 !text-[var(--text)] !bg-black/25 !text-[0.84rem] font-semibold hover:!border-white/20 transition-all"
+                      className="w-full"
+                      triggerClassName="!w-full !h-10 !border !border-[color-mix(in_srgb,var(--text)_12%,transparent)] !rounded-lg !px-3.5 !py-0 !text-[var(--text)] !bg-[color-mix(in_srgb,var(--canvas)_60%,var(--surface))] !text-[0.84rem] font-semibold hover:!border-[color-mix(in_srgb,var(--text)_24%,transparent)] transition-all"
                     />
                   </div>
 
@@ -3088,8 +3350,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       <div
                         className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
                           extras.issuanceType === "completion"
-                            ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
-                            : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
+                            ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_8%,var(--surface))]"
+                            : "border-[color-mix(in_srgb,var(--text)_12%,transparent)] bg-[color-mix(in_srgb,var(--canvas)_40%,var(--surface))] hover:bg-[color-mix(in_srgb,var(--canvas)_70%,var(--surface))]"
                         }`}
                         onClick={() => handleIssuanceTypeChange("completion")}
                       >
@@ -3119,8 +3381,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       <div
                         className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
                           extras.issuanceType === "percentage"
-                            ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
-                            : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
+                            ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_8%,var(--surface))]"
+                            : "border-[color-mix(in_srgb,var(--text)_12%,transparent)] bg-[color-mix(in_srgb,var(--canvas)_40%,var(--surface))] hover:bg-[color-mix(in_srgb,var(--canvas)_70%,var(--surface))]"
                         }`}
                         onClick={() => handleIssuanceTypeChange("percentage")}
                       >
@@ -3147,7 +3409,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                               >
                                 <input
                                   type="number"
-                                  className="w-[76px] border border-white/[0.12] rounded-lg px-3 py-1.75 text-[var(--text)] bg-black/25 text-[0.86rem] font-semibold outline-none transition-[border-color] duration-150 focus:border-[var(--accent)]"
+                                  className="w-[76px] border border-[color-mix(in_srgb,var(--text)_12%,transparent)] rounded-lg px-3 py-1.75 text-[var(--text)] bg-[color-mix(in_srgb,var(--canvas)_60%,var(--surface))] text-[0.86rem] font-semibold outline-none transition-[border-color] duration-150 focus:border-[var(--accent)]"
                                   min={1}
                                   max={100}
                                   value={extras.minCompletionPercentage}
@@ -3174,8 +3436,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       <div
                         className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
                           extras.issuanceType === "custom"
-                            ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
-                            : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
+                            ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_8%,var(--surface))]"
+                            : "border-[color-mix(in_srgb,var(--text)_12%,transparent)] bg-[color-mix(in_srgb,var(--canvas)_40%,var(--surface))] hover:bg-[color-mix(in_srgb,var(--canvas)_70%,var(--surface))]"
                         }`}
                         onClick={() => handleIssuanceTypeChange("custom")}
                       >
@@ -3206,7 +3468,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                             >
                               <input
                                 type="text"
-                                className="w-full border border-white/[0.12] rounded-lg px-3 py-1.75 text-[var(--text)] bg-black/25 text-[0.84rem] outline-none transition-[border-color] duration-150 focus:border-[var(--accent)]"
+                                className="w-full border border-[color-mix(in_srgb,var(--text)_12%,transparent)] rounded-lg px-3 py-1.75 text-[var(--text)] bg-[color-mix(in_srgb,var(--canvas)_60%,var(--surface))] text-[0.84rem] outline-none transition-[border-color] duration-150 focus:border-[var(--accent)]"
                                 value={extras.customRuleText}
                                 onChange={(e) =>
                                   handleCustomRuleTextChange(e.target.value)
@@ -3221,7 +3483,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                   </div>
 
                   {/* Delivery Toggle Row */}
-                  <div className="flex items-center justify-between border-t border-white/[0.06] pt-3.5">
+                  <div className="flex items-center justify-between border-t border-[color-mix(in_srgb,var(--text)_8%,transparent)] pt-3.5">
                     <div>
                       <strong className="block mb-0.5 text-[var(--text)] text-[0.88rem] font-[650]">
                         Delivery
@@ -3230,32 +3492,17 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                         Automatically email the certificate to learners.
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      className={`relative w-11 h-6 shrink-0 border-none rounded-full p-0.5 cursor-pointer transition-colors duration-200 ${
-                        extras.autoEmailCertificate
-                          ? "is-active bg-[var(--accent)]"
-                          : "bg-white/16"
-                      }`}
-                      onClick={handleToggleAutoEmailCertificate}
-                      role="switch"
-                      aria-checked={extras.autoEmailCertificate}
-                      aria-label="Toggle certificate delivery"
-                    >
-                      <div
-                        className={`w-5 h-5 rounded-full bg-white shadow-[0_2px_5px_rgba(0,0,0,0.3)] transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                          extras.autoEmailCertificate
-                            ? "translate-x-5"
-                            : "translate-x-0"
-                        }`}
-                      />
-                    </button>
+                    <SettingsToggle
+                      checked={extras.autoEmailCertificate}
+                      onChange={handleToggleAutoEmailCertificate}
+                      label="Toggle certificate delivery"
+                    />
                   </div>
                 </div>
               </div>
 
               {/* Card 2: This course includes */}
-              <div className="flex flex-col h-fit border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
+              <div className="flex flex-col h-fit border border-[color-mix(in_srgb,var(--text)_8%,transparent)] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
                 <div className="mb-4.5">
                   <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">
                     2. This course includes
@@ -3267,7 +3514,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                 {/* Derived Live Stats Summary Grid */}
                 <div className="grid grid-cols-3 gap-3 mb-6 max-[1024px]:grid-cols-1 max-[768px]:grid-cols-1 max-[768px]:gap-2.5">
-                  <div className="flex items-center gap-3 border border-white/[0.06] rounded-xl px-3 py-3.5 bg-black/[0.18] max-[768px]:p-[12px_14px] max-[768px]:gap-3.5">
+                  <div className="flex items-center gap-3 border border-[color-mix(in_srgb,var(--text)_10%,transparent)] rounded-xl px-3 py-3.5 bg-[color-mix(in_srgb,var(--canvas)_50%,var(--surface))] max-[768px]:p-[12px_14px] max-[768px]:gap-3.5">
                     <div className="flex w-9 h-9 shrink-0 items-center justify-center rounded-[10px] text-indigo-500 bg-indigo-500/[0.14] max-[768px]:w-10 max-[768px]:h-10">
                       <BookOpen size={20} weight="fill" />
                     </div>
@@ -3281,7 +3528,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 border border-white/[0.06] rounded-xl px-3 py-3.5 bg-black/[0.18] max-[768px]:p-[12px_14px] max-[768px]:gap-3.5">
+                  <div className="flex items-center gap-3 border border-[color-mix(in_srgb,var(--text)_10%,transparent)] rounded-xl px-3 py-3.5 bg-[color-mix(in_srgb,var(--canvas)_50%,var(--surface))] max-[768px]:p-[12px_14px] max-[768px]:gap-3.5">
                     <div className="flex w-9 h-9 shrink-0 items-center justify-center rounded-[10px] text-purple-500 bg-purple-500/[0.14] max-[768px]:w-10 max-[768px]:h-10">
                       <PlayCircle size={20} weight="fill" />
                     </div>
@@ -3295,7 +3542,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 border border-white/[0.06] rounded-xl px-3 py-3.5 bg-black/[0.18] max-[768px]:p-[12px_14px] max-[768px]:gap-3.5">
+                  <div className="flex items-center gap-3 border border-[color-mix(in_srgb,var(--text)_10%,transparent)] rounded-xl px-3 py-3.5 bg-[color-mix(in_srgb,var(--canvas)_50%,var(--surface))] max-[768px]:p-[12px_14px] max-[768px]:gap-3.5">
                     <div className="flex w-9 h-9 shrink-0 items-center justify-center rounded-[10px] text-blue-500 bg-blue-500/[0.14] max-[768px]:w-10 max-[768px]:h-10">
                       <Clock size={20} weight="bold" />
                     </div>
@@ -3326,14 +3573,20 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     {extras.inclusions.map((item, incIndex) => (
                       <div
                         key={item.id}
-                        className="flex items-center gap-2.5 border border-white/[0.07] rounded-[10px] px-3 py-2 bg-black/[0.16]"
+                        className={`flex items-center gap-2.5 border rounded-[10px] px-3 py-2 bg-[color-mix(in_srgb,var(--canvas)_50%,var(--surface))] transition-[border-color,opacity] duration-150 ${
+                          draggedInclusionIndex === incIndex
+                            ? "opacity-35 border-dashed border-[var(--accent)]"
+                            : "border-[color-mix(in_srgb,var(--text)_10%,transparent)]"
+                        }`}
                         draggable={dragEnabledInclusionId === item.id}
-                        onDragStart={() => handleInclusionDragStart(incIndex)}
+                        onDragStart={(e) =>
+                          handleInclusionDragStart(e, incIndex, item.text)
+                        }
                         onDragOver={(e) => handleInclusionDragOver(e, incIndex)}
                         onDragEnd={handleInclusionDragEnd}
                       >
                         <span
-                          className="flex items-center justify-center text-[var(--muted)] cursor-grab opacity-60 transition-opacity duration-150 hover:opacity-100"
+                          className="flex items-center justify-center text-[var(--muted)] cursor-grab opacity-60 transition-opacity duration-150 hover:opacity-100 select-none"
                           title="Drag to reorder inclusion"
                           onMouseEnter={() =>
                             setDragEnabledInclusionId(item.id)
@@ -3374,7 +3627,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                   <button
                     type="button"
-                    className="inline-flex items-center justify-center gap-1.5 h-[34px] w-full border border-dashed border-white/20 rounded-lg text-[var(--muted)] bg-transparent text-[0.82rem] font-medium cursor-pointer transition-colors duration-150 hover:border-[var(--accent)] hover:bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] hover:text-[var(--accent-ink,var(--accent))] mt-1"
+                    className="inline-flex items-center justify-center gap-1.5 h-[34px] w-full border border-dashed border-[color-mix(in_srgb,var(--text)_18%,transparent)] rounded-lg text-[var(--muted)] bg-transparent text-[0.82rem] font-medium cursor-pointer transition-colors duration-150 hover:border-[var(--accent)] hover:bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] hover:text-[var(--accent-ink,var(--accent))] mt-1"
                     onClick={handleAddInclusion}
                   >
                     <Plus size={15} /> Add inclusion
@@ -3388,7 +3641,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
             {/* Top 2-Column Grid: 1. Publish settings & 2. Final checklist */}
             <div className="grid grid-cols-2 items-start gap-5 max-[768px]:grid-cols-1 max-[768px]:gap-3.5">
               {/* Card 1: Publish settings */}
-              <div className="flex flex-col h-fit border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
+              <div className="flex flex-col h-fit border border-[color-mix(in_srgb,var(--text)_8%,transparent)] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
                 <div className="mb-4.5">
                   <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">
                     1. Publish settings
@@ -3408,7 +3661,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       className={`inline-flex items-center rounded-md px-2.5 py-1 text-[0.8rem] font-bold uppercase tracking-[0.04em] ${
                         isPublished
                           ? "is-published border border-green-500/35 text-green-500 bg-green-500/[0.12]"
-                          : "is-draft border border-white/15 text-[var(--muted)] bg-white/[0.04]"
+                          : "is-draft border border-[color-mix(in_srgb,var(--text)_14%,transparent)] text-[var(--muted)] bg-[color-mix(in_srgb,var(--text)_5%,transparent)]"
                       }`}
                     >
                       {isPublished ? "Published" : "Draft"}
@@ -3448,7 +3701,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                       ],
                     ]}
                     ariaLabel="Select course visibility"
-                    triggerClassName="!w-full !h-10 !border !border-white/10 !rounded-lg !px-3.5 !py-0 !text-[var(--text)] !bg-black/25 !text-[0.84rem] font-semibold hover:!border-white/20 transition-all"
+                    triggerClassName="!w-full !h-10 !border !border-[color-mix(in_srgb,var(--text)_12%,transparent)] !rounded-lg !px-3.5 !py-0 !text-[var(--text)] !bg-[color-mix(in_srgb,var(--canvas)_60%,var(--surface))] !text-[0.84rem] font-semibold hover:!border-[color-mix(in_srgb,var(--text)_24%,transparent)] transition-all"
                   />
                 </div>
 
@@ -3463,8 +3716,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     <div
                       className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
                         publishSettings.scheduleOption === "now"
-                          ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
-                          : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
+                          ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_8%,var(--surface))]"
+                          : "border-[color-mix(in_srgb,var(--text)_12%,transparent)] bg-[color-mix(in_srgb,var(--canvas)_40%,var(--surface))] hover:bg-[color-mix(in_srgb,var(--canvas)_70%,var(--surface))]"
                       }`}
                       onClick={() =>
                         setPublishSettings((prev) => ({
@@ -3498,8 +3751,8 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                     <div
                       className={`relative flex items-center gap-3.5 border rounded-xl p-3.5 px-4 cursor-pointer transition-[border-color,background-color] duration-150 ease-out select-none ${
                         publishSettings.scheduleOption === "later"
-                          ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]"
-                          : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
+                          ? "is-selected border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_8%,var(--surface))]"
+                          : "border-[color-mix(in_srgb,var(--text)_12%,transparent)] bg-[color-mix(in_srgb,var(--canvas)_40%,var(--surface))] hover:bg-[color-mix(in_srgb,var(--canvas)_70%,var(--surface))]"
                       }`}
                       onClick={() =>
                         setPublishSettings((prev) => ({
@@ -3540,7 +3793,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                               />
                               <input
                                 type="date"
-                                className="w-full border border-white/[0.12] rounded-lg py-1.75 pr-3 pl-8 text-[var(--text)] bg-black/25 font-inherit text-[0.84rem] font-medium outline-none transition-[border-color] duration-150 focus:border-[var(--accent)] [color-scheme:dark]"
+                                className="w-full border border-[color-mix(in_srgb,var(--text)_12%,transparent)] rounded-lg py-1.75 pr-3 pl-8 text-[var(--text)] bg-[color-mix(in_srgb,var(--canvas)_60%,var(--surface))] font-inherit text-[0.84rem] font-medium outline-none transition-[border-color] duration-150 focus:border-[var(--accent)]"
                                 value={publishSettings.scheduleDate}
                                 onChange={(e) =>
                                   setPublishSettings((prev) => ({
@@ -3557,7 +3810,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                               />
                               <input
                                 type="time"
-                                className="w-full border border-white/[0.12] rounded-lg py-1.75 pr-3 pl-8 text-[var(--text)] bg-black/25 font-inherit text-[0.84rem] font-medium outline-none transition-[border-color] duration-150 focus:border-[var(--accent)] [color-scheme:dark]"
+                                className="w-full border border-[color-mix(in_srgb,var(--text)_12%,transparent)] rounded-lg py-1.75 pr-3 pl-8 text-[var(--text)] bg-[color-mix(in_srgb,var(--canvas)_60%,var(--surface))] font-inherit text-[0.84rem] font-medium outline-none transition-[border-color] duration-150 focus:border-[var(--accent)]"
                                 value={publishSettings.scheduleTime}
                                 onChange={(e) =>
                                   setPublishSettings((prev) => ({
@@ -3576,7 +3829,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
               </div>
 
               {/* Card 2: Pre-publish Checklist */}
-              <div className="flex flex-col border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
+              <div className="flex flex-col border border-[color-mix(in_srgb,var(--text)_8%,transparent)] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
                 <div className="mb-4.5">
                   <h3 className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold">
                     2. Pre-publish Checklist
@@ -3589,7 +3842,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                 <div className="flex flex-col gap-2.5 mb-5">
                   {/* Checklist Item: Basics */}
                   <div
-                    className="flex items-center justify-between border border-white/[0.07] rounded-[10px] px-4 py-3 bg-white/[0.02] cursor-pointer transition-[border-color,background-color] duration-150 ease-out hover:border-[color-mix(in_srgb,var(--accent)_40%,transparent)] hover:bg-white/[0.04]"
+                    className="flex items-center justify-between border border-[color-mix(in_srgb,var(--text)_10%,transparent)] rounded-[10px] px-4 py-3 bg-[color-mix(in_srgb,var(--canvas)_40%,var(--surface))] cursor-pointer transition-[border-color,background-color] duration-150 ease-out hover:border-[color-mix(in_srgb,var(--accent)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--canvas)_70%,var(--surface))]"
                     onClick={() => setActiveStep("basics")}
                   >
                     <div className="flex items-center gap-3">
@@ -3614,7 +3867,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                   {/* Checklist Item: Curriculum */}
                   <div
-                    className="flex items-center justify-between border border-white/[0.07] rounded-[10px] px-4 py-3 bg-white/[0.02] cursor-pointer transition-[border-color,background-color] duration-150 ease-out hover:border-[color-mix(in_srgb,var(--accent)_40%,transparent)] hover:bg-white/[0.04]"
+                    className="flex items-center justify-between border border-[color-mix(in_srgb,var(--text)_10%,transparent)] rounded-[10px] px-4 py-3 bg-[color-mix(in_srgb,var(--canvas)_40%,var(--surface))] cursor-pointer transition-[border-color,background-color] duration-150 ease-out hover:border-[color-mix(in_srgb,var(--accent)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--canvas)_70%,var(--surface))]"
                     onClick={() => setActiveStep("curriculum")}
                   >
                     <div className="flex items-center gap-3">
@@ -3641,7 +3894,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                   {/* Checklist Item: Access Rules */}
                   <div
-                    className="flex items-center justify-between border border-white/[0.07] rounded-[10px] px-4 py-3 bg-white/[0.02] cursor-pointer transition-[border-color,background-color] duration-150 ease-out hover:border-[color-mix(in_srgb,var(--accent)_40%,transparent)] hover:bg-white/[0.04]"
+                    className="flex items-center justify-between border border-[color-mix(in_srgb,var(--text)_10%,transparent)] rounded-[10px] px-4 py-3 bg-[color-mix(in_srgb,var(--canvas)_40%,var(--surface))] cursor-pointer transition-[border-color,background-color] duration-150 ease-out hover:border-[color-mix(in_srgb,var(--accent)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--canvas)_70%,var(--surface))]"
                     onClick={() => setActiveStep("access-rules")}
                   >
                     <div className="flex items-center gap-3">
@@ -3670,7 +3923,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                   {/* Checklist Item: Pricing */}
                   <div
-                    className="flex items-center justify-between border border-white/[0.07] rounded-[10px] px-4 py-3 bg-white/[0.02] cursor-pointer transition-[border-color,background-color] duration-150 ease-out hover:border-[color-mix(in_srgb,var(--accent)_40%,transparent)] hover:bg-white/[0.04]"
+                    className="flex items-center justify-between border border-[color-mix(in_srgb,var(--text)_10%,transparent)] rounded-[10px] px-4 py-3 bg-[color-mix(in_srgb,var(--canvas)_40%,var(--surface))] cursor-pointer transition-[border-color,background-color] duration-150 ease-out hover:border-[color-mix(in_srgb,var(--accent)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--canvas)_70%,var(--surface))]"
                     onClick={() => setActiveStep("pricing")}
                   >
                     <div className="flex items-center gap-3">
@@ -3699,7 +3952,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
 
                   {/* Checklist Item: Extras */}
                   <div
-                    className="flex items-center justify-between border border-white/[0.07] rounded-[10px] px-4 py-3 bg-white/[0.02] cursor-pointer transition-[border-color,background-color] duration-150 ease-out hover:border-[color-mix(in_srgb,var(--accent)_40%,transparent)] hover:bg-white/[0.04]"
+                    className="flex items-center justify-between border border-[color-mix(in_srgb,var(--text)_10%,transparent)] rounded-[10px] px-4 py-3 bg-[color-mix(in_srgb,var(--canvas)_40%,var(--surface))] cursor-pointer transition-[border-color,background-color] duration-150 ease-out hover:border-[color-mix(in_srgb,var(--accent)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--canvas)_70%,var(--surface))]"
                     onClick={() => setActiveStep("extras")}
                   >
                     <div className="flex items-center gap-3">
@@ -3763,14 +4016,14 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
             </div>
 
             {/* Bottom Card 3: What happens after publishing? */}
-            <div className="flex flex-col border border-white/[0.07] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
+            <div className="flex flex-col border border-[color-mix(in_srgb,var(--text)_8%,transparent)] rounded-[14px] p-5 pb-6 bg-[var(--surface)] shadow-[var(--card-shadow)]">
               <h3 className="m-0 mb-4.5 text-[var(--text)] text-[1.05rem] font-bold">
                 3. What happens after publishing?
               </h3>
 
               <div className="grid grid-cols-4 gap-4 max-[1024px]:grid-cols-2 max-[640px]:grid-cols-1">
                 {/* Feature 1: Visible to students */}
-                <div className="flex flex-col gap-3 border border-white/[0.06] rounded-xl p-4 bg-black/[0.16]">
+                <div className="flex flex-col gap-3 border border-[color-mix(in_srgb,var(--text)_10%,transparent)] rounded-xl p-4 bg-[color-mix(in_srgb,var(--canvas)_50%,var(--surface))]">
                   <div className="flex w-10 h-10 items-center justify-center rounded-[10px] text-indigo-500 bg-indigo-500/[0.14]">
                     <Eye size={22} weight="bold" />
                   </div>
@@ -3786,7 +4039,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                 </div>
 
                 {/* Feature 2: Enrollment starts */}
-                <div className="flex flex-col gap-3 border border-white/[0.06] rounded-xl p-4 bg-black/[0.16]">
+                <div className="flex flex-col gap-3 border border-[color-mix(in_srgb,var(--text)_10%,transparent)] rounded-xl p-4 bg-[color-mix(in_srgb,var(--canvas)_50%,var(--surface))]">
                   <div className="flex w-10 h-10 items-center justify-center rounded-[10px] text-purple-500 bg-purple-500/[0.14]">
                     <UserPlus size={22} weight="bold" />
                   </div>
@@ -3802,7 +4055,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                 </div>
 
                 {/* Feature 3: Track performance */}
-                <div className="flex flex-col gap-3 border border-white/[0.06] rounded-xl p-4 bg-black/[0.16]">
+                <div className="flex flex-col gap-3 border border-[color-mix(in_srgb,var(--text)_10%,transparent)] rounded-xl p-4 bg-[color-mix(in_srgb,var(--canvas)_50%,var(--surface))]">
                   <div className="flex w-10 h-10 items-center justify-center rounded-[10px] text-blue-500 bg-blue-500/[0.14]">
                     <PlayCircle size={22} weight="fill" />
                   </div>
@@ -3818,7 +4071,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
                 </div>
 
                 {/* Feature 4: Earn with every sale */}
-                <div className="flex flex-col gap-3 border border-white/[0.06] rounded-xl p-4 bg-black/[0.16]">
+                <div className="flex flex-col gap-3 border border-[color-mix(in_srgb,var(--text)_10%,transparent)] rounded-xl p-4 bg-[color-mix(in_srgb,var(--canvas)_50%,var(--surface))]">
                   <div className="flex w-10 h-10 items-center justify-center rounded-[10px] text-pink-500 bg-pink-500/[0.14]">
                     <ChartBar size={22} weight="bold" />
                   </div>
@@ -3851,7 +4104,11 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
       </div>
 
       {/* Mobile Sticky / Fixed Bottom Action Bar */}
-      <div className="fixed bottom-[calc(68px+env(safe-area-inset-bottom))] left-0 right-0 z-[135] px-3.5 py-2.5 bg-[color-mix(in_srgb,var(--canvas,black)_88%,transparent)] backdrop-blur-xl border-t border-white/10 flex items-center gap-2 min-[769px]:hidden">
+      <div
+        className={`course-wizard-mobile-action-bar${
+          bottomNavHidden ? " is-scroll-hidden" : ""
+        }`}
+      >
         {/* Preview Button */}
         <button
           type="button"
@@ -3862,7 +4119,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
             borderRadius: "12px",
             gap: "6px",
           }}
-          className="flex-1 inline-flex items-center justify-center border border-white/10 text-[var(--text-secondary)] bg-transparent cursor-pointer transition-all hover:bg-white/[0.05] hover:text-[var(--text)] active:scale-[0.98] disabled:opacity-60"
+          className="flex-1 inline-flex items-center justify-center border border-[color-mix(in_srgb,var(--text)_14%,transparent)] text-[var(--text-secondary)] bg-transparent cursor-pointer transition-all hover:bg-[color-mix(in_srgb,var(--text)_6%,transparent)] hover:text-[var(--text)] active:scale-[0.98] disabled:opacity-60"
           onClick={handlePreviewAction}
           disabled={actionLoading !== null}
         >
@@ -3892,7 +4149,7 @@ export function CourseCreatePage({ onNavigatePage }: CourseCreatePageProps) {
             borderRadius: "12px",
             gap: "6px",
           }}
-          className="flex-1 inline-flex items-center justify-center border border-white/10 text-[var(--text)] bg-white/[0.05] cursor-pointer transition-all hover:bg-white/10 active:scale-[0.98] disabled:opacity-60"
+          className="flex-1 inline-flex items-center justify-center border border-[color-mix(in_srgb,var(--text)_14%,transparent)] text-[var(--text)] bg-[color-mix(in_srgb,var(--text)_5%,transparent)] cursor-pointer transition-all hover:bg-[color-mix(in_srgb,var(--text)_10%,transparent)] active:scale-[0.98] disabled:opacity-60"
           onClick={handleSaveDraftAction}
           disabled={actionLoading !== null}
         >

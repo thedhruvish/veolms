@@ -276,6 +276,24 @@ export interface RichTextEditorProps {
   id?: string;
 }
 
+/** Read the current app theme from the HTML data-theme attribute. */
+function useAppTheme(): "dark" | "light" {
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    if (typeof document === "undefined") return true;
+    return document.documentElement.dataset.theme !== "light";
+  });
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.dataset.theme !== "light");
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
+  }, []);
+
+  return isDark ? "dark" : "light";
+}
+
 export function RichTextEditor({
   value,
   onChange,
@@ -283,6 +301,7 @@ export function RichTextEditor({
   maxLength = 1500,
 }: RichTextEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const appTheme = useAppTheme();
 
   // Reactive selection state — used only for toolbar "is-active" indicators.
   const [sel, setSel] = useState({ start: 0, end: 0 });
@@ -550,25 +569,25 @@ export function RichTextEditor({
   // Render
   // -------------------------------------------------------------------------
   return (
-    <div className="relative border border-white/[0.08] rounded-[10px] overflow-visible bg-black/20 focus-within:border-[var(--accent)]">
-      <div className="flex items-center flex-wrap gap-1 border-b border-white/[0.08] px-3 py-1.5 bg-white/[0.02] rounded-t-[9px]">
+    <div className="relative border border-[color-mix(in_srgb,var(--text)_12%,transparent)] rounded-[10px] overflow-visible bg-[color-mix(in_srgb,var(--canvas)_60%,var(--surface))] focus-within:border-[var(--accent)]">
+      <div className="flex items-center flex-wrap gap-1 border-b border-[color-mix(in_srgb,var(--text)_10%,transparent)] px-3 py-1.5 bg-[color-mix(in_srgb,var(--text)_3%,transparent)] rounded-t-[9px]">
         {/* Heading / Format Selector */}
         <div className="relative inline-flex items-center shrink-0">
           <select
             aria-label="Text format"
             value={currentFormat}
             onChange={(e) => handleHeadingChange(e.target.value)}
-            className="h-7 px-2.5 pr-6 border border-white/10 rounded-md bg-white/[0.04] text-[var(--text)] text-[0.80rem] font-semibold cursor-pointer outline-none transition-colors hover:bg-white/[0.08] focus:border-[var(--accent)] appearance-none"
+            className="h-7 px-2.5 pr-6 border border-[color-mix(in_srgb,var(--text)_12%,transparent)] rounded-md bg-[var(--surface)] text-[var(--text)] text-[0.80rem] font-semibold cursor-pointer outline-none transition-colors hover:bg-[var(--hover)] focus:border-[var(--accent)] appearance-none"
           >
-            <option value="normal" className="bg-[#1e1e24] text-white">Normal</option>
-            <option value="h1" className="bg-[#1e1e24] text-white">Heading 1</option>
-            <option value="h2" className="bg-[#1e1e24] text-white">Heading 2</option>
+            <option value="normal" className="bg-[var(--surface)] text-[var(--text)]">Normal</option>
+            <option value="h1" className="bg-[var(--surface)] text-[var(--text)]">Heading 1</option>
+            <option value="h2" className="bg-[var(--surface)] text-[var(--text)]">Heading 2</option>
           </select>
           <CaretDown size={11} weight="bold" className="absolute right-2 text-[var(--muted)] pointer-events-none" />
         </div>
 
         {/* Divider */}
-        <div className="w-px h-4 mx-1.5 bg-white/10 shrink-0" />
+        <div className="w-px h-4 mx-1.5 bg-[color-mix(in_srgb,var(--text)_12%,transparent)] shrink-0" />
 
         {/* Group 1: Bold & Italic */}
         <div className="flex items-center gap-0.5">
@@ -595,7 +614,7 @@ export function RichTextEditor({
         </div>
 
         {/* Divider */}
-        <div className="w-px h-4 mx-1.5 bg-white/10 shrink-0" />
+        <div className="w-px h-4 mx-1.5 bg-[color-mix(in_srgb,var(--text)_12%,transparent)] shrink-0" />
 
         {/* Group 2: Lists & Blockquote */}
         <div className="flex items-center gap-0.5">
@@ -632,7 +651,7 @@ export function RichTextEditor({
         </div>
 
         {/* Divider */}
-        <div className="w-px h-4 mx-1.5 bg-white/10 shrink-0" />
+        <div className="w-px h-4 mx-1.5 bg-[color-mix(in_srgb,var(--text)_12%,transparent)] shrink-0" />
 
         {/* Group 3: Link & Emoji */}
         <div className="flex items-center gap-0.5">
@@ -739,10 +758,11 @@ export function RichTextEditor({
                       setSel({ start: np, end: np });
                     });
                   }}
-                  theme={EmojiTheme.AUTO}
+                  theme={appTheme === "dark" ? EmojiTheme.DARK : EmojiTheme.LIGHT}
                   width={320}
                   height={360}
                   lazyLoadEmojis
+                  searchPlaceholder="Search emoji…"
                 />
               </div>,
               document.body,
