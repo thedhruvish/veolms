@@ -53,14 +53,14 @@ async function dispatch(): Promise<void> {
   switch (provider) {
     case "aws": {
       const { runAwsInfraSetup } =
-        await import("../../packages/fleet-provider-aws/src/setup/index.ts");
+        await import("@veolms/fleet-provider-aws/setup");
       await runAwsInfraSetup();
       break;
     }
 
     case "local": {
       const { runLocalInfraSetup } =
-        await import("../../packages/fleet-provider-local/src/setup/index.ts");
+        await import("@veolms/fleet-provider-local/setup");
       await runLocalInfraSetup();
       break;
     }
