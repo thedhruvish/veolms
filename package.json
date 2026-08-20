@@ -30,10 +30,8 @@
     "fleet:infra": "pnpm --filter @veolms/fleet-manager infra",
     "fleet:destroy": "pnpm --filter @veolms/fleet-manager destroy",
     "fleet:build-ami": "pnpm --filter @veolms/fleet-provider-aws build:ami",
-    "fleet:queue:test": "pnpm --filter @veolms/fleet-manager queue:test",
     "fleet:queue:trigger": "pnpm --filter @veolms/fleet-manager queue:trigger",
     "test:pipeline": "pnpm --filter @veolms/fleet-manager test:pipeline",
-    "test:aws": "pnpm --filter @veolms/fleet-manager test:aws",
     "compose:up": "docker compose up -d",
     "compose:down": "docker compose down",
     "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm build"
