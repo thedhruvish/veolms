@@ -269,11 +269,26 @@ async function runDestroySteps(
     );
   }
 
-  // 6. Delete S3 bucket — asks for confirmation if it still holds data
+  // 6. Delete EC2 Worker Security Group
+  console.info("\n[6/7] Deleting EC2 Worker Security Group...");
+  const sgDel = exec(
+    `aws ec2 delete-security-group --group-name "VeoLMSWorkerSecurityGroup" --region ${region}`,
+  );
+  if (sgDel !== null) {
+    console.info(
+      `  ${green("✔")} Deleted security group: VeoLMSWorkerSecurityGroup`,
+    );
+  } else {
+    console.info(
+      `  ${dim("Security group VeoLMSWorkerSecurityGroup not found or already deleted.")}`,
+    );
+  }
+
+  // 7. Delete S3 bucket — asks for confirmation if it still holds data
   if (s3BucketName) {
     await destroyS3Bucket(rl, s3BucketName, region);
   } else {
-    console.info(`\n[6/6] No S3_BUCKET_NAME configured — skipping S3 cleanup.`);
+    console.info(`\n[7/7] No S3_BUCKET_NAME configured — skipping S3 cleanup.`);
   }
 
   console.info(`

@@ -38,10 +38,21 @@ export async function handler(
     region: awsConfig.AWS_REGION,
     iamInstanceProfile: awsConfig.EC2_IAM_INSTANCE_PROFILE,
     useSpot: awsConfig.EC2_USE_SPOT,
+    keyName: awsConfig.KEY_NAME,
+    securityGroupIds: awsConfig.SECURITY_GROUP_IDS
+      ? awsConfig.SECURITY_GROUP_IDS.split(",")
+          .map((id) => id.trim())
+          .filter(Boolean)
+      : undefined,
     defaultEnv: {
       DATABASE_URL: fleetConfig.DATABASE_URL,
       STORAGE_PROVIDER: awsConfig.STORAGE_PROVIDER,
-      ...(awsConfig.S3_BUCKET ? { S3_BUCKET: awsConfig.S3_BUCKET } : {}),
+      ...(awsConfig.S3_BUCKET
+        ? {
+            S3_BUCKET: awsConfig.S3_BUCKET,
+            S3_BUCKET_NAME: awsConfig.S3_BUCKET,
+          }
+        : {}),
       AWS_REGION: awsConfig.AWS_REGION,
       S3_USE_INSTANCE_ROLE: "true",
       ...(awsConfig.WORKER_IDLE_POLL_SECONDS
@@ -61,8 +72,11 @@ export async function handler(
   });
 
   try {
-    const claimed = await fleet.processNextJob();
+    // 1. Run monitoring cycle first to clean up stale/timed-out workers and free capacity
     const monitorResult = await fleet.runMonitoringCycle();
+
+    // 2. Claim and provision next queued job
+    const claimed = await fleet.processNextJob();
 
     return {
       statusCode: 200,

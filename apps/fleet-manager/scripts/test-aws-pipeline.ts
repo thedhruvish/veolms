@@ -14,7 +14,7 @@ import {
 } from "@veolms/fleet-provider-aws/setup";
 
 const REGION = process.env.AWS_REGION || "us-east-1";
-const S3_BUCKET = process.env.S3_BUCKET || "veo-lms-test";
+const S3_BUCKET = process.env.S3_BUCKET || "veo-lms-test-123-test";
 const INSTANCE_PROFILE_NAME = "VeoLMSWorkerInstanceProfile";
 const LAMBDA_NAME = "veolms-fleet-manager";
 

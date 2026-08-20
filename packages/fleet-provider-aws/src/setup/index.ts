@@ -36,6 +36,13 @@ import {
   GetRoleCommand,
 } from "@aws-sdk/client-iam";
 import {
+  EC2Client,
+  CreateSecurityGroupCommand,
+  DescribeSecurityGroupsCommand,
+  AuthorizeSecurityGroupIngressCommand,
+  DescribeKeyPairsCommand,
+} from "@aws-sdk/client-ec2";
+import {
   LambdaClient,
   CreateFunctionCommand,
   GetFunctionCommand,
@@ -54,6 +61,8 @@ import {
   S3Client,
   HeadBucketCommand,
   GetBucketLocationCommand,
+  PutObjectCommand,
+  HeadObjectCommand,
 } from "@aws-sdk/client-s3";
 import {
   bold,
@@ -71,6 +80,7 @@ import { runAwsInfraDestroy } from "./destroy.ts";
 
 const ROLE_NAME = "VeoLMSWorkerRole";
 const INSTANCE_PROFILE_NAME = "VeoLMSWorkerInstanceProfile";
+const SECURITY_GROUP_NAME = "VeoLMSWorkerSecurityGroup";
 const LAMBDA_FUNCTION_NAME = "veolms-fleet-manager";
 const LOG_GROUP_WORKERS = "/veolms/workers";
 const LOG_GROUP_FLEET = "/veolms/fleet-manager";
@@ -103,6 +113,9 @@ interface SetupAnswers {
   readonly maxWorkers: number;
   readonly workerIdlePollSeconds: number;
   readonly useSpot: boolean;
+  readonly allowSsh: boolean;
+  readonly keyName: string | null;
+  readonly securityGroupId: string | null;
 }
 
 interface SetupResult {
@@ -112,6 +125,8 @@ interface SetupResult {
   readonly logGroupWorkers: string;
   readonly logGroupFleet: string;
   readonly s3BucketName: string | null;
+  readonly securityGroupId: string | null;
+  readonly keyName: string | null;
 }
 
 // ─── Terminal Helpers ─────────────────────────────────────────────────────────
@@ -447,19 +462,24 @@ async function checkS3Bucket(
   }
 }
 
-/**
- * Creates a minimal valid ZIP buffer containing an index.js Lambda handler.
- * Uses only Node.js built-ins — no external zip library required.
- */
-function createPlaceholderLambdaZip(): Uint8Array {
+function crc32(buf: Uint8Array): number {
+  let crc = -1;
+  for (let i = 0; i < buf.length; i++) {
+    crc ^= buf[i]!;
+    for (let j = 0; j < 8; j++) {
+      crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+    }
+  }
+  return (crc ^ -1) >>> 0;
+}
+
+function createZipFromBuffer(
+  fileName: string,
+  content: Uint8Array,
+): Uint8Array {
   const encoder = new TextEncoder();
-  const jsContent = encoder.encode(
-    `exports.handler = async (event) => {
-  console.log('[veolms-fleet-manager] Lambda invoked', JSON.stringify(event));
-  return { statusCode: 200, body: 'VeoLMS Fleet Manager — serverless mode' };
-};`,
-  );
-  const fileName = encoder.encode("index.js");
+  const fileBytes = encoder.encode(fileName);
+  const fileCrc = crc32(content);
 
   const now = new Date();
   const dosDate =
@@ -469,22 +489,22 @@ function createPlaceholderLambdaZip(): Uint8Array {
     0;
   const dosTime = ((now.getHours() << 11) | (now.getMinutes() << 5)) >>> 0;
 
-  const localHeader = new Uint8Array(30 + fileName.length);
+  const localHeader = new Uint8Array(30 + fileBytes.length);
   const lhView = new DataView(localHeader.buffer);
   lhView.setUint32(0, 0x04034b50, true);
   lhView.setUint16(4, 20, true);
   lhView.setUint16(6, 0, true);
-  lhView.setUint16(8, 0, true);
+  lhView.setUint16(8, 0, true); // store (no compression)
   lhView.setUint16(10, dosTime, true);
   lhView.setUint16(12, dosDate, true);
-  lhView.setUint32(14, 0, true);
-  lhView.setUint32(18, jsContent.length, true);
-  lhView.setUint32(22, jsContent.length, true);
-  lhView.setUint16(26, fileName.length, true);
+  lhView.setUint32(14, fileCrc, true);
+  lhView.setUint32(18, content.length, true);
+  lhView.setUint32(22, content.length, true);
+  lhView.setUint16(26, fileBytes.length, true);
   lhView.setUint16(28, 0, true);
-  localHeader.set(fileName, 30);
+  localHeader.set(fileBytes, 30);
 
-  const centralDir = new Uint8Array(46 + fileName.length);
+  const centralDir = new Uint8Array(46 + fileBytes.length);
   const cdView = new DataView(centralDir.buffer);
   cdView.setUint32(0, 0x02014b50, true);
   cdView.setUint16(4, 20, true);
@@ -493,12 +513,12 @@ function createPlaceholderLambdaZip(): Uint8Array {
   cdView.setUint16(10, 0, true);
   cdView.setUint16(12, dosTime, true);
   cdView.setUint16(14, dosDate, true);
-  cdView.setUint32(16, 0, true);
-  cdView.setUint32(20, jsContent.length, true);
-  cdView.setUint32(24, jsContent.length, true);
-  cdView.setUint16(28, fileName.length, true);
+  cdView.setUint32(16, fileCrc, true);
+  cdView.setUint32(20, content.length, true);
+  cdView.setUint32(24, content.length, true);
+  cdView.setUint16(28, fileBytes.length, true);
   cdView.setUint32(42, 0, true);
-  centralDir.set(fileName, 46);
+  centralDir.set(fileBytes, 46);
 
   const eocd = new Uint8Array(22);
   const eocdView = new DataView(eocd.buffer);
@@ -506,16 +526,16 @@ function createPlaceholderLambdaZip(): Uint8Array {
   eocdView.setUint16(8, 1, true);
   eocdView.setUint16(10, 1, true);
   eocdView.setUint32(12, centralDir.length, true);
-  eocdView.setUint32(16, localHeader.length + jsContent.length, true);
+  eocdView.setUint32(16, localHeader.length + content.length, true);
 
   const total = new Uint8Array(
-    localHeader.length + jsContent.length + centralDir.length + eocd.length,
+    localHeader.length + content.length + centralDir.length + eocd.length,
   );
   let offset = 0;
   total.set(localHeader, offset);
   offset += localHeader.length;
-  total.set(jsContent, offset);
-  offset += jsContent.length;
+  total.set(content, offset);
+  offset += content.length;
   total.set(centralDir, offset);
   offset += centralDir.length;
   total.set(eocd, offset);
@@ -523,49 +543,155 @@ function createPlaceholderLambdaZip(): Uint8Array {
 }
 
 function buildLambdaBundleZip(): Uint8Array {
+  const repoRoot = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "..",
+    "..",
+    "..",
+    "..",
+  );
+  const lambdaSource = path.join(
+    repoRoot,
+    "packages/fleet-provider-aws/src/lambda.ts",
+  );
+  const distDir = path.join(repoRoot, "dist/lambda");
+  if (!fsSync.existsSync(distDir)) {
+    fsSync.mkdirSync(distDir, { recursive: true });
+  }
+  const outfile = path.join(distDir, "index.js");
+  esbuild.buildSync({
+    entryPoints: [lambdaSource],
+    bundle: true,
+    platform: "node",
+    target: "node22",
+    format: "cjs",
+    outfile,
+    logLevel: "silent",
+  });
+
+  const jsContent = fsSync.readFileSync(outfile);
+
+  // Attempt to use system zip CLI if available
   try {
-    const lambdaSource = fileURLToPath(
-      new URL("../lambda.ts", import.meta.url),
-    );
-    const distDir = path.join(process.cwd(), "dist/lambda");
-    if (!fsSync.existsSync(distDir)) {
-      fsSync.mkdirSync(distDir, { recursive: true });
-    }
-    const outfile = path.join(distDir, "index.js");
-    esbuild.buildSync({
-      entryPoints: [lambdaSource],
-      bundle: true,
-      platform: "node",
-      target: "node22",
-      format: "cjs",
-      outfile,
-      logLevel: "silent",
-    });
     const zipPath = path.join(distDir, "function.zip");
     execSync(`cd "${distDir}" && zip -q -9 function.zip index.js`, {
       stdio: "pipe",
     });
-    return fsSync.readFileSync(zipPath);
+    if (fsSync.existsSync(zipPath)) {
+      return fsSync.readFileSync(zipPath);
+    }
+  } catch {
+    // Fall back to pure JS zip generator with valid CRC32
+  }
+
+  return createZipFromBuffer("index.js", jsContent);
+}
+
+export async function ensureSecurityGroup(
+  ec2: EC2Client,
+  allowSsh: boolean,
+): Promise<string | null> {
+  if (!allowSsh) return null;
+
+  try {
+    const existing = await ec2.send(
+      new DescribeSecurityGroupsCommand({
+        GroupNames: [SECURITY_GROUP_NAME],
+      }),
+    );
+    const sgId = existing.SecurityGroups?.[0]?.GroupId;
+    if (sgId) {
+      ok(
+        `Security group ${bold(SECURITY_GROUP_NAME)} (${bold(sgId)}) already exists — reusing.`,
+      );
+      return sgId;
+    }
+  } catch {
+    // Doesn't exist, proceed to create
+  }
+
+  try {
+    info(
+      `Creating EC2 Security Group ${bold(SECURITY_GROUP_NAME)} with SSH (port 22) enabled...`,
+    );
+    const createRes = await ec2.send(
+      new CreateSecurityGroupCommand({
+        GroupName: SECURITY_GROUP_NAME,
+        Description:
+          "VeoLMS EC2 Worker Security Group - allows SSH and outbound traffic",
+        TagSpecifications: [
+          {
+            ResourceType: "security-group",
+            Tags: [
+              { Key: "ManagedBy", Value: "veolms-infra-setup" },
+              { Key: "Project", Value: "VeoLMS" },
+              { Key: "Name", Value: SECURITY_GROUP_NAME },
+            ],
+          },
+        ],
+      }),
+    );
+
+    const sgId = createRes.GroupId;
+    if (!sgId) {
+      throw new Error("Failed to get GroupId for created Security Group");
+    }
+
+    // Authorize SSH ingress (port 22)
+    try {
+      await ec2.send(
+        new AuthorizeSecurityGroupIngressCommand({
+          GroupId: sgId,
+          IpPermissions: [
+            {
+              IpProtocol: "tcp",
+              FromPort: 22,
+              ToPort: 22,
+              IpRanges: [
+                { CidrIp: "0.0.0.0/0", Description: "Allow SSH inbound" },
+              ],
+            },
+          ],
+        }),
+      );
+    } catch {
+      // Ignore if rule already exists
+    }
+
+    ok(
+      `Created Security Group: ${bold(SECURITY_GROUP_NAME)} (${bold(sgId)}) with SSH port 22 open.`,
+    );
+    return sgId;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    warn(
-      `Could not build full Lambda bundle automatically (${msg}). Falling back to placeholder.`,
-    );
-    return createPlaceholderLambdaZip();
+    warn(`Could not create Security Group automatically: ${msg}`);
+    return null;
   }
 }
 
-export function buildAndUploadWorkerBundle(
+export async function checkKeyPair(
+  ec2: EC2Client,
+  keyName: string,
+): Promise<boolean> {
+  if (!keyName) return false;
+  try {
+    const isId = keyName.startsWith("key-");
+    const res = await ec2.send(
+      isId
+        ? new DescribeKeyPairsCommand({ KeyPairIds: [keyName] })
+        : new DescribeKeyPairsCommand({ KeyNames: [keyName] }),
+    );
+    return Boolean(res.KeyPairs && res.KeyPairs.length > 0);
+  } catch {
+    return false;
+  }
+}
+
+export async function buildAndUploadWorkerBundle(
   s3BucketName: string,
   region: string,
-): void {
+): Promise<boolean> {
   try {
-    // Resolved relative to this module's own location — not process.cwd() —
-    // since callers invoke this via `pnpm --filter`, which sets cwd to the
-    // fleet-manager package directory, not the repo root. A cwd-relative
-    // path here silently resolved to a non-existent file and the bundle
-    // was never uploaded, with no error at all (the existsSync guard below
-    // just skipped everything silently).
     const repoRoot = path.resolve(
       path.dirname(fileURLToPath(import.meta.url)),
       "..",
@@ -574,36 +700,84 @@ export function buildAndUploadWorkerBundle(
       "..",
     );
     const workerSource = path.join(repoRoot, "apps/media-worker/src/index.ts");
-    if (fsSync.existsSync(workerSource)) {
-      const distDir = path.join(repoRoot, "dist/worker");
-      if (!fsSync.existsSync(distDir)) {
-        fsSync.mkdirSync(distDir, { recursive: true });
-      }
-      const outfile = path.join(distDir, "media-worker.js");
-      esbuild.buildSync({
-        entryPoints: [workerSource],
-        bundle: true,
-        platform: "node",
-        target: "node22",
-        format: "cjs",
-        outfile,
-        logLevel: "silent",
-      });
+    if (!fsSync.existsSync(workerSource)) {
+      warn(
+        `Media worker source not found at ${workerSource} — skipping bundle upload.`,
+      );
+      return false;
+    }
+
+    const distDir = path.join(repoRoot, "dist/worker");
+    if (!fsSync.existsSync(distDir)) {
+      fsSync.mkdirSync(distDir, { recursive: true });
+    }
+    const outfile = path.join(distDir, "media-worker.js");
+    esbuild.buildSync({
+      entryPoints: [workerSource],
+      bundle: true,
+      platform: "node",
+      target: "node22",
+      format: "cjs",
+      outfile,
+      logLevel: "silent",
+    });
+
+    const fileContent = fsSync.readFileSync(outfile);
+    const sizeKb = (fileContent.length / 1024).toFixed(1);
+
+    // Also write to apps/media-worker/dist for local availability
+    const appDistDir = path.join(repoRoot, "apps/media-worker/dist");
+    if (!fsSync.existsSync(appDistDir)) {
+      fsSync.mkdirSync(appDistDir, { recursive: true });
+    }
+    fsSync.writeFileSync(path.join(appDistDir, "media-worker.js"), fileContent);
+
+    // 1. Upload via AWS SDK v3 S3Client
+    let uploaded = false;
+    try {
+      const s3 = new S3Client({ region });
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: s3BucketName,
+          Key: "bundles/media-worker.js",
+          Body: fileContent,
+          ContentType: "application/javascript",
+        }),
+      );
+
+      // Verify upload exists on S3
+      await s3.send(
+        new HeadObjectCommand({
+          Bucket: s3BucketName,
+          Key: "bundles/media-worker.js",
+        }),
+      );
+      uploaded = true;
+    } catch (sdkErr: unknown) {
+      const sdkMsg = sdkErr instanceof Error ? sdkErr.message : String(sdkErr);
+      warn(`S3 SDK upload attempt notice: ${sdkMsg}`);
+    }
+
+    // 2. Fallback via aws s3 cp if SDK upload didn't succeed
+    if (!uploaded) {
       execSync(
         `aws s3 cp "${outfile}" "s3://${s3BucketName}/bundles/media-worker.js" --region "${region}"`,
         { stdio: "pipe" },
       );
-      ok(
-        `Bundled and uploaded media worker to ${bold(`s3://${s3BucketName}/bundles/media-worker.js`)}`,
-      );
-    } else {
-      warn(
-        `Media worker source not found at ${workerSource} — skipping bundle upload.`,
-      );
+      uploaded = true;
     }
+
+    if (uploaded) {
+      ok(
+        `Bundled and uploaded media worker (${sizeKb} KB) to ${bold(`s3://${s3BucketName}/bundles/media-worker.js`)}`,
+      );
+      return true;
+    }
+    return false;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     warn(`Could not upload worker bundle to S3: ${msg}`);
+    return false;
   }
 }
 
@@ -644,10 +818,6 @@ async function updateExistingLambda(
 }
 
 async function waitUntilFunctionUpdated(lambda: LambdaClient): Promise<void> {
-  // Code/config updates apply asynchronously (LastUpdateStatus goes
-  // InProgress -> Successful); a second update issued while one is still
-  // in flight is rejected with ResourceConflictException, so the
-  // configuration update below must wait for the code update to land.
   for (let attempt = 0; attempt < 15; attempt++) {
     const res = await lambda.send(
       new GetFunctionCommand({ FunctionName: LAMBDA_FUNCTION_NAME }),
@@ -685,7 +855,6 @@ async function setupLambda(
   );
   const lambdaZip = buildLambdaBundleZip();
 
-  // IAM role might take a few seconds to propagate for Lambda assumption
   const maxRetries = 5;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -723,8 +892,6 @@ async function setupLambda(
       return fnArn;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      // AWS SDK v3 puts the exception type on `.name` (e.g.
-      // "InvalidParameterValueException"), not embedded in `.message`.
       const name = err instanceof Error ? err.name : "";
       if (
         (msg.includes("cannot be assumed by Lambda") ||
@@ -780,9 +947,6 @@ async function generateEnvFiles(
     EC2_IAM_INSTANCE_PROFILE: INSTANCE_PROFILE_NAME,
     EC2_USE_SPOT: String(answers.useSpot),
     EC2_BOOT_MODE: answers.bootMode,
-    // Read by apps/fleet-manager (provider-agnostic — it's the number of
-    // concurrent workers, not something EC2-specific), so this key must
-    // match what @veolms/fleet-provider-local's setup writes too.
     MAX_WORKERS: String(answers.maxWorkers),
     EC2_ALLOWED_INSTANCE_TYPES: answers.allowedInstanceTypes.join(","),
     WORKER_LOG_GROUP: result.logGroupWorkers,
@@ -792,6 +956,13 @@ async function generateEnvFiles(
 
   if (answers.s3BucketName) {
     fleetEnv["S3_BUCKET_NAME"] = answers.s3BucketName;
+    fleetEnv["S3_BUCKET"] = answers.s3BucketName;
+  }
+  if (result.securityGroupId) {
+    fleetEnv["SECURITY_GROUP_IDS"] = result.securityGroupId;
+  }
+  if (result.keyName) {
+    fleetEnv["KEY_NAME"] = result.keyName;
   }
   if (result.lambdaFunctionArn) {
     fleetEnv["LAMBDA_FUNCTION_ARN"] = result.lambdaFunctionArn;
@@ -821,9 +992,13 @@ async function generateEnvFiles(
 
   if (answers.s3BucketName) {
     workerEnv["S3_BUCKET_NAME"] = answers.s3BucketName;
+    workerEnv["S3_BUCKET"] = answers.s3BucketName;
     if (answers.s3CredentialMode === "automatic") {
       workerEnv["S3_USE_INSTANCE_ROLE"] = "true";
     }
+  }
+  if (result.keyName) {
+    workerEnv["KEY_NAME"] = result.keyName;
   }
   if (answers.targetEnv === "localstack" && answers.endpointUrl) {
     workerEnv["AWS_ENDPOINT_URL"] = answers.endpointUrl;
@@ -903,6 +1078,13 @@ function loadExistingConfig(repoRoot: string): Partial<SetupAnswers> {
   const databaseUrl =
     combined["DATABASE_URL"] ||
     "postgresql://veolms:veolms@localhost:5433/veolms";
+  const keyName = combined["EC2_KEY_NAME"] || combined["KEY_NAME"] || null;
+  const securityGroupId =
+    combined["EC2_SECURITY_GROUP_IDS"] ||
+    combined["SECURITY_GROUP_IDS"] ||
+    combined["EC2_SECURITY_GROUP_ID"] ||
+    null;
+  const allowSsh = combined["ALLOW_SSH"] !== "false";
 
   return {
     targetEnv,
@@ -918,6 +1100,9 @@ function loadExistingConfig(repoRoot: string): Partial<SetupAnswers> {
     workerIdlePollSeconds,
     useSpot,
     databaseUrl,
+    keyName,
+    securityGroupId,
+    allowSsh,
   };
 }
 
@@ -928,7 +1113,7 @@ async function runSetupFlow(
   repoRoot: string,
   initialDefaults?: Partial<SetupAnswers>,
 ): Promise<void> {
-  const TOTAL_STEPS = 12;
+  const TOTAL_STEPS = 14;
 
   // ── Step 1: Target Environment ─────────────────────────────────────────────
   step(1, TOTAL_STEPS, "Target Environment");
@@ -1023,42 +1208,55 @@ async function runSetupFlow(
   let s3CredentialMode: CredentialMode | null = null;
 
   if (storageProvider === "s3") {
-    const defaultBucket = initialDefaults?.s3BucketName ?? "";
-    const bucketInput = await ask(
-      rl,
-      "S3 bucket name (leave empty to skip)",
-      defaultBucket || undefined,
-    );
+    let defaultBucket = initialDefaults?.s3BucketName ?? "";
+    while (true) {
+      const bucketInput = await ask(
+        rl,
+        "S3 bucket name (leave empty to skip)",
+        defaultBucket || undefined,
+      );
 
-    if (bucketInput) {
-      s3BucketName = bucketInput;
+      if (!bucketInput) {
+        s3BucketName = null;
+        break;
+      }
 
-      info(`Checking bucket ${bold(s3BucketName)}...`);
-      const bucketStatus = await checkS3Bucket(region, s3BucketName);
+      info(`Checking bucket ${bold(bucketInput)}...`);
+      const bucketStatus = await checkS3Bucket(region, bucketInput);
 
       if (bucketStatus === "exists") {
-        ok(`Bucket ${bold(s3BucketName)} found — will grant EC2 role access.`);
+        s3BucketName = bucketInput;
+        ok(
+          `Bucket ${bold(s3BucketName)} found and accessible — will grant EC2 role access.`,
+        );
+        break;
       } else if (bucketStatus === "no-access") {
         warn(
-          `Bucket ${bold(s3BucketName)} exists but this account has no access.`,
+          `Bucket ${bold(bucketInput)} exists but is owned by another AWS account or inaccessible (Access Denied).`,
         );
-        warn("IAM policy will be set. Bucket owner must allow this account.");
+        info(
+          "S3 bucket names are globally unique across all AWS accounts. Please enter a different name.",
+        );
+        defaultBucket = "";
+        continue;
       } else {
-        info(`Creating S3 bucket ${bold(s3BucketName)} in ${region}...`);
+        info(
+          `Bucket ${bold(bucketInput)} does not exist. Creating in ${region}...`,
+        );
         try {
           if (region === "us-east-1") {
             execSync(
-              `aws s3api create-bucket --bucket "${s3BucketName}" --region "${region}"`,
+              `aws s3api create-bucket --bucket "${bucketInput}" --region "${region}"`,
               { stdio: "pipe" },
             );
           } else {
             execSync(
-              `aws s3api create-bucket --bucket "${s3BucketName}" --region "${region}" --create-bucket-configuration LocationConstraint="${region}"`,
+              `aws s3api create-bucket --bucket "${bucketInput}" --region "${region}" --create-bucket-configuration LocationConstraint="${region}"`,
               { stdio: "pipe" },
             );
           }
           execSync(
-            `aws s3api put-public-access-block --bucket "${s3BucketName}" --public-access-block-configuration "BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false" --region "${region}"`,
+            `aws s3api put-public-access-block --bucket "${bucketInput}" --public-access-block-configuration "BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false" --region "${region}"`,
             { stdio: "pipe" },
           );
           const pubPolicy = JSON.stringify({
@@ -1069,23 +1267,30 @@ async function runSetupFlow(
                 Effect: "Allow",
                 Principal: "*",
                 Action: "s3:GetObject",
-                Resource: `arn:aws:s3:::${s3BucketName}/*`,
+                Resource: `arn:aws:s3:::${bucketInput}/*`,
               },
             ],
           });
           execSync(
-            `aws s3api put-bucket-policy --bucket "${s3BucketName}" --policy '${pubPolicy}' --region "${region}"`,
+            `aws s3api put-bucket-policy --bucket "${bucketInput}" --policy '${pubPolicy}' --region "${region}"`,
             { stdio: "pipe" },
           );
+          s3BucketName = bucketInput;
           ok(
             `Created S3 bucket ${bold(s3BucketName)} with public read enabled.`,
           );
+          break;
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : String(err);
-          warn(`Could not automatically create bucket: ${msg}`);
+          warn(`Could not create bucket "${bucketInput}": ${msg}`);
+          info("Please enter a different S3 bucket name.");
+          defaultBucket = "";
+          continue;
         }
       }
+    }
 
+    if (s3BucketName) {
       const defaultCredMode =
         initialDefaults?.s3CredentialMode === "manual" ? 1 : 0;
       s3CredentialMode = await askChoice(
@@ -1181,8 +1386,60 @@ async function runSetupFlow(
     info(`Build the AMI separately: ${cyan("pnpm fleet:build-ami")}`);
   }
 
-  // ── Step 8: Max Workers ────────────────────────────────────────────────────
-  step(8, TOTAL_STEPS, "Maximum Concurrent Workers");
+  // ── Step 8: EC2 SSH Port / Security Group ──────────────────────────────────
+  step(8, TOTAL_STEPS, "EC2 SSH Port / Security Group Access");
+  const defaultAllowSsh = initialDefaults?.allowSsh !== false;
+  const allowSshChoice = await askChoice(
+    rl,
+    "Allow SSH access to EC2 worker instances (port 22)?",
+    [
+      {
+        label:
+          "Yes — Create / reuse Security Group with SSH port 22 open (recommended for debugging)",
+        value: "yes",
+      },
+      {
+        label: "No — Do not create SSH ingress security group",
+        value: "no",
+      },
+    ],
+    defaultAllowSsh ? 0 : 1,
+  );
+  const allowSsh = allowSshChoice === "yes";
+
+  // ── Step 9: EC2 SSH Key Pair ───────────────────────────────────────────────
+  step(9, TOTAL_STEPS, "EC2 SSH Key Pair");
+  info(
+    "Specifying an SSH Key Pair allows you to SSH into EC2 worker instances (e.g. debian@<ip>).",
+  );
+  const defaultKeyName =
+    initialDefaults?.keyName ??
+    process.env.EC2_KEY_NAME ??
+    process.env.KEY_NAME ??
+    "";
+  const keyNameInput = await ask(
+    rl,
+    "EC2 SSH Key Pair Name / ID (e.g. key-03fe15e84e3eee02c, leave empty to skip)",
+    defaultKeyName || undefined,
+  );
+  const keyName = keyNameInput.trim() || null;
+
+  if (keyName) {
+    const ec2 = new EC2Client({ region });
+    const keyExists = await checkKeyPair(ec2, keyName);
+    if (keyExists) {
+      ok(`Found EC2 Key Pair: ${bold(keyName)} in region ${bold(region)}`);
+    } else {
+      info(
+        `EC2 Key Pair configured as ${bold(keyName)} (ensure it exists in AWS).`,
+      );
+    }
+  } else {
+    info("No SSH Key Pair configured — skipping key assignment.");
+  }
+
+  // ── Step 10: Max Workers ───────────────────────────────────────────────────
+  step(10, TOTAL_STEPS, "Maximum Concurrent Workers");
   const defaultMaxWorkers = String(initialDefaults?.maxWorkers ?? 8);
   const maxWorkersInput = await ask(
     rl,
@@ -1192,8 +1449,8 @@ async function runSetupFlow(
   const maxWorkers = Math.max(1, parseInt(maxWorkersInput, 10) || 8);
   ok(`Max concurrent workers: ${bold(String(maxWorkers))}`);
 
-  // ── Step 9: Worker Idle Poll Interval ──────────────────────────────────────
-  step(9, TOTAL_STEPS, "Worker Idle Poll Interval");
+  // ── Step 11: Worker Idle Poll Interval ─────────────────────────────────────
+  step(11, TOTAL_STEPS, "Worker Idle Poll Interval");
   info(
     "After finishing a job, a worker checks the queue for more work " +
       "instead of terminating immediately — reusing an already-booted " +
@@ -1210,8 +1467,8 @@ async function runSetupFlow(
   const workerIdlePollSeconds = Math.max(1, parseInt(idlePollInput, 10) || 15);
   ok(`Idle poll interval: ${bold(`${workerIdlePollSeconds}s`)}`);
 
-  // ── Step 10: Spot vs On-Demand ──────────────────────────────────────────────
-  step(10, TOTAL_STEPS, "EC2 Pricing Model");
+  // ── Step 12: Spot vs On-Demand ─────────────────────────────────────────────
+  step(12, TOTAL_STEPS, "EC2 Pricing Model");
   const defaultPricingModel =
     initialDefaults?.useSpot === false ? "on-demand" : "spot";
   const pricingModel = await askChoice(
@@ -1233,10 +1490,11 @@ async function runSetupFlow(
   const useSpot = pricingModel === "spot";
   ok(useSpot ? "Spot Instances selected." : "On-Demand Instances selected.");
 
-  // ── Step 11: Create AWS Resources ──────────────────────────────────────────
-  step(11, TOTAL_STEPS, "Creating AWS Resources");
+  // ── Step 13: Create AWS Resources ─────────────────────────────────────────
+  step(13, TOTAL_STEPS, "Creating AWS Resources");
 
   const iam = new IAMClient({ region });
+  const ec2 = new EC2Client({ region });
   const cw = new CloudWatchLogsClient({ region });
 
   info("Setting up IAM role for EC2 workers...");
@@ -1248,6 +1506,12 @@ async function runSetupFlow(
 
   const instanceProfileArn = await createInstanceProfile(iam, workerRoleArn);
 
+  let securityGroupId: string | null = null;
+  if (allowSsh) {
+    info("Setting up EC2 Security Group with SSH port 22...");
+    securityGroupId = await ensureSecurityGroup(ec2, true);
+  }
+
   info("Setting up CloudWatch log groups...");
   await ensureLogGroup(cw, LOG_GROUP_WORKERS);
   await ensureLogGroup(cw, LOG_GROUP_FLEET);
@@ -1257,17 +1521,27 @@ async function runSetupFlow(
     info("Setting up Lambda function...");
     const lambdaEnvVars: Record<string, string> = {
       DATABASE_URL: databaseUrl,
+      FLEET_MODE: "serverless",
+      FLEET_PROVIDER: "aws",
+      PROVIDER: "aws",
       STORAGE_PROVIDER: storageProvider,
       EC2_IAM_INSTANCE_PROFILE: INSTANCE_PROFILE_NAME,
       EC2_USE_SPOT: String(useSpot),
       MAX_WORKERS: String(maxWorkers),
       WORKER_IDLE_POLL_SECONDS: String(workerIdlePollSeconds),
-      PROVIDER: "aws",
     };
     if (s3BucketName) {
       lambdaEnvVars["S3_BUCKET"] = s3BucketName;
+      lambdaEnvVars["S3_BUCKET_NAME"] = s3BucketName;
+    }
+    if (securityGroupId) {
+      lambdaEnvVars["SECURITY_GROUP_IDS"] = securityGroupId;
+    }
+    if (keyName) {
+      lambdaEnvVars["KEY_NAME"] = keyName;
     }
     if (endpointUrl) {
+      lambdaEnvVars["AWS_ENDPOINT_URL"] = endpointUrl;
       lambdaEnvVars["AWS_ACCESS_KEY_ID"] = "test";
       lambdaEnvVars["AWS_SECRET_ACCESS_KEY"] = "test";
       lambdaEnvVars["AMI_ID"] = LOCALSTACK_DOCKER_AMI_ID;
@@ -1278,7 +1552,7 @@ async function runSetupFlow(
 
   if (storageProvider === "s3" && s3BucketName) {
     info("Building and uploading media worker bundle to S3...");
-    buildAndUploadWorkerBundle(s3BucketName, region);
+    await buildAndUploadWorkerBundle(s3BucketName, region);
   }
 
   const result: SetupResult = {
@@ -1288,6 +1562,8 @@ async function runSetupFlow(
     logGroupFleet: LOG_GROUP_FLEET,
     lambdaFunctionArn,
     s3BucketName,
+    securityGroupId,
+    keyName,
   };
 
   const answers: SetupAnswers = {
@@ -1305,10 +1581,13 @@ async function runSetupFlow(
     maxWorkers,
     workerIdlePollSeconds,
     useSpot,
+    allowSsh,
+    keyName,
+    securityGroupId,
   };
 
-  // ── Step 12: Write .env Files ───────────────────────────────────────────────
-  step(12, TOTAL_STEPS, "Writing Per-App .env Files");
+  // ── Step 14: Write .env Files ──────────────────────────────────────────────
+  step(14, TOTAL_STEPS, "Writing Per-App .env Files");
   await generateEnvFiles(answers, result, repoRoot);
 
   // ── Summary ────────────────────────────────────────────────────────────────
@@ -1319,9 +1598,9 @@ ${bold(cyan("╚═════════════════════�
 
 ${bold("Resources:")} ${dim(`(target: ${targetEnv === "localstack" ? `LocalStack @ ${endpointUrl}` : `AWS account ${accountId}`})`)}
   ${green("✔")} IAM Role:             ${bold(ROLE_NAME)}
-  ${green("✔")} Instance Profile:     ${bold(INSTANCE_PROFILE_NAME)}
+  ${green("✔")} Instance Profile:     ${bold(INSTANCE_PROFILE_NAME)}${securityGroupId ? `\n  ${green("✔")} Security Group (SSH): ${bold(`${SECURITY_GROUP_NAME} (${securityGroupId}, port 22)`)}` : ""}${keyName ? `\n  ${green("✔")} EC2 SSH Key Pair:    ${bold(keyName)}` : ""}
   ${green("✔")} Log Group (workers):  ${bold(LOG_GROUP_WORKERS)}
-  ${green("✔")} Log Group (fleet):    ${bold(LOG_GROUP_FLEET)}${lambdaFunctionArn ? `\n  ${green("✔")} Lambda Function:     ${bold(LAMBDA_FUNCTION_NAME)}` : ""}${s3BucketName ? `\n  ${green("✔")} S3 Bucket Policy:    ${bold(s3BucketName)}` : ""}
+  ${green("✔")} Log Group (fleet):    ${bold(LOG_GROUP_FLEET)}${lambdaFunctionArn ? `\n  ${green("✔")} Lambda Function:     ${bold(LAMBDA_FUNCTION_NAME)}` : ""}${s3BucketName ? `\n  ${green("✔")} S3 Bucket & Bundle:  ${bold(`s3://${s3BucketName}/bundles/media-worker.js`)}` : ""}
 
 ${bold("Generated .env Files:")}
   ${green("✔")} apps/fleet-manager/.env
@@ -1372,6 +1651,12 @@ async function runUpdateFlow(
     if (existing.s3BucketName) {
       info(`S3 Bucket:            ${bold(existing.s3BucketName)}`);
     }
+    if (existing.keyName) {
+      info(`EC2 SSH Key Pair:     ${bold(existing.keyName)}`);
+    }
+    if (existing.securityGroupId) {
+      info(`Security Group:       ${bold(existing.securityGroupId)}`);
+    }
   } else {
     info("No previous configuration detected — will use standard defaults.");
   }
@@ -1381,7 +1666,7 @@ async function runUpdateFlow(
     "What would you like to update?",
     [
       {
-        label: `Full Infrastructure Update ${dim("— Sync IAM policies, log groups, Lambda code/config, worker bundle, .env")}`,
+        label: `Full Infrastructure Update ${dim("— Sync IAM, Security Group, log groups, Lambda, worker bundle, .env")}`,
         value: "full",
       },
       {
@@ -1419,6 +1704,8 @@ async function runUpdateFlow(
   const maxWorkers: number = existing.maxWorkers ?? 8;
   const workerIdlePollSeconds: number = existing.workerIdlePollSeconds ?? 15;
   const useSpot: boolean = existing.useSpot ?? true;
+  const allowSsh: boolean = existing.allowSsh !== false;
+  const keyName: string | null = existing.keyName ?? null;
   const s3CredentialMode: CredentialMode | null =
     existing.s3CredentialMode ?? (s3BucketName ? "automatic" : null);
 
@@ -1464,8 +1751,7 @@ async function runUpdateFlow(
       info(
         `Rebuilding and uploading worker bundle to ${bold(s3BucketName)}...`,
       );
-      buildAndUploadWorkerBundle(s3BucketName, region);
-      bundleUploaded = true;
+      bundleUploaded = await buildAndUploadWorkerBundle(s3BucketName, region);
     }
 
     console.log(`
@@ -1481,6 +1767,7 @@ ${bold(cyan("╚═════════════════════�
 
   // Full update
   const iam = new IAMClient({ region });
+  const ec2 = new EC2Client({ region });
   const cw = new CloudWatchLogsClient({ region });
 
   info("Updating / verifying IAM role policies for EC2 workers...");
@@ -1492,6 +1779,12 @@ ${bold(cyan("╚═════════════════════�
 
   const instanceProfileArn = await createInstanceProfile(iam, workerRoleArn);
 
+  let securityGroupId: string | null = existing.securityGroupId ?? null;
+  if (allowSsh) {
+    info("Ensuring EC2 Security Group with SSH port 22...");
+    securityGroupId = await ensureSecurityGroup(ec2, true);
+  }
+
   info("Ensuring CloudWatch log groups...");
   await ensureLogGroup(cw, LOG_GROUP_WORKERS);
   await ensureLogGroup(cw, LOG_GROUP_FLEET);
@@ -1501,17 +1794,27 @@ ${bold(cyan("╚═════════════════════�
     info("Updating Lambda function code & configuration...");
     const lambdaEnvVars: Record<string, string> = {
       DATABASE_URL: databaseUrl,
+      FLEET_MODE: "serverless",
+      FLEET_PROVIDER: "aws",
+      PROVIDER: "aws",
       STORAGE_PROVIDER: storageProvider,
       EC2_IAM_INSTANCE_PROFILE: INSTANCE_PROFILE_NAME,
       EC2_USE_SPOT: String(useSpot),
       MAX_WORKERS: String(maxWorkers),
       WORKER_IDLE_POLL_SECONDS: String(workerIdlePollSeconds),
-      PROVIDER: "aws",
     };
     if (s3BucketName) {
       lambdaEnvVars["S3_BUCKET"] = s3BucketName;
+      lambdaEnvVars["S3_BUCKET_NAME"] = s3BucketName;
+    }
+    if (securityGroupId) {
+      lambdaEnvVars["SECURITY_GROUP_IDS"] = securityGroupId;
+    }
+    if (keyName) {
+      lambdaEnvVars["KEY_NAME"] = keyName;
     }
     if (endpointUrl) {
+      lambdaEnvVars["AWS_ENDPOINT_URL"] = endpointUrl;
       lambdaEnvVars["AWS_ACCESS_KEY_ID"] = "test";
       lambdaEnvVars["AWS_SECRET_ACCESS_KEY"] = "test";
       lambdaEnvVars["AMI_ID"] = LOCALSTACK_DOCKER_AMI_ID;
@@ -1522,7 +1825,7 @@ ${bold(cyan("╚═════════════════════�
 
   if (storageProvider === "s3" && s3BucketName) {
     info("Rebuilding and uploading media worker bundle to S3...");
-    buildAndUploadWorkerBundle(s3BucketName, region);
+    await buildAndUploadWorkerBundle(s3BucketName, region);
   }
 
   const answers: SetupAnswers = {
@@ -1540,6 +1843,9 @@ ${bold(cyan("╚═════════════════════�
     maxWorkers,
     workerIdlePollSeconds,
     useSpot,
+    allowSsh,
+    keyName,
+    securityGroupId,
   };
 
   const result: SetupResult = {
@@ -1549,6 +1855,8 @@ ${bold(cyan("╚═════════════════════�
     logGroupFleet: LOG_GROUP_FLEET,
     lambdaFunctionArn,
     s3BucketName,
+    securityGroupId,
+    keyName,
   };
 
   info("Refreshing per-app .env files...");
@@ -1561,9 +1869,9 @@ ${bold(cyan("╚═════════════════════�
 
 ${bold("Resources Updated:")} ${dim(`(target: ${targetEnv === "localstack" ? `LocalStack @ ${endpointUrl}` : `AWS account ${accountId}`})`)}
   ${green("✔")} IAM Role:             ${bold(ROLE_NAME)}
-  ${green("✔")} Instance Profile:     ${bold(INSTANCE_PROFILE_NAME)}
+  ${green("✔")} Instance Profile:     ${bold(INSTANCE_PROFILE_NAME)}${securityGroupId ? `\n  ${green("✔")} Security Group (SSH): ${bold(`${SECURITY_GROUP_NAME} (${securityGroupId}, port 22)`)}` : ""}${keyName ? `\n  ${green("✔")} EC2 SSH Key Pair:    ${bold(keyName)}` : ""}
   ${green("✔")} Log Group (workers):  ${bold(LOG_GROUP_WORKERS)}
-  ${green("✔")} Log Group (fleet):    ${bold(LOG_GROUP_FLEET)}${lambdaFunctionArn ? `\n  ${green("✔")} Lambda Function:     ${bold(LAMBDA_FUNCTION_NAME)}` : ""}${s3BucketName ? `\n  ${green("✔")} S3 Bucket Policy:    ${bold(s3BucketName)}` : ""}
+  ${green("✔")} Log Group (fleet):    ${bold(LOG_GROUP_FLEET)}${lambdaFunctionArn ? `\n  ${green("✔")} Lambda Function:     ${bold(LAMBDA_FUNCTION_NAME)}` : ""}${s3BucketName ? `\n  ${green("✔")} S3 Bucket & Bundle:  ${bold(`s3://${s3BucketName}/bundles/media-worker.js`)}` : ""}
 
 ${bold("Generated .env Files:")}
   ${green("✔")} apps/fleet-manager/.env
@@ -1602,6 +1910,7 @@ async function runDestroyFlow(
     • Delete CloudWatch log groups (${LOG_GROUP_WORKERS}, ${LOG_GROUP_FLEET}, /aws/lambda/${LAMBDA_FUNCTION_NAME})
     • Delete IAM Instance Profile (${INSTANCE_PROFILE_NAME})
     • Delete IAM Role (${ROLE_NAME}) and detached policies
+    • Delete EC2 Security Group (${SECURITY_GROUP_NAME})
     ${s3BucketName ? `• Delete S3 Bucket (${s3BucketName}) and all uploaded files` : ""}
 `);
 

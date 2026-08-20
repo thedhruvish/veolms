@@ -77,8 +77,11 @@ fi
 echo "[bootstrapper] System dependencies verified (node $(node -v), ffmpeg $(ffmpeg -version | head -n1))"
 
 # Download worker bundle from S3 and run
-echo "[bootstrapper] Downloading worker bundle from S3..."
-aws s3 cp "s3://\${S3_BUCKET}/bundles/media-worker.js" /opt/veolms/worker.js --region "\${AWS_REGION}" || true
+BUCKET_NAME="\${S3_BUCKET:-\${S3_BUCKET_NAME:-}}"
+if [ -n "\$BUCKET_NAME" ]; then
+  echo "[bootstrapper] Downloading worker bundle from s3://\$BUCKET_NAME/bundles/media-worker.js..."
+  aws s3 cp "s3://\$BUCKET_NAME/bundles/media-worker.js" /opt/veolms/worker.js --region "\${AWS_REGION:-us-east-1}" || true
+fi
 
 if [ -f "/opt/veolms/worker.js" ]; then
   echo "[bootstrapper] Launching VeoLMS Media Worker..."
