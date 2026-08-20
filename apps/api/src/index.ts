@@ -22,23 +22,23 @@ async function shutdown(signal: string): Promise<void> {
   }, 10000);
 
   try {
-    const errors: unknown[] = [];
+    let shutdownFailed = false;
 
     try {
       await app.close();
     } catch (err) {
-      errors.push(err);
+      shutdownFailed = true;
+      app.log.error({ err }, "Failed to close application");
     }
 
     try {
       await database.destroy();
     } catch (err) {
-      errors.push(err);
+      shutdownFailed = true;
+      app.log.error({ err }, "Failed to destroy database");
     }
 
-    if (errors.length > 0) {
-      // Pass the array as `errors`, since Pino's default `err` serializer doesn't handle arrays
-      app.log.error({ errors }, "Error(s) occurred during graceful shutdown.");
+    if (shutdownFailed) {
       process.exit(1);
     }
 
