@@ -69,7 +69,11 @@ import {
   getInitialSidebarPreferences,
   getInitialSidebarWidth,
 } from "./shell/sidebarPreferences";
-import { applyWithThemeViewTransition } from "./shell/themeViewTransition";
+import {
+  applyWithThemeViewTransition,
+  themeRevealOriginFromClick,
+} from "./shell/themeViewTransition";
+import type { ThemeRevealOrigin } from "./shell/themeViewTransition";
 import {
   academyThemes,
   DEFAULT_ACADEMY_THEME,
@@ -550,6 +554,12 @@ export function CoursesPage({
   const profileRef = useRef<HTMLDivElement>(null);
   const appliedThemeRef = useRef<"light" | "dark" | null>(null);
   const appliedPaletteRef = useRef<string | null>(null);
+  // Pointer-triggered commits stage their pointer position here so the next
+  // reveal emanates from the interaction that caused it. Keyboard and
+  // OS-triggered commits leave it null, and the theme effects drain it on
+  // every application, so an unrelated earlier click can never become the
+  // reveal origin.
+  const themeRevealOriginRef = useRef<ThemeRevealOrigin | null>(null);
   const appearanceControlsRef = useRef<HTMLDivElement>(null);
   const appearanceControlRectsRef = useRef<DOMRect[]>([]);
   const appearanceLayoutRef = useRef<boolean | null>(null);
@@ -664,6 +674,11 @@ export function CoursesPage({
     if (!storedPreferencesReady) return undefined;
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const applyTheme = () => {
+      // Drain the staged origin on every application: pointer commits stage
+      // it right before changing `theme`, while keyboard and OS-triggered
+      // applications find it null and reveal from the CSS corner fallback.
+      const pointerOrigin = themeRevealOriginRef.current;
+      themeRevealOriginRef.current = null;
       const nextTheme =
         theme === "device" ? (media.matches ? "dark" : "light") : theme;
       const commit = () => {
@@ -673,7 +688,11 @@ export function CoursesPage({
       // Reveal light/dark flips with the circular view transition, but skip it
       // for the initial application so startup stays instant.
       if (appliedThemeRef.current && appliedThemeRef.current !== nextTheme) {
-        applyWithThemeViewTransition(commit);
+        applyWithThemeViewTransition(
+          commit,
+          "mode",
+          pointerOrigin ?? undefined,
+        );
       } else {
         commit();
       }
@@ -700,6 +719,11 @@ export function CoursesPage({
 
   useEffect(() => {
     if (!storedPreferencesReady) return;
+    // Same drain-and-reveal contract as the theme effect: only a pointer
+    // commit (swatch click) stages an origin; keyboard arrow previews and
+    // Enter confirms find null and use the corner fallback.
+    const pointerOrigin = themeRevealOriginRef.current;
+    themeRevealOriginRef.current = null;
     const shouldReveal =
       appliedPaletteRef.current !== null &&
       appliedPaletteRef.current !== displayedAcademyTheme;
@@ -714,7 +738,11 @@ export function CoursesPage({
       setAppliedAcademyTheme(displayedAcademyTheme);
     };
     if (shouldReveal) {
-      applyWithThemeViewTransition(() => flushSync(commit), "palette");
+      applyWithThemeViewTransition(
+        () => flushSync(commit),
+        "palette",
+        pointerOrigin ?? undefined,
+      );
     } else {
       commit();
     }
@@ -1607,9 +1635,25 @@ export function CoursesPage({
     return true;
   };
 
-  const selectAcademyTheme = (themeId: string) => {
+  const selectAcademyTheme = (themeId: string, origin?: ThemeRevealOrigin) => {
+    // Stage the origin only when the click actually changes the displayed
+    // palette; clicking the current selection runs no effect, so a staged
+    // origin would otherwise linger for an unrelated later transition.
+    if (themeId !== displayedAcademyTheme) {
+      themeRevealOriginRef.current = origin ?? null;
+    }
     setAcademyTheme(themeId);
     setPalettePreviewTheme(null);
+  };
+
+  const previewAcademyTheme = (themeId: string, origin?: ThemeRevealOrigin) => {
+    // Keyboard previews carry the focused swatch's center; pointer-driven
+    // previews carry the pointer position. No origin when the previewed
+    // theme already matches the displayed one (no transition would drain it).
+    if (themeId !== displayedAcademyTheme) {
+      themeRevealOriginRef.current = origin ?? null;
+    }
+    setPalettePreviewTheme(themeId);
   };
 
   const focusPaletteTrigger = (trigger: HTMLButtonElement | null) => {
@@ -1626,7 +1670,14 @@ export function CoursesPage({
     );
   };
 
-  const cancelDesktopPalettePreview = () => {
+  const cancelDesktopPalettePreview = (origin?: ThemeRevealOrigin) => {
+    // Only the revert (previewed theme differing from the committed one)
+    // runs a transition, so only then may an origin be staged. Keyboard
+    // Escape carries the focused swatch's center; the trigger click passes
+    // its own pointer position.
+    if (palettePreviewTheme && palettePreviewTheme !== academyTheme) {
+      themeRevealOriginRef.current = origin ?? null;
+    }
     setPalettePreviewTheme(null);
     setPaletteMenu(false);
     focusPaletteTrigger(
@@ -1646,7 +1697,10 @@ export function CoursesPage({
     );
   };
 
-  const cancelMobilePalettePreview = () => {
+  const cancelMobilePalettePreview = (origin?: ThemeRevealOrigin) => {
+    if (palettePreviewTheme && palettePreviewTheme !== academyTheme) {
+      themeRevealOriginRef.current = origin ?? null;
+    }
     setPalettePreviewTheme(null);
     setMobilePaletteMenu(false);
     focusPaletteTrigger(
@@ -1851,6 +1905,11 @@ export function CoursesPage({
     const direction = delta > 0 ? 1 : -1;
     const nextOption =
       options[(sourceIndex + direction + options.length) % options.length];
+    // Only a swipe that lands on a different display mode stages the reveal
+    // origin; swiping onto "theme" (or the current mode) changes nothing.
+    if (nextOption !== "theme" && nextOption !== theme) {
+      themeRevealOriginRef.current = themeRevealOriginFromClick(event);
+    }
     activateAppearanceOption(nextOption!, mobile);
     window.setTimeout(() => {
       appearanceSwipeConsumedRef.current = false;
@@ -2749,6 +2808,8 @@ export function CoursesPage({
                         title={`${resolvedTheme === "dark" ? "Dark" : "Light"} mode — switch to ${resolvedTheme === "dark" ? "light" : "dark"} mode`}
                         onClick={(event) => {
                           if (consumeAppearanceGestureClick(event)) return;
+                          themeRevealOriginRef.current =
+                            themeRevealOriginFromClick(event);
                           toggleAppearance();
                         }}
                         onContextMenu={openAppearanceThemeMenu}
@@ -2800,7 +2861,10 @@ export function CoursesPage({
                             if (consumeAppearanceGestureClick(event)) return;
                             setReadingModeMenu(null);
                             setPaletteMenuSource("theme");
-                            if (paletteMenu) cancelDesktopPalettePreview();
+                            if (paletteMenu)
+                              cancelDesktopPalettePreview(
+                                themeRevealOriginFromClick(event) ?? undefined,
+                              );
                             else setPaletteMenu(true);
                           }}
                           onPointerDown={(event) =>
@@ -2932,7 +2996,7 @@ export function CoursesPage({
                     id="desktop-theme-menu"
                     className={`sidebar-palette-menu sidebar-palette-menu--dock-attached${sidebarCollapsed ? " sidebar-palette-menu--collapsed" : ""}`}
                     onSelect={selectAcademyTheme}
-                    onPreview={setPalettePreviewTheme}
+                    onPreview={previewAcademyTheme}
                     onConfirm={confirmDesktopPaletteTheme}
                     onCancel={cancelDesktopPalettePreview}
                   />
@@ -3003,9 +3067,19 @@ export function CoursesPage({
                 }));
               }}
               theme={theme}
-              onThemeChange={setTheme}
+              onThemeChange={(next, origin) => {
+                if (next !== theme) {
+                  themeRevealOriginRef.current = origin ?? null;
+                }
+                setTheme(next);
+              }}
               academyTheme={appliedAcademyTheme}
-              onAcademyThemeChange={setAcademyTheme}
+              onAcademyThemeChange={(next, origin) => {
+                if (next !== displayedAcademyTheme) {
+                  themeRevealOriginRef.current = origin ?? null;
+                }
+                setAcademyTheme(next);
+              }}
               pageTabColors={pageTabColors}
               onPageTabColorsChange={setPageTabColors}
               sidebarPreferences={sidebarPreferences}
@@ -3300,6 +3374,8 @@ export function CoursesPage({
                       title={`${resolvedTheme === "dark" ? "Dark" : "Light"} mode — switch to ${resolvedTheme === "dark" ? "light" : "dark"} mode`}
                       onClick={(event) => {
                         if (consumeAppearanceGestureClick(event)) return;
+                        themeRevealOriginRef.current =
+                          themeRevealOriginFromClick(event);
                         toggleAppearance(true);
                       }}
                       onContextMenu={(event) =>
@@ -3344,7 +3420,10 @@ export function CoursesPage({
                         if (consumeAppearanceGestureClick(event)) return;
                         setReadingModeMenu(null);
                         setPaletteMenuSource("theme");
-                        if (mobilePaletteMenu) cancelMobilePalettePreview();
+                        if (mobilePaletteMenu)
+                          cancelMobilePalettePreview(
+                            themeRevealOriginFromClick(event) ?? undefined,
+                          );
                         else setMobilePaletteMenu(true);
                       }}
                       onPointerDown={(event) =>
@@ -3465,7 +3544,7 @@ export function CoursesPage({
                 className="sidebar-palette-menu mobile-palette-menu"
                 mobile
                 onSelect={selectAcademyTheme}
-                onPreview={setPalettePreviewTheme}
+                onPreview={previewAcademyTheme}
                 onConfirm={confirmMobilePaletteTheme}
                 onCancel={cancelMobilePalettePreview}
               />

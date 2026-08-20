@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { applyWithThemeViewTransition } from "../../src/shell/themeViewTransition.js";
+import {
+  applyWithThemeViewTransition,
+  themeRevealOriginFromClick,
+  themeRevealOriginFromElement,
+} from "../../src/shell/themeViewTransition.js";
 
 type MockViewTransitionFactory = ReturnType<typeof installTransitionMock>;
 
@@ -19,12 +23,6 @@ function installTransitionMock() {
     writable: true,
   });
   return startViewTransition;
-}
-
-function dispatchPointerDown(x: number, y: number) {
-  document.body.dispatchEvent(
-    new MouseEvent("pointerdown", { clientX: x, clientY: y, bubbles: true }),
-  );
 }
 
 function rootStyle(): CSSStyleDeclaration {
@@ -64,12 +62,10 @@ describe("applyWithThemeViewTransition", () => {
     expect(commit).toHaveBeenCalledTimes(1);
   });
 
-  it("reveals from the pointerdown position with a fixed duration", async () => {
-    dispatchPointerDown(0, 0);
-    const commit = vi.fn();
-    applyWithThemeViewTransition(commit);
-    expect(rootStyle().getPropertyValue("--theme-reveal-x")).toBe("0px");
-    expect(rootStyle().getPropertyValue("--theme-reveal-y")).toBe("0px");
+  it("reveals from the explicitly passed pointer origin with a fixed duration", async () => {
+    applyWithThemeViewTransition(vi.fn(), "mode", { x: 12, y: 34 });
+    expect(rootStyle().getPropertyValue("--theme-reveal-x")).toBe("12px");
+    expect(rootStyle().getPropertyValue("--theme-reveal-y")).toBe("34px");
     expect(rootStyle().getPropertyValue("--theme-reveal-duration")).toBe("");
     await vi.waitFor(() =>
       expect(rootStyle().getPropertyValue("--theme-reveal-x")).toBe(""),
@@ -81,8 +77,10 @@ describe("applyWithThemeViewTransition", () => {
   it("keeps the same fixed pacing for center clicks as corner clicks", () => {
     const centerX = Math.round(window.innerWidth / 2);
     const centerY = Math.round(window.innerHeight / 2);
-    dispatchPointerDown(centerX, centerY);
-    applyWithThemeViewTransition(vi.fn());
+    applyWithThemeViewTransition(vi.fn(), "mode", {
+      x: centerX,
+      y: centerY,
+    });
     expect(rootStyle().getPropertyValue("--theme-reveal-x")).toBe(
       `${centerX}px`,
     );
@@ -93,21 +91,21 @@ describe("applyWithThemeViewTransition", () => {
     expect(rootStyle().getPropertyValue("--theme-reveal-duration")).toBe("");
   });
 
-  it("falls back to the CSS corner origins without any pointerdown", async () => {
-    // A fresh module instance has never observed a pointerdown, matching the
-    // first transition of a session (or keyboard/OS-triggered changes).
-    vi.resetModules();
-    const { applyWithThemeViewTransition: applyFresh } =
-      await import("../../src/shell/themeViewTransition.js");
-    applyFresh(vi.fn());
+  it("falls back to the CSS corner origins without a pointer origin", () => {
+    // Keyboard and OS-triggered commits pass no origin; unrelated earlier
+    // pointer interactions must never leak into the reveal.
+    applyWithThemeViewTransition(vi.fn());
     expect(rootStyle().getPropertyValue("--theme-reveal-x")).toBe("");
     expect(rootStyle().getPropertyValue("--theme-reveal-y")).toBe("");
   });
 
-  it("ignores pointerdowns that are too old to be the reveal trigger", () => {
-    vi.useFakeTimers({ toFake: ["performance"] });
-    dispatchPointerDown(40, 80);
-    vi.advanceTimersByTime(2100);
+  it("does not reuse a previous transition's pointer origin", async () => {
+    applyWithThemeViewTransition(vi.fn(), "mode", { x: 12, y: 34 });
+    await vi.waitFor(() =>
+      expect(rootStyle().getPropertyValue("--theme-reveal-x")).toBe(""),
+    );
+    // A follow-up transition without an origin (keyboard/OS trigger) stages
+    // nothing even though a pointer transition ran before it.
     applyWithThemeViewTransition(vi.fn());
     expect(rootStyle().getPropertyValue("--theme-reveal-x")).toBe("");
     expect(rootStyle().getPropertyValue("--theme-reveal-y")).toBe("");
@@ -127,10 +125,8 @@ describe("applyWithThemeViewTransition", () => {
       updateCallbackDone: Promise.resolve(),
     }));
 
-    dispatchPointerDown(10, 20);
-    applyWithThemeViewTransition(vi.fn());
-    dispatchPointerDown(30, 40);
-    applyWithThemeViewTransition(vi.fn());
+    applyWithThemeViewTransition(vi.fn(), "mode", { x: 10, y: 20 });
+    applyWithThemeViewTransition(vi.fn(), "mode", { x: 30, y: 40 });
     expect(rootStyle().getPropertyValue("--theme-reveal-x")).toBe("30px");
 
     // Skipping the first transition must not wipe the second one's origin;
@@ -187,10 +183,8 @@ describe("applyWithThemeViewTransition", () => {
       updateCallbackDone: Promise.resolve(),
     }));
 
-    dispatchPointerDown(25, 10);
-    applyWithThemeViewTransition(vi.fn());
-    dispatchPointerDown(25, 60);
-    applyWithThemeViewTransition(vi.fn());
+    applyWithThemeViewTransition(vi.fn(), "mode", { x: 25, y: 10 });
+    applyWithThemeViewTransition(vi.fn(), "mode", { x: 25, y: 60 });
     expect(rootStyle().getPropertyValue("--theme-reveal-x")).toBe("25px");
     expect(rootStyle().getPropertyValue("--theme-reveal-y")).toBe("60px");
 
@@ -221,10 +215,8 @@ describe("applyWithThemeViewTransition", () => {
       updateCallbackDone: Promise.resolve(),
     }));
 
-    dispatchPointerDown(10, 20);
-    applyWithThemeViewTransition(vi.fn());
-    dispatchPointerDown(10, 20);
-    applyWithThemeViewTransition(vi.fn());
+    applyWithThemeViewTransition(vi.fn(), "mode", { x: 10, y: 20 });
+    applyWithThemeViewTransition(vi.fn(), "mode", { x: 10, y: 20 });
 
     firstTransitionFinished.resolve();
     await firstTransitionFinished.promise;
@@ -261,5 +253,61 @@ describe("applyWithThemeViewTransition", () => {
     applyWithThemeViewTransition(commit);
     expect(commit).toHaveBeenCalledTimes(1);
     expect(startViewTransition).not.toHaveBeenCalled();
+  });
+});
+
+describe("themeRevealOriginFromClick", () => {
+  it("derives an origin from a pointer click", () => {
+    expect(themeRevealOriginFromClick({ clientX: 40, clientY: 80 })).toEqual({
+      x: 40,
+      y: 80,
+    });
+  });
+
+  it("rejects keyboard and programmatic clicks reported at the viewport origin", () => {
+    // Enter/Space activations and element.click() both report (0, 0) with no
+    // element to attribute the reveal to.
+    expect(themeRevealOriginFromClick({ clientX: 0, clientY: 0 })).toBeNull();
+  });
+
+  it("reveals keyboard-activated clicks from the activated control's center", () => {
+    const button = document.createElement("button");
+    button.getBoundingClientRect = () =>
+      ({ left: 100, top: 50, width: 40, height: 20 }) as DOMRect;
+    expect(
+      themeRevealOriginFromClick({
+        clientX: 0,
+        clientY: 0,
+        currentTarget: button,
+      }),
+    ).toEqual({ x: 120, y: 60 });
+  });
+
+  it("rejects keyboard clicks on unmeasured controls", () => {
+    // jsdom-style zero rects cannot yield a center; the corner applies.
+    const button = document.createElement("button");
+    expect(
+      themeRevealOriginFromClick({
+        clientX: 0,
+        clientY: 0,
+        currentTarget: button,
+      }),
+    ).toBeNull();
+  });
+});
+
+describe("themeRevealOriginFromElement", () => {
+  it("returns the element's box center", () => {
+    const element = document.createElement("div");
+    element.getBoundingClientRect = () =>
+      ({ left: 10, top: 20, width: 100, height: 50 }) as DOMRect;
+    expect(themeRevealOriginFromElement(element)).toEqual({ x: 60, y: 45 });
+  });
+
+  it("returns null for missing or unmeasured elements", () => {
+    expect(themeRevealOriginFromElement(null)).toBeNull();
+    expect(themeRevealOriginFromElement(undefined)).toBeNull();
+    const element = document.createElement("div");
+    expect(themeRevealOriginFromElement(element)).toBeNull();
   });
 });
