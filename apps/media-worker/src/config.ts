@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { resolveDefaultUploadConcurrency } from "./resource-monitor.ts";
 
 export const mediaWorkerConfigSchema = z.object({
   WORKER_ID: z.string().uuid(),
@@ -21,11 +22,29 @@ export const mediaWorkerConfigSchema = z.object({
   PROGRESS_UPDATE_INTERVAL_MS: z.coerce.number().int().min(1000).default(5000),
   WORKER_IDLE_POLL_SECONDS: z.coerce.number().int().min(1).default(15),
   VIDEO_COMPRESSION_CRF: z.coerce.number().int().min(0).max(51).default(22),
+  UPLOAD_MAX_CONCURRENCY: z.coerce.number().int().min(1).optional(),
+  UPLOAD_MIN_CONCURRENCY: z.coerce.number().int().min(1).optional(),
+  UPLOAD_THROTTLE_CPU_PERCENT: z.coerce.number().min(1).max(100).default(80),
+  UPLOAD_THROTTLE_MEMORY_PERCENT: z.coerce
+    .number()
+    .min(1)
+    .max(100)
+    .default(80),
+  INCREMENTAL_UPLOAD_POLL_MS: z.coerce.number().int().min(500).default(3000),
+  INCREMENTAL_UPLOAD_SETTLE_MS: z.coerce.number().int().min(0).default(2000),
   FFMPEG_PATH: z.string().default("ffmpeg"),
   FFPROBE_PATH: z.string().default("ffprobe"),
 });
 
-export type MediaWorkerConfig = z.infer<typeof mediaWorkerConfigSchema>;
+type ParsedMediaWorkerConfig = z.infer<typeof mediaWorkerConfigSchema>;
+
+export type MediaWorkerConfig = Omit<
+  ParsedMediaWorkerConfig,
+  "UPLOAD_MAX_CONCURRENCY" | "UPLOAD_MIN_CONCURRENCY"
+> & {
+  UPLOAD_MAX_CONCURRENCY: number;
+  UPLOAD_MIN_CONCURRENCY: number;
+};
 
 export function loadMediaWorkerConfig(
   env: Readonly<Record<string, string | undefined>> = process.env,
@@ -35,5 +54,12 @@ export function loadMediaWorkerConfig(
     S3_BUCKET: env["S3_BUCKET"] || env["S3_BUCKET_NAME"] || "veolms-media",
     S3_REGION: env["S3_REGION"] || env["AWS_REGION"] || "us-east-1",
   };
-  return mediaWorkerConfigSchema.parse(resolvedEnv);
+  const parsed = mediaWorkerConfigSchema.parse(resolvedEnv);
+  const defaults = resolveDefaultUploadConcurrency();
+
+  return {
+    ...parsed,
+    UPLOAD_MAX_CONCURRENCY: parsed.UPLOAD_MAX_CONCURRENCY ?? defaults.maxConcurrency,
+    UPLOAD_MIN_CONCURRENCY: parsed.UPLOAD_MIN_CONCURRENCY ?? defaults.minConcurrency,
+  };
 }

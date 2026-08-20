@@ -10,15 +10,40 @@ import {
   type VideoMetadata,
 } from "./ffmpeg-builder.ts";
 import { FfmpegProgressParser } from "./progress.ts";
+import { sampleResourceUsage } from "./resource-monitor.ts";
 import {
   createS3ClientFromConfig,
   downloadHttpFile,
   downloadS3File,
-  uploadDirectoryToS3,
+  startIncrementalHlsUpload,
+  type IncrementalUploadHandle,
 } from "./s3.ts";
+import type { MediaWorkerConfig } from "./config.ts";
 import type { MediaWorkerContext } from "./worker.ts";
 
 const execFileAsync = promisify(execFile);
+
+export function extractVideoExtension(videoKey: string): string {
+  const withoutQuery = videoKey.split(/[?#]/)[0] ?? videoKey;
+  const match = /\.([a-zA-Z0-9]{1,5})$/.exec(withoutQuery);
+  return match?.[1]?.toLowerCase() ?? "mp4";
+}
+
+/**
+ * Backs off upload parallelism under real system pressure (FFmpeg, not
+ * this Node process, is what actually drives CPU/memory usage here) —
+ * UPLOAD_MAX_CONCURRENCY normally, dropping to UPLOAD_MIN_CONCURRENCY once
+ * either CPU or memory crosses its configured throttle threshold.
+ */
+async function resolveUploadConcurrency(
+  config: MediaWorkerConfig,
+): Promise<number> {
+  const { cpuPercent, memoryPercent } = await sampleResourceUsage();
+  const throttled =
+    cpuPercent >= config.UPLOAD_THROTTLE_CPU_PERCENT ||
+    memoryPercent >= config.UPLOAD_THROTTLE_MEMORY_PERCENT;
+  return throttled ? config.UPLOAD_MIN_CONCURRENCY : config.UPLOAD_MAX_CONCURRENCY;
+}
 
 export async function probeVideoMetadata(
   videoPath: string,
@@ -130,8 +155,12 @@ export async function executeTranscodeJob(
 
   const s3Client = createS3ClientFromConfig(config);
   const jobScratchDir = join(config.SCRATCH_DIR, jobId);
-  const inputVideoPath = join(jobScratchDir, "input.mp4");
+  const inputVideoPath = join(
+    jobScratchDir,
+    `originalvideo.${extractVideoExtension(job.video_key)}`,
+  );
   const outputHlsDir = join(jobScratchDir, "hls");
+  let uploadHandle: IncrementalUploadHandle | null = null;
 
   try {
     await mkdir(jobScratchDir, { recursive: true });
@@ -274,6 +303,20 @@ export async function executeTranscodeJob(
       },
     });
 
+    // 6b. Start uploading segments/playlists as FFmpeg writes them, rather
+    // than waiting for the whole multi-quality encode to finish.
+    if (config.STORAGE_PROVIDER === "s3") {
+      uploadHandle = startIncrementalHlsUpload({
+        s3: s3Client,
+        bucket: config.S3_BUCKET,
+        localDir: outputHlsDir,
+        s3Prefix: job.output_prefix,
+        pollIntervalMs: config.INCREMENTAL_UPLOAD_POLL_MS,
+        settleMs: config.INCREMENTAL_UPLOAD_SETTLE_MS,
+        getConcurrency: () => resolveUploadConcurrency(config),
+      });
+    }
+
     // 7. Spawn and execute FFmpeg
     await new Promise<void>((resolve, reject) => {
       const ffmpegProcess = spawn(config.FFMPEG_PATH, [...args], {
@@ -337,17 +380,16 @@ export async function executeTranscodeJob(
       console.warn("[media-worker] Local sync notice:", localErr);
     }
 
-    // 10. Sync HLS artifacts to S3 if storage provider is s3
-    if (config.STORAGE_PROVIDER === "s3") {
+    // 10. Final sweep of the incremental S3 upload — everything the poll
+    // loop already picked up while FFmpeg was running is done; this just
+    // catches the master playlist (only written above, after FFmpeg
+    // exits) and any last segments from the final poll window.
+    if (uploadHandle) {
       try {
-        const uploaded = await uploadDirectoryToS3(
-          s3Client,
-          config.S3_BUCKET,
-          outputHlsDir,
-          job.output_prefix,
-        );
+        await uploadHandle.stop();
+        uploadHandle = null;
         console.info(
-          `[media-worker] Uploaded ${uploaded} HLS files to s3://${config.S3_BUCKET}/${job.output_prefix}`,
+          `[media-worker] Finished uploading HLS output to s3://${config.S3_BUCKET}/${job.output_prefix}`,
         );
       } catch (s3Err) {
         console.warn("[media-worker] S3 upload notice:", s3Err);
@@ -391,6 +433,24 @@ export async function executeTranscodeJob(
   } catch (error: unknown) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     console.error(`Transcode job ${jobId} failed:`, errorMsg);
+
+    // Job failed partway through FFmpeg — whatever segments the
+    // incremental uploader already picked up (or is mid-batch on) are
+    // left in S3 rather than cleaned up (a retry reuses the same
+    // output_prefix and overwrites what it regenerates), but flush one
+    // more sweep so anything still sitting locally, unsynced, isn't lost
+    // outright once the scratch dir gets wiped in `finally` below.
+    if (uploadHandle) {
+      try {
+        await uploadHandle.stop();
+      } catch (s3Err) {
+        console.warn(
+          "[media-worker] S3 flush-on-failure notice:",
+          s3Err,
+        );
+      }
+      uploadHandle = null;
+    }
 
     await db
       .updateTable("jobs")
