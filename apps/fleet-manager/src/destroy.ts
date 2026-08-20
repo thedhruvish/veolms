@@ -11,7 +11,13 @@
 import { red } from "@veolms/fleet-types/terminal";
 import { loadModuleFunction } from "./core/dynamic-module.ts";
 
-const provider = (process.env["FLEET_PROVIDER"] ?? "aws").toLowerCase().trim();
+const provider = (
+  process.env["FLEET_PROVIDER"] ??
+  process.env["PROVIDER"] ??
+  "aws"
+)
+  .toLowerCase()
+  .trim();
 
 async function dispatch(): Promise<void> {
   const packageName = `@veolms/fleet-provider-${provider}/destroy`;

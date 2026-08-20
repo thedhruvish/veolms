@@ -10,51 +10,76 @@ export async function run(): Promise<void> {
 
   console.info(`[media-worker] Initializing worker ${config.WORKER_ID}...`);
   const workerCtx = await initMediaWorker({ config, db });
+  const shutdownController = new AbortController();
 
   const cleanup = () => {
+    if (shutdownController.signal.aborted) {
+      return;
+    }
     console.info(
       `[media-worker] Shutdown signal received for worker ${config.WORKER_ID}...`,
     );
-    workerCtx.stopHeartbeat();
+    shutdownController.abort();
   };
 
   process.on("SIGTERM", cleanup);
   process.on("SIGINT", cleanup);
 
   try {
-    let jobId = config.JOB_ID ?? null;
+    let jobId =
+      config.JOB_ID ??
+      (await pollForNextJob(workerCtx, shutdownController.signal));
 
     if (!jobId) {
       console.info(
-        `[media-worker] Worker ${config.WORKER_ID} running idle, waiting for commands.`,
+        `[media-worker] No compatible queued work found for worker ${config.WORKER_ID}.`,
       );
-      return;
     }
 
     // Keep this already-booted worker busy: after each job, check the
     // queue for the next one instead of terminating immediately. Reuses
     // the instance across many jobs, skipping the fresh-boot cost each
     // subsequent job would otherwise pay.
-    while (jobId) {
+    while (jobId && !shutdownController.signal.aborted) {
       console.info(`[media-worker] Processing job ${jobId}...`);
       try {
-        await executeTranscodeJob(workerCtx, jobId);
+        await executeTranscodeJob(workerCtx, jobId, shutdownController.signal);
         console.info(`[media-worker] Job ${jobId} finished successfully.`);
       } catch (err) {
         console.error(`[media-worker] Job ${jobId} encountered an error:`, err);
-        process.exitCode = 1;
+        if (shutdownController.signal.aborted) {
+          break;
+        }
       }
 
-      jobId = await pollForNextJob(workerCtx);
+      jobId = await pollForNextJob(workerCtx, shutdownController.signal);
     }
 
-    console.info(
-      `[media-worker] No more queued work — worker ${config.WORKER_ID} shutting down.`,
-    );
+    if (shutdownController.signal.aborted) {
+      console.info(`[media-worker] Worker ${config.WORKER_ID} shut down safely.`);
+    } else {
+      console.info(
+        `[media-worker] No more compatible queued work — worker ${config.WORKER_ID} shutting down.`,
+      );
+    }
   } finally {
     process.off("SIGTERM", cleanup);
     process.off("SIGINT", cleanup);
     workerCtx.stopHeartbeat();
+    try {
+      await db
+        .updateTable("workers")
+        .set({
+          status: "COMPLETED",
+          job_id: null,
+          updated_at: new Date(),
+        })
+        .where("id", "=", config.WORKER_ID)
+        .where("status", "=", "READY")
+        .execute();
+    } finally {
+      await db.destroy();
+    }
   }
 }
 

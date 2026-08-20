@@ -16,7 +16,13 @@
 import { bold, cyan, dim, red } from "@veolms/fleet-types/terminal";
 import { loadModuleFunction } from "./core/dynamic-module.ts";
 
-const provider = (process.env["FLEET_PROVIDER"] ?? "").toLowerCase().trim();
+const provider = (
+  process.env["FLEET_PROVIDER"] ??
+  process.env["PROVIDER"] ??
+  ""
+)
+  .toLowerCase()
+  .trim();
 
 if (!provider) {
   console.error(`

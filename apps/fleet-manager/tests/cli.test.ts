@@ -40,4 +40,11 @@ describe("Fleet Manager CLI Argument Parser", () => {
     assert.deepEqual(parsed.positional, ["job-123"]);
     assert.equal(parsed.flags["verbose"], true);
   });
+
+  it("should parse --provider flag correctly", () => {
+    const parsed = parseCliArgs(["prune", "--provider=aws"]);
+
+    assert.equal(parsed.command, "prune");
+    assert.equal(parsed.flags["provider"], "aws");
+  });
 });

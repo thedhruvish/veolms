@@ -1,9 +1,13 @@
 import { execFile, spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { copyFile, cp, mkdir, rm, stat, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import { promisify } from "node:util";
-import type { VideoQualityLevel } from "@veolms/fleet-types";
+import {
+  jobRequirementsSchema,
+  type JobRequirements,
+  type VideoQualityLevel,
+} from "@veolms/fleet-types";
 import {
   buildCompressionArgs,
   buildFfmpegHlsArgs,
@@ -22,6 +26,93 @@ import type { MediaWorkerConfig } from "./config.ts";
 import type { MediaWorkerContext } from "./worker.ts";
 
 const execFileAsync = promisify(execFile);
+const FFMPEG_STDERR_TAIL_BYTES = 16 * 1024;
+
+function appendOutputTail(current: string, chunk: Buffer): string {
+  const combined = current + chunk.toString();
+  return combined.length > FFMPEG_STDERR_TAIL_BYTES
+    ? combined.slice(-FFMPEG_STDERR_TAIL_BYTES)
+    : combined;
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    throw new Error("Media processing was cancelled");
+  }
+}
+
+function resolveWithin(root: string, candidate: string): string {
+  if (isAbsolute(candidate)) {
+    throw new Error("Absolute local paths are not allowed in media job keys");
+  }
+
+  const resolvedRoot = resolve(root);
+  const resolvedPath = resolve(resolvedRoot, candidate);
+  const pathFromRoot = relative(resolvedRoot, resolvedPath);
+  if (
+    pathFromRoot === ".." ||
+    pathFromRoot.startsWith("../") ||
+    pathFromRoot.startsWith("..\\")
+  ) {
+    throw new Error("Media job path must remain inside its configured directory");
+  }
+  return resolvedPath;
+}
+
+async function runFfmpeg(options: {
+  executable: string;
+  args: readonly string[];
+  phase: string;
+  signal?: AbortSignal;
+  onStdout?: (data: Buffer) => void;
+}): Promise<void> {
+  const { executable, args, phase, signal, onStdout } = options;
+  throwIfAborted(signal);
+
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(executable, args, {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let settled = false;
+    let stderrOutput = "";
+    let forceKillTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const finish = (error?: Error) => {
+      if (settled) return;
+      settled = true;
+      signal?.removeEventListener("abort", abortChild);
+      if (forceKillTimer) clearTimeout(forceKillTimer);
+      if (error) reject(error);
+      else resolve();
+    };
+
+    const abortChild = () => {
+      child.kill("SIGTERM");
+      forceKillTimer = setTimeout(() => child.kill("SIGKILL"), 10_000);
+      forceKillTimer.unref();
+    };
+
+    signal?.addEventListener("abort", abortChild, { once: true });
+    child.stdout?.on("data", (data: Buffer) => onStdout?.(data));
+    child.stderr?.on("data", (data: Buffer) => {
+      stderrOutput = appendOutputTail(stderrOutput, data);
+    });
+    child.once("error", (error) => finish(error));
+    child.once("close", (code, closeSignal) => {
+      if (signal?.aborted) {
+        finish(new Error(`FFmpeg ${phase} was cancelled`));
+      } else if (code === 0) {
+        finish();
+      } else {
+        finish(
+          new Error(
+            `FFmpeg ${phase} exited with code ${code ?? "null"}${closeSignal ? ` (${closeSignal})` : ""}: ${stderrOutput.slice(-500)}`,
+          ),
+        );
+      }
+    });
+  });
+}
 
 export function extractVideoExtension(videoKey: string): string {
   const withoutQuery = videoKey.split(/[?#]/)[0] ?? videoKey;
@@ -69,29 +160,49 @@ export async function probeVideoMetadata(
       }>;
     };
 
-    const durationSeconds = parseFloat(parsed.format?.duration ?? "600") || 600;
+    const durationSeconds = Number(parsed.format?.duration);
     const videoStream = parsed.streams?.find(
       (s) => typeof s.width === "number" && typeof s.height === "number",
     );
+    const width = videoStream?.width;
+    const height = videoStream?.height;
+
+    if (
+      typeof width !== "number" ||
+      typeof height !== "number" ||
+      !Number.isFinite(durationSeconds) ||
+      durationSeconds <= 0
+    ) {
+      throw new Error("ffprobe did not return usable video dimensions and duration");
+    }
+
+    const fpsParts = (videoStream?.r_frame_rate ?? "").split("/", 2);
+    const fpsNumerator = Number(fpsParts[0]);
+    const fpsDenominator = Number(fpsParts[1]);
+    const fps =
+      Number.isFinite(fpsNumerator) &&
+      Number.isFinite(fpsDenominator) &&
+      fpsNumerator > 0 &&
+      fpsDenominator > 0
+        ? fpsNumerator / fpsDenominator
+        : undefined;
 
     return {
       durationSeconds,
-      width: videoStream?.width ?? 1920,
-      height: videoStream?.height ?? 1080,
+      width,
+      height,
+      fps,
     };
-  } catch {
-    // Default fallback if ffprobe is unavailable
-    return {
-      durationSeconds: 600,
-      width: 1920,
-      height: 1080,
-    };
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(`Unable to probe input video ${videoPath}: ${detail}`);
   }
 }
 
 export async function executeTranscodeJob(
   ctx: MediaWorkerContext,
   jobId: string,
+  signal?: AbortSignal,
 ): Promise<void> {
   const { db, config, workerId, recordEvent } = ctx;
 
@@ -106,54 +217,7 @@ export async function executeTranscodeJob(
     throw new Error(`Job ${jobId} not found in database`);
   }
 
-  // 2. Mark job & worker PROCESSING
-  await db
-    .updateTable("jobs")
-    .set({
-      status: "PROCESSING",
-      worker_id: workerId,
-      started_at: new Date(),
-      updated_at: new Date(),
-    })
-    .where("id", "=", jobId)
-    .execute();
-
-  await db
-    .updateTable("workers")
-    .set({
-      status: "PROCESSING",
-      job_id: jobId,
-      updated_at: new Date(),
-    })
-    .where("id", "=", workerId)
-    .execute();
-
-  // Reset this worker's monitoring row for the new job — it may be a
-  // reused worker picking up a second/third job, whose estimated duration
-  // and progress differ from the job it just finished. `next_check_at` set
-  // to now makes it immediately "due", so the next fleet-manager
-  // monitoring cycle recalculates a correct schedule from fresh values
-  // rather than working off the previous job's numbers.
-  await db
-    .updateTable("worker_monitoring")
-    .set({
-      estimated_duration_sec: job.requirements.hardware.estimatedDurationSeconds,
-      progress_percent: 0,
-      last_progress_at: null,
-      monitoring_attempts: 0,
-      next_check_at: new Date(),
-      updated_at: new Date(),
-    })
-    .where("worker_id", "=", workerId)
-    .execute();
-
-  await recordEvent("JOB_STARTED", jobId, {
-    videoKey: job.video_key,
-    outputPrefix: job.output_prefix,
-    qualities: job.requirements.qualities,
-  });
-
-  const s3Client = createS3ClientFromConfig(config);
+  let requirements: JobRequirements | null = null;
   const jobScratchDir = join(config.SCRATCH_DIR, jobId);
   const inputVideoPath = join(
     jobScratchDir,
@@ -161,8 +225,77 @@ export async function executeTranscodeJob(
   );
   const outputHlsDir = join(jobScratchDir, "hls");
   let uploadHandle: IncrementalUploadHandle | null = null;
+  let progressWrite: Promise<void> = Promise.resolve();
+  let ownsJob = false;
 
   try {
+    throwIfAborted(signal);
+
+    if (job.status !== "PROCESSING" && job.status !== "QUEUED") {
+      throw new Error(`Job ${jobId} is ${job.status}, not runnable`);
+    }
+    if (job.worker_id && job.worker_id !== workerId) {
+      throw new Error(`Job ${jobId} is assigned to another worker`);
+    }
+
+    // Claim ownership before doing any work. The worker-ID guard prevents a
+    // stale process from overwriting a job that has been reassigned.
+    await db.transaction().execute(async (trx) => {
+      const claimResult = await trx
+        .updateTable("jobs")
+        .set({
+          status: "PROCESSING",
+          worker_id: workerId,
+          started_at: job.started_at ?? new Date(),
+          updated_at: new Date(),
+        })
+        .where("id", "=", jobId)
+        .where((eb) =>
+          eb.or([
+            eb("worker_id", "is", null),
+            eb("worker_id", "=", workerId),
+          ]),
+        )
+        .executeTakeFirst();
+
+      if (claimResult.numUpdatedRows !== 1n) {
+        throw new Error(`Job ${jobId} could not be claimed by this worker`);
+      }
+
+      await trx
+        .updateTable("workers")
+        .set({
+          status: "PROCESSING",
+          job_id: jobId,
+          updated_at: new Date(),
+        })
+        .where("id", "=", workerId)
+        .execute();
+
+    });
+    ownsJob = true;
+
+    requirements = jobRequirementsSchema.parse(job.requirements);
+    await db
+      .updateTable("worker_monitoring")
+      .set({
+        estimated_duration_sec: requirements.hardware.estimatedDurationSeconds,
+        progress_percent: 0,
+        last_progress_at: null,
+        monitoring_attempts: 0,
+        next_check_at: new Date(),
+        updated_at: new Date(),
+      })
+      .where("worker_id", "=", workerId)
+      .execute();
+
+    await recordEvent("JOB_STARTED", jobId, {
+      videoKey: job.video_key,
+      outputPrefix: job.output_prefix,
+      qualities: requirements.qualities,
+    });
+
+    const s3Client = createS3ClientFromConfig(config);
     await mkdir(jobScratchDir, { recursive: true });
     await mkdir(outputHlsDir, { recursive: true });
 
@@ -170,14 +303,18 @@ export async function executeTranscodeJob(
     const isHttpUrl = /^https?:\/\//i.test(job.video_key);
 
     if (isHttpUrl) {
-      await downloadHttpFile(job.video_key, inputVideoPath);
+      await downloadHttpFile(job.video_key, inputVideoPath, {
+        timeoutMs: config.HTTP_DOWNLOAD_TIMEOUT_MS,
+        maxBytes: config.HTTP_DOWNLOAD_MAX_BYTES,
+        signal,
+      });
     } else {
+      const workspaceDir = process.cwd();
       const localCandidates = [
-        job.video_key,
-        join(process.cwd(), job.video_key),
-        join(process.cwd(), "s3-bucket", job.video_key),
-        join(process.cwd(), "scratch", job.video_key),
-        join(process.cwd(), "scratch/source-video.mp4"),
+        resolveWithin(workspaceDir, job.video_key),
+        resolveWithin(join(workspaceDir, "s3-bucket"), job.video_key),
+        resolveWithin(join(workspaceDir, "scratch"), job.video_key),
+        join(workspaceDir, "scratch/source-video.mp4"),
       ];
       let isLocalFile = false;
       for (const candidate of localCandidates) {
@@ -185,12 +322,24 @@ export async function executeTranscodeJob(
           try {
             const s = await stat(candidate);
             if (s.isFile()) {
+              if (s.size > config.HTTP_DOWNLOAD_MAX_BYTES) {
+                throw new Error(
+                  `Local source ${candidate} exceeds the ${config.HTTP_DOWNLOAD_MAX_BYTES}-byte limit`,
+                );
+              }
               await copyFile(candidate, inputVideoPath);
               isLocalFile = true;
               break;
             }
-          } catch {
-            // Ignore
+          } catch (error) {
+            if (
+              error instanceof Error &&
+              error.message.startsWith("Local source ")
+            ) {
+              throw error;
+            }
+            // Candidate disappeared or could not be read; try the next
+            // configured local location, then S3.
           }
         }
       }
@@ -201,6 +350,10 @@ export async function executeTranscodeJob(
           config.S3_BUCKET,
           job.video_key,
           inputVideoPath,
+          {
+            maxBytes: config.HTTP_DOWNLOAD_MAX_BYTES,
+            signal,
+          },
         );
       }
     }
@@ -212,17 +365,15 @@ export async function executeTranscodeJob(
     );
 
     // 5. Build FFmpeg command for requested qualities array
-    const targetQualities: readonly VideoQualityLevel[] =
-      job.requirements.qualities && job.requirements.qualities.length > 0
-        ? job.requirements.qualities
-        : ["1080p", "720p", "480p", "360p"];
+    const targetQualities: readonly VideoQualityLevel[] = [
+      ...new Set(requirements.qualities),
+    ];
 
-    // 4b. Compress the source once (CRF re-encode, capped to the largest
-    // requested quality tier) before splitting it into renditions — avoids
-    // carrying a full-resolution intermediate through the HLS split when
-    // the job doesn't need it, and shrinks storage/read cost either way.
+    // 4b. When necessary, cap the source to the largest requested quality
+    // tier before splitting it into renditions. Sources already within that
+    // cap skip this pass entirely to avoid an unnecessary full re-encode.
     const optimizedVideoPath = join(jobScratchDir, "optimized.mp4");
-    const { args: compressionArgs } = buildCompressionArgs({
+    const compression = buildCompressionArgs({
       inputPath: inputVideoPath,
       outputPath: optimizedVideoPath,
       qualities: targetQualities,
@@ -230,42 +381,24 @@ export async function executeTranscodeJob(
       crf: config.VIDEO_COMPRESSION_CRF,
     });
 
-    await new Promise<void>((resolveCompression, rejectCompression) => {
-      const compressionProcess = spawn(config.FFMPEG_PATH, compressionArgs, {
-        stdio: ["ignore", "pipe", "pipe"],
+    // Avoid a needless full re-encode when the source already fits the
+    // largest requested rendition. Capped inputs still use the smaller
+    // intermediate to avoid carrying 4K pixels through every HLS rendition.
+    const transcodeInputPath = compression.targetResolution
+      ? optimizedVideoPath
+      : inputVideoPath;
+    if (compression.targetResolution) {
+      await runFfmpeg({
+        executable: config.FFMPEG_PATH,
+        args: compression.args,
+        phase: "compression pass",
+        signal,
       });
+    }
 
-      // Not parsed for progress (compression runs silently, ahead of the
-      // HLS-split phase's progress reporting) — still drained to avoid the
-      // OS pipe buffer filling up and stalling ffmpeg.
-      compressionProcess.stdout?.on("data", () => {});
-
-      let stderrOutput = "";
-      compressionProcess.stderr?.on("data", (data: Buffer) => {
-        stderrOutput += data.toString();
-      });
-
-      compressionProcess.on("exit", (code) => {
-        if (code === 0) {
-          resolveCompression();
-        } else {
-          rejectCompression(
-            new Error(
-              `FFmpeg compression pass exited with code ${code}: ${stderrOutput.slice(-500)}`,
-            ),
-          );
-        }
-      });
-
-      compressionProcess.on("error", (err) => {
-        rejectCompression(err);
-      });
-    });
-
-    const metadata = await probeVideoMetadata(
-      optimizedVideoPath,
-      config.FFPROBE_PATH,
-    );
+    const metadata = compression.targetResolution
+      ? await probeVideoMetadata(optimizedVideoPath, config.FFPROBE_PATH)
+      : sourceMetadata;
 
     // Ensure quality subdirectories exist
     for (const q of targetQualities) {
@@ -274,32 +407,38 @@ export async function executeTranscodeJob(
 
     const { args, masterPlaylistContent, applicableQualities } =
       buildFfmpegHlsArgs({
-        inputPath: optimizedVideoPath,
+        inputPath: transcodeInputPath,
         outputDir: outputHlsDir,
         qualities: targetQualities,
         metadata,
-        segmentDurationSeconds: job.requirements.segmentDurationSeconds ?? 6,
+        segmentDurationSeconds: requirements.segmentDurationSeconds ?? 6,
       });
 
     // 6. Setup progress tracking directly to PostgreSQL
     const progressParser = new FfmpegProgressParser({
       totalDurationSeconds: metadata.durationSeconds,
       throttleIntervalMs: config.PROGRESS_UPDATE_INTERVAL_MS,
-      onProgress: async (progress) => {
-        try {
-          await db
-            .updateTable("worker_monitoring")
-            .set({
-              progress_percent: progress.progressPercent,
-              last_progress_at: new Date(),
-              last_check_at: new Date(),
-              updated_at: new Date(),
-            })
-            .where("worker_id", "=", workerId)
-            .execute();
-        } catch (err) {
-          console.error("Error persisting progress to DB:", err);
-        }
+      onProgress: (progress) => {
+        // Serialize progress writes: a slow earlier query must never land
+        // after a newer one and regress the displayed percentage.
+        progressWrite = progressWrite
+          .catch(() => undefined)
+          .then(async () => {
+            await db
+              .updateTable("worker_monitoring")
+              .set({
+                progress_percent: progress.progressPercent,
+                last_progress_at: new Date(),
+                last_check_at: new Date(),
+                updated_at: new Date(),
+              })
+              .where("worker_id", "=", workerId)
+              .execute();
+          })
+          .catch((err) => {
+            console.error("Error persisting progress to DB:", err);
+          });
+        return progressWrite;
       },
     });
 
@@ -318,66 +457,36 @@ export async function executeTranscodeJob(
     }
 
     // 7. Spawn and execute FFmpeg
-    await new Promise<void>((resolve, reject) => {
-      const ffmpegProcess = spawn(config.FFMPEG_PATH, [...args], {
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-
-      ffmpegProcess.stdout?.on("data", (data: Buffer) => {
-        progressParser.parseChunk(data);
-      });
-
-      let stderrOutput = "";
-      ffmpegProcess.stderr?.on("data", (data: Buffer) => {
-        stderrOutput += data.toString();
-      });
-
-      ffmpegProcess.on("exit", (code) => {
-        if (code === 0) {
-          resolve();
-        } else {
-          reject(
-            new Error(
-              `FFmpeg exited with code ${code}: ${stderrOutput.slice(-500)}`,
-            ),
-          );
-        }
-      });
-
-      ffmpegProcess.on("error", (err) => {
-        reject(err);
-      });
+    await runFfmpeg({
+      executable: config.FFMPEG_PATH,
+      args,
+      phase: "HLS transcode",
+      signal,
+      onStdout: (data) => progressParser.parseChunk(data),
     });
+    await progressWrite;
 
     // 8. Write master playlist file
     const masterPlaylistPath = join(outputHlsDir, "master.m3u8");
     await writeFile(masterPlaylistPath, masterPlaylistContent, "utf-8");
 
-    // 9. Sync HLS artifacts to local folder
-    try {
+    // 9. Persist local artifacts exactly once. The scratch directory is
+    // removed in finally, so persistence failures must fail the job rather
+    // than leaving a false COMPLETED result with no playable output.
+    if (config.STORAGE_PROVIDER === "local") {
       const cleanPrefix = job.output_prefix.replace(/^s3-bucket\//, "");
-      const targets = [
-        join(process.cwd(), "s3-bucket", cleanPrefix),
-        join(process.cwd(), "veolms", "s3-bucket", cleanPrefix),
-        join(process.cwd(), "..", "s3-bucket", cleanPrefix),
-        join(process.cwd(), "..", "veolms", "s3-bucket", cleanPrefix),
-      ];
-      for (const localTargetDir of targets) {
-        try {
-          await mkdir(localTargetDir, { recursive: true });
-          await cp(outputHlsDir, localTargetDir, {
-            recursive: true,
-            force: true,
-          });
-          console.info(
-            `[media-worker] HLS artifacts saved locally to ${localTargetDir}`,
-          );
-        } catch (targetErr) {
-          console.warn("[media-worker] Target sync attempt notice:", targetErr);
-        }
-      }
-    } catch (localErr) {
-      console.warn("[media-worker] Local sync notice:", localErr);
+      const localTargetDir = resolveWithin(
+        join(process.cwd(), "s3-bucket"),
+        cleanPrefix,
+      );
+      await mkdir(localTargetDir, { recursive: true });
+      await cp(outputHlsDir, localTargetDir, {
+        recursive: true,
+        force: true,
+      });
+      console.info(
+        `[media-worker] HLS artifacts saved locally to ${localTargetDir}`,
+      );
     }
 
     // 10. Final sweep of the incremental S3 upload — everything the poll
@@ -385,46 +494,48 @@ export async function executeTranscodeJob(
     // catches the master playlist (only written above, after FFmpeg
     // exits) and any last segments from the final poll window.
     if (uploadHandle) {
-      try {
-        await uploadHandle.stop();
-        uploadHandle = null;
-        console.info(
-          `[media-worker] Finished uploading HLS output to s3://${config.S3_BUCKET}/${job.output_prefix}`,
-        );
-      } catch (s3Err) {
-        console.warn("[media-worker] S3 upload notice:", s3Err);
-      }
+      await uploadHandle.stop();
+      uploadHandle = null;
+      console.info(
+        `[media-worker] Finished uploading HLS output to s3://${config.S3_BUCKET}/${job.output_prefix}`,
+      );
     }
 
-    // 10. Mark COMPLETED in DB
-    await db
-      .updateTable("jobs")
-      .set({
-        status: "COMPLETED",
-        completed_at: new Date(),
-        updated_at: new Date(),
-      })
-      .where("id", "=", jobId)
-      .execute();
+    // Mark the job complete and make the live worker ready for a compatible
+    // next claim in one transaction. Clearing job_id avoids monitor races
+    // against the just-completed job while the worker waits for more work.
+    await db.transaction().execute(async (trx) => {
+      await trx
+        .updateTable("jobs")
+        .set({
+          status: "COMPLETED",
+          completed_at: new Date(),
+          updated_at: new Date(),
+        })
+        .where("id", "=", jobId)
+        .where("worker_id", "=", workerId)
+        .execute();
 
-    await db
-      .updateTable("workers")
-      .set({
-        status: "COMPLETED",
-        updated_at: new Date(),
-      })
-      .where("id", "=", workerId)
-      .execute();
+      await trx
+        .updateTable("workers")
+        .set({
+          status: "READY",
+          job_id: null,
+          updated_at: new Date(),
+        })
+        .where("id", "=", workerId)
+        .execute();
 
-    await db
-      .updateTable("worker_monitoring")
-      .set({
-        progress_percent: 100.0,
-        last_progress_at: new Date(),
-        updated_at: new Date(),
-      })
-      .where("worker_id", "=", workerId)
-      .execute();
+      await trx
+        .updateTable("worker_monitoring")
+        .set({
+          progress_percent: 100.0,
+          last_progress_at: new Date(),
+          updated_at: new Date(),
+        })
+        .where("worker_id", "=", workerId)
+        .execute();
+    });
 
     await recordEvent("JOB_COMPLETED", jobId, {
       applicableQualities,
@@ -434,46 +545,50 @@ export async function executeTranscodeJob(
     const errorMsg = error instanceof Error ? error.message : String(error);
     console.error(`Transcode job ${jobId} failed:`, errorMsg);
 
-    // Job failed partway through FFmpeg — whatever segments the
-    // incremental uploader already picked up (or is mid-batch on) are
-    // left in S3 rather than cleaned up (a retry reuses the same
-    // output_prefix and overwrites what it regenerates), but flush one
-    // more sweep so anything still sitting locally, unsynced, isn't lost
-    // outright once the scratch dir gets wiped in `finally` below.
+    if (!ownsJob) {
+      throw error;
+    }
+
+    // Do not publish a final sweep from a failed/cancelled transcode. It
+    // could make incomplete HLS playlists publicly visible under the final
+    // output prefix.
     if (uploadHandle) {
-      try {
-        await uploadHandle.stop();
-      } catch (s3Err) {
-        console.warn(
-          "[media-worker] S3 flush-on-failure notice:",
-          s3Err,
-        );
-      }
+      await uploadHandle.abort();
       uploadHandle = null;
     }
 
-    await db
-      .updateTable("jobs")
-      .set({
-        status: "FAILED",
-        failed_at: new Date(),
-        error_message: errorMsg,
-        updated_at: new Date(),
-      })
-      .where("id", "=", jobId)
-      .execute();
+    const nextAttempts = job.attempts + 1;
+    const shouldRetry = nextAttempts < job.max_attempts;
+    await db.transaction().execute(async (trx) => {
+      await trx
+        .updateTable("jobs")
+        .set({
+          attempts: nextAttempts,
+          status: shouldRetry ? "QUEUED" : "FAILED",
+          worker_id: null,
+          error_message: errorMsg,
+          failed_at: shouldRetry ? null : new Date(),
+          updated_at: new Date(),
+        })
+        .where("id", "=", jobId)
+        .where("worker_id", "=", workerId)
+        .execute();
 
-    await db
-      .updateTable("workers")
-      .set({
-        status: "FAILED",
-        updated_at: new Date(),
-      })
-      .where("id", "=", workerId)
-      .execute();
+      await trx
+        .updateTable("workers")
+        .set({
+          status: shouldRetry ? "READY" : "FAILED",
+          job_id: null,
+          updated_at: new Date(),
+        })
+        .where("id", "=", workerId)
+        .execute();
+    });
 
     await recordEvent("JOB_FAILED", jobId, {
       error: errorMsg,
+      attempts: nextAttempts,
+      willRetry: shouldRetry,
     });
 
     throw error;

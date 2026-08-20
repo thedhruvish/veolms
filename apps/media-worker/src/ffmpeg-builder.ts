@@ -68,6 +68,7 @@ export function filterApplicableQualities(
  * portrait source is capped correctly rather than compared axis-for-axis
  * against a landscape profile. Returns null when the source already fits
  * within the target on both axes — never upscale.
+ * @github https://github.com/thedhruvish/veolms-my-docs/blob/main/devops-and-infrastructure/compression-video-v2.md
  */
 export function resolveCompressionTarget(
   sourceWidth: number,
@@ -180,7 +181,7 @@ export function buildFfmpegHlsArgs(options: {
   const segmentDuration = options.segmentDurationSeconds ?? 6;
 
   const applicableQualities = filterApplicableQualities(
-    qualities,
+    [...new Set(qualities)],
     metadata.width,
     metadata.height,
   );
@@ -200,7 +201,14 @@ export function buildFfmpegHlsArgs(options: {
   // Build FFmpeg multi-output HLS transcode command
   for (const quality of applicableQualities) {
     const profile = getQualityProfile(quality);
-    const gopSize = Math.round(profile.fps * segmentDuration);
+    // FFmpeg preserves the input frame rate unless -r is explicitly set.
+    // Align keyframes to the real input cadence so HLS segments remain close
+    // to the requested duration for 24fps and 60fps sources alike.
+    const sourceFps =
+      typeof metadata.fps === "number" && metadata.fps > 0
+        ? metadata.fps
+        : profile.fps;
+    const gopSize = Math.max(1, Math.round(sourceFps * segmentDuration));
 
     const qualityOutputDir = `${outputDir}/${quality}`;
     const playlistPath = `${qualityOutputDir}/${quality}.m3u8`;

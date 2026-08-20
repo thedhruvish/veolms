@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { sql, type Kysely } from "kysely";
+import type { Kysely } from "kysely";
 import { claimNextQueuedJob, type Database } from "@veolms/database";
 import type { FleetEventType } from "@veolms/fleet-types";
 import type { MediaWorkerConfig } from "./config.ts";
@@ -66,7 +66,12 @@ export async function initMediaWorker(options: {
   });
 
   // 2. Start recurring direct heartbeat loop
+  let heartbeatInFlight = false;
   const heartbeatInterval = setInterval(async () => {
+    if (heartbeatInFlight) {
+      return;
+    }
+    heartbeatInFlight = true;
     try {
       await db
         .updateTable("workers")
@@ -78,6 +83,8 @@ export async function initMediaWorker(options: {
         .execute();
     } catch (err) {
       console.error(`Failed to write heartbeat for worker ${workerId}:`, err);
+    } finally {
+      heartbeatInFlight = false;
     }
   }, config.HEARTBEAT_INTERVAL_MS);
 
@@ -108,8 +115,13 @@ export async function initMediaWorker(options: {
  */
 export async function pollForNextJob(
   ctx: MediaWorkerContext,
+  signal?: AbortSignal,
 ): Promise<string | null> {
-  const claimed = await claimNextQueuedJob(ctx.db);
+  if (signal?.aborted) {
+    return null;
+  }
+
+  const claimed = await claimNextQueuedJob(ctx.db, ctx.workerId);
   if (claimed) {
     return claimed.id;
   }
@@ -117,10 +129,23 @@ export async function pollForNextJob(
   console.info(
     `[media-worker] Queue empty — waiting ${ctx.config.WORKER_IDLE_POLL_SECONDS}s for one more check before shutting down...`,
   );
-  await new Promise((resolve) =>
-    setTimeout(resolve, ctx.config.WORKER_IDLE_POLL_SECONDS * 1000),
-  );
+  await new Promise<void>((resolve) => {
+    const finish = () => {
+      signal?.removeEventListener("abort", abortWait);
+      resolve();
+    };
+    const timeout = setTimeout(finish, ctx.config.WORKER_IDLE_POLL_SECONDS * 1000);
+    const abortWait = () => {
+      clearTimeout(timeout);
+      finish();
+    };
+    signal?.addEventListener("abort", abortWait, { once: true });
+  });
 
-  const claimedAfterWait = await claimNextQueuedJob(ctx.db);
+  if (signal?.aborted) {
+    return null;
+  }
+
+  const claimedAfterWait = await claimNextQueuedJob(ctx.db, ctx.workerId);
   return claimedAfterWait?.id ?? null;
 }

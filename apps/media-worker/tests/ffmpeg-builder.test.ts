@@ -112,6 +112,28 @@ describe("FFmpeg Dynamic HLS Command Builder", () => {
     assert.ok(result.args.includes("-hls_flags"));
     assert.ok(result.args.includes("independent_segments"));
   });
+
+  it("uses the probed frame rate for GOP alignment and ignores duplicate qualities", () => {
+    const result = buildFfmpegHlsArgs({
+      inputPath: "/tmp/source.mp4",
+      outputDir: "/tmp/hls_out",
+      qualities: ["720p", "720p", "480p"],
+      metadata: {
+        durationSeconds: 60,
+        width: 1920,
+        height: 1080,
+        fps: 24,
+      },
+      segmentDurationSeconds: 6,
+    });
+
+    assert.deepEqual(result.applicableQualities, ["720p", "480p"]);
+    assert.equal(result.variants.length, 2);
+    assert.equal(
+      result.args.filter((value) => value === "144").length,
+      4,
+    );
+  });
 });
 
 describe("Video Processing V2 — Compression Resolution Cap", () => {

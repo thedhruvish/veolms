@@ -51,4 +51,17 @@ describe("FFmpeg Real-time Progress Parser", () => {
 
     assert.equal(completed, true);
   });
+
+  it("preserves progress records split across stdout chunks", () => {
+    const parser = new FfmpegProgressParser({
+      totalDurationSeconds: 100,
+      throttleIntervalMs: 0,
+    });
+
+    parser.parseChunk("out_time_us=250");
+    parser.parseChunk("00000\nprogress=continue\n");
+
+    assert.equal(parser.getLatest().processedSeconds, 25);
+    assert.equal(parser.getLatest().progressPercent, 25);
+  });
 });

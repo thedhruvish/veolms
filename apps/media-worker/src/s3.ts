@@ -3,11 +3,11 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
-import { createWriteStream } from "node:fs";
-import { readdir, readFile, stat } from "node:fs/promises";
+import { createReadStream, createWriteStream } from "node:fs";
+import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { pipeline } from "node:stream/promises";
-import { Readable } from "node:stream";
+import { Readable, Transform } from "node:stream";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import type { MediaWorkerConfig } from "./config.ts";
 
@@ -24,12 +24,14 @@ export async function downloadS3File(
   bucket: string,
   key: string,
   localDestinationPath: string,
+  options: DownloadLimitOptions,
 ): Promise<void> {
   const response = await s3.send(
     new GetObjectCommand({
       Bucket: bucket,
       Key: key,
     }),
+    { abortSignal: options.signal },
   );
 
   if (!response.Body) {
@@ -38,30 +40,113 @@ export async function downloadS3File(
     );
   }
 
-  const writeStream = createWriteStream(localDestinationPath);
-  await pipeline(response.Body as Readable, writeStream);
+  if (
+    typeof response.ContentLength === "number" &&
+    response.ContentLength > options.maxBytes
+  ) {
+    throw new Error(
+      `S3 object s3://${bucket}/${key} exceeds the ${options.maxBytes}-byte limit`,
+    );
+  }
+
+  let downloadedBytes = 0;
+  const limitStream = new Transform({
+    transform(chunk: Buffer | Uint8Array, _encoding, callback) {
+      downloadedBytes += chunk.byteLength;
+      if (downloadedBytes > options.maxBytes) {
+        callback(
+          new Error(
+            `S3 object s3://${bucket}/${key} exceeds the ${options.maxBytes}-byte limit`,
+          ),
+        );
+        return;
+      }
+      callback(null, chunk);
+    },
+  });
+  await pipeline(
+    response.Body as Readable,
+    limitStream,
+    createWriteStream(localDestinationPath),
+  );
+}
+
+export interface DownloadLimitOptions {
+  maxBytes: number;
+  signal?: AbortSignal;
+}
+
+export interface HttpDownloadOptions extends DownloadLimitOptions {
+  timeoutMs: number;
 }
 
 export async function downloadHttpFile(
   url: string,
   localDestinationPath: string,
+  options: HttpDownloadOptions,
 ): Promise<void> {
-  const response = await fetch(url);
+  const controller = new AbortController();
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, options.timeoutMs);
+  timeout.unref();
 
-  if (!response.ok || !response.body) {
-    throw new Error(
-      `Failed to download video from ${url}: HTTP ${response.status}`,
+  const forwardAbort = () => controller.abort();
+  options.signal?.addEventListener("abort", forwardAbort, { once: true });
+
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+
+    if (!response.ok || !response.body) {
+      throw new Error(
+        `Failed to download video from ${url}: HTTP ${response.status}`,
+      );
+    }
+
+    const declaredSize = Number(response.headers.get("content-length"));
+    if (Number.isFinite(declaredSize) && declaredSize > options.maxBytes) {
+      throw new Error(
+        `Video download from ${url} exceeds the ${options.maxBytes}-byte limit`,
+      );
+    }
+
+    let downloadedBytes = 0;
+    const limitStream = new Transform({
+      transform(chunk: Buffer | Uint8Array, _encoding, callback) {
+        downloadedBytes += chunk.byteLength;
+        if (downloadedBytes > options.maxBytes) {
+          callback(
+            new Error(
+              `Video download from ${url} exceeds the ${options.maxBytes}-byte limit`,
+            ),
+          );
+          return;
+        }
+        callback(null, chunk);
+      },
+    });
+
+    // lib.dom's ReadableStream<Uint8Array> and node:stream/web's aren't
+    // structurally identical (ArrayBufferView generic constraints diverge),
+    // so this cast is required even though both describe the same runtime
+    // web stream that fetch() actually returns under Node.
+    const webStream = response.body as unknown as NodeReadableStream<Uint8Array>;
+    await pipeline(
+      Readable.fromWeb(webStream),
+      limitStream,
+      createWriteStream(localDestinationPath),
     );
+  } catch (error) {
+    if (timedOut) {
+      throw new Error(`Timed out downloading video from ${url}`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+    options.signal?.removeEventListener("abort", forwardAbort);
   }
-
-  // lib.dom's ReadableStream<Uint8Array> and node:stream/web's aren't
-  // structurally identical (ArrayBufferView generic constraints diverge),
-  // so this cast is required even though both describe the same runtime
-  // web stream that fetch() actually returns under Node.
-  const webStream = response.body as unknown as NodeReadableStream<Uint8Array>;
-
-  const writeStream = createWriteStream(localDestinationPath);
-  await pipeline(Readable.fromWeb(webStream), writeStream);
 }
 
 export function getMimeTypeForFile(filename: string): string {
@@ -121,18 +206,20 @@ export async function uploadFiles(
         break;
       }
 
-      const fileBuffer = await readFile(item.fullPath);
+      const fileStat = await stat(item.fullPath);
       const contentType = getMimeTypeForFile(item.filename);
 
       let attempts = 0;
       const maxRetries = 3;
       while (true) {
+        const fileStream = createReadStream(item.fullPath);
         try {
           await s3.send(
             new PutObjectCommand({
               Bucket: bucket,
               Key: item.s3Key,
-              Body: fileBuffer,
+              Body: fileStream,
+              ContentLength: fileStat.size,
               ContentType: contentType,
               CacheControl: item.filename.endsWith(".m3u8")
                 ? "no-cache, no-store, must-revalidate"
@@ -142,6 +229,7 @@ export async function uploadFiles(
           uploadedCount++;
           break;
         } catch (err) {
+          fileStream.destroy();
           attempts++;
           if (attempts >= maxRetries) {
             throw err;
@@ -154,7 +242,10 @@ export async function uploadFiles(
     }
   }
 
-  const workerCount = Math.min(concurrency, files.length);
+  const workerCount = Math.min(
+    Math.max(1, Math.floor(concurrency)),
+    files.length,
+  );
   const workers = Array.from({ length: workerCount }, () => uploadWorker());
   await Promise.all(workers);
 
@@ -207,6 +298,8 @@ export interface IncrementalUploadHandle {
    * produce until after it exits.
    */
   stop: () => Promise<void>;
+  /** Stops polling without publishing files that may belong to a failed job. */
+  abort: () => Promise<void>;
 }
 
 /**
@@ -237,13 +330,16 @@ export function startIncrementalHlsUpload(options: {
     getConcurrency,
   } = options;
   const cleanPrefix = s3Prefix.endsWith("/") ? s3Prefix : `${s3Prefix}/`;
-  const uploaded = new Set<string>();
+  const uploaded = new Map<string, { mtimeMs: number; size: number }>();
   let ticking = false;
+  let stopped = false;
 
   async function collectPending(
     skipRecentlyModified: boolean,
-  ): Promise<Array<UploadItem & { relPath: string }>> {
-    const pending: Array<UploadItem & { relPath: string }> = [];
+  ): Promise<Array<UploadItem & { relPath: string; mtimeMs: number; size: number }>> {
+    const pending: Array<
+      UploadItem & { relPath: string; mtimeMs: number; size: number }
+    > = [];
     const now = Date.now();
 
     async function walk(dir: string, rel: string): Promise<void> {
@@ -258,7 +354,10 @@ export function startIncrementalHlsUpload(options: {
       for (const entry of entries) {
         const fullPath = join(dir, entry);
         const relPath = rel ? `${rel}/${entry}` : entry;
-        if (uploaded.has(relPath)) {
+        // HLS segments are immutable once they pass the settle window. Avoid
+        // a stat call for every historical segment on every poll; playlists
+        // remain eligible because FFmpeg rewrites them as it appends output.
+        if (!entry.endsWith(".m3u8") && uploaded.has(relPath)) {
           continue;
         }
 
@@ -272,6 +371,14 @@ export function startIncrementalHlsUpload(options: {
         if (fileStat.isDirectory()) {
           await walk(fullPath, relPath);
         } else if (fileStat.isFile()) {
+          const previous = uploaded.get(relPath);
+          if (
+            previous &&
+            previous.mtimeMs === fileStat.mtimeMs &&
+            previous.size === fileStat.size
+          ) {
+            continue;
+          }
           if (skipRecentlyModified && now - fileStat.mtimeMs < settleMs) {
             continue;
           }
@@ -280,6 +387,8 @@ export function startIncrementalHlsUpload(options: {
             s3Key: `${cleanPrefix}${relPath}`,
             filename: entry,
             relPath,
+            mtimeMs: fileStat.mtimeMs,
+            size: fileStat.size,
           });
         }
       }
@@ -302,12 +411,15 @@ export function startIncrementalHlsUpload(options: {
     // file that failed partway through it.
     await uploadFiles(s3, bucket, pending, concurrency);
     for (const item of pending) {
-      uploaded.add(item.relPath);
+      uploaded.set(item.relPath, {
+        mtimeMs: item.mtimeMs,
+        size: item.size,
+      });
     }
   }
 
   const interval = setInterval(() => {
-    if (ticking) {
+    if (stopped || ticking) {
       return;
     }
     ticking = true;
@@ -326,11 +438,19 @@ export function startIncrementalHlsUpload(options: {
 
   return {
     async stop() {
+      stopped = true;
       clearInterval(interval);
       while (ticking) {
         await new Promise((resolve) => setTimeout(resolve, 50));
       }
       await tick(true);
+    },
+    async abort() {
+      stopped = true;
+      clearInterval(interval);
+      while (ticking) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
     },
   };
 }

@@ -27,6 +27,7 @@ export class FfmpegProgressParser {
   private currentFrame = 0;
   private lastEmitTimestamp = 0;
   private latestProgressData: FfmpegProgressData | null = null;
+  private pendingText = "";
 
   constructor(options: ProgressTrackerOptions) {
     this.totalDurationSeconds = Math.max(1, options.totalDurationSeconds);
@@ -35,8 +36,20 @@ export class FfmpegProgressParser {
   }
 
   public parseChunk(chunk: string | Buffer): void {
-    const text = chunk.toString();
+    const text = this.pendingText + chunk.toString();
     const lines = text.split(/\r?\n/);
+    const trailingLine = lines.pop() ?? "";
+
+    // FFmpeg normally terminates every record with a newline, but a final
+    // `progress=...` record may arrive at the end of a stream chunk without
+    // one. It is safe to emit that complete delimiter record immediately;
+    // every other trailing fragment is retained for the next chunk.
+    if (trailingLine === "progress=continue" || trailingLine === "progress=end") {
+      lines.push(trailingLine);
+      this.pendingText = "";
+    } else {
+      this.pendingText = trailingLine;
+    }
 
     for (const line of lines) {
       this.parseLine(line.trim());
@@ -97,6 +110,10 @@ export class FfmpegProgressParser {
   }
 
   public getLatest(): FfmpegProgressData {
+    if (this.latestProgressData?.isComplete) {
+      return { ...this.latestProgressData };
+    }
+
     const processedSeconds = this.currentOutTimeUs / 1_000_000;
     const progressPercent = Math.min(
       99.9,

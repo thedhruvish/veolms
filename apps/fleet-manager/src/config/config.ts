@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const fleetManagerConfigSchema = z.object({
+const baseFleetManagerConfigSchema = z.object({
   DATABASE_URL: z
     .string()
     .default("postgresql://veolms:veolms@localhost:5433/veolms"),
@@ -15,7 +15,24 @@ export const fleetManagerConfigSchema = z.object({
   MEDIA_WORKER_SCRIPT_PATH: z.string().optional(),
 });
 
-export type FleetManagerConfig = z.infer<typeof fleetManagerConfigSchema>;
+export const fleetManagerConfigSchema = z.preprocess(
+  (raw) => {
+    if (raw && typeof raw === "object") {
+      const record = raw as Record<string, unknown>;
+      const provider = record["PROVIDER"] ?? record["FLEET_PROVIDER"];
+      if (provider !== undefined) {
+        return {
+          ...record,
+          PROVIDER: provider,
+        };
+      }
+    }
+    return raw;
+  },
+  baseFleetManagerConfigSchema,
+);
+
+export type FleetManagerConfig = z.infer<typeof baseFleetManagerConfigSchema>;
 
 export function loadFleetManagerConfig(
   env: Readonly<Record<string, string | undefined>> = process.env,

@@ -773,6 +773,7 @@ async function generateEnvFiles(
     AWS_REGION: answers.region,
     FLEET_MODE: answers.fleetMode,
     FLEET_PROVIDER: "aws",
+    PROVIDER: "aws",
     EC2_IAM_INSTANCE_PROFILE: INSTANCE_PROFILE_NAME,
     EC2_USE_SPOT: String(answers.useSpot),
     EC2_BOOT_MODE: answers.bootMode,

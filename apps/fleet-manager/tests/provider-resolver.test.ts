@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { loadFleetManagerConfig } from "../src/config/config.ts";
 import { resolveFleetProvider } from "../src/core/provider-resolver.ts";
 
 describe("Pluggable Provider Resolver", () => {
@@ -21,5 +22,20 @@ describe("Pluggable Provider Resolver", () => {
         return true;
       },
     );
+  });
+
+  it("should resolve PROVIDER from FLEET_PROVIDER when PROVIDER is not explicitly set", () => {
+    const config = loadFleetManagerConfig({
+      FLEET_PROVIDER: "aws",
+    });
+    assert.equal(config.PROVIDER, "aws");
+  });
+
+  it("should prioritize explicit PROVIDER over FLEET_PROVIDER", () => {
+    const config = loadFleetManagerConfig({
+      PROVIDER: "aws",
+      FLEET_PROVIDER: "local",
+    });
+    assert.equal(config.PROVIDER, "aws");
   });
 });

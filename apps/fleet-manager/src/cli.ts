@@ -59,7 +59,10 @@ export async function runCli(
   argv: readonly string[] = process.argv.slice(2),
 ): Promise<void> {
   const { command, positional, flags } = parseCliArgs(argv);
-  const config = loadFleetManagerConfig();
+  const cliProvider = flags["provider"] as string | undefined;
+  const config = loadFleetManagerConfig(
+    cliProvider ? { ...process.env, PROVIDER: cliProvider } : process.env,
+  );
   const db = createDatabase(config.DATABASE_URL);
   const workerScript =
     config.MEDIA_WORKER_SCRIPT_PATH ??

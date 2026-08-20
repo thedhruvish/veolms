@@ -7,7 +7,7 @@ export const mediaWorkerConfigSchema = z.object({
   DATABASE_URL: z
     .string()
     .default("postgresql://veolms:veolms@localhost:5433/veolms"),
-  STORAGE_PROVIDER: z.string().default("local"),
+  STORAGE_PROVIDER: z.enum(["local", "s3"]).default("local"),
   S3_BUCKET: z.string().default("veolms-media"),
   S3_BUCKET_NAME: z.string().optional(),
   S3_ENDPOINT: z.string().optional(),
@@ -32,6 +32,12 @@ export const mediaWorkerConfigSchema = z.object({
     .default(80),
   INCREMENTAL_UPLOAD_POLL_MS: z.coerce.number().int().min(500).default(3000),
   INCREMENTAL_UPLOAD_SETTLE_MS: z.coerce.number().int().min(0).default(2000),
+  HTTP_DOWNLOAD_TIMEOUT_MS: z.coerce.number().int().min(1000).default(300000),
+  HTTP_DOWNLOAD_MAX_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(50 * 1024 * 1024 * 1024),
   FFMPEG_PATH: z.string().default("ffmpeg"),
   FFPROBE_PATH: z.string().default("ffprobe"),
 });
@@ -56,10 +62,20 @@ export function loadMediaWorkerConfig(
   };
   const parsed = mediaWorkerConfigSchema.parse(resolvedEnv);
   const defaults = resolveDefaultUploadConcurrency();
+  const maxConcurrency =
+    parsed.UPLOAD_MAX_CONCURRENCY ?? defaults.maxConcurrency;
+  const minConcurrency =
+    parsed.UPLOAD_MIN_CONCURRENCY ?? defaults.minConcurrency;
+
+  if (minConcurrency > maxConcurrency) {
+    throw new Error(
+      "UPLOAD_MIN_CONCURRENCY must not exceed UPLOAD_MAX_CONCURRENCY",
+    );
+  }
 
   return {
     ...parsed,
-    UPLOAD_MAX_CONCURRENCY: parsed.UPLOAD_MAX_CONCURRENCY ?? defaults.maxConcurrency,
-    UPLOAD_MIN_CONCURRENCY: parsed.UPLOAD_MIN_CONCURRENCY ?? defaults.minConcurrency,
+    UPLOAD_MAX_CONCURRENCY: maxConcurrency,
+    UPLOAD_MIN_CONCURRENCY: minConcurrency,
   };
 }

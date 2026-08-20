@@ -32,8 +32,14 @@ export async function sampleResourceUsage(
     totalDelta += eTotal - sTotal;
   }
 
-  const cpuPercent = totalDelta > 0 ? (1 - idleDelta / totalDelta) * 100 : 0;
-  const memoryPercent = (1 - os.freemem() / os.totalmem()) * 100;
+  const cpuPercent = Math.min(
+    100,
+    Math.max(0, totalDelta > 0 ? (1 - idleDelta / totalDelta) * 100 : 0),
+  );
+  const memoryPercent = Math.min(
+    100,
+    Math.max(0, (1 - os.freemem() / os.totalmem()) * 100),
+  );
 
   return { cpuPercent, memoryPercent };
 }

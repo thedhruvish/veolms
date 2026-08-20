@@ -117,6 +117,7 @@ ${bold(cyan("╚═════════════════════�
 
   const fleetEnv: Record<string, string> = {
     FLEET_PROVIDER: "local",
+    PROVIDER: "local",
     FLEET_MODE: "serverful",
     STORAGE_PROVIDER: "local",
     MAX_WORKERS: "4",
