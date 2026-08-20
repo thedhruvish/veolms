@@ -222,16 +222,13 @@ pnpm fleet:run
 # 2. Run the automated end-to-end test pipeline
 pnpm test:pipeline
 
-# 3. Queue a local test job (s3-bucket/raw/video.mp4)
-pnpm fleet:queue:test
-
-# 4. View real-time Fleet Health Summary
+# 3. View real-time Fleet Health Summary
 pnpm fleet:cli status
 
-# 5. Inspect timeline and audit events for a specific job
+# 4. Inspect timeline and audit events for a specific job
 pnpm fleet:cli job <JOB_ID>
 
-# 6. Prune dead/zombie worker processes
+# 5. Prune dead/zombie worker processes
 pnpm fleet:cli prune
 ```
 

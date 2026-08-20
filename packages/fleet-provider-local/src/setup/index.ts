@@ -152,8 +152,8 @@ ${bold("Generated .env Files:")}
   ${green("✔")} apps/media-worker/.env
 
 ${bold("Next Steps:")}
-  1. Run the fleet daemon:  ${cyan("pnpm fleet:run")}
-  2. Queue a test job:      ${cyan("pnpm fleet:queue:test")}
-  3. Monitor fleet health:  ${cyan("pnpm fleet:cli status")}
+  1. Run the automated pipeline test: ${cyan("pnpm test:pipeline")}
+  2. Or run the fleet daemon manually: ${cyan("pnpm fleet:run")}
+  3. Monitor fleet health:            ${cyan("pnpm fleet:cli status")}
 `);
 }

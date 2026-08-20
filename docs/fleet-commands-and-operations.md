@@ -19,23 +19,22 @@ This document is a comprehensive guide to all commands used to configure, provis
 
 ## ⚡ Quick Command Matrix
 
-| Command                      | Workspace Location            | Purpose                                                                |
-| :--------------------------- | :---------------------------- | :--------------------------------------------------------------------- |
-| `pnpm fleet:provider`        | `apps/fleet-manager`          | Interactively select and install a provider (`aws`, `local`, etc.)     |
-| `pnpm fleet:infra`           | `apps/fleet-manager`          | Provision cloud infrastructure (IAM, Lambda, S3, CloudWatch, `.env`)   |
-| `pnpm fleet:destroy`         | `apps/fleet-manager`          | **Teardown**: Terminate all EC2 workers and delete all AWS resources   |
-| `pnpm fleet:build-ami`       | `packages/fleet-provider-aws` | _(Optional)_ Build pre-baked worker AMI with Node.js 24 + FFmpeg       |
-| `pnpm build:lambda`          | `packages/fleet-provider-aws` | Fast `esbuild` bundling of the Lambda Fleet Manager handler            |
-| `pnpm build:worker`          | `apps/media-worker`           | Fast `esbuild` bundling of the standalone Media Worker                 |
-| `pnpm test:aws`              | `apps/fleet-manager`          | Automated AWS serverless multi-rendition test (`240p`, `360p`, `720p`) |
-| `pnpm test:pipeline`         | `apps/fleet-manager`          | Automated local offline end-to-end transcoding test                    |
-| `pnpm fleet:queue:test`      | `apps/fleet-manager`          | Queue a sample transcoding job directly into PostgreSQL                |
-| `pnpm fleet:run`             | `apps/fleet-manager`          | Run Fleet Manager daemon in serverful (persistent) mode                |
-| `pnpm fleet:cli health`      | `apps/fleet-manager`          | Inspect fleet health metrics (queued, processing, stalled count)       |
-| `pnpm fleet:cli workers`     | `apps/fleet-manager`          | List active, recent, and pending worker instances                      |
-| `pnpm fleet:cli jobs`        | `apps/fleet-manager`          | List recent transcoding jobs and status                                |
-| `pnpm fleet:cli status <id>` | `apps/fleet-manager`          | View detailed diagnostics & real-time progress history for a job       |
-| `pnpm fleet:cli prune`       | `apps/fleet-manager`          | Terminate and clean up any stalled zombie worker processes/instances   |
+| Command                      | Workspace Location            | Purpose                                                                                     |
+| :--------------------------- | :---------------------------- | :------------------------------------------------------------------------------------------ |
+| `pnpm fleet:provider`        | `apps/fleet-manager`          | Interactively select and install a provider (`aws`, `local`, etc.)                          |
+| `pnpm fleet:infra`           | `apps/fleet-manager`          | Provision cloud infrastructure (IAM, Lambda, S3, CloudWatch, `.env`)                        |
+| `pnpm fleet:destroy`         | `apps/fleet-manager`          | **Teardown**: Terminate all EC2 workers and delete all AWS resources                        |
+| `pnpm fleet:build-ami`       | `packages/fleet-provider-aws` | _(Optional)_ Build pre-baked worker AMI with Node.js 24 + FFmpeg                            |
+| `pnpm build:lambda`          | `packages/fleet-provider-aws` | Fast `esbuild` bundling of the Lambda Fleet Manager handler                                 |
+| `pnpm build:worker`          | `apps/media-worker`           | Fast `esbuild` bundling of the standalone Media Worker                                      |
+| `pnpm fleet:queue:trigger`   | `apps/fleet-manager`          | Queue one AWS job & invoke the Lambda once to claim it — requires `fleet:infra` already run |
+| `pnpm test:pipeline`         | `apps/fleet-manager`          | Automated local offline end-to-end transcoding test                                         |
+| `pnpm fleet:run`             | `apps/fleet-manager`          | Run Fleet Manager daemon in serverful (persistent) mode                                     |
+| `pnpm fleet:cli health`      | `apps/fleet-manager`          | Inspect fleet health metrics (queued, processing, stalled count)                            |
+| `pnpm fleet:cli workers`     | `apps/fleet-manager`          | List active, recent, and pending worker instances                                           |
+| `pnpm fleet:cli jobs`        | `apps/fleet-manager`          | List recent transcoding jobs and status                                                     |
+| `pnpm fleet:cli status <id>` | `apps/fleet-manager`          | View detailed diagnostics & real-time progress history for a job                            |
+| `pnpm fleet:cli prune`       | `apps/fleet-manager`          | Terminate and clean up any stalled zombie worker processes/instances                        |
 
 ---
 
@@ -58,7 +57,7 @@ This document is a comprehensive guide to all commands used to configure, provis
 
 ### `pnpm fleet:infra`
 
-**Location:** `apps/fleet-manager/src/infra.ts` (delegates to active provider setup)
+**Location:** `apps/fleet-manager/src/cli.ts` (`infra` subcommand — delegates to active provider setup)
 
 **What it does:**
 
@@ -125,23 +124,23 @@ This document is a comprehensive guide to all commands used to configure, provis
 
 ## 🧪 4. End-to-End Testing & Pipelines
 
-### `pnpm test:aws`
+### `pnpm fleet:queue:trigger`
 
-**Location:** `apps/fleet-manager/scripts/test-aws-pipeline.ts`
+**Location:** `apps/fleet-manager/scripts/queue-and-trigger-lambda.ts`
+
+**Requires** AWS infra already provisioned via `pnpm fleet:infra` — this script does no infra provisioning itself.
 
 **What it does:**
 
-1. **Auto-Infra Check**: Ensures IAM Role, Instance Profile, and S3 public access exist.
-2. **Auto-Bundle**: Builds and deploys latest Lambda and S3 worker bundle via `esbuild`.
-3. **Queue Job**: Queues a multi-rendition job for `s3://<bucket>/raw/video.mp4` with qualities `["240p", "360p", "720p"]`.
-4. **Trigger Lambda**: Invokes AWS Lambda `veolms-fleet-manager` which launches an EC2 Spot Graviton worker.
-5. **Live Monitoring**: Streams real-time progress events from Neon PostgreSQL into your terminal.
-6. **S3 Verification**: Verifies HTTP `200 OK` on all generated HLS playlists:
-   - `https://<bucket>.s3.us-east-1.amazonaws.com/hls/test-video/master.m3u8`
-   - `https://<bucket>.s3.us-east-1.amazonaws.com/hls/test-video/240p/240p.m3u8`
-   - `https://<bucket>.s3.us-east-1.amazonaws.com/hls/test-video/360p/360p.m3u8`
-   - `https://<bucket>.s3.us-east-1.amazonaws.com/hls/test-video/720p/720p.m3u8`
-7. **Auto-Termination**: Confirms the EC2 worker terminates itself upon job completion.
+1. **Queue Job**: Queues one transcode job (default `raw/video.mp4`, quality `240p`) into PostgreSQL.
+2. **Trigger Lambda**: Invokes AWS Lambda `veolms-fleet-manager` once to claim the job and launch an EC2 worker.
+3. **Status Check**: Looks up the resulting worker/EC2 instance and prints its state, IP, and an `ssh` command (using a local `mykey.pem` / `<key-name>.pem` if found) for tailing live worker logs.
+
+Meant to be run multiple times in a row to queue several jobs and verify the fleet provisions one worker per job. Configurable via `VIDEO_KEY` and `QUALITIES` env vars, e.g.:
+
+```bash
+VIDEO_KEY=raw/other.mp4 QUALITIES=240p,360p pnpm fleet:queue:trigger
+```
 
 ---
 
@@ -153,16 +152,6 @@ This document is a comprehensive guide to all commands used to configure, provis
 
 - Runs a 100% offline local transcode test using `@veolms/fleet-provider-local`.
 - Spawns local worker child processes with FFmpeg, writes HLS chunks to local disk, and verifies playlists without incurring any cloud costs.
-
----
-
-### `pnpm fleet:queue:test`
-
-**Location:** `apps/fleet-manager/scripts/queue-test-job.ts`
-
-**What it does:**
-
-- Queues a single test job into the database for processing by a running fleet daemon.
 
 ---
 
@@ -216,8 +205,8 @@ pnpm fleet:provider
 # 3. Provision AWS Infrastructure
 pnpm fleet:infra
 
-# 4. Run Multi-Quality AWS Transcoding Test (240p, 360p, 720p)
-pnpm test:aws
+# 4. Queue a job and trigger the Lambda to claim it
+pnpm fleet:queue:trigger
 
 # 5. Check Cluster Health
 pnpm fleet:cli health

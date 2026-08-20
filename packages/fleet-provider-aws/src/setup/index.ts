@@ -1607,7 +1607,7 @@ ${bold("Generated .env Files:")}
   ${green("✔")} apps/media-worker/.env
 
 ${bold("Next Steps:")}${bootMode === "ami" ? `\n  1. Build the worker AMI:   ${cyan("pnpm fleet:build-ami")}` : ""}
-  ${bootMode === "ami" ? "2" : "1"}. Run AWS transcode test: ${cyan("pnpm test:aws")}
+  ${bootMode === "ami" ? "2" : "1"}. Queue & trigger a job:   ${cyan("pnpm fleet:queue:trigger")}
   ${bootMode === "ami" ? "3" : "2"}. Run the fleet daemon:    ${cyan("pnpm fleet:run")}
   ${bootMode === "ami" ? "4" : "3"}. Monitor fleet health:    ${cyan("pnpm fleet:cli health")}
   ${bootMode === "ami" ? "5" : "4"}. Teardown AWS resources:  ${cyan("pnpm fleet:destroy")}
@@ -1761,6 +1761,9 @@ ${bold(cyan("╚═════════════════════�
 
   ${lambdaUpdated ? `${green("✔")} Lambda Code:     ${bold(LAMBDA_FUNCTION_NAME)}` : `${dim("—")} Lambda Code:     ${dim("Skipped / Not serverless")}`}
   ${bundleUploaded ? `${green("✔")} S3 Worker Bundle: ${bold(`s3://${s3BucketName}/bundles/media-worker.js`)}` : `${dim("—")} S3 Worker Bundle: ${dim("Skipped / No S3 bucket")}`}
+
+${bold("Next Steps:")}
+  Queue & trigger a job: ${cyan("pnpm fleet:queue:trigger")}
 `);
     return;
   }
@@ -1876,6 +1879,9 @@ ${bold("Resources Updated:")} ${dim(`(target: ${targetEnv === "localstack" ? `Lo
 ${bold("Generated .env Files:")}
   ${green("✔")} apps/fleet-manager/.env
   ${green("✔")} apps/media-worker/.env
+
+${bold("Next Steps:")}
+  Queue & trigger a job: ${cyan("pnpm fleet:queue:trigger")}
 `);
 }
 

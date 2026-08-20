@@ -8,7 +8,7 @@ export interface MediaWorkerContext {
   readonly workerId: string;
   readonly db: Kysely<Database>;
   readonly config: MediaWorkerConfig;
-  stopHeartbeat: () => void;
+  stopHeartbeat: () => Promise<void>;
   recordEvent: (
     event: FleetEventType,
     jobId?: string | null,
@@ -66,33 +66,41 @@ export async function initMediaWorker(options: {
   });
 
   // 2. Start recurring direct heartbeat loop
-  let heartbeatInFlight = false;
-  const heartbeatInterval = setInterval(async () => {
-    if (heartbeatInFlight) {
+  let stopped = false;
+  let inFlightHeartbeat: Promise<void> | null = null;
+  const heartbeatInterval = setInterval(() => {
+    if (stopped || inFlightHeartbeat) {
       return;
     }
-    heartbeatInFlight = true;
-    try {
-      await db
-        .updateTable("workers")
-        .set({
-          last_heartbeat_at: new Date(),
-          updated_at: new Date(),
-        })
-        .where("id", "=", workerId)
-        .execute();
-    } catch (err) {
-      console.error(`Failed to write heartbeat for worker ${workerId}:`, err);
-    } finally {
-      heartbeatInFlight = false;
-    }
+    inFlightHeartbeat = db
+      .updateTable("workers")
+      .set({
+        last_heartbeat_at: new Date(),
+        updated_at: new Date(),
+      })
+      .where("id", "=", workerId)
+      .execute()
+      .then(() => undefined)
+      .catch((err) => {
+        console.error(`Failed to write heartbeat for worker ${workerId}:`, err);
+      })
+      .finally(() => {
+        inFlightHeartbeat = null;
+      });
   }, config.HEARTBEAT_INTERVAL_MS);
 
   // Do not hold Node event loop open solely for heartbeat
   heartbeatInterval.unref();
 
-  const stopHeartbeat = () => {
+  // Stops future ticks and awaits any write already in flight, so callers
+  // can safely destroy the db connection pool right after this resolves
+  // without racing an in-progress heartbeat query against it.
+  const stopHeartbeat = async (): Promise<void> => {
+    stopped = true;
     clearInterval(heartbeatInterval);
+    if (inFlightHeartbeat) {
+      await inFlightHeartbeat;
+    }
   };
 
   return {

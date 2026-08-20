@@ -9,7 +9,6 @@ import {
 } from "@aws-sdk/client-ec2";
 import {
   GetCommandInvocationCommand,
-  GetParameterCommand,
   SendCommandCommand,
   SSMClient,
 } from "@aws-sdk/client-ssm";
@@ -26,6 +25,7 @@ import {
   generateUserDataScript,
 } from "./bootstrapper.ts";
 import { loadAwsProviderConfig } from "./config.ts";
+import { resolveDebianAmiId } from "./debian-ami.ts";
 import { selectOptimalInstanceType } from "./instance-types.ts";
 
 export interface AwsProviderConfig {
@@ -40,44 +40,6 @@ export interface AwsProviderConfig {
   readonly defaultEnv?: Readonly<Record<string, string>>;
   readonly ec2Client?: EC2Client;
   readonly ssmClient?: SSMClient;
-}
-
-// Debian's Cloud Team publishes the current AMI ID for every release under
-// this public SSM parameter namespace, refreshed automatically on every
-// point release — resolving through it here means we never hardcode (and
-// never go stale on) a region-specific AMI ID.
-// Docs: https://wiki.debian.org/Cloud/AmazonEC2Image
-const DEBIAN_RELEASE = "13";
-const debianAmiCache = new Map<string, Promise<string>>();
-
-function resolveDebianAmiId(
-  ssm: SSMClient,
-  architecture: "arm64" | "x86_64",
-): Promise<string> {
-  const debianArch = architecture === "arm64" ? "arm64" : "amd64";
-  const parameterName = `/aws/service/debian/release/${DEBIAN_RELEASE}/latest/${debianArch}`;
-
-  const cached = debianAmiCache.get(parameterName);
-  if (cached) return cached;
-
-  const promise = ssm
-    .send(new GetParameterCommand({ Name: parameterName }))
-    .then((res) => {
-      const amiId = res.Parameter?.Value;
-      if (!amiId) {
-        throw new Error(
-          `SSM parameter ${parameterName} returned no AMI ID — cannot launch a Debian ${DEBIAN_RELEASE} worker.`,
-        );
-      }
-      return amiId;
-    })
-    .catch((err: unknown) => {
-      debianAmiCache.delete(parameterName);
-      throw err;
-    });
-
-  debianAmiCache.set(parameterName, promise);
-  return promise;
 }
 
 export function mapEc2StateToWorkerStatus(stateName?: string): WorkerStatus {
@@ -140,7 +102,7 @@ export function createAwsProvider(
         amiId ??
         (isLocalStack
           ? defaultLocalStackAmi
-          : await resolveDebianAmiId(ssm, spec.architecture));
+          : await resolveDebianAmiId(ssm, region, spec.architecture));
 
       const userDataScript = generateUserDataScript({
         workerId: id,

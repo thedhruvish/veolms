@@ -67,7 +67,7 @@ export async function run(): Promise<void> {
   } finally {
     process.off("SIGTERM", cleanup);
     process.off("SIGINT", cleanup);
-    workerCtx.stopHeartbeat();
+    await workerCtx.stopHeartbeat();
     try {
       await db
         .updateTable("workers")

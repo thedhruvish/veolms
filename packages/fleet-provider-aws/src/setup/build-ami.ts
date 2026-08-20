@@ -9,14 +9,13 @@
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { bold, cyan, green } from "@veolms/fleet-types/terminal";
+import { SSMClient } from "@aws-sdk/client-ssm";
+import { bold, cyan, dim, green } from "@veolms/fleet-types/terminal";
+import { resolveDebianAmiId } from "../debian-ami.ts";
 
 const REGION = process.env.AWS_REGION || "us-east-1";
 const ARCHITECTURE = (process.env.ARCHITECTURE || "arm64").toLowerCase();
-
-// Ubuntu 24.04 LTS Base AMIs in us-east-1
-const BASE_ARM64_AMI = "ami-02c4144237becae44";
-const BASE_X86_AMI = "ami-04b4f1a9cf54c11d0";
+const DEBIAN_RELEASE = "13";
 
 function exec(cmd: string): string {
   try {
@@ -34,12 +33,22 @@ export async function runBuildAmi(): Promise<void> {
 ╚══════════════════════════════════════════════════════╝
 `);
 
-  const baseAmi = ARCHITECTURE === "arm64" ? BASE_ARM64_AMI : BASE_X86_AMI;
+  console.info(
+    `Resolving latest Debian ${DEBIAN_RELEASE} AMI for ${bold(ARCHITECTURE)} in ${bold(REGION)}...`,
+  );
+  const ssm = new SSMClient({ region: REGION });
+  const baseAmi = await resolveDebianAmiId(
+    ssm,
+    REGION,
+    ARCHITECTURE === "arm64" ? "arm64" : "x86_64",
+  );
   const instanceType = ARCHITECTURE === "arm64" ? "c7g.large" : "c6i.large";
   const amiName = `veolms-worker-ami-${ARCHITECTURE}-${Date.now()}`;
 
   console.info(`Architecture:    ${bold(ARCHITECTURE)}`);
-  console.info(`Base AMI:        ${bold(baseAmi)}`);
+  console.info(
+    `Base AMI:        ${bold(baseAmi)} ${dim(`(Debian ${DEBIAN_RELEASE})`)}`,
+  );
   console.info(`Builder Type:    ${bold(instanceType)}`);
   console.info(`Target AMI Name: ${bold(amiName)}`);
   console.info(`Region:          ${bold(REGION)}\n`);
@@ -89,49 +98,73 @@ shutdown -h now
   const instanceId = runRes.Instances[0].InstanceId;
   console.info(`✔ Launched builder instance: ${bold(cyan(instanceId))}\n`);
 
-  // Step 2: Wait for instance to finish installation and stop
-  console.info(
-    "[2/5] Installing Node.js 24 + FFmpeg + AWS CLI (waiting for auto-shutdown ~1-2 min)...",
-  );
-  let isStopped = false;
-  let elapsed = 0;
-  while (!isStopped && elapsed < 300) {
-    await new Promise((r) => setTimeout(r, 5000));
-    elapsed += 5;
-    const state = exec(
-      `aws ec2 describe-instances --instance-ids ${instanceId} --query 'Reservations[0].Instances[0].State.Name' --output text --region ${REGION}`,
+  // Steps 2-4 run against the builder instance — if any of them fail, the
+  // instance must still be terminated so a failed build doesn't leave a
+  // billed, orphaned EC2 instance behind (it previously just leaked).
+  let amiId: string;
+  try {
+    // Step 2: Wait for instance to finish installation and stop
+    console.info(
+      "[2/5] Installing Node.js 24 + FFmpeg + AWS CLI (waiting for auto-shutdown ~1-2 min)...",
     );
-    process.stdout.write(
-      `\r  [${elapsed}s] Instance State: ${bold(state)} (waiting for auto-shutdown)...   `,
-    );
-    if (state === "stopped") {
-      isStopped = true;
-      console.info(
-        `\n✔ Builder instance stopped. Dependencies successfully installed.`,
+    let isStopped = false;
+    let elapsed = 0;
+    while (!isStopped && elapsed < 300) {
+      await new Promise((r) => setTimeout(r, 5000));
+      elapsed += 5;
+      const state = exec(
+        `aws ec2 describe-instances --instance-ids ${instanceId} --query 'Reservations[0].Instances[0].State.Name' --output text --region ${REGION}`,
+      );
+      process.stdout.write(
+        `\r  [${elapsed}s] Instance State: ${bold(state)} (waiting for auto-shutdown)...   `,
+      );
+      if (state === "stopped") {
+        isStopped = true;
+        console.info(
+          `\n✔ Builder instance stopped. Dependencies successfully installed.`,
+        );
+      }
+    }
+
+    if (!isStopped) {
+      throw new Error(
+        `Builder instance timed out after ${elapsed}s (still not stopped — the install script likely failed before reaching shutdown; check with: aws ec2 get-console-output --instance-id ${instanceId} --region ${REGION}).`,
       );
     }
-  }
 
-  if (!isStopped) {
-    throw new Error(`Builder instance timed out after ${elapsed}s.`);
-  }
+    // Step 3: Create AMI from stopped instance
+    console.info("\n[3/5] Creating pre-baked AMI from stopped instance...");
+    const createAmiRes = JSON.parse(
+      exec(
+        `aws ec2 create-image --instance-id ${instanceId} --name "${amiName}" --description "VeoLMS Pre-baked Worker AMI with Node.js 24 + FFmpeg + AWS CLI" --output json --region ${REGION}`,
+      ),
+    );
+    amiId = createAmiRes.ImageId;
+    console.info(`✔ AMI Creation initiated: ${bold(green(amiId))}`);
 
-  // Step 3: Create AMI from stopped instance
-  console.info("\n[3/5] Creating pre-baked AMI from stopped instance...");
-  const createAmiRes = JSON.parse(
+    // Step 4: Wait for AMI to be available
+    console.info("\n[4/5] Waiting for AMI to become available...");
     exec(
-      `aws ec2 create-image --instance-id ${instanceId} --name "${amiName}" --description "VeoLMS Pre-baked Worker AMI with Node.js 24 + FFmpeg + AWS CLI" --output json --region ${REGION}`,
-    ),
-  );
-  const amiId = createAmiRes.ImageId;
-  console.info(`✔ AMI Creation initiated: ${bold(green(amiId))}`);
-
-  // Step 4: Wait for AMI to be available
-  console.info("\n[4/5] Waiting for AMI to become available...");
-  exec(`aws ec2 wait image-available --image-ids ${amiId} --region ${REGION}`);
-  console.info(
-    `✔ Pre-baked AMI is now ${bold(green("AVAILABLE"))}: ${bold(amiId)}`,
-  );
+      `aws ec2 wait image-available --image-ids ${amiId} --region ${REGION}`,
+    );
+    console.info(
+      `✔ Pre-baked AMI is now ${bold(green("AVAILABLE"))}: ${bold(amiId)}`,
+    );
+  } catch (err: unknown) {
+    console.error(
+      `\n✘ Build step failed — terminating builder instance ${instanceId} before exiting...`,
+    );
+    try {
+      exec(
+        `aws ec2 terminate-instances --instance-ids ${instanceId} --region ${REGION}`,
+      );
+    } catch {
+      console.error(
+        `✘ Failed to terminate builder instance ${instanceId} — please terminate it manually to avoid ongoing charges.`,
+      );
+    }
+    throw err;
+  }
 
   // Step 5: Clean up builder instance & update .env files
   console.info(

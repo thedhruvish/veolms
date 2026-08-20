@@ -228,7 +228,7 @@ async function main(): Promise<void> {
                 console.info(`    ssh ${keyArg} admin@${publicIp}`);
                 console.info(`\n  Live Worker Logs:`);
                 console.info(
-                  `    ssh ${keyArg} debian@${publicIp} "tail -f /var/log/veolms-bootstrap.log /var/log/veolms-worker.log"`,
+                  `    ssh ${keyArg} admin@${publicIp} "tail -f /var/log/veolms-bootstrap.log /var/log/veolms-worker.log"`,
                 );
               } else {
                 console.info(

@@ -6,7 +6,9 @@ import {
   videoQualityLevelSchema,
   type VideoQualityLevel,
 } from "@veolms/fleet-types";
+import { bold, cyan, dim, red } from "@veolms/fleet-types/terminal";
 import { loadFleetManagerConfig } from "./config/config.ts";
+import { loadModuleFunction } from "./core/dynamic-module.ts";
 import { createJobManager } from "./core/job-manager.ts";
 import { resolveFleetProvider } from "./core/provider-resolver.ts";
 import {
@@ -259,6 +261,76 @@ export async function runCli(
       break;
     }
 
+    case "infra": {
+      const infraProvider = (
+        cliProvider ??
+        process.env["FLEET_PROVIDER"] ??
+        process.env["PROVIDER"] ??
+        ""
+      )
+        .toLowerCase()
+        .trim();
+
+      if (!infraProvider) {
+        console.error(`
+  ${red("✘ FLEET_PROVIDER is not set.")}
+
+  Set it before running infra setup:
+
+    ${bold("Option 1 — Environment variable:")}
+      ${cyan("FLEET_PROVIDER=aws pnpm fleet:infra")}
+      ${cyan("FLEET_PROVIDER=local pnpm fleet:infra")}
+
+    ${bold("Option 2 — .env file")} ${dim("(apps/fleet-manager/.env):")}
+      ${cyan('FLEET_PROVIDER="aws"')}
+
+  ${bold("Supported providers:")}
+    ${bold("aws")}   — AWS EC2 Graviton workers with IAM, Lambda, CloudWatch, S3
+    ${bold("local")} — Local child process workers (development / testing)
+    ${bold("gcp")}   — Google Cloud Platform workers ${dim("(future)")}
+`);
+        process.exit(1);
+      }
+
+      if (infraProvider === "gcp" || infraProvider === "azure") {
+        console.error(`
+  ${red(`✘ ${infraProvider.toUpperCase()} provider setup is not yet implemented.`)}
+
+  The ${infraProvider.toUpperCase()} provider is planned for a future release.
+  For now, use ${bold("aws")} or ${bold("local")} as your FLEET_PROVIDER.
+`);
+        process.exit(1);
+      }
+
+      const packageName = `@veolms/fleet-provider-${infraProvider}/setup`;
+
+      try {
+        try {
+          const setupFn = await loadModuleFunction<() => Promise<void>>(
+            packageName,
+            [
+              "runAwsInfraSetup",
+              "runLocalInfraSetup",
+              "runInfraSetup",
+              "default",
+            ],
+            `Provider setup package "${packageName}" does not export a setup function.`,
+          );
+          await setupFn();
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          throw new Error(
+            `Failed to load setup module for provider "${infraProvider}" (${packageName}). Run "pnpm fleet:provider" to install it. Details: ${msg}`,
+          );
+        }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`\n  ${red("✘ Infrastructure setup failed:")} ${msg}\n`);
+        process.exit(1);
+      }
+      break;
+    }
+
     default:
       console.info(`
 VeoLMS Video Fleet Manager CLI
@@ -273,6 +345,7 @@ Usage:
   fleet jobs                    List recent jobs
   fleet health                  Show cluster health metrics
   fleet prune                   Terminate stalled zombie workers
+  fleet infra                   Provision infrastructure for FLEET_PROVIDER
 `);
       break;
   }
