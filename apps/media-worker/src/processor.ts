@@ -4,7 +4,11 @@ import { copyFile, cp, mkdir, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import type { VideoQualityLevel } from "@veolms/fleet-types";
-import { buildFfmpegHlsArgs, type VideoMetadata } from "./ffmpeg-builder.ts";
+import {
+  buildCompressionArgs,
+  buildFfmpegHlsArgs,
+  type VideoMetadata,
+} from "./ffmpeg-builder.ts";
 import { FfmpegProgressParser } from "./progress.ts";
 import {
   createS3ClientFromConfig,
@@ -173,7 +177,7 @@ export async function executeTranscodeJob(
     }
 
     // 4. Probe Video Metadata
-    const metadata = await probeVideoMetadata(
+    const sourceMetadata = await probeVideoMetadata(
       inputVideoPath,
       config.FFPROBE_PATH,
     );
@@ -184,6 +188,56 @@ export async function executeTranscodeJob(
         ? job.requirements.qualities
         : ["1080p", "720p", "480p", "360p"];
 
+    // 4b. Compress the source once (CRF re-encode, capped to the largest
+    // requested quality tier) before splitting it into renditions — avoids
+    // carrying a full-resolution intermediate through the HLS split when
+    // the job doesn't need it, and shrinks storage/read cost either way.
+    const optimizedVideoPath = join(jobScratchDir, "optimized.mp4");
+    const { args: compressionArgs } = buildCompressionArgs({
+      inputPath: inputVideoPath,
+      outputPath: optimizedVideoPath,
+      qualities: targetQualities,
+      metadata: sourceMetadata,
+      crf: config.VIDEO_COMPRESSION_CRF,
+    });
+
+    await new Promise<void>((resolveCompression, rejectCompression) => {
+      const compressionProcess = spawn(config.FFMPEG_PATH, compressionArgs, {
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+
+      // Not parsed for progress (compression runs silently, ahead of the
+      // HLS-split phase's progress reporting) — still drained to avoid the
+      // OS pipe buffer filling up and stalling ffmpeg.
+      compressionProcess.stdout?.on("data", () => {});
+
+      let stderrOutput = "";
+      compressionProcess.stderr?.on("data", (data: Buffer) => {
+        stderrOutput += data.toString();
+      });
+
+      compressionProcess.on("exit", (code) => {
+        if (code === 0) {
+          resolveCompression();
+        } else {
+          rejectCompression(
+            new Error(
+              `FFmpeg compression pass exited with code ${code}: ${stderrOutput.slice(-500)}`,
+            ),
+          );
+        }
+      });
+
+      compressionProcess.on("error", (err) => {
+        rejectCompression(err);
+      });
+    });
+
+    const metadata = await probeVideoMetadata(
+      optimizedVideoPath,
+      config.FFPROBE_PATH,
+    );
+
     // Ensure quality subdirectories exist
     for (const q of targetQualities) {
       await mkdir(join(outputHlsDir, q), { recursive: true });
@@ -191,7 +245,7 @@ export async function executeTranscodeJob(
 
     const { args, masterPlaylistContent, applicableQualities } =
       buildFfmpegHlsArgs({
-        inputPath: inputVideoPath,
+        inputPath: optimizedVideoPath,
         outputDir: outputHlsDir,
         qualities: targetQualities,
         metadata,

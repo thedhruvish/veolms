@@ -59,6 +59,103 @@ export function filterApplicableQualities(
   return filtered;
 }
 
+/**
+ * Video Processing V2's resolution-cap step: the largest quality tier a job
+ * actually requests defines the ceiling for the intermediate compressed
+ * video — no reason to carry a 4K intermediate through the pipeline when
+ * the job only needs up to 720p. Reuses the same orientation-aware
+ * min/max-dimension comparison filterApplicableQualities() uses, so a
+ * portrait source is capped correctly rather than compared axis-for-axis
+ * against a landscape profile. Returns null when the source already fits
+ * within the target on both axes — never upscale.
+ */
+export function resolveCompressionTarget(
+  sourceWidth: number,
+  sourceHeight: number,
+  requestedQualities: readonly VideoQualityLevel[],
+): { width: number; height: number } | null {
+  if (requestedQualities.length === 0) {
+    return null;
+  }
+
+  const largestProfile = requestedQualities
+    .map((quality) => getQualityProfile(quality))
+    .reduce((largest, profile) =>
+      profile.width * profile.height > largest.width * largest.height
+        ? profile
+        : largest,
+    );
+
+  const sourceMinDim = Math.min(sourceWidth, sourceHeight);
+  const sourceMaxDim = Math.max(sourceWidth, sourceHeight);
+  const profileMinDim = Math.min(largestProfile.width, largestProfile.height);
+  const profileMaxDim = Math.max(largestProfile.width, largestProfile.height);
+
+  if (sourceMinDim <= profileMinDim && sourceMaxDim <= profileMaxDim) {
+    return null;
+  }
+
+  const targetMinDim = Math.min(sourceMinDim, profileMinDim);
+  const targetMaxDim = Math.min(sourceMaxDim, profileMaxDim);
+  const isPortrait = sourceHeight > sourceWidth;
+
+  return isPortrait
+    ? { width: targetMinDim, height: targetMaxDim }
+    : { width: targetMaxDim, height: targetMinDim };
+}
+
+export interface CompressionBuildResult {
+  args: readonly string[];
+  targetResolution: { width: number; height: number } | null;
+}
+
+/**
+ * Builds the args for Video Processing V2's compression pass: a single
+ * CRF re-encode (optionally capped to resolveCompressionTarget()) that
+ * runs before the existing multi-quality HLS split, producing a smaller
+ * intermediate to split instead of the raw uploaded source.
+ */
+export function buildCompressionArgs(options: {
+  inputPath: string;
+  outputPath: string;
+  qualities: readonly VideoQualityLevel[];
+  metadata: VideoMetadata;
+  crf: number;
+}): CompressionBuildResult {
+  const { inputPath, outputPath, qualities, metadata, crf } = options;
+
+  const targetResolution = resolveCompressionTarget(
+    metadata.width,
+    metadata.height,
+    qualities,
+  );
+
+  const args: string[] = ["-y", "-hide_banner", "-i", inputPath];
+
+  if (targetResolution) {
+    args.push(
+      "-vf",
+      `scale=w=${targetResolution.width}:h=${targetResolution.height}:force_original_aspect_ratio=decrease:force_divisible_by=2`,
+    );
+  }
+
+  args.push(
+    "-c:v",
+    "libx264",
+    "-crf",
+    String(crf),
+    "-preset",
+    "fast",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "128k",
+    outputPath,
+  );
+
+  return { args, targetResolution };
+}
+
 export function generateMasterPlaylist(
   variants: readonly GeneratedVariant[],
 ): string {

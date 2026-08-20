@@ -1,9 +1,11 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
+  buildCompressionArgs,
   buildFfmpegHlsArgs,
   filterApplicableQualities,
   generateMasterPlaylist,
+  resolveCompressionTarget,
 } from "../src/ffmpeg-builder.ts";
 
 describe("FFmpeg Dynamic HLS Command Builder", () => {
@@ -109,5 +111,70 @@ describe("FFmpeg Dynamic HLS Command Builder", () => {
     assert.ok(result.args.includes("0"));
     assert.ok(result.args.includes("-hls_flags"));
     assert.ok(result.args.includes("independent_segments"));
+  });
+});
+
+describe("Video Processing V2 — Compression Resolution Cap", () => {
+  it("caps a 4K source down to the largest requested quality tier", () => {
+    const target = resolveCompressionTarget(3840, 2160, [
+      "720p",
+      "480p",
+      "360p",
+    ]);
+
+    assert.deepEqual(target, { width: 1280, height: 720 });
+  });
+
+  it("never upscales a source smaller than the requested quality", () => {
+    // 480p source, job requests up to 720p — should stay null (no resize)
+    const target = resolveCompressionTarget(854, 480, ["720p", "480p"]);
+
+    assert.equal(target, null);
+  });
+
+  it("returns null when the source already fits the target exactly", () => {
+    const target = resolveCompressionTarget(1280, 720, ["720p"]);
+
+    assert.equal(target, null);
+  });
+
+  it("caps a portrait source preserving its orientation", () => {
+    // 4K portrait source (2160x3840), job requests up to 720p
+    const target = resolveCompressionTarget(2160, 3840, ["720p", "480p"]);
+
+    assert.deepEqual(target, { width: 720, height: 1280 });
+  });
+
+  it("builds compression args with a scale filter when capping resolution", () => {
+    const { args, targetResolution } = buildCompressionArgs({
+      inputPath: "/tmp/source.mp4",
+      outputPath: "/tmp/optimized.mp4",
+      qualities: ["720p", "480p"],
+      metadata: { durationSeconds: 72, width: 3840, height: 2160 },
+      crf: 22,
+    });
+
+    assert.deepEqual(targetResolution, { width: 1280, height: 720 });
+    assert.ok(args.includes("-vf"));
+    assert.ok(
+      args.some((a) => a.includes("scale=w=1280:h=720")),
+    );
+    assert.ok(args.includes("-crf"));
+    assert.ok(args.includes("22"));
+    assert.ok(args.includes("/tmp/optimized.mp4"));
+  });
+
+  it("builds compression args without a scale filter when no cap is needed", () => {
+    const { args, targetResolution } = buildCompressionArgs({
+      inputPath: "/tmp/source.mp4",
+      outputPath: "/tmp/optimized.mp4",
+      qualities: ["720p"],
+      metadata: { durationSeconds: 72, width: 1280, height: 720 },
+      crf: 22,
+    });
+
+    assert.equal(targetResolution, null);
+    assert.ok(!args.includes("-vf"));
+    assert.ok(args.includes("-crf"));
   });
 });

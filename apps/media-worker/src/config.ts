@@ -20,6 +20,7 @@ export const mediaWorkerConfigSchema = z.object({
   HEARTBEAT_INTERVAL_MS: z.coerce.number().int().min(1000).default(15000),
   PROGRESS_UPDATE_INTERVAL_MS: z.coerce.number().int().min(1000).default(5000),
   WORKER_IDLE_POLL_SECONDS: z.coerce.number().int().min(1).default(15),
+  VIDEO_COMPRESSION_CRF: z.coerce.number().int().min(0).max(51).default(22),
   FFMPEG_PATH: z.string().default("ffmpeg"),
   FFPROBE_PATH: z.string().default("ffprobe"),
 });
