@@ -258,16 +258,8 @@ export async function executeTranscodeJob(
       console.warn("[media-worker] Local sync notice:", localErr);
     }
 
-    // 10. Sync HLS artifacts to S3 if storage provider is s3 or credentials configured
-    if (
-      config.STORAGE_PROVIDER === "s3" ||
-      process.env["STORAGE_PROVIDER"] === "s3" ||
-      process.env["S3_USE_INSTANCE_ROLE"] === "true" ||
-      (process.env["AWS_ACCESS_KEY_ID"] &&
-        process.env["AWS_SECRET_ACCESS_KEY"]) ||
-      process.env["S3_ENDPOINT"] ||
-      process.env["AWS_REGION"]
-    ) {
+    // 10. Sync HLS artifacts to S3 if storage provider is s3
+    if (config.STORAGE_PROVIDER === "s3") {
       try {
         const uploaded = await uploadDirectoryToS3(
           s3Client,

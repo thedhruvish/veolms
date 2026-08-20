@@ -621,9 +621,12 @@ async function setupLambda(
       return fnArn;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
+      // AWS SDK v3 puts the exception type on `.name` (e.g.
+      // "InvalidParameterValueException"), not embedded in `.message`.
+      const name = err instanceof Error ? err.name : "";
       if (
         (msg.includes("cannot be assumed by Lambda") ||
-          msg.includes("InvalidParameterValueException")) &&
+          name === "InvalidParameterValueException") &&
         attempt < maxRetries
       ) {
         info(

@@ -71,6 +71,13 @@ export async function handler(
       }),
     };
   } finally {
-    await db.destroy();
+    // A throw here would otherwise replace whatever the try/catch above
+    // already decided to return (JS finally-block semantics), turning a
+    // successful 200 response into a spurious Lambda execution failure.
+    try {
+      await db.destroy();
+    } catch (destroyErr: unknown) {
+      console.error("[lambda] Error closing database connection:", destroyErr);
+    }
   }
 }

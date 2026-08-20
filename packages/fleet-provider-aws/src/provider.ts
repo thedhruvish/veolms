@@ -24,6 +24,7 @@ import {
   encodeUserDataBase64,
   generateUserDataScript,
 } from "./bootstrapper.ts";
+import { loadAwsProviderConfig } from "./config.ts";
 import { selectOptimalInstanceType } from "./instance-types.ts";
 
 export interface AwsProviderConfig {
@@ -61,7 +62,28 @@ export function mapEc2StateToWorkerStatus(stateName?: string): WorkerStatus {
 export function createAwsProvider(
   config: AwsProviderConfig = {},
 ): FleetProvider {
-  const region = config.region ?? "us-east-1";
+  // Fields not explicitly passed by the caller fall back to the AWS
+  // provider's own env-derived config, so constructing this provider
+  // through the generic fleet-manager resolver (which only knows about
+  // provider-agnostic options like workerScriptPath) still picks up
+  // region/spot/IAM-profile from the environment instead of silently
+  // defaulting to us-east-1 + on-demand + no instance profile.
+  const envConfig = loadAwsProviderConfig(process.env);
+  const region = config.region ?? envConfig.AWS_REGION;
+  const amiId = config.amiId ?? envConfig.AMI_ID;
+  const iamInstanceProfile =
+    config.iamInstanceProfile ?? envConfig.EC2_IAM_INSTANCE_PROFILE;
+  const useSpot = config.useSpot ?? envConfig.EC2_USE_SPOT;
+  const subnetId = config.subnetId ?? envConfig.SUBNET_ID;
+  const keyName = config.keyName ?? envConfig.KEY_NAME;
+  const securityGroupIds =
+    config.securityGroupIds ??
+    (envConfig.SECURITY_GROUP_IDS
+      ? envConfig.SECURITY_GROUP_IDS.split(",")
+          .map((id) => id.trim())
+          .filter(Boolean)
+      : undefined);
+
   const ec2 = config.ec2Client ?? new EC2Client({ region });
   const ssm = config.ssmClient ?? new SSMClient({ region });
   // Default verified Ubuntu 24.04 AMIs for us-east-1
@@ -74,7 +96,7 @@ export function createAwsProvider(
     async createWorker(id: string, spec: WorkerSpec): Promise<WorkerHandle> {
       const instanceType = selectOptimalInstanceType(spec);
       const imageId =
-        config.amiId ??
+        amiId ??
         (spec.architecture === "arm64" ? defaultArm64Ami : defaultX86Ami);
 
       const userDataScript = generateUserDataScript({
@@ -92,17 +114,13 @@ export function createAwsProvider(
         MinCount: 1,
         MaxCount: 1,
         UserData: userDataBase64,
-        SubnetId: config.subnetId,
-        SecurityGroupIds: config.securityGroupIds
-          ? [...config.securityGroupIds]
+        SubnetId: subnetId,
+        SecurityGroupIds: securityGroupIds ? [...securityGroupIds] : undefined,
+        KeyName: keyName,
+        IamInstanceProfile: iamInstanceProfile
+          ? { Name: iamInstanceProfile }
           : undefined,
-        KeyName: config.keyName,
-        IamInstanceProfile: config.iamInstanceProfile
-          ? { Name: config.iamInstanceProfile }
-          : undefined,
-        InstanceMarketOptions: config.useSpot
-          ? { MarketType: "spot" }
-          : undefined,
+        InstanceMarketOptions: useSpot ? { MarketType: "spot" } : undefined,
         BlockDeviceMappings: [
           {
             DeviceName: "/dev/sda1",

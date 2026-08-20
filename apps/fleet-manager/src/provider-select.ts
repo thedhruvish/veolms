@@ -152,6 +152,9 @@ export async function runProviderSelection(): Promise<void> {
   );
   const envPath = join(process.cwd(), "apps/fleet-manager/.env");
   let envContent = existsSync(envPath) ? readFileSync(envPath, "utf-8") : "";
+  if (envContent && !envContent.endsWith("\n")) {
+    envContent += "\n";
+  }
 
   if (/^FLEET_PROVIDER=.*/m.test(envContent)) {
     envContent = envContent.replace(

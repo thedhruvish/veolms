@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { execSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import * as esbuild from "esbuild";
@@ -19,6 +19,19 @@ function exec(cmd: string): string {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     throw new Error(`Command failed: ${cmd}\n${message}`);
+  }
+}
+
+// Uses execFileSync (no shell) so argument values — like a Postgres
+// connection string that may contain quotes or other shell metacharacters
+// — are passed to the `aws` process literally instead of being
+// re-interpreted by /bin/sh.
+function execFileArgs(cmd: string, args: readonly string[]): string {
+  try {
+    return execFileSync(cmd, [...args], { encoding: "utf-8", stdio: "pipe" }).trim();
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Command failed: ${cmd} ${args.join(" ")}\n${message}`);
   }
 }
 
@@ -214,13 +227,26 @@ async function ensureAwsInfrastructure(databaseUrl: string): Promise<string> {
     lambdaExists = false;
   }
 
+  const envVarsArg = `Variables={DATABASE_URL="${databaseUrl}",STORAGE_PROVIDER="s3",S3_BUCKET="${S3_BUCKET}",EC2_IAM_INSTANCE_PROFILE="${INSTANCE_PROFILE_NAME}",EC2_USE_SPOT="true",PROVIDER="aws"}`;
+
   if (lambdaExists) {
     exec(
       `aws lambda update-function-code --function-name ${LAMBDA_NAME} --zip-file fileb://${distLambdaDir}/function.zip --region ${REGION}`,
     );
-    exec(
-      `aws lambda update-function-configuration --function-name ${LAMBDA_NAME} --environment 'Variables={DATABASE_URL="${databaseUrl}",STORAGE_PROVIDER="s3",S3_BUCKET="${S3_BUCKET}",EC2_IAM_INSTANCE_PROFILE="${INSTANCE_PROFILE_NAME}",EC2_USE_SPOT="true",PROVIDER="aws"}' --timeout 900 --memory-size 512 --region ${REGION}`,
-    );
+    execFileArgs("aws", [
+      "lambda",
+      "update-function-configuration",
+      "--function-name",
+      LAMBDA_NAME,
+      "--environment",
+      envVarsArg,
+      "--timeout",
+      "900",
+      "--memory-size",
+      "512",
+      "--region",
+      REGION,
+    ]);
     console.info(`  ✔ Updated existing Lambda function: ${LAMBDA_NAME}`);
   } else {
     // Wait for IAM role propagation if newly created
@@ -228,9 +254,28 @@ async function ensureAwsInfrastructure(databaseUrl: string): Promise<string> {
     let created = false;
     for (let attempt = 1; attempt <= 6; attempt++) {
       try {
-        exec(
-          `aws lambda create-function --function-name ${LAMBDA_NAME} --runtime nodejs22.x --role ${roleArn} --handler index.handler --zip-file fileb://${distLambdaDir}/function.zip --timeout 900 --memory-size 512 --environment 'Variables={DATABASE_URL="${databaseUrl}",STORAGE_PROVIDER="s3",S3_BUCKET="${S3_BUCKET}",EC2_IAM_INSTANCE_PROFILE="${INSTANCE_PROFILE_NAME}",EC2_USE_SPOT="true",PROVIDER="aws"}' --region ${REGION}`,
-        );
+        execFileArgs("aws", [
+          "lambda",
+          "create-function",
+          "--function-name",
+          LAMBDA_NAME,
+          "--runtime",
+          "nodejs22.x",
+          "--role",
+          roleArn,
+          "--handler",
+          "index.handler",
+          "--zip-file",
+          `fileb://${distLambdaDir}/function.zip`,
+          "--timeout",
+          "900",
+          "--memory-size",
+          "512",
+          "--environment",
+          envVarsArg,
+          "--region",
+          REGION,
+        ]);
         created = true;
         break;
       } catch {
