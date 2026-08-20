@@ -9,6 +9,7 @@ import {
 } from "@aws-sdk/client-ec2";
 import {
   GetCommandInvocationCommand,
+  GetParameterCommand,
   SendCommandCommand,
   SSMClient,
 } from "@aws-sdk/client-ssm";
@@ -39,6 +40,44 @@ export interface AwsProviderConfig {
   readonly defaultEnv?: Readonly<Record<string, string>>;
   readonly ec2Client?: EC2Client;
   readonly ssmClient?: SSMClient;
+}
+
+// Debian's Cloud Team publishes the current AMI ID for every release under
+// this public SSM parameter namespace, refreshed automatically on every
+// point release — resolving through it here means we never hardcode (and
+// never go stale on) a region-specific AMI ID.
+// Docs: https://wiki.debian.org/Cloud/AmazonEC2Image
+const DEBIAN_RELEASE = "13";
+const debianAmiCache = new Map<string, Promise<string>>();
+
+function resolveDebianAmiId(
+  ssm: SSMClient,
+  architecture: "arm64" | "x86_64",
+): Promise<string> {
+  const debianArch = architecture === "arm64" ? "arm64" : "amd64";
+  const parameterName = `/aws/service/debian/release/${DEBIAN_RELEASE}/latest/${debianArch}`;
+
+  const cached = debianAmiCache.get(parameterName);
+  if (cached) return cached;
+
+  const promise = ssm
+    .send(new GetParameterCommand({ Name: parameterName }))
+    .then((res) => {
+      const amiId = res.Parameter?.Value;
+      if (!amiId) {
+        throw new Error(
+          `SSM parameter ${parameterName} returned no AMI ID — cannot launch a Debian ${DEBIAN_RELEASE} worker.`,
+        );
+      }
+      return amiId;
+    })
+    .catch((err: unknown) => {
+      debianAmiCache.delete(parameterName);
+      throw err;
+    });
+
+  debianAmiCache.set(parameterName, promise);
+  return promise;
 }
 
 export function mapEc2StateToWorkerStatus(stateName?: string): WorkerStatus {
@@ -86,9 +125,11 @@ export function createAwsProvider(
 
   const ec2 = config.ec2Client ?? new EC2Client({ region });
   const ssm = config.ssmClient ?? new SSMClient({ region });
-  // Default verified Ubuntu 24.04 AMIs for us-east-1
-  const defaultArm64Ami = "ami-02c4144237becae44"; // Ubuntu 24.04 ARM64 (Graviton)
-  const defaultX86Ami = "ami-04b4f1a9cf54c11d0"; // Ubuntu 24.04 x86_64
+  // LocalStack Docker VM manager only accepts its tagged Docker AMIs.
+  // Real AWS AMI IDs are API-only/mock resources in LocalStack and do not
+  // create an instance container or execute UserData.
+  const isLocalStack = Boolean(process.env.AWS_ENDPOINT_URL);
+  const defaultLocalStackAmi = "ami-df5de72bdb3b3";
 
   return {
     name: "aws",
@@ -97,7 +138,9 @@ export function createAwsProvider(
       const instanceType = selectOptimalInstanceType(spec);
       const imageId =
         amiId ??
-        (spec.architecture === "arm64" ? defaultArm64Ami : defaultX86Ami);
+        (isLocalStack
+          ? defaultLocalStackAmi
+          : await resolveDebianAmiId(ssm, spec.architecture));
 
       const userDataScript = generateUserDataScript({
         workerId: id,

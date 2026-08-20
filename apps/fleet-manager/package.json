@@ -14,6 +14,7 @@
     "infra": "node --env-file-if-exists=.env src/infra.ts",
     "destroy": "node --env-file-if-exists=.env src/destroy.ts",
     "queue:test": "node --env-file-if-exists=.env scripts/queue-test-job.ts",
+    "queue:trigger": "node --env-file-if-exists=.env scripts/queue-and-trigger-lambda.ts",
     "test:pipeline": "node --env-file-if-exists=.env scripts/test-local-pipeline.ts",
     "test:aws": "node --env-file-if-exists=.env scripts/test-aws-pipeline.ts"
   },

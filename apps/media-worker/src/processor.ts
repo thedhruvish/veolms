@@ -8,11 +8,11 @@ import { buildFfmpegHlsArgs, type VideoMetadata } from "./ffmpeg-builder.ts";
 import { FfmpegProgressParser } from "./progress.ts";
 import {
   createS3ClientFromConfig,
+  downloadHttpFile,
   downloadS3File,
   uploadDirectoryToS3,
 } from "./s3.ts";
 import type { MediaWorkerContext } from "./worker.ts";
-import { resolve } from "node:url";
 
 const execFileAsync = promisify(execFile);
 
@@ -114,37 +114,43 @@ export async function executeTranscodeJob(
     await mkdir(jobScratchDir, { recursive: true });
     await mkdir(outputHlsDir, { recursive: true });
 
-    // 3. Obtain source video (local file or S3 download)
-    const localCandidates = [
-      job.video_key,
-      join(process.cwd(), job.video_key),
-      join(process.cwd(), "s3-bucket", job.video_key),
-      join(process.cwd(), "scratch", job.video_key),
-      join(process.cwd(), "scratch/source-video.mp4"),
-    ];
-    let isLocalFile = false;
-    for (const candidate of localCandidates) {
-      if (existsSync(candidate)) {
-        try {
-          const s = await stat(candidate);
-          if (s.isFile()) {
-            await copyFile(candidate, inputVideoPath);
-            isLocalFile = true;
-            break;
+    // 3. Obtain source video (HTTP(S) URL, local file, or S3 download)
+    const isHttpUrl = /^https?:\/\//i.test(job.video_key);
+
+    if (isHttpUrl) {
+      await downloadHttpFile(job.video_key, inputVideoPath);
+    } else {
+      const localCandidates = [
+        job.video_key,
+        join(process.cwd(), job.video_key),
+        join(process.cwd(), "s3-bucket", job.video_key),
+        join(process.cwd(), "scratch", job.video_key),
+        join(process.cwd(), "scratch/source-video.mp4"),
+      ];
+      let isLocalFile = false;
+      for (const candidate of localCandidates) {
+        if (existsSync(candidate)) {
+          try {
+            const s = await stat(candidate);
+            if (s.isFile()) {
+              await copyFile(candidate, inputVideoPath);
+              isLocalFile = true;
+              break;
+            }
+          } catch {
+            // Ignore
           }
-        } catch {
-          // Ignore
         }
       }
-    }
 
-    if (!isLocalFile) {
-      await downloadS3File(
-        s3Client,
-        config.S3_BUCKET,
-        job.video_key,
-        inputVideoPath,
-      );
+      if (!isLocalFile) {
+        await downloadS3File(
+          s3Client,
+          config.S3_BUCKET,
+          job.video_key,
+          inputVideoPath,
+        );
+      }
     }
 
     // 4. Probe Video Metadata

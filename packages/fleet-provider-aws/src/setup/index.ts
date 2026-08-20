@@ -41,6 +41,8 @@ import {
   GetFunctionCommand,
   Runtime,
   PackageType,
+  UpdateFunctionCodeCommand,
+  UpdateFunctionConfigurationCommand,
 } from "@aws-sdk/client-lambda";
 import {
   CloudWatchLogsClient,
@@ -72,6 +74,7 @@ const LAMBDA_FUNCTION_NAME = "veolms-fleet-manager";
 const LOG_GROUP_WORKERS = "/veolms/workers";
 const LOG_GROUP_FLEET = "/veolms/fleet-manager";
 const LOG_RETENTION_DAYS = 30;
+const LOCALSTACK_DOCKER_AMI_ID = "ami-df5de72bdb3b3";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -172,23 +175,7 @@ async function askChoice<T extends string>(
 
 // ─── AWS Resource Provisioners ────────────────────────────────────────────────
 
-export async function checkOrCreateRole(
-  iam: IAMClient,
-  useS3: boolean,
-  s3BucketName: string | null,
-): Promise<string> {
-  try {
-    const existing = await iam.send(
-      new GetRoleCommand({ RoleName: ROLE_NAME }),
-    );
-    if (existing.Role?.Arn) {
-      ok(`IAM role ${bold(ROLE_NAME)} already exists — reusing.`);
-      return existing.Role.Arn;
-    }
-  } catch {
-    // Role doesn't exist — create it below
-  }
-
+async function createRole(iam: IAMClient): Promise<string> {
   info(`Creating IAM role ${bold(ROLE_NAME)}...`);
 
   const trustPolicy = JSON.stringify({
@@ -221,6 +208,34 @@ export async function checkOrCreateRole(
   if (!roleArn) throw new Error("Failed to get ARN for created IAM role");
 
   ok(`Created IAM role: ${bold(ROLE_NAME)}`);
+  return roleArn;
+}
+
+export async function checkOrCreateRole(
+  iam: IAMClient,
+  useS3: boolean,
+  s3BucketName: string | null,
+): Promise<string> {
+  let roleArn: string;
+
+  try {
+    const existing = await iam.send(
+      new GetRoleCommand({ RoleName: ROLE_NAME }),
+    );
+    if (existing.Role?.Arn) {
+      ok(`IAM role ${bold(ROLE_NAME)} already exists — reusing.`);
+      roleArn = existing.Role.Arn;
+    } else {
+      roleArn = await createRole(iam);
+    }
+  } catch {
+    roleArn = await createRole(iam);
+  }
+
+  // Policies are re-applied on every run (not just at creation) so a
+  // reused role from an earlier setup still picks up permission changes
+  // — e.g. a new inline statement added since that role was first created.
+  // Attach/PutRolePolicy calls are idempotent upserts, safe to repeat.
 
   // Always attach: CloudWatch Logs + SSM + Lambda basic execution managed
   // policies. These are independent, so run them concurrently.
@@ -304,6 +319,16 @@ export async function checkOrCreateRole(
         Action: "iam:PassRole",
         Resource: roleArn,
       },
+      {
+        // Read-only access to AWS's public Debian AMI parameters, so the
+        // provider can resolve the current Debian AMI ID at launch time
+        // instead of a hardcoded one. These parameters live under an
+        // AWS-managed account, hence the account-less resource ARN.
+        Sid: "ResolveDebianAmi",
+        Effect: "Allow",
+        Action: "ssm:GetParameter",
+        Resource: "arn:aws:ssm:*::parameter/aws/service/debian/*",
+      },
     ],
   });
 
@@ -343,8 +368,17 @@ export async function createInstanceProfile(
     ok(`Created instance profile ${bold(INSTANCE_PROFILE_NAME)}`);
     return profileArn;
   } catch (err: unknown) {
+    // AWS SDK v3 puts the exception type on `.name`
+    // ("EntityAlreadyExistsException"); LocalStack's message text for this
+    // case doesn't contain "EntityAlreadyExists" at all ("Instance Profile
+    // ... already exists."), so a message-substring check alone misses it
+    // there while still matching real AWS.
+    const name = err instanceof Error ? err.name : "";
     const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes("EntityAlreadyExists")) {
+    if (
+      name === "EntityAlreadyExistsException" ||
+      /already exists/i.test(msg)
+    ) {
       ok(
         `Instance profile ${bold(INSTANCE_PROFILE_NAME)} already exists — reusing.`,
       );
@@ -571,6 +605,54 @@ export function buildAndUploadWorkerBundle(
   }
 }
 
+async function updateExistingLambda(
+  lambda: LambdaClient,
+  roleArn: string,
+  envVars: Readonly<Record<string, string>>,
+  functionArn: string,
+): Promise<string> {
+  ok(`Lambda function ${bold(LAMBDA_FUNCTION_NAME)} already exists — updating.`);
+
+  const lambdaZip = buildLambdaBundleZip();
+  await lambda.send(
+    new UpdateFunctionCodeCommand({
+      FunctionName: LAMBDA_FUNCTION_NAME,
+      ZipFile: lambdaZip,
+    }),
+  );
+  await waitUntilFunctionUpdated(lambda);
+
+  await lambda.send(
+    new UpdateFunctionConfigurationCommand({
+      FunctionName: LAMBDA_FUNCTION_NAME,
+      Role: roleArn,
+      Environment: {
+        Variables: {
+          LOG_LEVEL: "info",
+          FLEET_MODE: "serverless",
+          ...envVars,
+        },
+      },
+    }),
+  );
+  ok(`Updated code + configuration for ${bold(LAMBDA_FUNCTION_NAME)}`);
+  return functionArn;
+}
+
+async function waitUntilFunctionUpdated(lambda: LambdaClient): Promise<void> {
+  // Code/config updates apply asynchronously (LastUpdateStatus goes
+  // InProgress -> Successful); a second update issued while one is still
+  // in flight is rejected with ResourceConflictException, so the
+  // configuration update below must wait for the code update to land.
+  for (let attempt = 0; attempt < 15; attempt++) {
+    const res = await lambda.send(
+      new GetFunctionCommand({ FunctionName: LAMBDA_FUNCTION_NAME }),
+    );
+    if (res.Configuration?.LastUpdateStatus !== "InProgress") return;
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+}
+
 async function setupLambda(
   region: string,
   roleArn: string,
@@ -583,10 +665,12 @@ async function setupLambda(
       new GetFunctionCommand({ FunctionName: LAMBDA_FUNCTION_NAME }),
     );
     if (existing.Configuration?.FunctionArn) {
-      ok(
-        `Lambda function ${bold(LAMBDA_FUNCTION_NAME)} already exists — reusing.`,
+      return await updateExistingLambda(
+        lambda,
+        roleArn,
+        envVars,
+        existing.Configuration.FunctionArn,
       );
-      return existing.Configuration.FunctionArn;
     }
   } catch {
     // Doesn't exist — create it
@@ -691,7 +775,10 @@ async function generateEnvFiles(
     EC2_IAM_INSTANCE_PROFILE: INSTANCE_PROFILE_NAME,
     EC2_USE_SPOT: String(answers.useSpot),
     EC2_BOOT_MODE: answers.bootMode,
-    EC2_MAX_WORKERS: String(answers.maxWorkers),
+    // Read by apps/fleet-manager (provider-agnostic — it's the number of
+    // concurrent workers, not something EC2-specific), so this key must
+    // match what @veolms/fleet-provider-local's setup writes too.
+    MAX_WORKERS: String(answers.maxWorkers),
     EC2_ALLOWED_INSTANCE_TYPES: answers.allowedInstanceTypes.join(","),
     WORKER_LOG_GROUP: result.logGroupWorkers,
     FLEET_LOG_GROUP: result.logGroupFleet,
@@ -706,6 +793,8 @@ async function generateEnvFiles(
   }
   if (answers.targetEnv === "localstack" && answers.endpointUrl) {
     fleetEnv["AWS_ENDPOINT_URL"] = answers.endpointUrl;
+    fleetEnv["EC2_VM_MANAGER"] = "docker";
+    fleetEnv["AMI_ID"] = LOCALSTACK_DOCKER_AMI_ID;
     fleetEnv["AWS_ACCESS_KEY_ID"] = "test";
     fleetEnv["AWS_SECRET_ACCESS_KEY"] = "test";
   }
@@ -775,7 +864,22 @@ export async function runAwsInfraSetup(): Promise<void> {
     );
 
     let endpointUrl: string | null = null;
-    if (targetEnv === "localstack") {
+    if (targetEnv === "aws") {
+      // `node --env-file-if-exists=.env` loads whatever .env is already on
+      // disk before this wizard runs, so picking "Real AWS" here after a
+      // prior LocalStack setup would otherwise silently inherit that run's
+      // AWS_ENDPOINT_URL and "test"/"test" credentials for the rest of this
+      // process — every AWS SDK call below would keep hitting LocalStack
+      // even though the user explicitly chose Real AWS. Clear them so this
+      // choice actually takes effect.
+      delete process.env.AWS_ENDPOINT_URL;
+      if (process.env.AWS_ACCESS_KEY_ID === "test") {
+        delete process.env.AWS_ACCESS_KEY_ID;
+      }
+      if (process.env.AWS_SECRET_ACCESS_KEY === "test") {
+        delete process.env.AWS_SECRET_ACCESS_KEY;
+      }
+    } else if (targetEnv === "localstack") {
       endpointUrl = await ask(
         rl,
         "LocalStack endpoint URL",
@@ -789,10 +893,10 @@ export async function runAwsInfraSetup(): Promise<void> {
       process.env.AWS_ENDPOINT_URL = endpointUrl;
       process.env.AWS_ACCESS_KEY_ID ??= "test";
       process.env.AWS_SECRET_ACCESS_KEY ??= "test";
+      process.env.EC2_VM_MANAGER = "docker";
       warn(
-        "LocalStack mode: EC2 workers will be created via the API, but " +
-          "actual boot/UserData execution depends on your LocalStack edition " +
-          "(Community mocks EC2 state only; Pro can emulate real instances).",
+        "LocalStack Docker VM mode requires EC2_VM_MANAGER=docker and the " +
+          "container-runtime socket mounted at /var/run/docker.sock.",
       );
     }
 
@@ -1039,15 +1143,31 @@ export async function runAwsInfraSetup(): Promise<void> {
         STORAGE_PROVIDER: storageProvider,
         EC2_IAM_INSTANCE_PROFILE: INSTANCE_PROFILE_NAME,
         EC2_USE_SPOT: String(useSpot),
+        MAX_WORKERS: String(maxWorkers),
         PROVIDER: "aws",
       };
       if (s3BucketName) {
         lambdaEnvVars["S3_BUCKET"] = s3BucketName;
       }
       if (endpointUrl) {
-        lambdaEnvVars["AWS_ENDPOINT_URL"] = endpointUrl;
+        // Deliberately NOT setting AWS_ENDPOINT_URL here. On the host (and
+        // for the daemon/media-worker, which run as regular processes) it
+        // correctly resolves to LocalStack's API. But localhost.localstack
+        // .cloud resolves to 127.0.0.1, and inside the Lambda's own
+        // isolated execution container that loopback doesn't reach the
+        // main LocalStack container — only the host does. LocalStack
+        // already wires up Lambda-to-LocalStack networking automatically
+        // for calls made from within a function, so overriding the
+        // endpoint here breaks it instead: RunInstances (and friends)
+        // return what look like valid responses but the resources are
+        // never actually created anywhere.
         lambdaEnvVars["AWS_ACCESS_KEY_ID"] = "test";
         lambdaEnvVars["AWS_SECRET_ACCESS_KEY"] = "test";
+        // LocalStack's Docker VM manager requires one of its tagged Docker
+        // AMIs. Keep the endpoint private to the Lambda runtime, but pass the
+        // AMI selection through so RunInstances does not use a real AWS AMI.
+        lambdaEnvVars["AMI_ID"] = LOCALSTACK_DOCKER_AMI_ID;
+        lambdaEnvVars["EC2_VM_MANAGER"] = "docker";
       }
       lambdaFunctionArn = await setupLambda(
         region,

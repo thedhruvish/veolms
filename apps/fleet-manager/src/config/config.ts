@@ -11,6 +11,7 @@ export const fleetManagerConfigSchema = z.object({
   MAX_CHECK_INTERVAL_SECONDS: z.coerce.number().int().min(30).default(300),
   DEFAULT_CHECK_INTERVAL_SECONDS: z.coerce.number().int().min(10).default(30),
   MAX_RETRIES: z.coerce.number().int().min(0).default(3),
+  MAX_WORKERS: z.coerce.number().int().min(1).default(8),
   MEDIA_WORKER_SCRIPT_PATH: z.string().optional(),
 });
 

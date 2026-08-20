@@ -39,7 +39,7 @@ systemctl restart veolms-media-worker || systemctl start veolms-media-worker
 `;
   }
 
-  // Standard Debian 14 / Linux AMI with dynamic bootstrapper
+  // Standard Debian 13 / Linux AMI with dynamic bootstrapper
   return `#!/bin/bash
 set -euo pipefail
 

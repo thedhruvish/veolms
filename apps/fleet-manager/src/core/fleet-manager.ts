@@ -66,6 +66,14 @@ export function createFleetManager(
     },
 
     async processNextJob(): Promise<boolean> {
+      const activeWorkers = await workerManager.countActiveWorkers();
+      if (activeWorkers >= config.MAX_WORKERS) {
+        console.info(
+          `[fleet-manager] At worker capacity (${activeWorkers}/${config.MAX_WORKERS}) — leaving queued jobs for a later tick.`,
+        );
+        return false;
+      }
+
       const job = await jobManager.claimNextJob();
       if (!job) {
         return false;

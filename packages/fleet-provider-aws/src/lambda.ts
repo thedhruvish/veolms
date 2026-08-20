@@ -1,8 +1,14 @@
 import { createDatabase } from "../../database/src/index.ts";
-import {
-  createFleetManager,
-  loadFleetManagerConfig,
-} from "../../../apps/fleet-manager/src/index.ts";
+// Imported directly from these two submodules — not from
+// apps/fleet-manager/src/index.ts — because that barrel file (and cli.ts,
+// which it re-exports) each carry a top-level `if (process.argv[1] &&
+// import.meta.url.endsWith(...))` self-invocation guard. Bundled into this
+// Lambda's CJS output, import.meta.url doesn't resolve the way it does
+// under Node's own ESM loader, so `.endsWith` throws at require-time on
+// every single invocation — this Lambda doesn't need either file's CLI
+// entrypoint code at all, so avoiding the barrel avoids the guard.
+import { createFleetManager } from "../../../apps/fleet-manager/src/core/fleet-manager.ts";
+import { loadFleetManagerConfig } from "../../../apps/fleet-manager/src/config/config.ts";
 import { loadAwsProviderConfig } from "./config.ts";
 import { createAwsProvider } from "./provider.ts";
 

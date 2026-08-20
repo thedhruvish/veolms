@@ -12,8 +12,20 @@ import type {
 import type { FleetManagerConfig } from "../config/config.ts";
 import type { Scheduler } from "./scheduler.ts";
 
+// Statuses that occupy a worker slot; COMPLETED/FAILED/TERMINATED have
+// released their capacity back to the pool.
+const ACTIVE_WORKER_STATUSES = [
+  "PENDING",
+  "PROVISIONING",
+  "STARTING",
+  "READY",
+  "PROCESSING",
+  "TERMINATING",
+] as const;
+
 export interface WorkerManager {
   calculateWorkerSpec(job: Job): WorkerSpec;
+  countActiveWorkers(): Promise<number>;
   provisionWorker(job: Job): Promise<WorkerHandle>;
   terminateWorker(workerId: string): Promise<void>;
   recordEvent(
@@ -102,6 +114,15 @@ export function createWorkerManager(options: {
         databaseUrl: config.DATABASE_URL,
         jobId: job.id,
       });
+    },
+
+    async countActiveWorkers(): Promise<number> {
+      const result = await db
+        .selectFrom("workers")
+        .select((eb) => eb.fn.countAll<number>().as("count"))
+        .where("status", "in", ACTIVE_WORKER_STATUSES)
+        .executeTakeFirst();
+      return Number(result?.count ?? 0);
     },
 
     async provisionWorker(job: Job): Promise<WorkerHandle> {

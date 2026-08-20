@@ -7,7 +7,8 @@ import { createWriteStream } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { pipeline } from "node:stream/promises";
-import type { Readable } from "node:stream";
+import { Readable } from "node:stream";
+import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import type { MediaWorkerConfig } from "./config.ts";
 
 export function createS3ClientFromConfig(config: MediaWorkerConfig): S3Client {
@@ -39,6 +40,28 @@ export async function downloadS3File(
 
   const writeStream = createWriteStream(localDestinationPath);
   await pipeline(response.Body as Readable, writeStream);
+}
+
+export async function downloadHttpFile(
+  url: string,
+  localDestinationPath: string,
+): Promise<void> {
+  const response = await fetch(url);
+
+  if (!response.ok || !response.body) {
+    throw new Error(
+      `Failed to download video from ${url}: HTTP ${response.status}`,
+    );
+  }
+
+  // lib.dom's ReadableStream<Uint8Array> and node:stream/web's aren't
+  // structurally identical (ArrayBufferView generic constraints diverge),
+  // so this cast is required even though both describe the same runtime
+  // web stream that fetch() actually returns under Node.
+  const webStream = response.body as unknown as NodeReadableStream<Uint8Array>;
+
+  const writeStream = createWriteStream(localDestinationPath);
+  await pipeline(Readable.fromWeb(webStream), writeStream);
 }
 
 export function getMimeTypeForFile(filename: string): string {
