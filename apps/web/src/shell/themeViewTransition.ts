@@ -60,18 +60,25 @@ export function themeRevealOriginFromClick(event: {
 }
 
 // Stages the reveal origin as inline custom properties on the root so the
-// ::view-transition-new(root) mask inherits them. Only called for
-// interaction-triggered commits; without staged properties, the mask's
+// ::view-transition-new(root) mask inherits them. Claimed by every
+// transition: one with an origin restages the coordinates, and one without
+// removes any earlier pointer transition's coordinates so the mask's
 // keyword fallbacks (corner origins) apply for OS-triggered changes.
 function stageRevealOrigin(
   transitionId: number,
-  origin: ThemeRevealOrigin,
+  origin: ThemeRevealOrigin | null,
 ): void {
   // The duration stays fixed: shortening it for center-ish clicks is what
   // made the reveal feel rushed there, while corner clicks felt smooth.
   const style = document.documentElement.style;
-  style.setProperty("--theme-reveal-x", `${origin.x}px`);
-  style.setProperty("--theme-reveal-y", `${origin.y}px`);
+  if (origin) {
+    style.setProperty("--theme-reveal-x", `${origin.x}px`);
+    style.setProperty("--theme-reveal-y", `${origin.y}px`);
+  } else {
+    for (const property of revealOriginProperties) {
+      style.removeProperty(property);
+    }
+  }
   stagedOriginTransitionId = transitionId;
 }
 
@@ -103,7 +110,10 @@ export function applyWithThemeViewTransition(
   const transitionId = nextTransitionId++;
   document.documentElement.dataset.themeTransition = kind;
   taggedTransitionId = transitionId;
-  if (origin) stageRevealOrigin(transitionId, origin);
+  // Claim the staged origin in both cases: leaving a prior pointer
+  // transition's coordinates staged would reveal this transition from that
+  // pointer instead of the mask's corner fallback.
+  stageRevealOrigin(transitionId, origin ?? null);
   const transition = document.startViewTransition(commit);
   const clear = () => {
     // A newer transition may have retagged the root or restaged the origin;
