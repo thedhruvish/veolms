@@ -145,6 +145,98 @@ describe("applyWithThemeViewTransition", () => {
     expect(rootStyle().getPropertyValue("--theme-reveal-x")).toBe("");
   });
 
+  it("keeps the tag restaged by a newer same-kind transition", async () => {
+    const firstTransitionFinished = deferred();
+    const secondTransitionFinished = deferred();
+    startViewTransition.mockImplementationOnce(() => ({
+      finished: firstTransitionFinished.promise,
+      ready: Promise.resolve(),
+      updateCallbackDone: Promise.resolve(),
+    }));
+    startViewTransition.mockImplementationOnce(() => ({
+      finished: secondTransitionFinished.promise,
+      ready: Promise.resolve(),
+      updateCallbackDone: Promise.resolve(),
+    }));
+
+    applyWithThemeViewTransition(vi.fn(), "palette");
+    applyWithThemeViewTransition(vi.fn(), "palette");
+
+    // The first palette transition finishing must not drop the tag the
+    // second palette transition still needs for its mask corner.
+    firstTransitionFinished.resolve();
+    await firstTransitionFinished.promise;
+    expect(document.documentElement.dataset.themeTransition).toBe("palette");
+
+    secondTransitionFinished.resolve();
+    await secondTransitionFinished.promise;
+    expect(document.documentElement.dataset.themeTransition).toBeUndefined();
+  });
+
+  it("keeps origin vars restaged at the same x by a newer transition", async () => {
+    const firstTransitionFinished = deferred();
+    const secondTransitionFinished = deferred();
+    startViewTransition.mockImplementationOnce(() => ({
+      finished: firstTransitionFinished.promise,
+      ready: Promise.resolve(),
+      updateCallbackDone: Promise.resolve(),
+    }));
+    startViewTransition.mockImplementationOnce(() => ({
+      finished: secondTransitionFinished.promise,
+      ready: Promise.resolve(),
+      updateCallbackDone: Promise.resolve(),
+    }));
+
+    dispatchPointerDown(25, 10);
+    applyWithThemeViewTransition(vi.fn());
+    dispatchPointerDown(25, 60);
+    applyWithThemeViewTransition(vi.fn());
+    expect(rootStyle().getPropertyValue("--theme-reveal-x")).toBe("25px");
+    expect(rootStyle().getPropertyValue("--theme-reveal-y")).toBe("60px");
+
+    // Same x-coordinate, different y: the first transition's cleanup must
+    // not mistake the restaged origin for its own and wipe the y value.
+    firstTransitionFinished.resolve();
+    await firstTransitionFinished.promise;
+    expect(rootStyle().getPropertyValue("--theme-reveal-x")).toBe("25px");
+    expect(rootStyle().getPropertyValue("--theme-reveal-y")).toBe("60px");
+
+    secondTransitionFinished.resolve();
+    await secondTransitionFinished.promise;
+    expect(rootStyle().getPropertyValue("--theme-reveal-x")).toBe("");
+    expect(rootStyle().getPropertyValue("--theme-reveal-y")).toBe("");
+  });
+
+  it("keeps identical origin vars restaged by a newer transition", async () => {
+    const firstTransitionFinished = deferred();
+    const secondTransitionFinished = deferred();
+    startViewTransition.mockImplementationOnce(() => ({
+      finished: firstTransitionFinished.promise,
+      ready: Promise.resolve(),
+      updateCallbackDone: Promise.resolve(),
+    }));
+    startViewTransition.mockImplementationOnce(() => ({
+      finished: secondTransitionFinished.promise,
+      ready: Promise.resolve(),
+      updateCallbackDone: Promise.resolve(),
+    }));
+
+    dispatchPointerDown(10, 20);
+    applyWithThemeViewTransition(vi.fn());
+    dispatchPointerDown(10, 20);
+    applyWithThemeViewTransition(vi.fn());
+
+    firstTransitionFinished.resolve();
+    await firstTransitionFinished.promise;
+    expect(rootStyle().getPropertyValue("--theme-reveal-x")).toBe("10px");
+    expect(rootStyle().getPropertyValue("--theme-reveal-y")).toBe("20px");
+
+    secondTransitionFinished.resolve();
+    await secondTransitionFinished.promise;
+    expect(rootStyle().getPropertyValue("--theme-reveal-x")).toBe("");
+    expect(rootStyle().getPropertyValue("--theme-reveal-y")).toBe("");
+  });
+
   it("commits directly when the browser lacks view transitions", () => {
     Reflect.deleteProperty(document, "startViewTransition");
     const commit = vi.fn();

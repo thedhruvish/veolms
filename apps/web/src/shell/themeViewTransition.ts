@@ -13,11 +13,16 @@ const revealOriginProperties = [
   "--theme-reveal-y",
 ] as const;
 
-type RevealOriginProperty = (typeof revealOriginProperties)[number];
-type StagedRevealOrigin = Record<RevealOriginProperty, string> | null;
-
 let lastPointerOrigin: { x: number; y: number; timestamp: number } | null =
   null;
+
+// Overlapping transitions of the same kind share the tag value and can even
+// stage identical reveal coordinates, so value comparisons can never prove
+// which transition owns the root tag or the staged origin. Each transition
+// instead claims a unique id; cleanup only clears what that id still owns.
+let nextTransitionId = 0;
+let taggedTransitionId: number | null = null;
+let stagedOriginTransitionId: number | null = null;
 
 if (typeof document !== "undefined") {
   document.addEventListener(
@@ -34,41 +39,33 @@ if (typeof document !== "undefined") {
 }
 
 // Stages the reveal origin as inline custom properties on the root so the
-// ::view-transition-new(root) mask inherits them. Returns null (and stages
-// nothing) when no fresh pointer origin exists; the mask's keyword fallbacks
-// (corner origins) then apply for keyboard and OS-triggered changes.
-function stageRevealOrigin(): StagedRevealOrigin {
+// ::view-transition-new(root) mask inherits them. Returns without staging
+// (and without claiming origin ownership) when no fresh pointer origin
+// exists; the mask's keyword fallbacks (corner origins) then apply for
+// keyboard and OS-triggered changes.
+function stageRevealOrigin(transitionId: number): void {
   const origin = lastPointerOrigin;
-  if (!origin) return null;
+  if (!origin) return;
   if (performance.now() - origin.timestamp > POINTER_ORIGIN_MAX_AGE_MS) {
-    return null;
+    return;
   }
   // The duration stays fixed: shortening it for center-ish clicks is what
   // made the reveal feel rushed there, while corner clicks felt smooth.
-  const staged = {
-    "--theme-reveal-x": `${origin.x}px`,
-    "--theme-reveal-y": `${origin.y}px`,
-  };
   const style = document.documentElement.style;
-  for (const property of revealOriginProperties) {
-    style.setProperty(property, staged[property]);
-  }
-  return staged;
+  style.setProperty("--theme-reveal-x", `${origin.x}px`);
+  style.setProperty("--theme-reveal-y", `${origin.y}px`);
+  stagedOriginTransitionId = transitionId;
 }
 
-function clearStagedRevealOrigin(staged: StagedRevealOrigin): void {
-  if (!staged) return;
-  const style = document.documentElement.style;
+function clearStagedRevealOrigin(transitionId: number): void {
   // A newer transition may have restaged its own origin already; only remove
-  // our values while the inline style still holds the ones we set.
-  if (
-    style.getPropertyValue("--theme-reveal-x") !== staged["--theme-reveal-x"]
-  ) {
-    return;
-  }
+  // the properties while this transition still owns them.
+  if (stagedOriginTransitionId !== transitionId) return;
+  const style = document.documentElement.style;
   for (const property of revealOriginProperties) {
     style.removeProperty(property);
   }
+  stagedOriginTransitionId = null;
 }
 
 export function applyWithThemeViewTransition(
@@ -84,15 +81,20 @@ export function applyWithThemeViewTransition(
   }
   // Tag the root so the mask can pick its reveal corner; keep the tag until
   // the transition settles so the pseudo-element styles stay stable.
+  const transitionId = nextTransitionId++;
   document.documentElement.dataset.themeTransition = kind;
-  const stagedRevealOrigin = stageRevealOrigin();
+  taggedTransitionId = transitionId;
+  stageRevealOrigin(transitionId);
   const transition = document.startViewTransition(commit);
   const clear = () => {
-    // A newer transition may have retagged the root already; only clear ours.
-    if (document.documentElement.dataset.themeTransition === kind) {
+    // A newer transition may have retagged the root or restaged the origin;
+    // only clear what this transition still owns, by identity rather than by
+    // value (same-kind overlaps can carry identical values).
+    if (taggedTransitionId === transitionId) {
       delete document.documentElement.dataset.themeTransition;
+      taggedTransitionId = null;
     }
-    clearStagedRevealOrigin(stagedRevealOrigin);
+    clearStagedRevealOrigin(transitionId);
   };
   transition.finished.then(clear, clear);
 }
