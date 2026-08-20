@@ -111,6 +111,41 @@ describe("applyWithThemeViewTransition", () => {
     expect(rootStyle().getPropertyValue("--theme-reveal-y")).toBe("");
   });
 
+  it("clears a prior pointer origin for an overlapping originless transition", async () => {
+    const firstTransitionFinished = deferred();
+    const secondTransitionFinished = deferred();
+    startViewTransition.mockImplementationOnce(() => ({
+      finished: firstTransitionFinished.promise,
+      ready: Promise.resolve(),
+      updateCallbackDone: Promise.resolve(),
+    }));
+    startViewTransition.mockImplementationOnce(() => ({
+      finished: secondTransitionFinished.promise,
+      ready: Promise.resolve(),
+      updateCallbackDone: Promise.resolve(),
+    }));
+
+    applyWithThemeViewTransition(vi.fn(), "mode", { x: 10, y: 20 });
+    // An originless commit (OS-triggered flip) while the pointer reveal is
+    // still animating must reveal from the CSS corner fallback, not the
+    // earlier pointer position.
+    applyWithThemeViewTransition(vi.fn(), "mode");
+    expect(rootStyle().getPropertyValue("--theme-reveal-x")).toBe("");
+    expect(rootStyle().getPropertyValue("--theme-reveal-y")).toBe("");
+
+    // The pointer transition settling afterwards must not touch the
+    // originless transition's corner fallback.
+    firstTransitionFinished.resolve();
+    await firstTransitionFinished.promise;
+    expect(rootStyle().getPropertyValue("--theme-reveal-x")).toBe("");
+    expect(rootStyle().getPropertyValue("--theme-reveal-y")).toBe("");
+
+    secondTransitionFinished.resolve();
+    await secondTransitionFinished.promise;
+    expect(rootStyle().getPropertyValue("--theme-reveal-x")).toBe("");
+    expect(rootStyle().getPropertyValue("--theme-reveal-y")).toBe("");
+  });
+
   it("keeps origin vars restaged by a newer transition", async () => {
     const firstTransitionFinished = deferred();
     const secondTransitionFinished = deferred();
