@@ -319,6 +319,8 @@ export function startIncrementalHlsUpload(options: {
   s3Prefix: string;
   pollIntervalMs: number;
   settleMs: number;
+  /** Upper bound stop()/abort() wait for an in-flight tick before giving up. */
+  drainTimeoutMs: number;
   getConcurrency: () => Promise<number>;
 }): IncrementalUploadHandle {
   const {
@@ -328,12 +330,14 @@ export function startIncrementalHlsUpload(options: {
     s3Prefix,
     pollIntervalMs,
     settleMs,
+    drainTimeoutMs,
     getConcurrency,
   } = options;
   const cleanPrefix = s3Prefix.endsWith("/") ? s3Prefix : `${s3Prefix}/`;
   const uploaded = new Map<string, { mtimeMs: number; size: number }>();
   let ticking = false;
   let stopped = false;
+  let inFlightTick: Promise<void> | null = null;
 
   async function collectPending(
     skipRecentlyModified: boolean,
@@ -426,7 +430,7 @@ export function startIncrementalHlsUpload(options: {
       return;
     }
     ticking = true;
-    tick(false)
+    inFlightTick = tick(false)
       .catch((err: unknown) => {
         console.warn(
           "[media-worker] Incremental upload batch failed, will retry next tick:",
@@ -435,25 +439,38 @@ export function startIncrementalHlsUpload(options: {
       })
       .finally(() => {
         ticking = false;
+        inFlightTick = null;
       });
   }, pollIntervalMs);
   interval.unref();
+
+  // Awaits the tick already in flight (if any) instead of busy-polling for
+  // it to finish, bounded by drainTimeoutMs so a stuck upload batch can't
+  // block stop()/abort() — and therefore the caller's job cleanup — forever.
+  async function drainInFlightTick(): Promise<void> {
+    if (!inFlightTick) {
+      return;
+    }
+    await Promise.race([
+      inFlightTick,
+      new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, drainTimeoutMs);
+        timer.unref();
+      }),
+    ]);
+  }
 
   return {
     async stop() {
       stopped = true;
       clearInterval(interval);
-      while (ticking) {
-        await new Promise((resolve) => setTimeout(resolve, 50));
-      }
+      await drainInFlightTick();
       await tick(true);
     },
     async abort() {
       stopped = true;
       clearInterval(interval);
-      while (ticking) {
-        await new Promise((resolve) => setTimeout(resolve, 50));
-      }
+      await drainInFlightTick();
     },
   };
 }

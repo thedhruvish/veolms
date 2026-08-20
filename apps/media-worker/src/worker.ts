@@ -72,21 +72,35 @@ export async function initMediaWorker(options: {
     if (stopped || inFlightHeartbeat) {
       return;
     }
-    inFlightHeartbeat = db
-      .updateTable("workers")
-      .set({
-        last_heartbeat_at: new Date(),
-        updated_at: new Date(),
-      })
-      .where("id", "=", workerId)
-      .execute()
-      .then(() => undefined)
-      .catch((err) => {
-        console.error(`Failed to write heartbeat for worker ${workerId}:`, err);
-      })
-      .finally(() => {
-        inFlightHeartbeat = null;
-      });
+    try {
+      inFlightHeartbeat = db
+        .updateTable("workers")
+        .set({
+          last_heartbeat_at: new Date(),
+          updated_at: new Date(),
+        })
+        .where("id", "=", workerId)
+        .execute()
+        .then(() => undefined)
+        .catch((err) => {
+          console.error(
+            `Failed to write heartbeat for worker ${workerId}:`,
+            err,
+          );
+        })
+        .finally(() => {
+          inFlightHeartbeat = null;
+        });
+    } catch (err) {
+      // Guards against a synchronous throw from the query builder itself
+      // (as opposed to the query's own promise rejecting) — without this,
+      // that throw would escape setInterval's callback as an uncaught
+      // exception and crash the whole worker process.
+      console.error(
+        `Failed to build heartbeat query for worker ${workerId}:`,
+        err,
+      );
+    }
   }, config.HEARTBEAT_INTERVAL_MS);
 
   // Do not hold Node event loop open solely for heartbeat
@@ -94,13 +108,24 @@ export async function initMediaWorker(options: {
 
   // Stops future ticks and awaits any write already in flight, so callers
   // can safely destroy the db connection pool right after this resolves
-  // without racing an in-progress heartbeat query against it.
+  // without racing an in-progress heartbeat query against it. Bounded by
+  // config.HEARTBEAT_DRAIN_TIMEOUT_MS so a stuck DB call can't block
+  // shutdown forever — callers still need to reach db.destroy() and the
+  // final worker-status update even if this particular write never
+  // resolves.
   const stopHeartbeat = async (): Promise<void> => {
     stopped = true;
     clearInterval(heartbeatInterval);
-    if (inFlightHeartbeat) {
-      await inFlightHeartbeat;
+    if (!inFlightHeartbeat) {
+      return;
     }
+    await Promise.race([
+      inFlightHeartbeat,
+      new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, config.HEARTBEAT_DRAIN_TIMEOUT_MS);
+        timer.unref();
+      }),
+    ]);
   };
 
   return {

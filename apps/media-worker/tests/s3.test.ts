@@ -41,6 +41,7 @@ describe("incremental HLS uploads", () => {
         s3Prefix: "output/job-1",
         pollIntervalMs: 10,
         settleMs: 0,
+        drainTimeoutMs: 1000,
         getConcurrency: async () => 1,
       });
 

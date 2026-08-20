@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { resolveDefaultUploadConcurrency } from "./resource-monitor.ts";
 
-export const mediaWorkerConfigSchema = z.object({
+const baseMediaWorkerConfigSchema = z.object({
   WORKER_ID: z.string().uuid(),
   JOB_ID: z.string().uuid().optional(),
   DATABASE_URL: z
@@ -19,6 +19,7 @@ export const mediaWorkerConfigSchema = z.object({
     .transform((val) => val === "true"),
   SCRATCH_DIR: z.string().default("/tmp/veolms-worker"),
   HEARTBEAT_INTERVAL_MS: z.coerce.number().int().min(1000).default(15000),
+  HEARTBEAT_DRAIN_TIMEOUT_MS: z.coerce.number().int().min(0).default(5000),
   PROGRESS_UPDATE_INTERVAL_MS: z.coerce.number().int().min(1000).default(5000),
   WORKER_IDLE_POLL_SECONDS: z.coerce.number().int().min(1).default(15),
   VIDEO_COMPRESSION_CRF: z.coerce.number().int().min(0).max(51).default(22),
@@ -28,6 +29,11 @@ export const mediaWorkerConfigSchema = z.object({
   UPLOAD_THROTTLE_MEMORY_PERCENT: z.coerce.number().min(1).max(100).default(80),
   INCREMENTAL_UPLOAD_POLL_MS: z.coerce.number().int().min(500).default(3000),
   INCREMENTAL_UPLOAD_SETTLE_MS: z.coerce.number().int().min(0).default(2000),
+  INCREMENTAL_UPLOAD_DRAIN_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .default(10000),
   HTTP_DOWNLOAD_TIMEOUT_MS: z.coerce.number().int().min(1000).default(300000),
   HTTP_DOWNLOAD_MAX_BYTES: z.coerce
     .number()
@@ -38,7 +44,27 @@ export const mediaWorkerConfigSchema = z.object({
   FFPROBE_PATH: z.string().default("ffprobe"),
 });
 
-type ParsedMediaWorkerConfig = z.infer<typeof mediaWorkerConfigSchema>;
+// Cross-field invariant lives on the schema itself (not just in the loader
+// below) so anyone parsing with mediaWorkerConfigSchema directly — docs
+// generation, a future validation endpoint, tests — gets the same
+// guarantee the loader enforces, instead of a schema that looks valid but
+// silently accepts UPLOAD_MIN_CONCURRENCY > UPLOAD_MAX_CONCURRENCY. This
+// only catches the case where both are given explicitly; the loader still
+// re-checks after filling in host-dependent defaults for whichever one was
+// omitted, since a machine's CPU/memory count isn't something a schema can
+// know about.
+export const mediaWorkerConfigSchema = baseMediaWorkerConfigSchema.refine(
+  (val) =>
+    val.UPLOAD_MIN_CONCURRENCY === undefined ||
+    val.UPLOAD_MAX_CONCURRENCY === undefined ||
+    val.UPLOAD_MIN_CONCURRENCY <= val.UPLOAD_MAX_CONCURRENCY,
+  {
+    message: "UPLOAD_MIN_CONCURRENCY must not exceed UPLOAD_MAX_CONCURRENCY",
+    path: ["UPLOAD_MIN_CONCURRENCY"],
+  },
+);
+
+type ParsedMediaWorkerConfig = z.infer<typeof baseMediaWorkerConfigSchema>;
 
 export type MediaWorkerConfig = Omit<
   ParsedMediaWorkerConfig,

@@ -41,6 +41,11 @@ function throwIfAborted(signal?: AbortSignal): void {
   }
 }
 
+// Generic "keep this path inside root" primitive. Doubles as a security
+// boundary for untrusted job-supplied keys (job.video_key) and as a plain
+// path-joiner for internally-derived paths (job.output_prefix) — both
+// cases share the same invariant (never escape root), so one helper covers
+// both call sites rather than duplicating the traversal check.
 function resolveWithin(root: string, candidate: string): string {
   if (isAbsolute(candidate)) {
     throw new Error("Absolute local paths are not allowed in media job keys");
@@ -244,9 +249,38 @@ export async function executeTranscodeJob(
       throw new Error(`Job ${jobId} is assigned to another worker`);
     }
 
+    requirements = jobRequirementsSchema.parse(job.requirements);
+    const { hardware } = requirements;
+
     // Claim ownership before doing any work. The worker-ID guard prevents a
-    // stale process from overwriting a job that has been reassigned.
+    // stale process from overwriting a job that has been reassigned. The
+    // hardware check re-validates compatibility even when the caller
+    // supplied JOB_ID directly (bypassing pollForNextJob/claimNextQueuedJob,
+    // the only other place this check normally runs), so a worker can never
+    // end up running a job whose requirements exceed its own capacity.
     await db.transaction().execute(async (trx) => {
+      const worker = await trx
+        .selectFrom("workers")
+        .select(["cpu", "memory_mb", "storage_gb", "architecture"])
+        .where("id", "=", workerId)
+        .forUpdate()
+        .executeTakeFirst();
+
+      if (!worker) {
+        throw new Error(`Worker ${workerId} not found`);
+      }
+
+      if (
+        hardware.minCpu > worker.cpu ||
+        hardware.minMemoryMb > worker.memory_mb ||
+        hardware.storageGb > worker.storage_gb ||
+        hardware.architecture !== worker.architecture
+      ) {
+        throw new Error(
+          `Job ${jobId} requires ${hardware.minCpu} vCPU / ${hardware.minMemoryMb}MB / ${hardware.storageGb}GB / ${hardware.architecture}, which worker ${workerId} (${worker.cpu} vCPU / ${worker.memory_mb}MB / ${worker.storage_gb}GB / ${worker.architecture}) does not meet`,
+        );
+      }
+
       const claimResult = await trx
         .updateTable("jobs")
         .set({
@@ -277,7 +311,6 @@ export async function executeTranscodeJob(
     });
     ownsJob = true;
 
-    requirements = jobRequirementsSchema.parse(job.requirements);
     await db
       .updateTable("worker_monitoring")
       .set({
@@ -316,7 +349,6 @@ export async function executeTranscodeJob(
         resolveWithin(workspaceDir, job.video_key),
         resolveWithin(join(workspaceDir, "s3-bucket"), job.video_key),
         resolveWithin(join(workspaceDir, "scratch"), job.video_key),
-        join(workspaceDir, "scratch/source-video.mp4"),
       ];
       let isLocalFile = false;
       for (const candidate of localCandidates) {
@@ -454,6 +486,7 @@ export async function executeTranscodeJob(
         s3Prefix: job.output_prefix,
         pollIntervalMs: config.INCREMENTAL_UPLOAD_POLL_MS,
         settleMs: config.INCREMENTAL_UPLOAD_SETTLE_MS,
+        drainTimeoutMs: config.INCREMENTAL_UPLOAD_DRAIN_TIMEOUT_MS,
         getConcurrency: () => resolveUploadConcurrency(config),
       });
     }

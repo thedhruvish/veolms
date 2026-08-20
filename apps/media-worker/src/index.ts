@@ -47,6 +47,10 @@ export async function run(): Promise<void> {
         console.info(`[media-worker] Job ${jobId} finished successfully.`);
       } catch (err) {
         console.error(`[media-worker] Job ${jobId} encountered an error:`, err);
+        // Surface the failure via the process exit code even though the
+        // worker keeps polling for more work — otherwise a restart-on-
+        // failure policy (systemd, ECS) never learns a job failed here.
+        process.exitCode = 1;
         if (shutdownController.signal.aborted) {
           break;
         }
