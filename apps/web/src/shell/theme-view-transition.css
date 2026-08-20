@@ -1,0 +1,53 @@
+/*
+ * Plain-CSS exception: ::view-transition pseudo-elements, the @property
+ * registered radius, and the mask keyframes cannot be expressed with Tailwind
+ * utilities. Scoped to the shell's light/dark toggle; the reveal always grows
+ * from the bottom-left corner where the dock lives.
+ */
+@property --theme-reveal-radius {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+:root {
+  /* --expo-out: ease-in-out cubic-bezier(0.16, 1, 0.3, 1); */
+  --expo-out: ease-in-out;
+}
+
+::view-transition-group(root) {
+  animation-timing-function: var(--expo-out);
+}
+
+::view-transition-new(root) {
+  mask: radial-gradient(
+    circle var(--theme-reveal-radius) at left bottom,
+    #fff 64%,
+    transparent 96%
+  );
+  animation: theme-view-transition-reveal 1s var(--expo-out);
+  animation-fill-mode: both;
+}
+
+::view-transition-old(root) {
+  animation: none;
+  animation-fill-mode: both;
+  z-index: -1;
+}
+
+/* 250vmax keeps the fully opaque stop (64% of radius) past the top-right
+ * corner diagonal (~141vmax) so the wipe never stalls mid-transition. */
+@keyframes theme-view-transition-reveal {
+  to {
+    --theme-reveal-radius: 220vmax;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(root),
+  ::view-transition-new(root),
+  ::view-transition-old(root) {
+    animation: none !important;
+    mask: none;
+  }
+}
