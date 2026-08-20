@@ -2749,7 +2749,7 @@ export function CoursesPage({
                         title={`${resolvedTheme === "dark" ? "Dark" : "Light"} mode — switch to ${resolvedTheme === "dark" ? "light" : "dark"} mode`}
                         onClick={(event) => {
                           if (consumeAppearanceGestureClick(event)) return;
-                          toggleAppearance(true);
+                          toggleAppearance();
                         }}
                         onContextMenu={openAppearanceThemeMenu}
                         onPointerDown={(event) =>
