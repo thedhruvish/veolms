@@ -119,6 +119,8 @@ export async function executeTranscodeJob(
       job.video_key,
       join(process.cwd(), job.video_key),
       join(process.cwd(), "s3-bucket", job.video_key),
+      join(process.cwd(), "scratch", job.video_key),
+      join(process.cwd(), "scratch/source-video.mp4"),
     ];
     let isLocalFile = false;
     for (const candidate of localCandidates) {
@@ -256,17 +258,25 @@ export async function executeTranscodeJob(
       console.warn("[media-worker] Local sync notice:", localErr);
     }
 
-    // 10. Sync HLS artifacts to S3 if AWS credentials or S3 endpoint configured
+    // 10. Sync HLS artifacts to S3 if storage provider is s3 or credentials configured
     if (
-      (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) ||
-      process.env.S3_ENDPOINT
+      config.STORAGE_PROVIDER === "s3" ||
+      process.env["STORAGE_PROVIDER"] === "s3" ||
+      process.env["S3_USE_INSTANCE_ROLE"] === "true" ||
+      (process.env["AWS_ACCESS_KEY_ID"] &&
+        process.env["AWS_SECRET_ACCESS_KEY"]) ||
+      process.env["S3_ENDPOINT"] ||
+      process.env["AWS_REGION"]
     ) {
       try {
-        await uploadDirectoryToS3(
+        const uploaded = await uploadDirectoryToS3(
           s3Client,
           config.S3_BUCKET,
           outputHlsDir,
           job.output_prefix,
+        );
+        console.info(
+          `[media-worker] Uploaded ${uploaded} HLS files to s3://${config.S3_BUCKET}/${job.output_prefix}`,
         );
       } catch (s3Err) {
         console.warn("[media-worker] S3 upload notice:", s3Err);

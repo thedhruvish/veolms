@@ -6,9 +6,12 @@ export const mediaWorkerConfigSchema = z.object({
   DATABASE_URL: z
     .string()
     .default("postgresql://veolms:veolms@localhost:5433/veolms"),
+  STORAGE_PROVIDER: z.string().default("local"),
   S3_BUCKET: z.string().default("veolms-media"),
+  S3_BUCKET_NAME: z.string().optional(),
   S3_ENDPOINT: z.string().optional(),
   S3_REGION: z.string().default("us-east-1"),
+  AWS_REGION: z.string().optional(),
   S3_FORCE_PATH_STYLE: z
     .enum(["true", "false"])
     .optional()
@@ -25,5 +28,10 @@ export type MediaWorkerConfig = z.infer<typeof mediaWorkerConfigSchema>;
 export function loadMediaWorkerConfig(
   env: Readonly<Record<string, string | undefined>> = process.env,
 ): MediaWorkerConfig {
-  return mediaWorkerConfigSchema.parse(env);
+  const resolvedEnv = {
+    ...env,
+    S3_BUCKET: env["S3_BUCKET"] || env["S3_BUCKET_NAME"] || "veolms-media",
+    S3_REGION: env["S3_REGION"] || env["AWS_REGION"] || "us-east-1",
+  };
+  return mediaWorkerConfigSchema.parse(resolvedEnv);
 }

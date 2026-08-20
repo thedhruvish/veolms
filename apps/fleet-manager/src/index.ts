@@ -7,6 +7,7 @@ export * from "./core/job-manager.ts";
 export * from "./core/monitor.ts";
 export * from "./core/scheduler.ts";
 export * from "./core/worker-manager.ts";
+export * from "./core/provider-resolver.ts";
 export * from "./diagnostics/diagnostics.ts";
 export * from "./entrypoints/serverful.ts";
 

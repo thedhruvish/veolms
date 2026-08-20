@@ -50,44 +50,39 @@ if (!provider) {
 }
 
 async function dispatch(): Promise<void> {
-  switch (provider) {
-    case "aws": {
-      const { runAwsInfraSetup } =
-        await import("@veolms/fleet-provider-aws/setup");
-      await runAwsInfraSetup();
-      break;
-    }
+  if (provider === "gcp" || provider === "azure") {
+    console.error(`
+  ${red(`✘ ${provider.toUpperCase()} provider setup is not yet implemented.`)}
 
-    case "local": {
-      const { runLocalInfraSetup } =
-        await import("@veolms/fleet-provider-local/setup");
-      await runLocalInfraSetup();
-      break;
-    }
-
-    case "gcp":
-      console.error(`
-  ${red("✘ GCP provider setup is not yet implemented.")}
-
-  The GCP provider is planned for a future release.
+  The ${provider.toUpperCase()} provider is planned for a future release.
   For now, use ${bold("aws")} or ${bold("local")} as your FLEET_PROVIDER.
 `);
-      process.exit(1);
-      break;
+    process.exit(1);
+  }
 
-    default:
-      console.error(`
-  ${red(`✘ Unknown FLEET_PROVIDER: "${provider}"`)}
+  const packageName = `@veolms/fleet-provider-${provider}/setup`;
 
-  ${bold("Supported providers:")}
-    ${bold("aws")}   — AWS EC2 + Lambda + CloudWatch + S3
-    ${bold("local")} — Local child processes (development)
-    ${bold("gcp")}   — Google Cloud Platform ${dim("(future)")}
+  try {
+    const setupModule = (await import(packageName)) as Record<string, unknown>;
+    const setupFn =
+      setupModule.runAwsInfraSetup ??
+      setupModule.runLocalInfraSetup ??
+      setupModule.runInfraSetup ??
+      setupModule.default;
 
-  ${bold("Example:")}
-    ${cyan("FLEET_PROVIDER=aws pnpm fleet:infra")}
-`);
-      process.exit(1);
+    if (typeof setupFn === "function") {
+      await (setupFn as () => Promise<void>)();
+      return;
+    }
+
+    throw new Error(
+      `Provider setup package "${packageName}" does not export a setup function.`,
+    );
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `Failed to load setup module for provider "${provider}" (${packageName}). Run "pnpm fleet:provider" to install it. Details: ${msg}`,
+    );
   }
 }
 

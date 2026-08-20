@@ -20,8 +20,11 @@
 import * as readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import * as fs from "node:fs/promises";
+import * as fsSync from "node:fs";
 import * as path from "node:path";
+import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import * as esbuild from "esbuild";
 
 import {
   IAMClient,
@@ -198,7 +201,9 @@ async function checkOrCreateRole(
     Statement: [
       {
         Effect: "Allow",
-        Principal: { Service: "ec2.amazonaws.com" },
+        Principal: {
+          Service: ["ec2.amazonaws.com", "lambda.amazonaws.com"],
+        },
         Action: "sts:AssumeRole",
       },
     ],
@@ -209,7 +214,7 @@ async function checkOrCreateRole(
       RoleName: ROLE_NAME,
       AssumeRolePolicyDocument: trustPolicy,
       Description:
-        "VeoLMS EC2 Worker Role — CloudWatch Logs, SSM, and optional S3 access.",
+        "VeoLMS EC2 Worker Role - CloudWatch Logs, SSM, and optional S3 access.",
       Tags: [
         { Key: "ManagedBy", Value: "veolms-infra-setup" },
         { Key: "Project", Value: "VeoLMS" },
@@ -222,7 +227,7 @@ async function checkOrCreateRole(
 
   ok(`Created IAM role: ${bold(ROLE_NAME)}`);
 
-  // Always attach: CloudWatch Logs + SSM managed policies
+  // Always attach: CloudWatch Logs + SSM + Lambda basic execution managed policies
   await iam.send(
     new AttachRolePolicyCommand({
       RoleName: ROLE_NAME,
@@ -235,7 +240,14 @@ async function checkOrCreateRole(
       PolicyArn: "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
     }),
   );
-  ok("Attached CloudWatch + SSM managed policies");
+  await iam.send(
+    new AttachRolePolicyCommand({
+      RoleName: ROLE_NAME,
+      PolicyArn:
+        "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+    }),
+  );
+  ok("Attached CloudWatch + SSM + Lambda managed policies");
 
   // Conditionally add S3 access
   if (useS3 && s3BucketName) {
@@ -270,6 +282,41 @@ async function checkOrCreateRole(
   } else {
     info("Skipping S3 policy — storage provider is not S3.");
   }
+
+  // Always attach EC2 worker provisioning and IAM PassRole permissions
+  const ec2ControlPolicy = JSON.stringify({
+    Version: "2012-10-17",
+    Statement: [
+      {
+        Sid: "EC2WorkerControl",
+        Effect: "Allow",
+        Action: [
+          "ec2:RunInstances",
+          "ec2:TerminateInstances",
+          "ec2:DescribeInstances",
+          "ec2:DescribeInstanceStatus",
+          "ec2:CreateTags",
+          "ec2:RequestSpotInstances",
+        ],
+        Resource: "*",
+      },
+      {
+        Sid: "PassWorkerRole",
+        Effect: "Allow",
+        Action: "iam:PassRole",
+        Resource: roleArn,
+      },
+    ],
+  });
+
+  await iam.send(
+    new PutRolePolicyCommand({
+      RoleName: ROLE_NAME,
+      PolicyName: "VeoLMSEC2WorkerManagement",
+      PolicyDocument: ec2ControlPolicy,
+    }),
+  );
+  ok("Attached EC2 worker control + PassRole inline policy");
 
   return roleArn;
 }
@@ -441,6 +488,77 @@ function createPlaceholderLambdaZip(): Uint8Array {
   return total;
 }
 
+function buildLambdaBundleZip(): Uint8Array {
+  try {
+    const lambdaSource = fileURLToPath(
+      new URL("../lambda.ts", import.meta.url),
+    );
+    const distDir = path.join(process.cwd(), "dist/lambda");
+    if (!fsSync.existsSync(distDir)) {
+      fsSync.mkdirSync(distDir, { recursive: true });
+    }
+    const outfile = path.join(distDir, "index.js");
+    esbuild.buildSync({
+      entryPoints: [lambdaSource],
+      bundle: true,
+      platform: "node",
+      target: "node22",
+      format: "cjs",
+      outfile,
+      logLevel: "silent",
+    });
+    const zipPath = path.join(distDir, "function.zip");
+    execSync(`cd "${distDir}" && zip -q -9 function.zip index.js`, {
+      stdio: "pipe",
+    });
+    return fsSync.readFileSync(zipPath);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    warn(
+      `Could not build full Lambda bundle automatically (${msg}). Falling back to placeholder.`,
+    );
+    return createPlaceholderLambdaZip();
+  }
+}
+
+export function buildAndUploadWorkerBundle(
+  s3BucketName: string,
+  region: string,
+): void {
+  try {
+    const workerSource = path.join(
+      process.cwd(),
+      "apps/media-worker/src/index.ts",
+    );
+    if (fsSync.existsSync(workerSource)) {
+      const distDir = path.join(process.cwd(), "dist/worker");
+      if (!fsSync.existsSync(distDir)) {
+        fsSync.mkdirSync(distDir, { recursive: true });
+      }
+      const outfile = path.join(distDir, "media-worker.js");
+      esbuild.buildSync({
+        entryPoints: [workerSource],
+        bundle: true,
+        platform: "node",
+        target: "node22",
+        format: "cjs",
+        outfile,
+        logLevel: "silent",
+      });
+      execSync(
+        `aws s3 cp "${outfile}" "s3://${s3BucketName}/bundles/media-worker.js" --region "${region}"`,
+        { stdio: "pipe" },
+      );
+      ok(
+        `Bundled and uploaded media worker to ${bold(`s3://${s3BucketName}/bundles/media-worker.js`)}`,
+      );
+    }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    warn(`Could not upload worker bundle to S3: ${msg}`);
+  }
+}
+
 async function setupLambda(
   region: string,
   roleArn: string,
@@ -461,46 +579,67 @@ async function setupLambda(
     // Doesn't exist — create it
   }
 
-  info(`Creating Lambda function ${bold(LAMBDA_FUNCTION_NAME)}...`);
+  info(
+    `Building and creating Lambda function ${bold(LAMBDA_FUNCTION_NAME)}...`,
+  );
+  const lambdaZip = buildLambdaBundleZip();
 
-  try {
-    const created = await lambda.send(
-      new CreateFunctionCommand({
-        FunctionName: LAMBDA_FUNCTION_NAME,
-        Runtime: Runtime.nodejs22x,
-        Role: roleArn,
-        Handler: "index.handler",
-        Code: { ZipFile: createPlaceholderLambdaZip() },
-        PackageType: PackageType.Zip,
-        Description:
-          "VeoLMS Fleet Manager — serverless control plane for video transcoding jobs",
-        Timeout: 900,
-        MemorySize: 512,
-        Environment: {
-          Variables: {
-            LOG_LEVEL: "info",
-            FLEET_MODE: "serverless",
+  // IAM role might take a few seconds to propagate for Lambda assumption
+  const maxRetries = 5;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const created = await lambda.send(
+        new CreateFunctionCommand({
+          FunctionName: LAMBDA_FUNCTION_NAME,
+          Runtime: Runtime.nodejs22x,
+          Role: roleArn,
+          Handler: "index.handler",
+          Code: { ZipFile: lambdaZip },
+          PackageType: PackageType.Zip,
+          Description:
+            "VeoLMS Fleet Manager - serverless control plane for video transcoding jobs",
+          Timeout: 900,
+          MemorySize: 512,
+          Environment: {
+            Variables: {
+              LOG_LEVEL: "info",
+              FLEET_MODE: "serverless",
+            },
           },
-        },
-        Tags: {
-          ManagedBy: "veolms-infra-setup",
-          Project: "VeoLMS",
-        },
-        LoggingConfig: {
-          LogFormat: "JSON",
-          LogGroup: LOG_GROUP_FLEET,
-        },
-      }),
-    );
-    const fnArn = created.FunctionArn ?? null;
-    if (fnArn) ok(`Created Lambda function ${bold(LAMBDA_FUNCTION_NAME)}`);
-    return fnArn;
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    warn(`Could not create Lambda function: ${msg}`);
-    warn("Deploy the fleet-manager Lambda manually after building the bundle.");
-    return null;
+          Tags: {
+            ManagedBy: "veolms-infra-setup",
+            Project: "VeoLMS",
+          },
+          LoggingConfig: {
+            LogFormat: "JSON",
+            LogGroup: LOG_GROUP_FLEET,
+          },
+        }),
+      );
+      const fnArn = created.FunctionArn ?? null;
+      if (fnArn) ok(`Created Lambda function ${bold(LAMBDA_FUNCTION_NAME)}`);
+      return fnArn;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        (msg.includes("cannot be assumed by Lambda") ||
+          msg.includes("InvalidParameterValueException")) &&
+        attempt < maxRetries
+      ) {
+        info(
+          `Waiting for IAM role propagation (attempt ${attempt}/${maxRetries})...`,
+        );
+        await new Promise((r) => setTimeout(r, 4000));
+        continue;
+      }
+      warn(`Could not create Lambda function: ${msg}`);
+      warn(
+        "Deploy the fleet-manager Lambda manually after building the bundle.",
+      );
+      return null;
+    }
   }
+  return null;
 }
 
 // ─── Env File Writer ──────────────────────────────────────────────────────────
@@ -654,10 +793,46 @@ export async function runAwsInfraSetup(): Promise<void> {
           );
           warn("IAM policy will be set. Bucket owner must allow this account.");
         } else {
-          warn(`Bucket ${bold(s3BucketName)} does not exist in this account.`);
-          warn(
-            `Create it: ${cyan(`aws s3 mb s3://${s3BucketName} --region ${region}`)}`,
-          );
+          info(`Creating S3 bucket ${bold(s3BucketName)} in ${region}...`);
+          try {
+            if (region === "us-east-1") {
+              execSync(
+                `aws s3api create-bucket --bucket "${s3BucketName}" --region "${region}"`,
+                { stdio: "pipe" },
+              );
+            } else {
+              execSync(
+                `aws s3api create-bucket --bucket "${s3BucketName}" --region "${region}" --create-bucket-configuration LocationConstraint="${region}"`,
+                { stdio: "pipe" },
+              );
+            }
+            execSync(
+              `aws s3api put-public-access-block --bucket "${s3BucketName}" --public-access-block-configuration "BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false" --region "${region}"`,
+              { stdio: "pipe" },
+            );
+            const pubPolicy = JSON.stringify({
+              Version: "2012-10-17",
+              Statement: [
+                {
+                  Sid: "PublicReadGetObject",
+                  Effect: "Allow",
+                  Principal: "*",
+                  Action: "s3:GetObject",
+                  Resource: `arn:aws:s3:::${s3BucketName}/*`,
+                },
+              ],
+            });
+            execSync(
+              `aws s3api put-bucket-policy --bucket "${s3BucketName}" --policy '${pubPolicy}' --region "${region}"`,
+              { stdio: "pipe" },
+            );
+            ok(
+              `Created S3 bucket ${bold(s3BucketName)} with public read enabled.`,
+            );
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            warn(`Could not automatically create bucket: ${msg}`);
+          }
         }
 
         s3CredentialMode = await askChoice(
@@ -728,7 +903,7 @@ export async function runAwsInfraSetup(): Promise<void> {
 
     if (bootMode === "ami") {
       warn("Pre-baked AMI selected.");
-      info(`Build the AMI separately: ${cyan("pnpm infra:build-ami")}`);
+      info(`Build the AMI separately: ${cyan("pnpm fleet:build-ami")}`);
     }
 
     // ── Step 6: Max Workers ────────────────────────────────────────────────────
@@ -782,6 +957,11 @@ export async function runAwsInfraSetup(): Promise<void> {
       lambdaFunctionArn = await setupLambda(region, workerRoleArn);
     }
 
+    if (storageProvider === "s3" && s3BucketName) {
+      info("Building and uploading media worker bundle to S3...");
+      buildAndUploadWorkerBundle(s3BucketName, region);
+    }
+
     const result: SetupResult = {
       workerRoleArn,
       instanceProfileArn,
@@ -824,10 +1004,11 @@ ${bold("Generated .env Files:")}
   ${green("✔")} apps/fleet-manager/.env
   ${green("✔")} apps/media-worker/.env
 
-${bold("Next Steps:")}${bootMode === "ami" ? `\n  1. Build the worker AMI:   ${cyan("pnpm infra:build-ami")}` : ""}
-  ${bootMode === "ami" ? "2" : "1"}. Run the fleet daemon:    ${cyan("pnpm fleet:run")}
-  ${bootMode === "ami" ? "3" : "2"}. Queue a test job:        ${cyan("pnpm fleet:queue:test")}
-  ${bootMode === "ami" ? "4" : "3"}. Monitor fleet health:    ${cyan("pnpm fleet:cli status")}
+${bold("Next Steps:")}${bootMode === "ami" ? `\n  1. Build the worker AMI:   ${cyan("pnpm fleet:build-ami")}` : ""}
+  ${bootMode === "ami" ? "2" : "1"}. Run AWS transcode test: ${cyan("pnpm test:aws")}
+  ${bootMode === "ami" ? "3" : "2"}. Run the fleet daemon:    ${cyan("pnpm fleet:run")}
+  ${bootMode === "ami" ? "4" : "3"}. Monitor fleet health:    ${cyan("pnpm fleet:cli health")}
+  ${bootMode === "ami" ? "5" : "4"}. Teardown AWS resources:  ${cyan("pnpm fleet:destroy")}
 `);
   } finally {
     rl.close();

@@ -69,14 +69,42 @@ if ! command -v ffmpeg &> /dev/null; then
   apt-get update -y && apt-get install -y ffmpeg
 fi
 
+if ! command -v aws &> /dev/null; then
+  echo "[bootstrapper] Installing AWS CLI..."
+  apt-get update -y && apt-get install -y awscli || true
+fi
+
 echo "[bootstrapper] System dependencies verified (node $(node -v), ffmpeg $(ffmpeg -version | head -n1))"
 
-# If worker package is pre-downloaded or pulled from S3
-if [ -d "/opt/veolms/app" ]; then
-  cd /opt/veolms/app
-  node apps/media-worker/src/index.ts >> /var/log/veolms-worker.log 2>&1
+# Download worker bundle from S3 and run
+echo "[bootstrapper] Downloading worker bundle from S3..."
+aws s3 cp "s3://\${S3_BUCKET}/bundles/media-worker.js" /opt/veolms/worker.js --region "\${AWS_REGION}" || true
+
+if [ -f "/opt/veolms/worker.js" ]; then
+  echo "[bootstrapper] Launching VeoLMS Media Worker..."
+  cd /opt/veolms
+  node worker.js >> /var/log/veolms-worker.log 2>&1 || true
+  echo "[bootstrapper] Worker run complete."
 else
-  echo "[bootstrapper] Worker runtime environment configured."
+  echo "[bootstrapper] Worker bundle not found at /opt/veolms/worker.js"
+fi
+
+# Automatic EC2 Self-Termination after job finishes
+echo "[bootstrapper] Terminating EC2 instance after job completion..."
+TOKEN=\$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 60" 2>/dev/null || true)
+if [ -n "\$TOKEN" ]; then
+  INSTANCE_ID=\$(curl -s -H "X-aws-ec2-metadata-token: \$TOKEN" http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || true)
+  REGION=\$(curl -s -H "X-aws-ec2-metadata-token: \$TOKEN" http://169.254.169.254/latest/meta-data/placement/region 2>/dev/null || true)
+else
+  INSTANCE_ID=\$(curl -s http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || true)
+  REGION="\${AWS_REGION:-us-east-1}"
+fi
+
+if [ -n "\$INSTANCE_ID" ]; then
+  echo "[bootstrapper] Terminating instance \$INSTANCE_ID in \$REGION..."
+  aws ec2 terminate-instances --instance-ids "\$INSTANCE_ID" --region "\${REGION:-us-east-1}" || shutdown -h now
+else
+  shutdown -h now
 fi
 `;
 }

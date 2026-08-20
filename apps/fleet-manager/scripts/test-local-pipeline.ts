@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { createDatabase } from "../packages/database/src/index.ts";
-import { loadServerConfig } from "../packages/config/src/index.ts";
-import { createFleetManager } from "../apps/fleet-manager/src/core/fleet-manager.ts";
-import { createLocalProvider } from "../packages/fleet-provider-local/src/provider.ts";
-import { loadFleetManagerConfig } from "../apps/fleet-manager/src/config/config.ts";
-import type { VideoQualityLevel } from "../packages/fleet-types/src/index.ts";
+import { createDatabase } from "@veolms/database";
+import { loadServerConfig } from "@veolms/config";
+import type { VideoQualityLevel } from "@veolms/fleet-types";
+import { createFleetManager } from "../src/core/fleet-manager.ts";
+import { loadFleetManagerConfig } from "../src/config/config.ts";
+import { resolveFleetProvider } from "../src/core/provider-resolver.ts";
 
 async function main() {
   const serverConfig = loadServerConfig(process.env);
@@ -24,7 +24,7 @@ async function main() {
     ? join(process.cwd(), "apps/media-worker/src/index.ts")
     : undefined;
 
-  const provider = createLocalProvider({
+  const provider = await resolveFleetProvider("local", {
     workerScriptPath: workerScript,
     defaultEnv: {
       DATABASE_URL: serverConfig.DATABASE_URL,
@@ -66,7 +66,7 @@ async function main() {
     .where("status", "in", ["QUEUED", "PROCESSING"])
     .execute();
 
-  // Step 1: User/System inserts JUST a video task in the queue
+  // Step 1: Insert job into PostgreSQL
   console.info(
     "[1/4] User queues a new transcode task directly into PostgreSQL `jobs` table...",
   );

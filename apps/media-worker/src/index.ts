@@ -46,11 +46,16 @@ export async function run(): Promise<void> {
   }
 }
 
-if (
-  process.argv[1] &&
-  (import.meta.url.endsWith(process.argv[1]) ||
-    import.meta.url === `file://${resolve(process.argv[1])}`)
-) {
+// Auto-run when executed directly as main script
+const isMain =
+  typeof require !== "undefined"
+    ? require.main === module
+    : typeof process !== "undefined" &&
+      process.argv[1] &&
+      (import.meta?.url?.endsWith(process.argv[1]) ||
+        import.meta?.url === `file://${resolve(process.argv[1])}`);
+
+if (isMain) {
   run().catch((err) => {
     console.error("[media-worker] Fatal error during startup:", err);
     process.exit(1);

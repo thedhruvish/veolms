@@ -1,8 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { createDatabase } from "@veolms/database";
-import { createAwsProvider } from "@veolms/fleet-provider-aws";
-import { createLocalProvider } from "@veolms/fleet-provider-local";
 import type { FleetProvider } from "@veolms/fleet-types";
 import {
   loadFleetManagerConfig,
@@ -12,11 +10,18 @@ import {
   createFleetManager,
   type FleetManager,
 } from "../core/fleet-manager.ts";
+import { resolveFleetProvider } from "../core/provider-resolver.ts";
 
-export function startServerfulFleetManager(
-  configOverride?: Partial<FleetManagerConfig>,
-  signal?: AbortSignal,
-): { fleet: FleetManager; startPromise: Promise<void> } {
+export interface StartServerfulOptions {
+  configOverride?: Partial<FleetManagerConfig>;
+  provider?: FleetProvider;
+  signal?: AbortSignal;
+}
+
+export async function startServerfulFleetManager(
+  options: StartServerfulOptions = {},
+): Promise<{ fleet: FleetManager; startPromise: Promise<void> }> {
+  const { configOverride, signal } = options;
   const config = {
     ...loadFleetManagerConfig(),
     ...configOverride,
@@ -31,11 +36,10 @@ export function startServerfulFleetManager(
       : undefined);
 
   const provider: FleetProvider =
-    config.PROVIDER === "aws"
-      ? createAwsProvider()
-      : createLocalProvider({
-          workerScriptPath: workerScript,
-        });
+    options.provider ??
+    (await resolveFleetProvider(config.PROVIDER, {
+      workerScriptPath: workerScript,
+    }));
 
   const fleet = createFleetManager({
     provider,

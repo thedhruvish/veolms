@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { createDatabase } from "../packages/database/src/index.ts";
-import { loadServerConfig } from "../packages/config/src/index.ts";
-import type { VideoQualityLevel } from "../packages/fleet-types/src/index.ts";
+import { createDatabase } from "@veolms/database";
+import { loadServerConfig } from "@veolms/config";
+import type { VideoQualityLevel } from "@veolms/fleet-types";
 
 const config = loadServerConfig(process.env);
 const db = createDatabase(config.DATABASE_URL);

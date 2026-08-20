@@ -7,18 +7,26 @@
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "node --test tests/**/*.test.ts",
-    "start": "node src/index.ts"
+    "start": "node --env-file-if-exists=.env src/index.ts",
+    "run": "node --env-file-if-exists=.env src/cli.ts run",
+    "cli": "node --env-file-if-exists=.env src/cli.ts",
+    "provider": "node --env-file-if-exists=.env src/provider-select.ts",
+    "infra": "node --env-file-if-exists=.env src/infra.ts",
+    "destroy": "node --env-file-if-exists=.env src/destroy.ts",
+    "queue:test": "node --env-file-if-exists=.env scripts/queue-test-job.ts",
+    "test:pipeline": "node --env-file-if-exists=.env scripts/test-local-pipeline.ts",
+    "test:aws": "node --env-file-if-exists=.env scripts/test-aws-pipeline.ts"
   },
   "dependencies": {
     "@veolms/database": "workspace:*",
-    "@veolms/fleet-provider-aws": "workspace:*",
-    "@veolms/fleet-provider-local": "workspace:*",
+    "@veolms/config": "workspace:*",
     "@veolms/fleet-types": "workspace:*",
     "kysely": "catalog:",
     "pg": "^8.22.0",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/pg": "8.15.5"
+    "@types/pg": "8.15.5",
+    "esbuild": "^0.25.0"
   }
 }

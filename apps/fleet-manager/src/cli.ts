@@ -1,16 +1,14 @@
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { createDatabase } from "@veolms/database";
-import { createAwsProvider } from "@veolms/fleet-provider-aws";
-import { createLocalProvider } from "@veolms/fleet-provider-local";
 import {
   DEFAULT_QUALITIES,
   videoQualityLevelSchema,
-  type FleetProvider,
   type VideoQualityLevel,
 } from "@veolms/fleet-types";
 import { loadFleetManagerConfig } from "./config/config.ts";
 import { createJobManager } from "./core/job-manager.ts";
+import { resolveFleetProvider } from "./core/provider-resolver.ts";
 import {
   getFleetHealthSummary,
   getJobDiagnostics,
@@ -34,16 +32,16 @@ export function parseCliArgs(args: readonly string[]): ParsedCliArgs {
     if (!arg) continue;
 
     if (arg.startsWith("--")) {
-      const parts = arg.slice(2).split("=");
-      const key = parts[0];
-      if (!key) continue;
-
-      if (parts.length > 1) {
-        flags[key] = parts.slice(1).join("=");
+      const equalIndex = arg.indexOf("=");
+      if (equalIndex !== -1) {
+        const key = arg.slice(2, equalIndex);
+        const value = arg.slice(equalIndex + 1);
+        flags[key] = value;
       } else {
-        const next = rest[i + 1];
-        if (next && !next.startsWith("-")) {
-          flags[key] = next;
+        const key = arg.slice(2);
+        const nextArg = rest[i + 1];
+        if (nextArg && !nextArg.startsWith("--")) {
+          flags[key] = nextArg;
           i++;
         } else {
           flags[key] = true;
@@ -69,13 +67,6 @@ export async function runCli(
       ? join(process.cwd(), "apps/media-worker/src/index.ts")
       : undefined);
 
-  const provider: FleetProvider =
-    config.PROVIDER === "aws"
-      ? createAwsProvider()
-      : createLocalProvider({
-          workerScriptPath: workerScript,
-        });
-
   const heartbeatTimeoutMs = config.HEARTBEAT_TIMEOUT_SECONDS * 1000;
 
   switch (command) {
@@ -91,10 +82,9 @@ export async function runCli(
       process.on("SIGINT", shutdown);
       process.on("SIGTERM", shutdown);
 
-      const { startPromise } = startServerfulFleetManager(
-        undefined,
-        controller.signal,
-      );
+      const { startPromise } = await startServerfulFleetManager({
+        signal: controller.signal,
+      });
 
       await startPromise;
       break;
@@ -258,6 +248,9 @@ export async function runCli(
 
     case "prune": {
       console.info("[fleet-cli] Pruning zombie workers...");
+      const provider = await resolveFleetProvider(config.PROVIDER, {
+        workerScriptPath: workerScript,
+      });
       const pruned = await pruneZombieWorkers(db, provider, heartbeatTimeoutMs);
       console.info(`✓ Pruned ${pruned.length} stalled workers.`);
       break;

@@ -64,13 +64,19 @@ export function createAwsProvider(
   const region = config.region ?? "us-east-1";
   const ec2 = config.ec2Client ?? new EC2Client({ region });
   const ssm = config.ssmClient ?? new SSMClient({ region });
-  const defaultAmiId = config.amiId ?? "ami-0c7217cdde317cfec"; // Debian 14 / Ubuntu base default
+  // Default verified Ubuntu 24.04 AMIs for us-east-1
+  const defaultArm64Ami = "ami-02c4144237becae44"; // Ubuntu 24.04 ARM64 (Graviton)
+  const defaultX86Ami = "ami-04b4f1a9cf54c11d0"; // Ubuntu 24.04 x86_64
 
   return {
     name: "aws",
 
     async createWorker(id: string, spec: WorkerSpec): Promise<WorkerHandle> {
       const instanceType = selectOptimalInstanceType(spec);
+      const imageId =
+        config.amiId ??
+        (spec.architecture === "arm64" ? defaultArm64Ami : defaultX86Ami);
+
       const userDataScript = generateUserDataScript({
         workerId: id,
         spec,
@@ -81,7 +87,7 @@ export function createAwsProvider(
       const userDataBase64 = encodeUserDataBase64(userDataScript);
 
       const command = new RunInstancesCommand({
-        ImageId: defaultAmiId,
+        ImageId: imageId,
         InstanceType: instanceType as _InstanceType,
         MinCount: 1,
         MaxCount: 1,
@@ -99,7 +105,7 @@ export function createAwsProvider(
           : undefined,
         BlockDeviceMappings: [
           {
-            DeviceName: "/dev/xvda",
+            DeviceName: "/dev/sda1",
             Ebs: {
               VolumeSize: Math.max(30, spec.storageGb),
               VolumeType: "gp3",
