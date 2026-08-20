@@ -1208,11 +1208,25 @@ async function runSetupFlow(
   let s3CredentialMode: CredentialMode | null = null;
 
   if (storageProvider === "s3") {
+    const defaultBucketMode: "existing" | "create" =
+      initialDefaults?.s3BucketName ? "existing" : "create";
+    const bucketMode = await askChoice<"existing" | "create">(
+      rl,
+      "S3 bucket for transcoded HLS output?",
+      [
+        { label: "Use an existing bucket", value: "existing" },
+        { label: "Create a new bucket", value: "create" },
+      ],
+      defaultBucketMode === "existing" ? 0 : 1,
+    );
+
     let defaultBucket = initialDefaults?.s3BucketName ?? "";
     while (true) {
       const bucketInput = await ask(
         rl,
-        "S3 bucket name (leave empty to skip)",
+        bucketMode === "create"
+          ? "New S3 bucket name (leave empty to skip)"
+          : "Existing S3 bucket name (leave empty to skip)",
         defaultBucket || undefined,
       );
 
@@ -1224,69 +1238,85 @@ async function runSetupFlow(
       info(`Checking bucket ${bold(bucketInput)}...`);
       const bucketStatus = await checkS3Bucket(region, bucketInput);
 
-      if (bucketStatus === "exists") {
-        s3BucketName = bucketInput;
-        ok(
-          `Bucket ${bold(s3BucketName)} found and accessible — will grant EC2 role access.`,
-        );
-        break;
-      } else if (bucketStatus === "no-access") {
-        warn(
-          `Bucket ${bold(bucketInput)} exists but is owned by another AWS account or inaccessible (Access Denied).`,
-        );
-        info(
-          "S3 bucket names are globally unique across all AWS accounts. Please enter a different name.",
-        );
-        defaultBucket = "";
-        continue;
-      } else {
-        info(
-          `Bucket ${bold(bucketInput)} does not exist. Creating in ${region}...`,
-        );
-        try {
-          if (region === "us-east-1") {
-            execSync(
-              `aws s3api create-bucket --bucket "${bucketInput}" --region "${region}"`,
-              { stdio: "pipe" },
-            );
-          } else {
-            execSync(
-              `aws s3api create-bucket --bucket "${bucketInput}" --region "${region}" --create-bucket-configuration LocationConstraint="${region}"`,
-              { stdio: "pipe" },
-            );
-          }
-          execSync(
-            `aws s3api put-public-access-block --bucket "${bucketInput}" --public-access-block-configuration "BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false" --region "${region}"`,
-            { stdio: "pipe" },
-          );
-          const pubPolicy = JSON.stringify({
-            Version: "2012-10-17",
-            Statement: [
-              {
-                Sid: "PublicReadGetObject",
-                Effect: "Allow",
-                Principal: "*",
-                Action: "s3:GetObject",
-                Resource: `arn:aws:s3:::${bucketInput}/*`,
-              },
-            ],
-          });
-          execSync(
-            `aws s3api put-bucket-policy --bucket "${bucketInput}" --policy '${pubPolicy}' --region "${region}"`,
-            { stdio: "pipe" },
-          );
+      if (bucketMode === "existing") {
+        if (bucketStatus === "exists") {
           s3BucketName = bucketInput;
           ok(
-            `Created S3 bucket ${bold(s3BucketName)} with public read enabled.`,
+            `Bucket ${bold(s3BucketName)} found and accessible — will grant EC2 role access.`,
           );
           break;
-        } catch (err: unknown) {
-          const msg = err instanceof Error ? err.message : String(err);
-          warn(`Could not create bucket "${bucketInput}": ${msg}`);
-          info("Please enter a different S3 bucket name.");
+        } else if (bucketStatus === "no-access") {
+          warn(
+            `Bucket ${bold(bucketInput)} exists but is owned by another AWS account or inaccessible (Access Denied).`,
+          );
+          defaultBucket = "";
+          continue;
+        } else {
+          warn(
+            `Bucket ${bold(bucketInput)} does not exist — nothing was created, since you chose to use an existing bucket.`,
+          );
+          info(
+            "Enter the correct existing bucket name, or leave empty to skip.",
+          );
           defaultBucket = "";
           continue;
         }
+      }
+
+      // bucketMode === "create" — never silently reuse an existing bucket
+      if (bucketStatus === "exists" || bucketStatus === "no-access") {
+        warn(
+          `Bucket ${bold(bucketInput)} already exists${bucketStatus === "no-access" ? " (owned by another AWS account)" : ""} — S3 bucket names are globally unique across all AWS accounts.`,
+        );
+        info("Please enter a different name for the new bucket.");
+        defaultBucket = "";
+        continue;
+      }
+
+      info(
+        `Bucket ${bold(bucketInput)} does not exist. Creating in ${region}...`,
+      );
+      try {
+        if (region === "us-east-1") {
+          execSync(
+            `aws s3api create-bucket --bucket "${bucketInput}" --region "${region}"`,
+            { stdio: "pipe" },
+          );
+        } else {
+          execSync(
+            `aws s3api create-bucket --bucket "${bucketInput}" --region "${region}" --create-bucket-configuration LocationConstraint="${region}"`,
+            { stdio: "pipe" },
+          );
+        }
+        execSync(
+          `aws s3api put-public-access-block --bucket "${bucketInput}" --public-access-block-configuration "BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false" --region "${region}"`,
+          { stdio: "pipe" },
+        );
+        const pubPolicy = JSON.stringify({
+          Version: "2012-10-17",
+          Statement: [
+            {
+              Sid: "PublicReadGetObject",
+              Effect: "Allow",
+              Principal: "*",
+              Action: "s3:GetObject",
+              Resource: `arn:aws:s3:::${bucketInput}/*`,
+            },
+          ],
+        });
+        execSync(
+          `aws s3api put-bucket-policy --bucket "${bucketInput}" --policy '${pubPolicy}' --region "${region}"`,
+          { stdio: "pipe" },
+        );
+        s3BucketName = bucketInput;
+        ok(`Created S3 bucket ${bold(s3BucketName)} with public read enabled.`);
+        break;
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        warn(`Could not create bucket "${bucketInput}": ${msg}`);
+        info("Please enter a different S3 bucket name.");
+        defaultBucket = "";
+        continue;
       }
     }
 
