@@ -33,7 +33,10 @@ function exec(cmd: string): string {
 // re-interpreted by /bin/sh.
 function execFileArgs(cmd: string, args: readonly string[]): string {
   try {
-    return execFileSync(cmd, [...args], { encoding: "utf-8", stdio: "pipe" }).trim();
+    return execFileSync(cmd, [...args], {
+      encoding: "utf-8",
+      stdio: "pipe",
+    }).trim();
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     throw new Error(`Command failed: ${cmd} ${args.join(" ")}\n${message}`);

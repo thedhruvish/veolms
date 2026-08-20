@@ -53,7 +53,14 @@ import {
   HeadBucketCommand,
   GetBucketLocationCommand,
 } from "@aws-sdk/client-s3";
-import { bold, cyan, dim, green, red, yellow } from "@veolms/fleet-types/terminal";
+import {
+  bold,
+  cyan,
+  dim,
+  green,
+  red,
+  yellow,
+} from "@veolms/fleet-types/terminal";
 
 import { checkAwsCredentials } from "./aws-cli-check.ts";
 

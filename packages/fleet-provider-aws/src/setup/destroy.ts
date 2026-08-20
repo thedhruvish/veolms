@@ -130,9 +130,7 @@ ${bold(red("╚═════════════════════�
     if (res !== null) {
       console.info(`  ${green("✔")} Detached managed policy: ${polArn}`);
     } else {
-      console.info(
-        `  ${red("✘")} Could not detach managed policy: ${polArn}`,
-      );
+      console.info(`  ${red("✘")} Could not detach managed policy: ${polArn}`);
     }
   }
 

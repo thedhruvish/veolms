@@ -19,7 +19,12 @@ async function dispatch(): Promise<void> {
   try {
     const destroyFn = await loadModuleFunction<() => Promise<void>>(
       packageName,
-      ["runAwsInfraDestroy", "runLocalInfraDestroy", "runInfraDestroy", "default"],
+      [
+        "runAwsInfraDestroy",
+        "runLocalInfraDestroy",
+        "runInfraDestroy",
+        "default",
+      ],
       `Provider destroy package "${packageName}" does not export a destroy function.`,
     );
     await destroyFn();

@@ -11,9 +11,7 @@ export async function resolveFleetProvider(
     : `@veolms/fleet-provider-${normalized}`;
 
   try {
-    const factory = await loadModuleFunction<
-      (opts?: unknown) => FleetProvider
-    >(
+    const factory = await loadModuleFunction<(opts?: unknown) => FleetProvider>(
       packageName,
       ["createProvider", "createAwsProvider", "createLocalProvider", "default"],
       `Package "${packageName}" did not export a valid provider factory function.`,
