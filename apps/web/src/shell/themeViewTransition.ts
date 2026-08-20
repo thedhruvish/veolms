@@ -2,19 +2,19 @@ import "./theme-view-transition.css";
 
 export type ThemeViewTransitionKind = "mode" | "palette";
 
-// Pointerdown is the earliest signal of the interaction that will trigger the
-// reveal, so one document-level listener can feed every trigger (dock toggle,
-// palette menu, long-press, swipe) without threading click events through
-// React state and effects.
-const POINTER_ORIGIN_MAX_AGE_MS = 2_000;
+// Pointer coordinates for the reveal circle. Callers pass one only when a
+// specific interaction caused the change: pointer commits pass the pointer
+// position, keyboard navigation passes the focused control's center, and
+// OS-triggered commits pass nothing so the mask's corner fallbacks apply.
+export interface ThemeRevealOrigin {
+  x: number;
+  y: number;
+}
 
 const revealOriginProperties = [
   "--theme-reveal-x",
   "--theme-reveal-y",
 ] as const;
-
-let lastPointerOrigin: { x: number; y: number; timestamp: number } | null =
-  null;
 
 // Overlapping transitions of the same kind share the tag value and can even
 // stage identical reveal coordinates, so value comparisons can never prove
@@ -24,31 +24,49 @@ let nextTransitionId = 0;
 let taggedTransitionId: number | null = null;
 let stagedOriginTransitionId: number | null = null;
 
-if (typeof document !== "undefined") {
-  document.addEventListener(
-    "pointerdown",
-    (event) => {
-      lastPointerOrigin = {
-        x: event.clientX,
-        y: event.clientY,
-        timestamp: performance.now(),
-      };
-    },
-    { capture: true, passive: true },
+// The center of an element's box, used as the reveal origin for keyboard
+// navigation: the focused control is where the interaction happened. A
+// zero-area rect (hidden or unmeasured element, e.g. in jsdom) yields no
+// origin so the CSS corner fallback still applies.
+export function themeRevealOriginFromElement(
+  element: Element | null | undefined,
+): ThemeRevealOrigin | null {
+  if (!element) return null;
+  const rect = element.getBoundingClientRect();
+  if (rect.width === 0 && rect.height === 0) return null;
+  return {
+    x: rect.left + rect.width / 2,
+    y: rect.top + rect.height / 2,
+  };
+}
+
+// Keyboard activations (Enter/Space) and programmatic element.click() both
+// dispatch click events at the viewport origin, so a non-zero coordinate is
+// what proves the click came from an actual pointer. Pointer clicks reveal
+// from the pointer position; keyboard and programmatic clicks reveal from
+// the center of the control they activated. This keeps keyboard interactions
+// attributed to the focused item instead of the last place the user clicked.
+export function themeRevealOriginFromClick(event: {
+  clientX: number;
+  clientY: number;
+  currentTarget?: EventTarget | null;
+}): ThemeRevealOrigin | null {
+  if (event.clientX !== 0 || event.clientY !== 0) {
+    return { x: event.clientX, y: event.clientY };
+  }
+  return themeRevealOriginFromElement(
+    event.currentTarget instanceof Element ? event.currentTarget : null,
   );
 }
 
 // Stages the reveal origin as inline custom properties on the root so the
-// ::view-transition-new(root) mask inherits them. Returns without staging
-// (and without claiming origin ownership) when no fresh pointer origin
-// exists; the mask's keyword fallbacks (corner origins) then apply for
-// keyboard and OS-triggered changes.
-function stageRevealOrigin(transitionId: number): void {
-  const origin = lastPointerOrigin;
-  if (!origin) return;
-  if (performance.now() - origin.timestamp > POINTER_ORIGIN_MAX_AGE_MS) {
-    return;
-  }
+// ::view-transition-new(root) mask inherits them. Only called for
+// interaction-triggered commits; without staged properties, the mask's
+// keyword fallbacks (corner origins) apply for OS-triggered changes.
+function stageRevealOrigin(
+  transitionId: number,
+  origin: ThemeRevealOrigin,
+): void {
   // The duration stays fixed: shortening it for center-ish clicks is what
   // made the reveal feel rushed there, while corner clicks felt smooth.
   const style = document.documentElement.style;
@@ -71,6 +89,7 @@ function clearStagedRevealOrigin(transitionId: number): void {
 export function applyWithThemeViewTransition(
   commit: () => void,
   kind: ThemeViewTransitionKind = "mode",
+  origin?: ThemeRevealOrigin,
 ): void {
   if (
     typeof document.startViewTransition !== "function" ||
@@ -84,7 +103,7 @@ export function applyWithThemeViewTransition(
   const transitionId = nextTransitionId++;
   document.documentElement.dataset.themeTransition = kind;
   taggedTransitionId = transitionId;
-  stageRevealOrigin(transitionId);
+  if (origin) stageRevealOrigin(transitionId, origin);
   const transition = document.startViewTransition(commit);
   const clear = () => {
     // A newer transition may have retagged the root or restaged the origin;
