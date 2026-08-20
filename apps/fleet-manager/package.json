@@ -27,6 +27,8 @@
   },
   "devDependencies": {
     "@types/pg": "8.15.5",
-    "esbuild": "^0.25.0"
+    "esbuild": "^0.25.0",
+    "@aws-sdk/client-iam": "^3.1112.0",
+    "@veolms/fleet-provider-aws": "workspace:*"
   }
 }

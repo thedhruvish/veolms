@@ -9,6 +9,7 @@
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { bold, cyan, green } from "@veolms/fleet-types/terminal";
 
 const REGION = process.env.AWS_REGION || "us-east-1";
 const ARCHITECTURE = (process.env.ARCHITECTURE || "arm64").toLowerCase();
@@ -16,16 +17,6 @@ const ARCHITECTURE = (process.env.ARCHITECTURE || "arm64").toLowerCase();
 // Ubuntu 24.04 LTS Base AMIs in us-east-1
 const BASE_ARM64_AMI = "ami-02c4144237becae44";
 const BASE_X86_AMI = "ami-04b4f1a9cf54c11d0";
-
-function bold(s: string): string {
-  return `\x1b[1m${s}\x1b[0m`;
-}
-function green(s: string): string {
-  return `\x1b[32m${s}\x1b[0m`;
-}
-function cyan(s: string): string {
-  return `\x1b[36m${s}\x1b[0m`;
-}
 
 function exec(cmd: string): string {
   try {

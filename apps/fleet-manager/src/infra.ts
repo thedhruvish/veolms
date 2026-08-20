@@ -13,20 +13,10 @@
  *   pnpm fleet:infra                     # reads from apps/fleet-manager/.env
  */
 
-const provider = (process.env["FLEET_PROVIDER"] ?? "").toLowerCase().trim();
+import { bold, cyan, dim, red } from "@veolms/fleet-types/terminal";
+import { loadModuleFunction } from "./core/dynamic-module.ts";
 
-function bold(s: string): string {
-  return `\x1b[1m${s}\x1b[0m`;
-}
-function red(s: string): string {
-  return `\x1b[31m${s}\x1b[0m`;
-}
-function cyan(s: string): string {
-  return `\x1b[36m${s}\x1b[0m`;
-}
-function dim(s: string): string {
-  return `\x1b[2m${s}\x1b[0m`;
-}
+const provider = (process.env["FLEET_PROVIDER"] ?? "").toLowerCase().trim();
 
 if (!provider) {
   console.error(`
@@ -63,21 +53,12 @@ async function dispatch(): Promise<void> {
   const packageName = `@veolms/fleet-provider-${provider}/setup`;
 
   try {
-    const setupModule = (await import(packageName)) as Record<string, unknown>;
-    const setupFn =
-      setupModule.runAwsInfraSetup ??
-      setupModule.runLocalInfraSetup ??
-      setupModule.runInfraSetup ??
-      setupModule.default;
-
-    if (typeof setupFn === "function") {
-      await (setupFn as () => Promise<void>)();
-      return;
-    }
-
-    throw new Error(
+    const setupFn = await loadModuleFunction<() => Promise<void>>(
+      packageName,
+      ["runAwsInfraSetup", "runLocalInfraSetup", "runInfraSetup", "default"],
       `Provider setup package "${packageName}" does not export a setup function.`,
     );
+    await setupFn();
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     throw new Error(

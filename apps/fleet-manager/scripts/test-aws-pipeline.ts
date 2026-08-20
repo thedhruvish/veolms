@@ -3,13 +3,18 @@ import { execFileSync, execSync } from "node:child_process";
 import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import * as esbuild from "esbuild";
+import { IAMClient } from "@aws-sdk/client-iam";
 import { createDatabase } from "@veolms/database";
 import { loadServerConfig } from "@veolms/config";
 import type { VideoQualityLevel } from "@veolms/fleet-types";
+import {
+  checkOrCreateRole,
+  createInstanceProfile,
+  buildAndUploadWorkerBundle,
+} from "@veolms/fleet-provider-aws/setup";
 
 const REGION = process.env.AWS_REGION || "us-east-1";
 const S3_BUCKET = process.env.S3_BUCKET || "veo-lms-test";
-const ROLE_NAME = "VeoLMSWorkerRole";
 const INSTANCE_PROFILE_NAME = "VeoLMSWorkerInstanceProfile";
 const LAMBDA_NAME = "veolms-fleet-manager";
 
@@ -47,111 +52,12 @@ function execSilent(cmd: string): boolean {
 async function ensureAwsInfrastructure(databaseUrl: string): Promise<string> {
   console.info("\n[1/5] Checking / Provisioning AWS Infrastructure...");
 
-  // 1. Ensure IAM Role exists
-  let roleArn: string = "";
-  try {
-    const roleJson = JSON.parse(
-      exec(`aws iam get-role --role-name ${ROLE_NAME} --output json`),
-    );
-    roleArn = roleJson.Role.Arn;
-    console.info(`  ✔ IAM Role already exists: ${ROLE_NAME}`);
-  } catch {
-    console.info(`  Creating IAM Role: ${ROLE_NAME}...`);
-    const trustPolicy = JSON.stringify({
-      Version: "2012-10-17",
-      Statement: [
-        {
-          Effect: "Allow",
-          Principal: {
-            Service: ["ec2.amazonaws.com", "lambda.amazonaws.com"],
-          },
-          Action: "sts:AssumeRole",
-        },
-      ],
-    });
-    const res = JSON.parse(
-      exec(
-        `aws iam create-role --role-name ${ROLE_NAME} --assume-role-policy-document '${trustPolicy}' --description "VeoLMS Role" --output json`,
-      ),
-    );
-    roleArn = res.Role.Arn;
+  const iam = new IAMClient({ region: REGION });
 
-    exec(
-      `aws iam attach-role-policy --role-name ${ROLE_NAME} --policy-arn arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy`,
-    );
-    exec(
-      `aws iam attach-role-policy --role-name ${ROLE_NAME} --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore`,
-    );
-    exec(
-      `aws iam attach-role-policy --role-name ${ROLE_NAME} --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole`,
-    );
-
-    const s3Policy = JSON.stringify({
-      Version: "2012-10-17",
-      Statement: [
-        {
-          Effect: "Allow",
-          Action: [
-            "s3:GetObject",
-            "s3:PutObject",
-            "s3:DeleteObject",
-            "s3:ListBucket",
-          ],
-          Resource: [
-            `arn:aws:s3:::${S3_BUCKET}`,
-            `arn:aws:s3:::${S3_BUCKET}/*`,
-          ],
-        },
-      ],
-    });
-    exec(
-      `aws iam put-role-policy --role-name ${ROLE_NAME} --policy-name VeoLMSS3Access --policy-document '${s3Policy}'`,
-    );
-
-    const ec2Policy = JSON.stringify({
-      Version: "2012-10-17",
-      Statement: [
-        {
-          Effect: "Allow",
-          Action: [
-            "ec2:RunInstances",
-            "ec2:TerminateInstances",
-            "ec2:DescribeInstances",
-            "ec2:DescribeInstanceStatus",
-            "ec2:CreateTags",
-            "ec2:RequestSpotInstances",
-          ],
-          Resource: "*",
-        },
-        {
-          Effect: "Allow",
-          Action: "iam:PassRole",
-          Resource: roleArn,
-        },
-      ],
-    });
-    exec(
-      `aws iam put-role-policy --role-name ${ROLE_NAME} --policy-name VeoLMSEC2WorkerManagement --policy-document '${ec2Policy}'`,
-    );
-    console.info(`  ✔ IAM Role created and configured.`);
-  }
-
-  // 2. Ensure Instance Profile exists
-  try {
-    exec(
-      `aws iam get-instance-profile --instance-profile-name ${INSTANCE_PROFILE_NAME}`,
-    );
-    console.info(`  ✔ Instance Profile exists: ${INSTANCE_PROFILE_NAME}`);
-  } catch {
-    console.info(`  Creating Instance Profile: ${INSTANCE_PROFILE_NAME}...`);
-    exec(
-      `aws iam create-instance-profile --instance-profile-name ${INSTANCE_PROFILE_NAME}`,
-    );
-    exec(
-      `aws iam add-role-to-instance-profile --instance-profile-name ${INSTANCE_PROFILE_NAME} --role-name ${ROLE_NAME}`,
-    );
-    console.info(`  ✔ Instance Profile created and attached to role.`);
-  }
+  // 1. Ensure IAM Role exists, 2. Ensure Instance Profile exists — shared
+  // with `pnpm fleet:infra`'s interactive AWS setup so the two don't drift.
+  const roleArn = await checkOrCreateRole(iam, true, S3_BUCKET);
+  await createInstanceProfile(iam, roleArn);
 
   // 3. Ensure EC2 Spot Service-Linked Role exists
   execSilent(
@@ -178,26 +84,10 @@ async function ensureAwsInfrastructure(databaseUrl: string): Promise<string> {
     `aws s3api put-bucket-policy --bucket ${S3_BUCKET} --policy '${publicPolicy}' --region ${REGION}`,
   );
 
-  // 5. Build and upload standalone Media Worker bundle to S3
+  // 5. Build and upload standalone Media Worker bundle to S3 — shared with
+  // `pnpm fleet:infra`'s interactive AWS setup so the two don't drift.
   console.info("  Building and uploading media-worker.js to S3...");
-  const distWorkerDir = join(process.cwd(), "dist/worker");
-  mkdirSync(distWorkerDir, { recursive: true });
-  const workerOutfile = join(distWorkerDir, "media-worker.js");
-  esbuild.buildSync({
-    entryPoints: [join(process.cwd(), "apps/media-worker/src/index.ts")],
-    bundle: true,
-    platform: "node",
-    target: "node22",
-    format: "cjs",
-    outfile: workerOutfile,
-    logLevel: "silent",
-  });
-  exec(
-    `aws s3 cp "${workerOutfile}" "s3://${S3_BUCKET}/bundles/media-worker.js" --region ${REGION}`,
-  );
-  console.info(
-    `  ✔ Media Worker bundle uploaded to s3://${S3_BUCKET}/bundles/media-worker.js`,
-  );
+  buildAndUploadWorkerBundle(S3_BUCKET, REGION);
 
   // 6. Build and deploy AWS Lambda function
   console.info("  Building and deploying Lambda function...");

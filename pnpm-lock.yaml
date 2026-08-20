@@ -130,9 +130,15 @@ importers:
         specifier: 'catalog:'
         version: 4.4.3
     devDependencies:
+      '@aws-sdk/client-iam':
+        specifier: ^3.1112.0
+        version: 3.1112.0
       '@types/pg':
         specifier: 8.15.5
         version: 8.15.5
+      '@veolms/fleet-provider-aws':
+        specifier: workspace:*
+        version: link:../../packages/fleet-provider-aws
       esbuild:
         specifier: ^0.25.0
         version: 0.25.12

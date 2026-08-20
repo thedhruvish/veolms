@@ -13,25 +13,7 @@ import { execSync } from "node:child_process";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-
-function bold(s: string): string {
-  return `\x1b[1m${s}\x1b[0m`;
-}
-function green(s: string): string {
-  return `\x1b[32m${s}\x1b[0m`;
-}
-function red(s: string): string {
-  return `\x1b[31m${s}\x1b[0m`;
-}
-function cyan(s: string): string {
-  return `\x1b[36m${s}\x1b[0m`;
-}
-function yellow(s: string): string {
-  return `\x1b[33m${s}\x1b[0m`;
-}
-function dim(s: string): string {
-  return `\x1b[2m${s}\x1b[0m`;
-}
+import { bold, cyan, dim, green, red, yellow } from "@veolms/fleet-types/terminal";
 
 function ok(msg: string): void {
   console.log(`  ${green("✔")} ${msg}`);

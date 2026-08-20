@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+import { bold, cyan, green, red } from "@veolms/fleet-types/terminal";
 
 const REGION = process.env.AWS_REGION || "us-east-1";
 const ROLE_NAME = "VeoLMSWorkerRole";
@@ -11,19 +12,6 @@ function exec(cmd: string): string | null {
   } catch {
     return null;
   }
-}
-
-function bold(s: string): string {
-  return `\x1b[1m${s}\x1b[0m`;
-}
-function green(s: string): string {
-  return `\x1b[32m${s}\x1b[0m`;
-}
-function red(s: string): string {
-  return `\x1b[31m${s}\x1b[0m`;
-}
-function cyan(s: string): string {
-  return `\x1b[36m${s}\x1b[0m`;
 }
 
 export async function runAwsInfraDestroy(): Promise<void> {

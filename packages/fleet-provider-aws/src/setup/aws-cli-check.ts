@@ -17,27 +17,12 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { STSClient, GetCallerIdentityCommand } from "@aws-sdk/client-sts";
+import { bold, cyan, dim, green, red } from "@veolms/fleet-types/terminal";
 
 export interface AwsIdentity {
   accountId: string;
   userId: string;
   arn: string;
-}
-
-function red(s: string): string {
-  return `\x1b[31m${s}\x1b[0m`;
-}
-function green(s: string): string {
-  return `\x1b[32m${s}\x1b[0m`;
-}
-function bold(s: string): string {
-  return `\x1b[1m${s}\x1b[0m`;
-}
-function cyan(s: string): string {
-  return `\x1b[36m${s}\x1b[0m`;
-}
-function dim(s: string): string {
-  return `\x1b[2m${s}\x1b[0m`;
 }
 
 function hasEnvCredentials(): boolean {

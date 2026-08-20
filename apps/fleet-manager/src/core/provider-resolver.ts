@@ -1,4 +1,5 @@
 import type { FleetProvider } from "@veolms/fleet-types";
+import { loadModuleFunction } from "./dynamic-module.ts";
 
 export async function resolveFleetProvider(
   providerName: string,
@@ -10,24 +11,14 @@ export async function resolveFleetProvider(
     : `@veolms/fleet-provider-${normalized}`;
 
   try {
-    const providerModule = (await import(packageName)) as Record<
-      string,
-      unknown
-    >;
-
-    const factory =
-      providerModule.createProvider ??
-      providerModule.createAwsProvider ??
-      providerModule.createLocalProvider ??
-      providerModule.default;
-
-    if (typeof factory === "function") {
-      return (factory as (opts?: unknown) => FleetProvider)(options);
-    }
-
-    throw new Error(
+    const factory = await loadModuleFunction<
+      (opts?: unknown) => FleetProvider
+    >(
+      packageName,
+      ["createProvider", "createAwsProvider", "createLocalProvider", "default"],
       `Package "${packageName}" did not export a valid provider factory function.`,
     );
+    return factory(options);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     throw new Error(

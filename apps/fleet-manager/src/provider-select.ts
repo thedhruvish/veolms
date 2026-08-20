@@ -2,6 +2,7 @@ import { execSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import * as readline from "node:readline/promises";
+import { bold, cyan, dim, green, yellow } from "@veolms/fleet-types/terminal";
 
 interface ProviderOption {
   id: string;
@@ -45,22 +46,6 @@ const AVAILABLE_PROVIDERS: readonly ProviderOption[] = [
     status: "planned",
   },
 ];
-
-function bold(s: string): string {
-  return `\x1b[1m${s}\x1b[0m`;
-}
-function green(s: string): string {
-  return `\x1b[32m${s}\x1b[0m`;
-}
-function cyan(s: string): string {
-  return `\x1b[36m${s}\x1b[0m`;
-}
-function yellow(s: string): string {
-  return `\x1b[33m${s}\x1b[0m`;
-}
-function dim(s: string): string {
-  return `\x1b[2m${s}\x1b[0m`;
-}
 
 export async function runProviderSelection(): Promise<void> {
   console.info(`

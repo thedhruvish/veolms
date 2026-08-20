@@ -11,15 +11,7 @@
  * Triggered by:   pnpm fleet:destroy  (when FLEET_PROVIDER=local)
  */
 
-function bold(s: string): string {
-  return `\x1b[1m${s}\x1b[0m`;
-}
-function green(s: string): string {
-  return `\x1b[32m${s}\x1b[0m`;
-}
-function cyan(s: string): string {
-  return `\x1b[36m${s}\x1b[0m`;
-}
+import { bold, cyan, green } from "@veolms/fleet-types/terminal";
 
 export async function runLocalInfraDestroy(): Promise<void> {
   console.info(`

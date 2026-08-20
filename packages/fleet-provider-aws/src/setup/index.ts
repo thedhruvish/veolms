@@ -53,6 +53,7 @@ import {
   HeadBucketCommand,
   GetBucketLocationCommand,
 } from "@aws-sdk/client-s3";
+import { bold, cyan, dim, green, red, yellow } from "@veolms/fleet-types/terminal";
 
 import { checkAwsCredentials } from "./aws-cli-check.ts";
 
@@ -96,25 +97,6 @@ interface SetupResult {
 }
 
 // ─── Terminal Helpers ─────────────────────────────────────────────────────────
-
-function bold(s: string): string {
-  return `\x1b[1m${s}\x1b[0m`;
-}
-function green(s: string): string {
-  return `\x1b[32m${s}\x1b[0m`;
-}
-function yellow(s: string): string {
-  return `\x1b[33m${s}\x1b[0m`;
-}
-function cyan(s: string): string {
-  return `\x1b[36m${s}\x1b[0m`;
-}
-function red(s: string): string {
-  return `\x1b[31m${s}\x1b[0m`;
-}
-function dim(s: string): string {
-  return `\x1b[2m${s}\x1b[0m`;
-}
 
 function banner(): void {
   console.log(`
@@ -177,7 +159,7 @@ async function askChoice<T extends string>(
 
 // ─── AWS Resource Provisioners ────────────────────────────────────────────────
 
-async function checkOrCreateRole(
+export async function checkOrCreateRole(
   iam: IAMClient,
   useS3: boolean,
   s3BucketName: string | null,
@@ -227,26 +209,29 @@ async function checkOrCreateRole(
 
   ok(`Created IAM role: ${bold(ROLE_NAME)}`);
 
-  // Always attach: CloudWatch Logs + SSM + Lambda basic execution managed policies
-  await iam.send(
-    new AttachRolePolicyCommand({
-      RoleName: ROLE_NAME,
-      PolicyArn: "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
-    }),
-  );
-  await iam.send(
-    new AttachRolePolicyCommand({
-      RoleName: ROLE_NAME,
-      PolicyArn: "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
-    }),
-  );
-  await iam.send(
-    new AttachRolePolicyCommand({
-      RoleName: ROLE_NAME,
-      PolicyArn:
-        "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
-    }),
-  );
+  // Always attach: CloudWatch Logs + SSM + Lambda basic execution managed
+  // policies. These are independent, so run them concurrently.
+  await Promise.all([
+    iam.send(
+      new AttachRolePolicyCommand({
+        RoleName: ROLE_NAME,
+        PolicyArn: "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
+      }),
+    ),
+    iam.send(
+      new AttachRolePolicyCommand({
+        RoleName: ROLE_NAME,
+        PolicyArn: "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
+      }),
+    ),
+    iam.send(
+      new AttachRolePolicyCommand({
+        RoleName: ROLE_NAME,
+        PolicyArn:
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+      }),
+    ),
+  ]);
   ok("Attached CloudWatch + SSM + Lambda managed policies");
 
   // Conditionally add S3 access
@@ -321,7 +306,7 @@ async function checkOrCreateRole(
   return roleArn;
 }
 
-async function createInstanceProfile(
+export async function createInstanceProfile(
   iam: IAMClient,
   roleArn: string,
 ): Promise<string> {

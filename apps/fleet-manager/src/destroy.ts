@@ -8,37 +8,21 @@
  *   pnpm fleet:destroy
  */
 
-const provider = (process.env["FLEET_PROVIDER"] ?? "aws").toLowerCase().trim();
+import { red } from "@veolms/fleet-types/terminal";
+import { loadModuleFunction } from "./core/dynamic-module.ts";
 
-function bold(s: string): string {
-  return `\x1b[1m${s}\x1b[0m`;
-}
-function red(s: string): string {
-  return `\x1b[31m${s}\x1b[0m`;
-}
+const provider = (process.env["FLEET_PROVIDER"] ?? "aws").toLowerCase().trim();
 
 async function dispatch(): Promise<void> {
   const packageName = `@veolms/fleet-provider-${provider}/destroy`;
 
   try {
-    const destroyModule = (await import(packageName)) as Record<
-      string,
-      unknown
-    >;
-    const destroyFn =
-      destroyModule.runAwsInfraDestroy ??
-      destroyModule.runLocalInfraDestroy ??
-      destroyModule.runInfraDestroy ??
-      destroyModule.default;
-
-    if (typeof destroyFn === "function") {
-      await (destroyFn as () => Promise<void>)();
-      return;
-    }
-
-    throw new Error(
+    const destroyFn = await loadModuleFunction<() => Promise<void>>(
+      packageName,
+      ["runAwsInfraDestroy", "runLocalInfraDestroy", "runInfraDestroy", "default"],
       `Provider destroy package "${packageName}" does not export a destroy function.`,
     );
+    await destroyFn();
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     throw new Error(
