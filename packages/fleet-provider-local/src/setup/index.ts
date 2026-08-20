@@ -125,6 +125,7 @@ ${bold(cyan("╚═════════════════════�
   const workerEnv: Record<string, string> = {
     FLEET_PROVIDER: "local",
     STORAGE_PROVIDER: "local",
+    WORKER_IDLE_POLL_SECONDS: "15",
   };
 
   await writeEnvFile(

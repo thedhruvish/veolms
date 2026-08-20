@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Kysely } from "kysely";
-import type { Database } from "@veolms/database";
+import { claimNextQueuedJob, type Database } from "@veolms/database";
 import type {
   Job,
   JobRequirements,
@@ -34,49 +34,27 @@ export function createJobManager(options: {
 
   return {
     async claimNextJob(): Promise<Job | null> {
-      return await db.transaction().execute(async (trx) => {
-        const row = await trx
-          .selectFrom("jobs")
-          .selectAll()
-          .where("status", "=", "QUEUED")
-          .orderBy("created_at", "asc")
-          .limit(1)
-          .forUpdate()
-          .skipLocked()
-          .executeTakeFirst();
+      const row = await claimNextQueuedJob(db);
+      if (!row) {
+        return null;
+      }
 
-        if (!row) {
-          return null;
-        }
-
-        // Mark PROCESSING in transaction
-        await trx
-          .updateTable("jobs")
-          .set({
-            status: "PROCESSING",
-            started_at: new Date(),
-            updated_at: new Date(),
-          })
-          .where("id", "=", row.id)
-          .execute();
-
-        return {
-          id: row.id,
-          status: "PROCESSING" as JobStatus,
-          videoKey: row.video_key,
-          outputPrefix: row.output_prefix,
-          requirements: row.requirements,
-          workerId: row.worker_id,
-          attempts: row.attempts,
-          maxAttempts: row.max_attempts,
-          errorMessage: row.error_message,
-          createdAt: row.created_at,
-          startedAt: new Date(),
-          completedAt: row.completed_at,
-          failedAt: row.failed_at,
-          updatedAt: new Date(),
-        };
-      });
+      return {
+        id: row.id,
+        status: "PROCESSING" as JobStatus,
+        videoKey: row.video_key,
+        outputPrefix: row.output_prefix,
+        requirements: row.requirements,
+        workerId: row.worker_id,
+        attempts: row.attempts,
+        maxAttempts: row.max_attempts,
+        errorMessage: row.error_message,
+        createdAt: row.created_at,
+        startedAt: new Date(),
+        completedAt: row.completed_at,
+        failedAt: row.failed_at,
+        updatedAt: new Date(),
+      };
     },
 
     async assignWorkerToJob(jobId: string, workerId: string): Promise<void> {

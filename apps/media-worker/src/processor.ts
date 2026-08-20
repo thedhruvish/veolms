@@ -99,6 +99,25 @@ export async function executeTranscodeJob(
     .where("id", "=", workerId)
     .execute();
 
+  // Reset this worker's monitoring row for the new job — it may be a
+  // reused worker picking up a second/third job, whose estimated duration
+  // and progress differ from the job it just finished. `next_check_at` set
+  // to now makes it immediately "due", so the next fleet-manager
+  // monitoring cycle recalculates a correct schedule from fresh values
+  // rather than working off the previous job's numbers.
+  await db
+    .updateTable("worker_monitoring")
+    .set({
+      estimated_duration_sec: job.requirements.hardware.estimatedDurationSeconds,
+      progress_percent: 0,
+      last_progress_at: null,
+      monitoring_attempts: 0,
+      next_check_at: new Date(),
+      updated_at: new Date(),
+    })
+    .where("worker_id", "=", workerId)
+    .execute();
+
   await recordEvent("JOB_STARTED", jobId, {
     videoKey: job.video_key,
     outputPrefix: job.output_prefix,

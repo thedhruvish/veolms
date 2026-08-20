@@ -6,7 +6,7 @@ import {
 } from "../src/bootstrapper.ts";
 
 describe("EC2 UserData Bootstrapper Generator", () => {
-  it("should generate Debian 14 / Linux bootstrapper script with environment variables", () => {
+  it("should generate Debian 13 / Linux bootstrapper script with environment variables", () => {
     const script = generateUserDataScript({
       workerId: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
       spec: {

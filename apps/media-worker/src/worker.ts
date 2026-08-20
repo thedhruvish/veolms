@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { sql, type Kysely } from "kysely";
-import type { Database } from "@veolms/database";
+import { claimNextQueuedJob, type Database } from "@veolms/database";
 import type { FleetEventType } from "@veolms/fleet-types";
 import type { MediaWorkerConfig } from "./config.ts";
 
@@ -95,4 +95,32 @@ export async function initMediaWorker(options: {
     stopHeartbeat,
     recordEvent,
   };
+}
+
+/**
+ * Looks for the next job to keep this already-booted worker busy instead
+ * of it terminating after a single job. Checks once immediately; if the
+ * queue is empty, waits WORKER_IDLE_POLL_SECONDS and checks exactly once
+ * more before giving up — a single grace retry, not indefinite polling, so
+ * an idle worker costs at most one extra wait cycle before it self-
+ * terminates (via the existing UserData shutdown path once this process
+ * exits).
+ */
+export async function pollForNextJob(
+  ctx: MediaWorkerContext,
+): Promise<string | null> {
+  const claimed = await claimNextQueuedJob(ctx.db);
+  if (claimed) {
+    return claimed.id;
+  }
+
+  console.info(
+    `[media-worker] Queue empty — waiting ${ctx.config.WORKER_IDLE_POLL_SECONDS}s for one more check before shutting down...`,
+  );
+  await new Promise((resolve) =>
+    setTimeout(resolve, ctx.config.WORKER_IDLE_POLL_SECONDS * 1000),
+  );
+
+  const claimedAfterWait = await claimNextQueuedJob(ctx.db);
+  return claimedAfterWait?.id ?? null;
 }

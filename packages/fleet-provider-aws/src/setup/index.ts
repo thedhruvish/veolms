@@ -100,6 +100,7 @@ interface SetupAnswers {
   readonly allowedInstanceTypes: readonly string[];
   readonly bootMode: BootMode;
   readonly maxWorkers: number;
+  readonly workerIdlePollSeconds: number;
   readonly useSpot: boolean;
 }
 
@@ -811,6 +812,7 @@ async function generateEnvFiles(
     FLEET_PROVIDER: "aws",
     WORKER_LOG_GROUP: result.logGroupWorkers,
     STORAGE_PROVIDER: answers.storageProvider,
+    WORKER_IDLE_POLL_SECONDS: String(answers.workerIdlePollSeconds),
   };
 
   if (answers.s3BucketName) {
@@ -845,7 +847,7 @@ export async function runAwsInfraSetup(): Promise<void> {
   const repoRoot = path.resolve(__dirname, "..", "..", "..", "..");
 
   const rl = readline.createInterface({ input, output });
-  const TOTAL_STEPS = 11;
+  const TOTAL_STEPS = 12;
 
   try {
     // ── Step 1: Target Environment ─────────────────────────────────────────────
@@ -1100,8 +1102,28 @@ export async function runAwsInfraSetup(): Promise<void> {
     const maxWorkers = Math.max(1, parseInt(maxWorkersInput, 10) || 8);
     ok(`Max concurrent workers: ${bold(String(maxWorkers))}`);
 
-    // ── Step 9: Spot vs On-Demand ──────────────────────────────────────────────
-    step(9, TOTAL_STEPS, "EC2 Pricing Model");
+    // ── Step 9: Worker Idle Poll Interval ──────────────────────────────────────
+    step(9, TOTAL_STEPS, "Worker Idle Poll Interval");
+    info(
+      "After finishing a job, a worker checks the queue for more work " +
+        "instead of terminating immediately — reusing an already-booted " +
+        "instance skips the next job's fresh-boot cost. If the queue is " +
+        "empty, it waits this long for one more check before giving up " +
+        "and terminating.",
+    );
+    const idlePollInput = await ask(
+      rl,
+      "Idle poll interval before shutdown (seconds)",
+      "15",
+    );
+    const workerIdlePollSeconds = Math.max(
+      1,
+      parseInt(idlePollInput, 10) || 15,
+    );
+    ok(`Idle poll interval: ${bold(`${workerIdlePollSeconds}s`)}`);
+
+    // ── Step 10: Spot vs On-Demand ──────────────────────────────────────────────
+    step(10, TOTAL_STEPS, "EC2 Pricing Model");
     const pricingModel = await askChoice(rl, "Which EC2 pricing model?", [
       {
         label:
@@ -1116,8 +1138,8 @@ export async function runAwsInfraSetup(): Promise<void> {
     const useSpot = pricingModel === "spot";
     ok(useSpot ? "Spot Instances selected." : "On-Demand Instances selected.");
 
-    // ── Step 10: Create AWS Resources ──────────────────────────────────────────
-    step(10, TOTAL_STEPS, "Creating AWS Resources");
+    // ── Step 11: Create AWS Resources ──────────────────────────────────────────
+    step(11, TOTAL_STEPS, "Creating AWS Resources");
 
     const iam = new IAMClient({ region });
     const cw = new CloudWatchLogsClient({ region });
@@ -1144,6 +1166,7 @@ export async function runAwsInfraSetup(): Promise<void> {
         EC2_IAM_INSTANCE_PROFILE: INSTANCE_PROFILE_NAME,
         EC2_USE_SPOT: String(useSpot),
         MAX_WORKERS: String(maxWorkers),
+        WORKER_IDLE_POLL_SECONDS: String(workerIdlePollSeconds),
         PROVIDER: "aws",
       };
       if (s3BucketName) {
@@ -1203,11 +1226,12 @@ export async function runAwsInfraSetup(): Promise<void> {
       allowedInstanceTypes,
       bootMode,
       maxWorkers,
+      workerIdlePollSeconds,
       useSpot,
     };
 
-    // ── Step 11: Write .env Files ───────────────────────────────────────────────
-    step(11, TOTAL_STEPS, "Writing Per-App .env Files");
+    // ── Step 12: Write .env Files ───────────────────────────────────────────────
+    step(12, TOTAL_STEPS, "Writing Per-App .env Files");
     await generateEnvFiles(answers, result, repoRoot);
 
     // ── Summary ────────────────────────────────────────────────────────────────

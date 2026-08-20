@@ -2,7 +2,7 @@ import { resolve } from "node:path";
 import { createDatabase } from "@veolms/database";
 import { loadMediaWorkerConfig } from "./config.ts";
 import { executeTranscodeJob } from "./processor.ts";
-import { initMediaWorker } from "./worker.ts";
+import { initMediaWorker, pollForNextJob } from "./worker.ts";
 
 export async function run(): Promise<void> {
   const config = loadMediaWorkerConfig();
@@ -21,28 +21,40 @@ export async function run(): Promise<void> {
   process.on("SIGTERM", cleanup);
   process.on("SIGINT", cleanup);
 
-  if (config.JOB_ID) {
-    console.info(`[media-worker] Processing assigned job ${config.JOB_ID}...`);
-    try {
-      await executeTranscodeJob(workerCtx, config.JOB_ID);
+  try {
+    let jobId = config.JOB_ID ?? null;
+
+    if (!jobId) {
       console.info(
-        `[media-worker] Job ${config.JOB_ID} finished successfully.`,
+        `[media-worker] Worker ${config.WORKER_ID} running idle, waiting for commands.`,
       );
-    } catch (err) {
-      console.error(
-        `[media-worker] Job ${config.JOB_ID} encountered an error:`,
-        err,
-      );
-      process.exitCode = 1;
-    } finally {
-      process.off("SIGTERM", cleanup);
-      process.off("SIGINT", cleanup);
-      workerCtx.stopHeartbeat();
+      return;
     }
-  } else {
+
+    // Keep this already-booted worker busy: after each job, check the
+    // queue for the next one instead of terminating immediately. Reuses
+    // the instance across many jobs, skipping the fresh-boot cost each
+    // subsequent job would otherwise pay.
+    while (jobId) {
+      console.info(`[media-worker] Processing job ${jobId}...`);
+      try {
+        await executeTranscodeJob(workerCtx, jobId);
+        console.info(`[media-worker] Job ${jobId} finished successfully.`);
+      } catch (err) {
+        console.error(`[media-worker] Job ${jobId} encountered an error:`, err);
+        process.exitCode = 1;
+      }
+
+      jobId = await pollForNextJob(workerCtx);
+    }
+
     console.info(
-      `[media-worker] Worker ${config.WORKER_ID} running idle, waiting for commands.`,
+      `[media-worker] No more queued work — worker ${config.WORKER_ID} shutting down.`,
     );
+  } finally {
+    process.off("SIGTERM", cleanup);
+    process.off("SIGINT", cleanup);
+    workerCtx.stopHeartbeat();
   }
 }
 

@@ -13,6 +13,7 @@ export const awsProviderConfigSchema = z.object({
   SUBNET_ID: z.string().optional(),
   SECURITY_GROUP_IDS: z.string().optional(),
   KEY_NAME: z.string().optional(),
+  WORKER_IDLE_POLL_SECONDS: z.coerce.number().int().min(1).optional(),
 });
 
 export type AwsProviderEnvironmentConfig = z.infer<
