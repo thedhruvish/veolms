@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { flushSync } from "react-dom";
 import type {
   CSSProperties,
   FocusEvent as ReactFocusEvent,
@@ -453,6 +454,9 @@ export function CoursesPage({
   const [theme, setTheme] = useState<ThemePreference>("dark");
   const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("dark");
   const [academyTheme, setAcademyTheme] = useState(DEFAULT_ACADEMY_THEME);
+  const [appliedAcademyTheme, setAppliedAcademyTheme] = useState(
+    DEFAULT_ACADEMY_THEME,
+  );
   const [palettePreviewTheme, setPalettePreviewTheme] = useState<string | null>(
     null,
   );
@@ -545,6 +549,7 @@ export function CoursesPage({
       : "/assets/sofia-avatar-160.webp";
   const profileRef = useRef<HTMLDivElement>(null);
   const appliedThemeRef = useRef<"light" | "dark" | null>(null);
+  const appliedPaletteRef = useRef<string | null>(null);
   const appearanceControlsRef = useRef<HTMLDivElement>(null);
   const appearanceControlRectsRef = useRef<DOMRect[]>([]);
   const appearanceLayoutRef = useRef<boolean | null>(null);
@@ -695,7 +700,24 @@ export function CoursesPage({
 
   useEffect(() => {
     if (!storedPreferencesReady) return;
-    document.documentElement.dataset.palette = displayedAcademyTheme;
+    const shouldReveal =
+      appliedPaletteRef.current !== null &&
+      appliedPaletteRef.current !== displayedAcademyTheme;
+    appliedPaletteRef.current = displayedAcademyTheme;
+    // appliedAcademyTheme mirrors the palette into React state for surfaces
+    // that render palette colors from props (settings previews, dashboard
+    // charts). Updating it inside the transition commit via flushSync keeps
+    // those re-renders between the old and new snapshots so they join the
+    // reveal instead of flipping ahead of it.
+    const commit = () => {
+      document.documentElement.dataset.palette = displayedAcademyTheme;
+      setAppliedAcademyTheme(displayedAcademyTheme);
+    };
+    if (shouldReveal) {
+      applyWithThemeViewTransition(() => flushSync(commit), "palette");
+    } else {
+      commit();
+    }
   }, [displayedAcademyTheme, storedPreferencesReady]);
 
   useEffect(() => {
@@ -2953,7 +2975,7 @@ export function CoursesPage({
             <CreatorDashboard
               onNavigatePage={onNavigatePage}
               setNotice={setNotice}
-              academyTheme={academyTheme}
+              academyTheme={appliedAcademyTheme}
             />
           ) : role === "student" && page === "home" ? (
             <StudentHome
@@ -2982,7 +3004,7 @@ export function CoursesPage({
               }}
               theme={theme}
               onThemeChange={setTheme}
-              academyTheme={academyTheme}
+              academyTheme={appliedAcademyTheme}
               onAcademyThemeChange={setAcademyTheme}
               pageTabColors={pageTabColors}
               onPageTabColorsChange={setPageTabColors}
