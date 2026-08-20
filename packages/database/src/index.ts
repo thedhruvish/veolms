@@ -1,5 +1,6 @@
 export { createDatabase } from "./client.ts";
 export { findPublishedCourseBySlug, listPublishedCourses } from "./courses.ts";
+export { claimNextQueuedJob } from "./jobs.ts";
 export type {
   AcademyTable,
   CourseStatus,
