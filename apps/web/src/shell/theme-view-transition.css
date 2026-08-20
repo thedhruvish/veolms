@@ -1,8 +1,8 @@
 /*
  * Plain-CSS exception: ::view-transition pseudo-elements, the @property
  * registered radius, and the mask keyframes cannot be expressed with Tailwind
- * utilities. Scoped to the shell's light/dark toggle; the reveal always grows
- * from the bottom-left corner where the dock lives.
+ * utilities. Scoped to the shell's appearance controls: light/dark flips
+ * reveal from the bottom-left corner (dock), palette changes from top-right.
  */
 @property --theme-reveal-radius {
   syntax: "<length>";
@@ -27,6 +27,14 @@
   );
   animation: theme-view-transition-reveal 1s var(--expo-out);
   animation-fill-mode: both;
+}
+
+:root[data-theme-transition="palette"]::view-transition-new(root) {
+  mask: radial-gradient(
+    circle var(--theme-reveal-radius) at right top,
+    #fff 64%,
+    transparent 96%
+  );
 }
 
 ::view-transition-old(root) {
