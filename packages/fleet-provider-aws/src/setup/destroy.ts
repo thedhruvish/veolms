@@ -5,11 +5,11 @@ const ROLE_NAME = "VeoLMSWorkerRole";
 const INSTANCE_PROFILE_NAME = "VeoLMSWorkerInstanceProfile";
 const LAMBDA_NAME = "veolms-fleet-manager";
 
-function exec(cmd: string): string {
+function exec(cmd: string): string | null {
   try {
     return execSync(cmd, { encoding: "utf-8", stdio: "pipe" }).trim();
   } catch {
-    return "";
+    return null;
   }
 }
 
@@ -41,10 +41,16 @@ ${bold(red("╚═════════════════════�
     `aws ec2 describe-instances --region ${REGION} --filters "Name=tag:ManagedBy,Values=veolms-fleet-manager,veolms-infra-setup" "Name=instance-state-name,Values=running,pending,stopped,stopping" --query 'Reservations[*].Instances[*].InstanceId' --output text`,
   );
   if (instanceIds) {
-    exec(
+    const termRes = exec(
       `aws ec2 terminate-instances --instance-ids ${instanceIds} --region ${REGION}`,
     );
-    console.info(`  ${green("✔")} Terminated instances: ${instanceIds}`);
+    if (termRes !== null) {
+      console.info(`  ${green("✔")} Terminated instances: ${instanceIds}`);
+    } else {
+      console.info(
+        `  ${red("✘")} Failed to terminate instances: ${instanceIds}`,
+      );
+    }
   } else {
     console.info(`  ${green("✔")} No active EC2 instances found.`);
   }
@@ -56,6 +62,10 @@ ${bold(red("╚═════════════════════�
   );
   if (lambdaDel !== null) {
     console.info(`  ${green("✔")} Deleted Lambda: ${LAMBDA_NAME}`);
+  } else {
+    console.info(
+      `  ${red("✘")} Could not delete Lambda (may not exist): ${LAMBDA_NAME}`,
+    );
   }
 
   // 3. Delete CloudWatch Log Groups
@@ -66,10 +76,16 @@ ${bold(red("╚═════════════════════�
     "/veolms/fleet-manager",
   ];
   for (const lg of logGroups) {
-    exec(
+    const res = exec(
       `aws logs delete-log-group --log-group-name "${lg}" --region ${REGION}`,
     );
-    console.info(`  ${green("✔")} Deleted log group: ${lg}`);
+    if (res !== null) {
+      console.info(`  ${green("✔")} Deleted log group: ${lg}`);
+    } else {
+      console.info(
+        `  ${red("✘")} Could not delete log group (may not exist): ${lg}`,
+      );
+    }
   }
 
   // 4. Delete IAM Instance Profile
@@ -77,43 +93,69 @@ ${bold(red("╚═════════════════════�
   exec(
     `aws iam remove-role-from-instance-profile --instance-profile-name ${INSTANCE_PROFILE_NAME} --role-name ${ROLE_NAME}`,
   );
-  exec(
+  const profileDel = exec(
     `aws iam delete-instance-profile --instance-profile-name ${INSTANCE_PROFILE_NAME}`,
   );
-  console.info(
-    `  ${green("✔")} Deleted instance profile: ${INSTANCE_PROFILE_NAME}`,
-  );
+  if (profileDel !== null) {
+    console.info(
+      `  ${green("✔")} Deleted instance profile: ${INSTANCE_PROFILE_NAME}`,
+    );
+  } else {
+    console.info(
+      `  ${red("✘")} Could not delete instance profile (may not exist): ${INSTANCE_PROFILE_NAME}`,
+    );
+  }
 
   // 5. Delete IAM Role
   console.info("\n[5/5] Deleting IAM Role & Policies...");
-  const inlinePolicies = exec(
-    `aws iam list-role-policies --role-name ${ROLE_NAME} --query 'PolicyNames' --output text`,
+  const inlinePolicies = (
+    exec(
+      `aws iam list-role-policies --role-name ${ROLE_NAME} --query 'PolicyNames' --output text`,
+    ) ?? ""
   )
     .split(/\s+/)
     .filter(Boolean);
 
   for (const pol of inlinePolicies) {
-    exec(
+    const res = exec(
       `aws iam delete-role-policy --role-name ${ROLE_NAME} --policy-name "${pol}"`,
     );
-    console.info(`  ${green("✔")} Deleted inline policy: ${pol}`);
+    if (res !== null) {
+      console.info(`  ${green("✔")} Deleted inline policy: ${pol}`);
+    } else {
+      console.info(`  ${red("✘")} Could not delete inline policy: ${pol}`);
+    }
   }
 
-  const attachedPolicies = exec(
-    `aws iam list-attached-role-policies --role-name ${ROLE_NAME} --query 'AttachedPolicies[*].PolicyArn' --output text`,
+  const attachedPolicies = (
+    exec(
+      `aws iam list-attached-role-policies --role-name ${ROLE_NAME} --query 'AttachedPolicies[*].PolicyArn' --output text`,
+    ) ?? ""
   )
     .split(/\s+/)
     .filter(Boolean);
 
   for (const polArn of attachedPolicies) {
-    exec(
+    const res = exec(
       `aws iam detach-role-policy --role-name ${ROLE_NAME} --policy-arn "${polArn}"`,
     );
-    console.info(`  ${green("✔")} Detached managed policy: ${polArn}`);
+    if (res !== null) {
+      console.info(`  ${green("✔")} Detached managed policy: ${polArn}`);
+    } else {
+      console.info(
+        `  ${red("✘")} Could not detach managed policy: ${polArn}`,
+      );
+    }
   }
 
-  exec(`aws iam delete-role --role-name ${ROLE_NAME}`);
-  console.info(`  ${green("✔")} Deleted IAM role: ${ROLE_NAME}`);
+  const roleDel = exec(`aws iam delete-role --role-name ${ROLE_NAME}`);
+  if (roleDel !== null) {
+    console.info(`  ${green("✔")} Deleted IAM role: ${ROLE_NAME}`);
+  } else {
+    console.info(
+      `  ${red("✘")} Could not delete IAM role (may not exist): ${ROLE_NAME}`,
+    );
+  }
 
   console.info(`
 ${bold(green("╔══════════════════════════════════════════════════════╗"))}

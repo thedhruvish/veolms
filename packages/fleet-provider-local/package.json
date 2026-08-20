@@ -4,7 +4,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./setup": "./src/setup/index.ts"
+    "./setup": "./src/setup/index.ts",
+    "./destroy": "./src/setup/destroy.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
