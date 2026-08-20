@@ -75,15 +75,21 @@ const LOG_RETENTION_DAYS = 30;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+type TargetEnv = "aws" | "localstack";
 type FleetMode = "serverless" | "serverful";
 type StorageProvider = "s3" | "other";
 type CredentialMode = "automatic" | "manual";
 type BootMode = "fresh" | "ami";
 type PricingModel = "spot" | "on-demand";
 
+const DEFAULT_LOCALSTACK_ENDPOINT = "http://localhost.localstack.cloud:4566";
+
 interface SetupAnswers {
+  readonly targetEnv: TargetEnv;
+  readonly endpointUrl: string | null;
   readonly region: string;
   readonly accountId: string;
+  readonly databaseUrl: string;
   readonly fleetMode: FleetMode;
   readonly storageProvider: StorageProvider;
   readonly s3BucketName: string | null;
@@ -518,12 +524,22 @@ export function buildAndUploadWorkerBundle(
   region: string,
 ): void {
   try {
-    const workerSource = path.join(
-      process.cwd(),
-      "apps/media-worker/src/index.ts",
+    // Resolved relative to this module's own location — not process.cwd() —
+    // since callers invoke this via `pnpm --filter`, which sets cwd to the
+    // fleet-manager package directory, not the repo root. A cwd-relative
+    // path here silently resolved to a non-existent file and the bundle
+    // was never uploaded, with no error at all (the existsSync guard below
+    // just skipped everything silently).
+    const repoRoot = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "..",
+      "..",
+      "..",
+      "..",
     );
+    const workerSource = path.join(repoRoot, "apps/media-worker/src/index.ts");
     if (fsSync.existsSync(workerSource)) {
-      const distDir = path.join(process.cwd(), "dist/worker");
+      const distDir = path.join(repoRoot, "dist/worker");
       if (!fsSync.existsSync(distDir)) {
         fsSync.mkdirSync(distDir, { recursive: true });
       }
@@ -544,6 +560,10 @@ export function buildAndUploadWorkerBundle(
       ok(
         `Bundled and uploaded media worker to ${bold(`s3://${s3BucketName}/bundles/media-worker.js`)}`,
       );
+    } else {
+      warn(
+        `Media worker source not found at ${workerSource} — skipping bundle upload.`,
+      );
     }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -554,6 +574,7 @@ export function buildAndUploadWorkerBundle(
 async function setupLambda(
   region: string,
   roleArn: string,
+  envVars: Readonly<Record<string, string>>,
 ): Promise<string | null> {
   const lambda = new LambdaClient({ region });
 
@@ -596,6 +617,7 @@ async function setupLambda(
             Variables: {
               LOG_LEVEL: "info",
               FLEET_MODE: "serverless",
+              ...envVars,
             },
           },
           Tags: {
@@ -662,6 +684,7 @@ async function generateEnvFiles(
 ): Promise<void> {
   // apps/fleet-manager/.env
   const fleetEnv: Record<string, string> = {
+    DATABASE_URL: answers.databaseUrl,
     AWS_REGION: answers.region,
     FLEET_MODE: answers.fleetMode,
     FLEET_PROVIDER: "aws",
@@ -681,6 +704,11 @@ async function generateEnvFiles(
   if (result.lambdaFunctionArn) {
     fleetEnv["LAMBDA_FUNCTION_ARN"] = result.lambdaFunctionArn;
   }
+  if (answers.targetEnv === "localstack" && answers.endpointUrl) {
+    fleetEnv["AWS_ENDPOINT_URL"] = answers.endpointUrl;
+    fleetEnv["AWS_ACCESS_KEY_ID"] = "test";
+    fleetEnv["AWS_SECRET_ACCESS_KEY"] = "test";
+  }
 
   await writeEnvFile(
     path.join(repoRoot, "apps", "fleet-manager", ".env"),
@@ -689,6 +717,7 @@ async function generateEnvFiles(
 
   // apps/media-worker/.env
   const workerEnv: Record<string, string> = {
+    DATABASE_URL: answers.databaseUrl,
     AWS_REGION: answers.region,
     FLEET_PROVIDER: "aws",
     WORKER_LOG_GROUP: result.logGroupWorkers,
@@ -700,6 +729,11 @@ async function generateEnvFiles(
     if (answers.s3CredentialMode === "automatic") {
       workerEnv["S3_USE_INSTANCE_ROLE"] = "true";
     }
+  }
+  if (answers.targetEnv === "localstack" && answers.endpointUrl) {
+    workerEnv["AWS_ENDPOINT_URL"] = answers.endpointUrl;
+    workerEnv["AWS_ACCESS_KEY_ID"] = "test";
+    workerEnv["AWS_SECRET_ACCESS_KEY"] = "test";
   }
 
   await writeEnvFile(
@@ -722,11 +756,48 @@ export async function runAwsInfraSetup(): Promise<void> {
   const repoRoot = path.resolve(__dirname, "..", "..", "..", "..");
 
   const rl = readline.createInterface({ input, output });
-  const TOTAL_STEPS = 9;
+  const TOTAL_STEPS = 11;
 
   try {
-    // ── Step 1: Region ─────────────────────────────────────────────────────────
-    step(1, TOTAL_STEPS, "AWS Region");
+    // ── Step 1: Target Environment ─────────────────────────────────────────────
+    step(1, TOTAL_STEPS, "Target Environment");
+    const targetEnv = await askChoice(
+      rl,
+      "Where should this provision resources?",
+      [
+        { label: "Real AWS (production, billed)", value: "aws" as TargetEnv },
+        {
+          label:
+            "LocalStack (local testing, free — requires LocalStack running)",
+          value: "localstack" as TargetEnv,
+        },
+      ],
+    );
+
+    let endpointUrl: string | null = null;
+    if (targetEnv === "localstack") {
+      endpointUrl = await ask(
+        rl,
+        "LocalStack endpoint URL",
+        DEFAULT_LOCALSTACK_ENDPOINT,
+      );
+      // Every AWS SDK v3 client and the `aws` CLI itself honor
+      // AWS_ENDPOINT_URL from the environment when no explicit endpoint is
+      // passed, so setting it once here redirects every client constructed
+      // below (and every `aws` CLI shell-out) at LocalStack with no other
+      // code changes needed.
+      process.env.AWS_ENDPOINT_URL = endpointUrl;
+      process.env.AWS_ACCESS_KEY_ID ??= "test";
+      process.env.AWS_SECRET_ACCESS_KEY ??= "test";
+      warn(
+        "LocalStack mode: EC2 workers will be created via the API, but " +
+          "actual boot/UserData execution depends on your LocalStack edition " +
+          "(Community mocks EC2 state only; Pro can emulate real instances).",
+      );
+    }
+
+    // ── Step 2: Region ──────────────────────────────────────────────────────────
+    step(2, TOTAL_STEPS, "AWS Region");
     const region = await ask(rl, "Which AWS region?", "us-east-1");
 
     // ── AWS Credential Pre-flight Check ────────────────────────────────────────
@@ -734,8 +805,8 @@ export async function runAwsInfraSetup(): Promise<void> {
     const identity = await checkAwsCredentials(region);
     const accountId = identity.accountId;
 
-    // ── Step 2: Fleet Manager Mode ─────────────────────────────────────────────
-    step(2, TOTAL_STEPS, "Fleet Manager Mode");
+    // ── Step 3: Fleet Manager Mode ─────────────────────────────────────────────
+    step(3, TOTAL_STEPS, "Fleet Manager Mode");
     const fleetMode = await askChoice(rl, "How should Fleet Manager run?", [
       {
         label: "Serverless — AWS Lambda (event-driven, scales to zero)",
@@ -752,8 +823,8 @@ export async function runAwsInfraSetup(): Promise<void> {
         : "Will not set up Lambda — daemon runs as a persistent process.",
     );
 
-    // ── Step 3: Storage Provider ───────────────────────────────────────────────
-    step(3, TOTAL_STEPS, "Video Storage Provider");
+    // ── Step 4: Storage Provider ───────────────────────────────────────────────
+    step(4, TOTAL_STEPS, "Video Storage Provider");
     const storageProvider = await askChoice(
       rl,
       "Where will transcoded HLS output be stored?",
@@ -855,8 +926,22 @@ export async function runAwsInfraSetup(): Promise<void> {
       }
     }
 
-    // ── Step 4: Allowed EC2 Instance Types ─────────────────────────────────────
-    step(4, TOTAL_STEPS, "Allowed EC2 Instance Types");
+    // ── Step 5: Database URL ────────────────────────────────────────────────────
+    step(5, TOTAL_STEPS, "Database Connection");
+    info(
+      "The deployed Lambda / EC2 workers need a database URL reachable from " +
+        (targetEnv === "localstack" ? "LocalStack" : "AWS") +
+        " — not just from this machine.",
+    );
+    const databaseUrl = await ask(
+      rl,
+      "PostgreSQL DATABASE_URL for the fleet manager",
+      process.env["DATABASE_URL"] ??
+        "postgresql://veolms:veolms@localhost:5433/veolms",
+    );
+
+    // ── Step 6: Allowed EC2 Instance Types ─────────────────────────────────────
+    step(6, TOTAL_STEPS, "Allowed EC2 Instance Types");
     console.log(
       dim(
         "  ARM64 Graviton: t4g.small, c7g.large, c7g.xlarge, c7g.2xlarge, c7g.4xlarge",
@@ -876,8 +961,8 @@ export async function runAwsInfraSetup(): Promise<void> {
       .filter(Boolean);
     ok(`Allowed: ${bold(allowedInstanceTypes.join(", "))}`);
 
-    // ── Step 5: EC2 Boot Mode ──────────────────────────────────────────────────
-    step(5, TOTAL_STEPS, "EC2 Worker Boot Mode");
+    // ── Step 7: EC2 Boot Mode ──────────────────────────────────────────────────
+    step(7, TOTAL_STEPS, "EC2 Worker Boot Mode");
     const bootMode = await askChoice(
       rl,
       "How should EC2 workers boot?",
@@ -901,8 +986,8 @@ export async function runAwsInfraSetup(): Promise<void> {
       info(`Build the AMI separately: ${cyan("pnpm fleet:build-ami")}`);
     }
 
-    // ── Step 6: Max Workers ────────────────────────────────────────────────────
-    step(6, TOTAL_STEPS, "Maximum Concurrent Workers");
+    // ── Step 8: Max Workers ────────────────────────────────────────────────────
+    step(8, TOTAL_STEPS, "Maximum Concurrent Workers");
     const maxWorkersInput = await ask(
       rl,
       "Maximum number of concurrent EC2 workers",
@@ -911,8 +996,8 @@ export async function runAwsInfraSetup(): Promise<void> {
     const maxWorkers = Math.max(1, parseInt(maxWorkersInput, 10) || 8);
     ok(`Max concurrent workers: ${bold(String(maxWorkers))}`);
 
-    // ── Step 7: Spot vs On-Demand ──────────────────────────────────────────────
-    step(7, TOTAL_STEPS, "EC2 Pricing Model");
+    // ── Step 9: Spot vs On-Demand ──────────────────────────────────────────────
+    step(9, TOTAL_STEPS, "EC2 Pricing Model");
     const pricingModel = await askChoice(rl, "Which EC2 pricing model?", [
       {
         label:
@@ -927,8 +1012,8 @@ export async function runAwsInfraSetup(): Promise<void> {
     const useSpot = pricingModel === "spot";
     ok(useSpot ? "Spot Instances selected." : "On-Demand Instances selected.");
 
-    // ── Step 8: Create AWS Resources ───────────────────────────────────────────
-    step(8, TOTAL_STEPS, "Creating AWS Resources");
+    // ── Step 10: Create AWS Resources ──────────────────────────────────────────
+    step(10, TOTAL_STEPS, "Creating AWS Resources");
 
     const iam = new IAMClient({ region });
     const cw = new CloudWatchLogsClient({ region });
@@ -949,7 +1034,26 @@ export async function runAwsInfraSetup(): Promise<void> {
     let lambdaFunctionArn: string | null = null;
     if (fleetMode === "serverless") {
       info("Setting up Lambda function...");
-      lambdaFunctionArn = await setupLambda(region, workerRoleArn);
+      const lambdaEnvVars: Record<string, string> = {
+        DATABASE_URL: databaseUrl,
+        STORAGE_PROVIDER: storageProvider,
+        EC2_IAM_INSTANCE_PROFILE: INSTANCE_PROFILE_NAME,
+        EC2_USE_SPOT: String(useSpot),
+        PROVIDER: "aws",
+      };
+      if (s3BucketName) {
+        lambdaEnvVars["S3_BUCKET"] = s3BucketName;
+      }
+      if (endpointUrl) {
+        lambdaEnvVars["AWS_ENDPOINT_URL"] = endpointUrl;
+        lambdaEnvVars["AWS_ACCESS_KEY_ID"] = "test";
+        lambdaEnvVars["AWS_SECRET_ACCESS_KEY"] = "test";
+      }
+      lambdaFunctionArn = await setupLambda(
+        region,
+        workerRoleArn,
+        lambdaEnvVars,
+      );
     }
 
     if (storageProvider === "s3" && s3BucketName) {
@@ -967,8 +1071,11 @@ export async function runAwsInfraSetup(): Promise<void> {
     };
 
     const answers: SetupAnswers = {
+      targetEnv,
+      endpointUrl,
       region,
       accountId,
+      databaseUrl,
       fleetMode,
       storageProvider,
       s3BucketName,
@@ -979,8 +1086,8 @@ export async function runAwsInfraSetup(): Promise<void> {
       useSpot,
     };
 
-    // ── Step 9: Write .env Files ───────────────────────────────────────────────
-    step(9, TOTAL_STEPS, "Writing Per-App .env Files");
+    // ── Step 11: Write .env Files ───────────────────────────────────────────────
+    step(11, TOTAL_STEPS, "Writing Per-App .env Files");
     await generateEnvFiles(answers, result, repoRoot);
 
     // ── Summary ────────────────────────────────────────────────────────────────
@@ -989,7 +1096,7 @@ ${bold(cyan("╔═════════════════════�
 ${bold(cyan("║"))}               ${bold(green("AWS Setup Complete!"))}                 ${bold(cyan("║"))}
 ${bold(cyan("╚══════════════════════════════════════════════════════╝"))}
 
-${bold("Resources:")}
+${bold("Resources:")} ${dim(`(target: ${targetEnv === "localstack" ? `LocalStack @ ${endpointUrl}` : `AWS account ${accountId}`})`)}
   ${green("✔")} IAM Role:             ${bold(ROLE_NAME)}
   ${green("✔")} Instance Profile:     ${bold(INSTANCE_PROFILE_NAME)}
   ${green("✔")} Log Group (workers):  ${bold(LOG_GROUP_WORKERS)}
