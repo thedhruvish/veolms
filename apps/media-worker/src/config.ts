@@ -25,11 +25,7 @@ export const mediaWorkerConfigSchema = z.object({
   UPLOAD_MAX_CONCURRENCY: z.coerce.number().int().min(1).optional(),
   UPLOAD_MIN_CONCURRENCY: z.coerce.number().int().min(1).optional(),
   UPLOAD_THROTTLE_CPU_PERCENT: z.coerce.number().min(1).max(100).default(80),
-  UPLOAD_THROTTLE_MEMORY_PERCENT: z.coerce
-    .number()
-    .min(1)
-    .max(100)
-    .default(80),
+  UPLOAD_THROTTLE_MEMORY_PERCENT: z.coerce.number().min(1).max(100).default(80),
   INCREMENTAL_UPLOAD_POLL_MS: z.coerce.number().int().min(500).default(3000),
   INCREMENTAL_UPLOAD_SETTLE_MS: z.coerce.number().int().min(0).default(2000),
   HTTP_DOWNLOAD_TIMEOUT_MS: z.coerce.number().int().min(1000).default(300000),

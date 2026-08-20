@@ -16,7 +16,8 @@ describe("sampleResourceUsage", () => {
 
 describe("resolveDefaultUploadConcurrency", () => {
   it("stays within the floor/ceiling regardless of the running machine's specs", () => {
-    const { maxConcurrency, minConcurrency } = resolveDefaultUploadConcurrency();
+    const { maxConcurrency, minConcurrency } =
+      resolveDefaultUploadConcurrency();
 
     assert.ok(Number.isInteger(maxConcurrency));
     assert.ok(Number.isInteger(minConcurrency));

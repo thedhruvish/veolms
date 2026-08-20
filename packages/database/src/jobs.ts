@@ -54,7 +54,11 @@ export async function claimNextQueuedJob(
         );
     }
 
-    const row = await query.limit(1).forUpdate().skipLocked().executeTakeFirst();
+    const row = await query
+      .limit(1)
+      .forUpdate()
+      .skipLocked()
+      .executeTakeFirst();
 
     if (!row) {
       return null;

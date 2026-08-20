@@ -20,6 +20,13 @@ const LAMBDA_NAME = "veolms-fleet-manager";
 const ENDPOINT_URL = process.env.AWS_ENDPOINT_URL || null;
 const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME || null;
 
+export interface DestroyOptions {
+  readonly rl?: readline.Interface;
+  readonly region?: string;
+  readonly endpointUrl?: string | null;
+  readonly s3BucketName?: string | null;
+}
+
 function exec(cmd: string): string | null {
   try {
     return execSync(cmd, { encoding: "utf-8", stdio: "pipe" }).trim();
@@ -31,12 +38,13 @@ function exec(cmd: string): string | null {
 async function destroyS3Bucket(
   rl: readline.Interface,
   bucketName: string,
+  region: string,
 ): Promise<void> {
   console.info(`\n[6/6] Checking S3 bucket ${bold(bucketName)}...`);
 
   const exists =
     exec(
-      `aws s3api head-bucket --bucket "${bucketName}" --region ${REGION}`,
+      `aws s3api head-bucket --bucket "${bucketName}" --region ${region}`,
     ) !== null;
   if (!exists) {
     console.info(`  ${green("✔")} Bucket does not exist — nothing to delete.`);
@@ -53,7 +61,7 @@ async function destroyS3Bucket(
   // parsed as "run the command []"), which breaks the query and silently
   // produces the same missing-count failure this replaced.
   const countRaw = exec(
-    `aws s3api list-objects-v2 --bucket "${bucketName}" --region ${REGION} --query 'length(Contents || \`[]\`)' --output text`,
+    `aws s3api list-objects-v2 --bucket "${bucketName}" --region ${region} --query 'length(Contents || \`[]\`)' --output text`,
   );
   const objectCount = countRaw ? parseInt(countRaw, 10) || 0 : 0;
 
@@ -78,7 +86,7 @@ async function destroyS3Bucket(
   }
 
   const emptyRes = exec(
-    `aws s3 rm "s3://${bucketName}" --recursive --region ${REGION}`,
+    `aws s3 rm "s3://${bucketName}" --recursive --region ${region}`,
   );
   if (emptyRes === null && objectCount > 0) {
     console.info(`  ${red("✘")} Failed to empty bucket ${bucketName}.`);
@@ -86,7 +94,7 @@ async function destroyS3Bucket(
   }
 
   const deleteRes = exec(
-    `aws s3api delete-bucket --bucket "${bucketName}" --region ${REGION}`,
+    `aws s3api delete-bucket --bucket "${bucketName}" --region ${region}`,
   );
   if (deleteRes !== null) {
     console.info(`  ${green("✔")} Deleted S3 bucket: ${bucketName}`);
@@ -95,7 +103,19 @@ async function destroyS3Bucket(
   }
 }
 
-export async function runAwsInfraDestroy(): Promise<void> {
+export async function runAwsInfraDestroy(
+  options: DestroyOptions = {},
+): Promise<void> {
+  const region = options.region ?? process.env.AWS_REGION ?? "us-east-1";
+  const endpointUrl =
+    options.endpointUrl !== undefined
+      ? options.endpointUrl
+      : process.env.AWS_ENDPOINT_URL || null;
+  const s3BucketName =
+    options.s3BucketName !== undefined
+      ? options.s3BucketName
+      : process.env.S3_BUCKET_NAME || null;
+
   console.info(`
 ${bold(red("╔══════════════════════════════════════════════════════╗"))}
 ${bold(red("║"))}          ${bold("VeoLMS AWS Infrastructure Teardown")}          ${bold(red("║"))}
@@ -103,28 +123,40 @@ ${bold(red("╚═════════════════════�
 `);
 
   console.info(
-    `Target: ${bold(cyan(ENDPOINT_URL ? `LocalStack @ ${ENDPOINT_URL}` : "Real AWS"))}`,
+    `Target: ${bold(cyan(endpointUrl ? `LocalStack @ ${endpointUrl}` : "Real AWS"))}`,
   );
-  console.info(`Region: ${bold(cyan(REGION))}\n`);
+  console.info(`Region: ${bold(cyan(region))}\n`);
 
-  const rl = readline.createInterface({ input, output });
+  const ownRl = !options.rl;
+  const rl = options.rl ?? readline.createInterface({ input, output });
 
   try {
-    await runDestroySteps(rl);
+    await runDestroySteps(rl, { region, endpointUrl, s3BucketName });
   } finally {
-    rl.close();
+    if (ownRl) {
+      rl.close();
+    }
   }
 }
 
-async function runDestroySteps(rl: readline.Interface): Promise<void> {
+async function runDestroySteps(
+  rl: readline.Interface,
+  config: {
+    readonly region: string;
+    readonly endpointUrl: string | null;
+    readonly s3BucketName: string | null;
+  },
+): Promise<void> {
+  const { region, s3BucketName } = config;
+
   // 1. Terminate any running EC2 instances
   console.info("[1/6] Terminating active EC2 worker instances...");
   const instanceIds = exec(
-    `aws ec2 describe-instances --region ${REGION} --filters "Name=tag:ManagedBy,Values=veolms-fleet-manager,veolms-infra-setup" "Name=instance-state-name,Values=running,pending,stopped,stopping" --query 'Reservations[*].Instances[*].InstanceId' --output text`,
+    `aws ec2 describe-instances --region ${region} --filters "Name=tag:ManagedBy,Values=veolms-fleet-manager,veolms-infra-setup" "Name=instance-state-name,Values=running,pending,stopped,stopping" --query 'Reservations[*].Instances[*].InstanceId' --output text`,
   );
   if (instanceIds) {
     const termRes = exec(
-      `aws ec2 terminate-instances --instance-ids ${instanceIds} --region ${REGION}`,
+      `aws ec2 terminate-instances --instance-ids ${instanceIds} --region ${region}`,
     );
     if (termRes !== null) {
       console.info(`  ${green("✔")} Terminated instances: ${instanceIds}`);
@@ -140,7 +172,7 @@ async function runDestroySteps(rl: readline.Interface): Promise<void> {
   // 2. Delete Lambda function
   console.info("\n[2/6] Deleting AWS Lambda function...");
   const lambdaDel = exec(
-    `aws lambda delete-function --function-name ${LAMBDA_NAME} --region ${REGION}`,
+    `aws lambda delete-function --function-name ${LAMBDA_NAME} --region ${region}`,
   );
   if (lambdaDel !== null) {
     console.info(`  ${green("✔")} Deleted Lambda: ${LAMBDA_NAME}`);
@@ -159,7 +191,7 @@ async function runDestroySteps(rl: readline.Interface): Promise<void> {
   ];
   for (const lg of logGroups) {
     const res = exec(
-      `aws logs delete-log-group --log-group-name "${lg}" --region ${REGION}`,
+      `aws logs delete-log-group --log-group-name "${lg}" --region ${region}`,
     );
     if (res !== null) {
       console.info(`  ${green("✔")} Deleted log group: ${lg}`);
@@ -238,12 +270,10 @@ async function runDestroySteps(rl: readline.Interface): Promise<void> {
   }
 
   // 6. Delete S3 bucket — asks for confirmation if it still holds data
-  if (S3_BUCKET_NAME) {
-    await destroyS3Bucket(rl, S3_BUCKET_NAME);
+  if (s3BucketName) {
+    await destroyS3Bucket(rl, s3BucketName, region);
   } else {
-    console.info(
-      `\n[6/6] No S3_BUCKET_NAME configured in .env — skipping S3 cleanup.`,
-    );
+    console.info(`\n[6/6] No S3_BUCKET_NAME configured — skipping S3 cleanup.`);
   }
 
   console.info(`

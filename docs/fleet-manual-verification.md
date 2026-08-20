@@ -16,21 +16,21 @@ pnpm fleet:infra
 
 It asks 12 questions in order. Press Enter to accept the shown default.
 
-| # | Prompt | What to answer |
-|---|--------|-----------------|
-| 1 | Target Environment | `1` = Real AWS (billed) · `2` = LocalStack (free, needs LocalStack running) |
-| 1b | LocalStack endpoint URL *(only if you picked LocalStack)* | Default is `http://localhost.localstack.cloud:4566`. If that hostname won't resolve on your machine/sandbox, type `http://localhost:4566` instead. |
-| 2 | AWS region | e.g. `us-east-1` |
-| 3 | Fleet Manager Mode | `1` = Serverless (Lambda) · `2` = Serverful (daemon) |
-| 4 | Video Storage Provider | `1` = S3 |
-| 5 | S3 bucket name | An existing or new bucket name. If it doesn't exist, it's created with public read. |
-| 6 | S3 credential mode | `1` = Automatic (EC2 instance role — recommended) |
-| 7 | PostgreSQL DATABASE_URL | Must be reachable from AWS/LocalStack, not just your machine — a cloud Postgres URL (e.g. Neon) works; localhost does not. Enter accepts the default already in `.env`/env. |
-| 8 | Allowed EC2 instance types | Default `c7g.xlarge,c7g.2xlarge,c6i.xlarge` is fine. |
-| 9 | EC2 Worker Boot Mode | `1` = Fresh install (apt-installs Node/FFmpeg on boot, ~1-3 min) · `2` = Pre-baked AMI (needs `pnpm fleet:build-ami` first) |
-| 10 | Max concurrent workers | Default `8`. Now actually enforced — see below. |
-| 11 | Worker idle poll interval (seconds) | Default `15`. How long an idle worker waits for one more queue check before self-terminating — see below. |
-| 12 | EC2 Pricing Model | `1` = Spot (cheaper, recommended) · `2` = On-Demand |
+| #   | Prompt                                                    | What to answer                                                                                                                                                              |
+| --- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Target Environment                                        | `1` = Real AWS (billed) · `2` = LocalStack (free, needs LocalStack running)                                                                                                 |
+| 1b  | LocalStack endpoint URL _(only if you picked LocalStack)_ | Default is `http://localhost.localstack.cloud:4566`. If that hostname won't resolve on your machine/sandbox, type `http://localhost:4566` instead.                          |
+| 2   | AWS region                                                | e.g. `us-east-1`                                                                                                                                                            |
+| 3   | Fleet Manager Mode                                        | `1` = Serverless (Lambda) · `2` = Serverful (daemon)                                                                                                                        |
+| 4   | Video Storage Provider                                    | `1` = S3                                                                                                                                                                    |
+| 5   | S3 bucket name                                            | An existing or new bucket name. If it doesn't exist, it's created with public read.                                                                                         |
+| 6   | S3 credential mode                                        | `1` = Automatic (EC2 instance role — recommended)                                                                                                                           |
+| 7   | PostgreSQL DATABASE_URL                                   | Must be reachable from AWS/LocalStack, not just your machine — a cloud Postgres URL (e.g. Neon) works; localhost does not. Enter accepts the default already in `.env`/env. |
+| 8   | Allowed EC2 instance types                                | Default `c7g.xlarge,c7g.2xlarge,c6i.xlarge` is fine.                                                                                                                        |
+| 9   | EC2 Worker Boot Mode                                      | `1` = Fresh install (apt-installs Node/FFmpeg on boot, ~1-3 min) · `2` = Pre-baked AMI (needs `pnpm fleet:build-ami` first)                                                 |
+| 10  | Max concurrent workers                                    | Default `8`. Now actually enforced — see below.                                                                                                                             |
+| 11  | Worker idle poll interval (seconds)                       | Default `15`. How long an idle worker waits for one more queue check before self-terminating — see below.                                                                   |
+| 12  | EC2 Pricing Model                                         | `1` = Spot (cheaper, recommended) · `2` = On-Demand                                                                                                                         |
 
 **What it creates:** IAM role `VeoLMSWorkerRole` + instance profile
 `VeoLMSWorkerInstanceProfile`, CloudWatch log groups `/veolms/workers` and
@@ -42,9 +42,10 @@ Re-running this command is safe — it reuses existing resources and
 refreshes their policies/Lambda code+config rather than erroring.
 
 **How capacity and idle workers actually behave:**
+
 - `processNextJob()` checks the current count of non-terminal workers
   against `MAX_WORKERS` before claiming a job. At capacity, it declines and
-  leaves the job `QUEUED` for a later check — it will *not* over-provision
+  leaves the job `QUEUED` for a later check — it will _not_ over-provision
   past the configured max.
 - A worker doesn't die after a single job. When it finishes one, it checks
   the queue for the next `QUEUED` job and claims it directly (atomically,
@@ -103,10 +104,10 @@ pnpm fleet:queue:trigger
 
 Optional env vars:
 
-| Var | Default | Notes |
-|-----|---------|-------|
+| Var         | Default         | Notes                                                                                                                                       |
+| ----------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | `VIDEO_KEY` | `raw/video.mp4` | An S3 key relative to the bucket from step 1, **or** a full `http(s)://` URL — the worker downloads it directly instead of pulling from S3. |
-| `QUALITIES` | `240p` | Comma-separated, e.g. `240p,360p,720p`. |
+| `QUALITIES` | `240p`          | Comma-separated, e.g. `240p,360p,720p`.                                                                                                     |
 
 Example, using a short clip for a faster test run:
 

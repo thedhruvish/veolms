@@ -44,7 +44,10 @@ export class FfmpegProgressParser {
     // `progress=...` record may arrive at the end of a stream chunk without
     // one. It is safe to emit that complete delimiter record immediately;
     // every other trailing fragment is retained for the next chunk.
-    if (trailingLine === "progress=continue" || trailingLine === "progress=end") {
+    if (
+      trailingLine === "progress=continue" ||
+      trailingLine === "progress=end"
+    ) {
       lines.push(trailingLine);
       this.pendingText = "";
     } else {

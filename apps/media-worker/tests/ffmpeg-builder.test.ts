@@ -129,10 +129,7 @@ describe("FFmpeg Dynamic HLS Command Builder", () => {
 
     assert.deepEqual(result.applicableQualities, ["720p", "480p"]);
     assert.equal(result.variants.length, 2);
-    assert.equal(
-      result.args.filter((value) => value === "144").length,
-      4,
-    );
+    assert.equal(result.args.filter((value) => value === "144").length, 4);
   });
 });
 
@@ -178,9 +175,7 @@ describe("Video Processing V2 — Compression Resolution Cap", () => {
 
     assert.deepEqual(targetResolution, { width: 1280, height: 720 });
     assert.ok(args.includes("-vf"));
-    assert.ok(
-      args.some((a) => a.includes("scale=w=1280:h=720")),
-    );
+    assert.ok(args.some((a) => a.includes("scale=w=1280:h=720")));
     assert.ok(args.includes("-crf"));
     assert.ok(args.includes("22"));
     assert.ok(args.includes("/tmp/optimized.mp4"));

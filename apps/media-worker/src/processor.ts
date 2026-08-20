@@ -54,7 +54,9 @@ function resolveWithin(root: string, candidate: string): string {
     pathFromRoot.startsWith("../") ||
     pathFromRoot.startsWith("..\\")
   ) {
-    throw new Error("Media job path must remain inside its configured directory");
+    throw new Error(
+      "Media job path must remain inside its configured directory",
+    );
   }
   return resolvedPath;
 }
@@ -133,7 +135,9 @@ async function resolveUploadConcurrency(
   const throttled =
     cpuPercent >= config.UPLOAD_THROTTLE_CPU_PERCENT ||
     memoryPercent >= config.UPLOAD_THROTTLE_MEMORY_PERCENT;
-  return throttled ? config.UPLOAD_MIN_CONCURRENCY : config.UPLOAD_MAX_CONCURRENCY;
+  return throttled
+    ? config.UPLOAD_MIN_CONCURRENCY
+    : config.UPLOAD_MAX_CONCURRENCY;
 }
 
 export async function probeVideoMetadata(
@@ -173,7 +177,9 @@ export async function probeVideoMetadata(
       !Number.isFinite(durationSeconds) ||
       durationSeconds <= 0
     ) {
-      throw new Error("ffprobe did not return usable video dimensions and duration");
+      throw new Error(
+        "ffprobe did not return usable video dimensions and duration",
+      );
     }
 
     const fpsParts = (videoStream?.r_frame_rate ?? "").split("/", 2);
@@ -251,10 +257,7 @@ export async function executeTranscodeJob(
         })
         .where("id", "=", jobId)
         .where((eb) =>
-          eb.or([
-            eb("worker_id", "is", null),
-            eb("worker_id", "=", workerId),
-          ]),
+          eb.or([eb("worker_id", "is", null), eb("worker_id", "=", workerId)]),
         )
         .executeTakeFirst();
 
@@ -271,7 +274,6 @@ export async function executeTranscodeJob(
         })
         .where("id", "=", workerId)
         .execute();
-
     });
     ownsJob = true;
 

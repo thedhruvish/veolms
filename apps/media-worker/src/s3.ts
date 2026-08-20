@@ -132,7 +132,8 @@ export async function downloadHttpFile(
     // structurally identical (ArrayBufferView generic constraints diverge),
     // so this cast is required even though both describe the same runtime
     // web stream that fetch() actually returns under Node.
-    const webStream = response.body as unknown as NodeReadableStream<Uint8Array>;
+    const webStream =
+      response.body as unknown as NodeReadableStream<Uint8Array>;
     await pipeline(
       Readable.fromWeb(webStream),
       limitStream,
@@ -336,7 +337,9 @@ export function startIncrementalHlsUpload(options: {
 
   async function collectPending(
     skipRecentlyModified: boolean,
-  ): Promise<Array<UploadItem & { relPath: string; mtimeMs: number; size: number }>> {
+  ): Promise<
+    Array<UploadItem & { relPath: string; mtimeMs: number; size: number }>
+  > {
     const pending: Array<
       UploadItem & { relPath: string; mtimeMs: number; size: number }
     > = [];

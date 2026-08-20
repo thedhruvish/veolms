@@ -134,7 +134,10 @@ export async function pollForNextJob(
       signal?.removeEventListener("abort", abortWait);
       resolve();
     };
-    const timeout = setTimeout(finish, ctx.config.WORKER_IDLE_POLL_SECONDS * 1000);
+    const timeout = setTimeout(
+      finish,
+      ctx.config.WORKER_IDLE_POLL_SECONDS * 1000,
+    );
     const abortWait = () => {
       clearTimeout(timeout);
       finish();

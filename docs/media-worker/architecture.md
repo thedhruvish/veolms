@@ -9,16 +9,16 @@ fleet-manager       S3 or local output   scratch directory
 
 ## Components
 
-| Component | Responsibility |
-| --- | --- |
-| Fleet manager | Queues jobs, provisions workers, initializes monitoring, and terminates inactive workers. |
+| Component                    | Responsibility                                                                                                               |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Fleet manager                | Queues jobs, provisions workers, initializes monitoring, and terminates inactive workers.                                    |
 | Shared database claim helper | Uses `FOR UPDATE SKIP LOCKED` to claim work without double processing; applies compatibility filtering for reusable workers. |
-| Media worker entry point | Creates the DB context, handles signals, drives job reuse, and closes resources. |
-| Processor | Owns one job's download, probe, FFmpeg execution, persistence, retry, and cleanup. |
-| FFmpeg builder | Produces deterministic compression and multi-output HLS arguments. |
-| Progress parser | Converts FFmpeg `-progress pipe:1` records to typed progress values. |
-| S3 module | Streams downloads/uploads, assigns content types/cache headers, and manages incremental HLS publication. |
-| Resource monitor | Samples host CPU/memory to select safe upload concurrency. |
+| Media worker entry point     | Creates the DB context, handles signals, drives job reuse, and closes resources.                                             |
+| Processor                    | Owns one job's download, probe, FFmpeg execution, persistence, retry, and cleanup.                                           |
+| FFmpeg builder               | Produces deterministic compression and multi-output HLS arguments.                                                           |
+| Progress parser              | Converts FFmpeg `-progress pipe:1` records to typed progress values.                                                         |
+| S3 module                    | Streams downloads/uploads, assigns content types/cache headers, and manages incremental HLS publication.                     |
+| Resource monitor             | Samples host CPU/memory to select safe upload concurrency.                                                                   |
 
 ## Data ownership
 

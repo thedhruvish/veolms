@@ -56,7 +56,9 @@ export async function run(): Promise<void> {
     }
 
     if (shutdownController.signal.aborted) {
-      console.info(`[media-worker] Worker ${config.WORKER_ID} shut down safely.`);
+      console.info(
+        `[media-worker] Worker ${config.WORKER_ID} shut down safely.`,
+      );
     } else {
       console.info(
         `[media-worker] No more compatible queued work — worker ${config.WORKER_ID} shutting down.`,

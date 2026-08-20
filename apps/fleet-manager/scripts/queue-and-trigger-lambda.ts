@@ -23,7 +23,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createDatabase } from "@veolms/database";
 import { loadServerConfig } from "@veolms/config";
-import { videoQualityLevelSchema, type VideoQualityLevel } from "@veolms/fleet-types";
+import {
+  videoQualityLevelSchema,
+  type VideoQualityLevel,
+} from "@veolms/fleet-types";
 
 const REGION = process.env.AWS_REGION || "us-east-1";
 const LAMBDA_NAME = process.env.LAMBDA_FUNCTION_NAME || "veolms-fleet-manager";

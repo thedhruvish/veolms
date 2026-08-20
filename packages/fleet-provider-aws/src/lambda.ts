@@ -45,7 +45,11 @@ export async function handler(
       AWS_REGION: awsConfig.AWS_REGION,
       S3_USE_INSTANCE_ROLE: "true",
       ...(awsConfig.WORKER_IDLE_POLL_SECONDS
-        ? { WORKER_IDLE_POLL_SECONDS: String(awsConfig.WORKER_IDLE_POLL_SECONDS) }
+        ? {
+            WORKER_IDLE_POLL_SECONDS: String(
+              awsConfig.WORKER_IDLE_POLL_SECONDS,
+            ),
+          }
         : {}),
     },
   });
