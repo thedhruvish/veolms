@@ -1,16 +1,97 @@
 import { execSync } from "node:child_process";
-import { bold, cyan, green, red } from "@veolms/fleet-types/terminal";
+import * as readline from "node:readline/promises";
+import { stdin as input, stdout as output } from "node:process";
+import {
+  bold,
+  cyan,
+  dim,
+  green,
+  red,
+  yellow,
+} from "@veolms/fleet-types/terminal";
 
 const REGION = process.env.AWS_REGION || "us-east-1";
 const ROLE_NAME = "VeoLMSWorkerRole";
 const INSTANCE_PROFILE_NAME = "VeoLMSWorkerInstanceProfile";
 const LAMBDA_NAME = "veolms-fleet-manager";
+// Same env var every AWS SDK client and the `aws` CLI itself already honor
+// (see setup/index.ts) — if fleet:infra wrote it into apps/fleet-manager/.env
+// during LocalStack setup, this destroy run targets the same place.
+const ENDPOINT_URL = process.env.AWS_ENDPOINT_URL || null;
+const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME || null;
 
 function exec(cmd: string): string | null {
   try {
     return execSync(cmd, { encoding: "utf-8", stdio: "pipe" }).trim();
   } catch {
     return null;
+  }
+}
+
+async function destroyS3Bucket(
+  rl: readline.Interface,
+  bucketName: string,
+): Promise<void> {
+  console.info(`\n[6/6] Checking S3 bucket ${bold(bucketName)}...`);
+
+  const exists =
+    exec(
+      `aws s3api head-bucket --bucket "${bucketName}" --region ${REGION}`,
+    ) !== null;
+  if (!exists) {
+    console.info(`  ${green("✔")} Bucket does not exist — nothing to delete.`);
+    return;
+  }
+
+  // `KeyCount` is unreliable here — LocalStack's list-objects-v2 response
+  // omits the field entirely (returns "None"), which would silently read as
+  // zero objects and skip the confirmation prompt below even when the
+  // bucket holds real data. Counting `Contents` directly works identically
+  // against real AWS and LocalStack.
+  // Note: the --query value must stay single-quoted — backticks inside a
+  // double-quoted shell argument trigger command substitution (`[]` is
+  // parsed as "run the command []"), which breaks the query and silently
+  // produces the same missing-count failure this replaced.
+  const countRaw = exec(
+    `aws s3api list-objects-v2 --bucket "${bucketName}" --region ${REGION} --query 'length(Contents || \`[]\`)' --output text`,
+  );
+  const objectCount = countRaw ? parseInt(countRaw, 10) || 0 : 0;
+
+  if (objectCount > 0) {
+    console.info(`
+  ${bold(red("⚠ WARNING:"))} S3 bucket ${bold(bucketName)} contains ${bold(String(objectCount))} object(s)
+  — transcoded videos, HLS playlists/segments, and worker bundles.
+  Deleting this bucket will ${bold(red("PERMANENTLY DELETE ALL OF THAT DATA"))}.
+  This cannot be undone.
+`);
+    const answer = await rl.question(
+      `  ${bold("?")} Type "yes" to permanently delete the bucket and all its data: `,
+    );
+    if (answer.trim().toLowerCase() !== "yes") {
+      console.info(
+        `  ${yellow("⚠")} Skipped — bucket ${bold(bucketName)} and its data were ${bold("NOT")} deleted.`,
+      );
+      return;
+    }
+  } else {
+    console.info(`  ${dim("Bucket is empty — no confirmation needed.")}`);
+  }
+
+  const emptyRes = exec(
+    `aws s3 rm "s3://${bucketName}" --recursive --region ${REGION}`,
+  );
+  if (emptyRes === null && objectCount > 0) {
+    console.info(`  ${red("✘")} Failed to empty bucket ${bucketName}.`);
+    return;
+  }
+
+  const deleteRes = exec(
+    `aws s3api delete-bucket --bucket "${bucketName}" --region ${REGION}`,
+  );
+  if (deleteRes !== null) {
+    console.info(`  ${green("✔")} Deleted S3 bucket: ${bucketName}`);
+  } else {
+    console.info(`  ${red("✘")} Could not delete S3 bucket: ${bucketName}`);
   }
 }
 
@@ -21,10 +102,23 @@ ${bold(red("║"))}          ${bold("VeoLMS AWS Infrastructure Teardown")}      
 ${bold(red("╚══════════════════════════════════════════════════════╝"))}
 `);
 
+  console.info(
+    `Target: ${bold(cyan(ENDPOINT_URL ? `LocalStack @ ${ENDPOINT_URL}` : "Real AWS"))}`,
+  );
   console.info(`Region: ${bold(cyan(REGION))}\n`);
 
+  const rl = readline.createInterface({ input, output });
+
+  try {
+    await runDestroySteps(rl);
+  } finally {
+    rl.close();
+  }
+}
+
+async function runDestroySteps(rl: readline.Interface): Promise<void> {
   // 1. Terminate any running EC2 instances
-  console.info("[1/5] Terminating active EC2 worker instances...");
+  console.info("[1/6] Terminating active EC2 worker instances...");
   const instanceIds = exec(
     `aws ec2 describe-instances --region ${REGION} --filters "Name=tag:ManagedBy,Values=veolms-fleet-manager,veolms-infra-setup" "Name=instance-state-name,Values=running,pending,stopped,stopping" --query 'Reservations[*].Instances[*].InstanceId' --output text`,
   );
@@ -44,7 +138,7 @@ ${bold(red("╚═════════════════════�
   }
 
   // 2. Delete Lambda function
-  console.info("\n[2/5] Deleting AWS Lambda function...");
+  console.info("\n[2/6] Deleting AWS Lambda function...");
   const lambdaDel = exec(
     `aws lambda delete-function --function-name ${LAMBDA_NAME} --region ${REGION}`,
   );
@@ -57,7 +151,7 @@ ${bold(red("╚═════════════════════�
   }
 
   // 3. Delete CloudWatch Log Groups
-  console.info("\n[3/5] Deleting CloudWatch log groups...");
+  console.info("\n[3/6] Deleting CloudWatch log groups...");
   const logGroups = [
     `/aws/lambda/${LAMBDA_NAME}`,
     "/veolms/workers",
@@ -77,7 +171,7 @@ ${bold(red("╚═════════════════════�
   }
 
   // 4. Delete IAM Instance Profile
-  console.info("\n[4/5] Deleting IAM Instance Profile...");
+  console.info("\n[4/6] Deleting IAM Instance Profile...");
   exec(
     `aws iam remove-role-from-instance-profile --instance-profile-name ${INSTANCE_PROFILE_NAME} --role-name ${ROLE_NAME}`,
   );
@@ -95,7 +189,7 @@ ${bold(red("╚═════════════════════�
   }
 
   // 5. Delete IAM Role
-  console.info("\n[5/5] Deleting IAM Role & Policies...");
+  console.info("\n[5/6] Deleting IAM Role & Policies...");
   const inlinePolicies = (
     exec(
       `aws iam list-role-policies --role-name ${ROLE_NAME} --query 'PolicyNames' --output text`,
@@ -140,6 +234,15 @@ ${bold(red("╚═════════════════════�
   } else {
     console.info(
       `  ${red("✘")} Could not delete IAM role (may not exist): ${ROLE_NAME}`,
+    );
+  }
+
+  // 6. Delete S3 bucket — asks for confirmation if it still holds data
+  if (S3_BUCKET_NAME) {
+    await destroyS3Bucket(rl, S3_BUCKET_NAME);
+  } else {
+    console.info(
+      `\n[6/6] No S3_BUCKET_NAME configured in .env — skipping S3 cleanup.`,
     );
   }
 
