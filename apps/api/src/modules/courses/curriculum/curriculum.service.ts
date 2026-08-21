@@ -12,6 +12,10 @@ import * as curriculumRepo from "./curriculum.repository.ts";
 import * as courseRepo from "../course/course.repository.ts";
 import * as mediaRepo from "../media/media.repository.ts";
 import { createMediaService } from "../media/media.service.ts";
+import {
+  assertOptimisticUpdate,
+  getCourseAndVerifyOwner as verifyCourseOwner,
+} from "../shared/courses.utils.ts";
 
 export interface CurriculumServiceOptions {
   database: Kysely<Database>;
@@ -24,15 +28,8 @@ export function createCurriculumService({
 }: CurriculumServiceOptions) {
   const mediaService = createMediaService({ database, services });
 
-  async function getCourseAndVerifyOwner(courseId: string, creatorId: string) {
-    const course = await courseRepo.findCourseById(database, courseId);
-    if (!course) {
-      throw new AppError(404, "COURSE_NOT_FOUND", "Course not found.");
-    }
-    if (course.creator_id !== creatorId) {
-      throw new AppError(403, "FORBIDDEN", "Unauthorized course access.");
-    }
-    return course;
+  function getCourseAndVerifyOwner(courseId: string, creatorId: string) {
+    return verifyCourseOwner(database, courseId, creatorId);
   }
 
   // --- Sections ---
@@ -153,11 +150,15 @@ export function createCurriculumService({
       database,
       courseId,
     );
-    if (currentSections.length !== orderedSectionIds.length) {
+    const currentSectionIds = new Set(currentSections.map((s) => s.id));
+    if (
+      currentSections.length !== orderedSectionIds.length ||
+      !orderedSectionIds.every((id) => currentSectionIds.has(id))
+    ) {
       throw new AppError(
         400,
         "INVALID_SECTION_LIST",
-        "Ordered section IDs list does not match actual section count.",
+        "Ordered section IDs list does not match this course's sections.",
       );
     }
 
@@ -166,15 +167,22 @@ export function createCurriculumService({
       await curriculumRepo.updateSectionPosition(
         database,
         orderedSectionIds[i]!,
+        courseId,
         i,
         now,
       );
     }
 
-    await courseRepo.updateCourse(database, courseId, version, {
-      version: version + 1,
-      updated_at: now,
-    });
+    const updateResult = await courseRepo.updateCourse(
+      database,
+      courseId,
+      version,
+      {
+        version: version + 1,
+        updated_at: now,
+      },
+    );
+    assertOptimisticUpdate(updateResult);
 
     return { success: true };
   }
@@ -341,15 +349,28 @@ export function createCurriculumService({
       );
     }
 
+    const section = await curriculumRepo.findSectionById(
+      database,
+      sectionId,
+      courseId,
+    );
+    if (!section) {
+      throw new AppError(404, "SECTION_NOT_FOUND", "Section not found.");
+    }
+
     const currentLessons = await curriculumRepo.findLessonsBySection(
       database,
       sectionId,
     );
-    if (currentLessons.length !== orderedLessonIds.length) {
+    const currentLessonIds = new Set(currentLessons.map((l) => l.id));
+    if (
+      currentLessons.length !== orderedLessonIds.length ||
+      !orderedLessonIds.every((id) => currentLessonIds.has(id))
+    ) {
       throw new AppError(
         400,
         "INVALID_LESSON_LIST",
-        "Ordered lesson IDs list does not match section lessons count.",
+        "Ordered lesson IDs list does not match this section's lessons.",
       );
     }
 
@@ -358,15 +379,22 @@ export function createCurriculumService({
       await curriculumRepo.updateLessonPosition(
         database,
         orderedLessonIds[i]!,
+        sectionId,
         i,
         now,
       );
     }
 
-    await courseRepo.updateCourse(database, courseId, version, {
-      version: version + 1,
-      updated_at: now,
-    });
+    const updateResult = await courseRepo.updateCourse(
+      database,
+      courseId,
+      version,
+      {
+        version: version + 1,
+        updated_at: now,
+      },
+    );
+    assertOptimisticUpdate(updateResult);
 
     return { success: true };
   }

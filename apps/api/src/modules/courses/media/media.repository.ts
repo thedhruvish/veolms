@@ -1,5 +1,10 @@
 import { type Kysely } from "kysely";
-import type { Database, MediaAssetStatus } from "@veolms/database";
+import type {
+  Database,
+  MediaAssetStatus,
+  VideoJobStatus,
+  VideoJobStage,
+} from "@veolms/database";
 
 export async function findMediaAssetById(
   database: Kysely<Database>,
@@ -79,6 +84,23 @@ export async function insertVideoJob(
   },
 ) {
   await database.insertInto("video_jobs").values(values).execute();
+}
+
+export async function updateVideoJobStatus(
+  database: Kysely<Database>,
+  jobId: string,
+  values: {
+    status: VideoJobStatus;
+    current_stage?: VideoJobStage;
+    error?: string | null;
+    failed_at?: Date;
+  },
+) {
+  await database
+    .updateTable("video_jobs")
+    .set(values)
+    .where("id", "=", jobId)
+    .execute();
 }
 
 export async function findVideoJobByVideoId(

@@ -6,9 +6,8 @@ import type {
   UpdateCoursePricingRequest,
   UpdateCourseSettingsRequest,
 } from "@veolms/contracts";
-import { AppError } from "../../../lib/errors.ts";
 import * as configRepo from "./configuration.repository.ts";
-import * as courseRepo from "../course/course.repository.ts";
+import { getCourseAndVerifyOwner as verifyCourseOwner } from "../shared/courses.utils.ts";
 
 export interface ConfigurationServiceOptions {
   database: Kysely<Database>;
@@ -17,15 +16,8 @@ export interface ConfigurationServiceOptions {
 export function createConfigurationService({
   database,
 }: ConfigurationServiceOptions) {
-  async function getCourseAndVerifyOwner(courseId: string, creatorId: string) {
-    const course = await courseRepo.findCourseById(database, courseId);
-    if (!course) {
-      throw new AppError(404, "COURSE_NOT_FOUND", "Course not found.");
-    }
-    if (course.creator_id !== creatorId) {
-      throw new AppError(403, "FORBIDDEN", "Unauthorized course access.");
-    }
-    return course;
+  function getCourseAndVerifyOwner(courseId: string, creatorId: string) {
+    return verifyCourseOwner(database, courseId, creatorId);
   }
 
   async function upsertCourseAccessRules(

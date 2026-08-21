@@ -6,11 +6,21 @@ import type { PresignMediaRequest } from "@veolms/contracts";
 import { AppError } from "../../../lib/errors.ts";
 import type { AppServices } from "../../../services/index.ts";
 import * as mediaRepo from "./media.repository.ts";
-import * as courseRepo from "../course/course.repository.ts";
+import { getCourseAndVerifyOwner as verifyCourseOwner } from "../shared/courses.utils.ts";
 
 export interface MediaServiceOptions {
   database: Kysely<Database>;
   services: AppServices;
+}
+
+/** Postgres unique_violation (23505), as raised by the pg driver via node-postgres. */
+function isUniqueViolation(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    (err as { code?: unknown }).code === "23505"
+  );
 }
 
 export function createMediaService({ database, services }: MediaServiceOptions) {
@@ -118,16 +128,37 @@ export function createMediaService({ database, services }: MediaServiceOptions) 
     const jobId = crypto.randomUUID();
     const now = new Date();
 
-    await mediaRepo.insertVideoJob(database, {
-      id: jobId,
-      video_id: media.id,
-      input_path: media.storage_key,
-      status: "queued",
-      current_stage: "queued",
-      progress: 0,
-      quality: [360, 720, 1080],
-      created_at: now,
-    });
+    try {
+      await mediaRepo.insertVideoJob(database, {
+        id: jobId,
+        video_id: media.id,
+        input_path: media.storage_key,
+        status: "queued",
+        current_stage: "queued",
+        progress: 0,
+        quality: [360, 720, 1080],
+        created_at: now,
+      });
+    } catch (insertErr) {
+      // A concurrent call (client retry, or a racing lesson update) may have
+      // won the insert first — `video_jobs_active_video_id_unique` rejects a
+      // second active job for the same video. Treat that as "already queued"
+      // instead of surfacing a 500.
+      if (isUniqueViolation(insertErr)) {
+        const raceWinner = await mediaRepo.findVideoJobByVideoId(
+          database,
+          media.id,
+        );
+        if (raceWinner) {
+          logger.info(
+            { jobId: raceWinner.id, videoId: media.id },
+            "Lost the race to queue this video's transcode job. Reusing the concurrent job instead.",
+          );
+          return { should202: true, jobId: raceWinner.id };
+        }
+      }
+      throw insertErr;
+    }
 
     // Dispatch the transcoding job (always queue, and trigger lambda if configured)
     try {
@@ -142,10 +173,20 @@ export function createMediaService({ database, services }: MediaServiceOptions) 
         "Video transcoding job queued and dispatched successfully",
       );
     } catch (dispatchErr) {
+      const message =
+        dispatchErr instanceof Error ? dispatchErr.message : "Dispatch failed.";
       logger.error(
         { err: dispatchErr, jobId, mediaId: media.id },
-        "Failed to dispatch video transcoding job",
+        "Failed to dispatch video transcoding job; marking job as failed",
       );
+      // Without this the job sits at status:'queued' forever with nothing to
+      // process it, and the creator has no visibility into the failure.
+      await mediaRepo.updateVideoJobStatus(database, jobId, {
+        status: "failed",
+        current_stage: "failed",
+        error: message,
+        failed_at: new Date(),
+      });
     }
 
     return { should202: true, jobId };
@@ -195,12 +236,15 @@ export function createMediaService({ database, services }: MediaServiceOptions) 
     videoId: string,
     creatorId: string,
   ) {
-    const course = await courseRepo.findCourseById(database, courseId);
-    if (!course) {
-      throw new AppError(404, "COURSE_NOT_FOUND", "Course not found.");
-    }
-    if (course.creator_id !== creatorId) {
-      throw new AppError(403, "FORBIDDEN", "Unauthorized course access.");
+    await verifyCourseOwner(database, courseId, creatorId);
+
+    const media = await mediaRepo.findMediaAssetById(
+      database,
+      videoId,
+      creatorId,
+    );
+    if (!media) {
+      throw new AppError(404, "MEDIA_NOT_FOUND", "Media asset not found.");
     }
 
     const job = await mediaRepo.findVideoJobByVideoId(database, videoId);

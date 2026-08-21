@@ -8,6 +8,10 @@ import * as curriculumRepo from "../curriculum/curriculum.repository.ts";
 import * as configRepo from "../configuration/configuration.repository.ts";
 import * as mediaRepo from "../media/media.repository.ts";
 import { createCourseService } from "../course/course.service.ts";
+import {
+  assertOptimisticUpdate,
+  getCourseAndVerifyOwner as verifyCourseOwner,
+} from "../shared/courses.utils.ts";
 
 export interface LifecycleServiceOptions {
   database: Kysely<Database>;
@@ -20,15 +24,8 @@ export function createLifecycleService({
 }: LifecycleServiceOptions) {
   const courseService = createCourseService({ database, services });
 
-  async function getCourseAndVerifyOwner(courseId: string, creatorId: string) {
-    const course = await courseRepo.findCourseById(database, courseId);
-    if (!course) {
-      throw new AppError(404, "COURSE_NOT_FOUND", "Course not found.");
-    }
-    if (course.creator_id !== creatorId) {
-      throw new AppError(403, "FORBIDDEN", "Unauthorized course access.");
-    }
-    return course;
+  function getCourseAndVerifyOwner(courseId: string, creatorId: string) {
+    return verifyCourseOwner(database, courseId, creatorId);
   }
 
   /**
@@ -193,12 +190,18 @@ export function createLifecycleService({
     }
 
     const now = new Date();
-    await courseRepo.updateCourse(database, courseId, course.version, {
-      status: "published",
-      published_at: now,
-      version: course.version + 1,
-      updated_at: now,
-    });
+    const updateResult = await courseRepo.updateCourse(
+      database,
+      courseId,
+      course.version,
+      {
+        status: "published",
+        published_at: now,
+        version: course.version + 1,
+        updated_at: now,
+      },
+    );
+    assertOptimisticUpdate(updateResult);
 
     return {
       id: course.id,
@@ -227,11 +230,17 @@ export function createLifecycleService({
     const course = await getCourseAndVerifyOwner(courseId, creatorId);
 
     const now = new Date();
-    await courseRepo.updateCourse(database, courseId, course.version, {
-      status: "draft",
-      version: course.version + 1,
-      updated_at: now,
-    });
+    const updateResult = await courseRepo.updateCourse(
+      database,
+      courseId,
+      course.version,
+      {
+        status: "draft",
+        version: course.version + 1,
+        updated_at: now,
+      },
+    );
+    assertOptimisticUpdate(updateResult);
 
     return {
       id: course.id,

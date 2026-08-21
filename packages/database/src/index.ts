@@ -7,5 +7,7 @@ export type {
   AccessType,
   AccessDurationType,
   PricingType,
+  VideoJobStatus,
+  VideoJobStage,
 } from "./schema.ts";
 
