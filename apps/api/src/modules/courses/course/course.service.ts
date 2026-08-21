@@ -10,7 +10,11 @@ import type {
 import type { UpdateCourseBasicsRequest } from "@veolms/contracts";
 import { AppError } from "../../../lib/errors.ts";
 import type { AppServices } from "../../../services/index.ts";
-import { slugify } from "../shared/courses.utils.ts";
+import {
+  slugify,
+  assertOptimisticUpdate,
+  getCourseAndVerifyOwner as verifyCourseOwner,
+} from "../shared/courses.utils.ts";
 import * as courseRepo from "./course.repository.ts";
 import * as categoryRepo from "../category/category.repository.ts";
 import * as curriculumRepo from "../curriculum/curriculum.repository.ts";
@@ -32,15 +36,8 @@ export function createCourseService({
   /**
    * Verifies course existence and owner permissions.
    */
-  async function getCourseAndVerifyOwner(courseId: string, creatorId: string) {
-    const course = await courseRepo.findCourseById(database, courseId);
-    if (!course) {
-      throw new AppError(404, "COURSE_NOT_FOUND", "Course not found.");
-    }
-    if (course.creator_id !== creatorId) {
-      throw new AppError(403, "FORBIDDEN", "Unauthorized course access.");
-    }
-    return course;
+  function getCourseAndVerifyOwner(courseId: string, creatorId: string) {
+    return verifyCourseOwner(database, courseId, creatorId);
   }
 
   // --- Course Basics ---
@@ -161,6 +158,18 @@ export function createCourseService({
       );
     }
 
+    if (
+      course.status === "published" &&
+      updates.description !== undefined &&
+      (!updates.description || updates.description.trim().length === 0)
+    ) {
+      throw new AppError(
+        400,
+        "INVALID_DESCRIPTION",
+        "Published courses must keep a non-empty description.",
+      );
+    }
+
     if (updates.categoryId) {
       const category = await categoryRepo.findCategoryById(
         database,
@@ -201,16 +210,22 @@ export function createCourseService({
     const now = new Date();
     const newVersion = version + 1;
 
-    await courseRepo.updateCourse(database, courseId, version, {
-      title: updates.title,
-      description: updates.description,
-      category_id: updates.categoryId,
-      difficulty: updates.difficulty,
-      thumbnail_media_id: updates.thumbnailMediaId,
-      trailer_media_id: updates.trailerMediaId,
-      version: newVersion,
-      updated_at: now,
-    });
+    const updateResult = await courseRepo.updateCourse(
+      database,
+      courseId,
+      version,
+      {
+        title: updates.title,
+        description: updates.description,
+        category_id: updates.categoryId,
+        difficulty: updates.difficulty,
+        thumbnail_media_id: updates.thumbnailMediaId,
+        trailer_media_id: updates.trailerMediaId,
+        version: newVersion,
+        updated_at: now,
+      },
+    );
+    assertOptimisticUpdate(updateResult);
 
     if (transcodeJobInfo && transcodeJobInfo.should202) {
       return {
@@ -403,13 +418,9 @@ export function createCourseService({
         courseIdOrSlug,
       );
 
-    let course = isUuid
+    const course = isUuid
       ? await courseRepo.findCourseById(database, courseIdOrSlug)
       : await courseRepo.findCourseBySlug(database, courseIdOrSlug);
-
-    if (!course && !isUuid) {
-      course = await courseRepo.findCourseById(database, courseIdOrSlug);
-    }
 
     if (!course) {
       throw new AppError(404, "COURSE_NOT_FOUND", "Course not found.");
@@ -562,7 +573,7 @@ export function createCourseService({
           | "advanced"
           | null,
         status: course.status as "draft" | "published" | "archived",
-        creatorId: course.creator_id as string,
+        creatorId: course.creator_id,
         categoryId: course.category_id,
         thumbnailMediaId: course.thumbnail_media_id,
         trailerMediaId: course.trailer_media_id,

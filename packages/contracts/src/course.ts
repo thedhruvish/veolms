@@ -318,7 +318,7 @@ export const courseSchema = z.object({
     .nullable()
     .optional(),
   status: z.enum(["draft", "published", "archived"]),
-  creatorId: z.string().uuid(),
+  creatorId: z.string().uuid().nullable(),
   categoryId: z.string().uuid().nullable().optional(),
   thumbnailMediaId: z.string().uuid().nullable().optional(),
   trailerMediaId: z.string().uuid().nullable().optional(),

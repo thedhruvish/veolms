@@ -3,6 +3,7 @@ import type { FastifyBaseLogger } from "fastify";
 
 import { getBoss } from "../../lib/pg-boss.ts";
 import { getEventBridgeClient } from "../../lib/eventbridge.ts";
+import { config } from "../../config.ts";
 
 export interface VideoJobDispatchPayload {
   jobId: string;
@@ -39,7 +40,12 @@ export function createVideoDispatchService(
     payload: VideoJobDispatchPayload,
   ): Promise<void> {
     const boss = await getBoss();
-    await boss.send("video-processing", payload);
+    await boss.send("video-processing", payload, {
+      retryLimit: config.PG_BOSS_RETRY_LIMIT,
+      retryDelay: config.PG_BOSS_RETRY_DELAY,
+      retryBackoff: config.PG_BOSS_RETRY_BACKOFF,
+      expireInSeconds: config.PG_BOSS_JOB_EXPIRE,
+    });
   }
 
   async function dispatchToLambda(

@@ -84,6 +84,7 @@ export async function findSectionsByCourseId(
 export async function updateSectionPosition(
   database: Kysely<Database>,
   sectionId: string,
+  courseId: string,
   position: number,
   now: Date,
 ) {
@@ -91,6 +92,7 @@ export async function updateSectionPosition(
     .updateTable("course_sections")
     .set({ position, updated_at: now })
     .where("id", "=", sectionId)
+    .where("course_id", "=", courseId)
     .execute();
 }
 
@@ -226,6 +228,7 @@ export async function findLessonsBySection(
 export async function updateLessonPosition(
   database: Kysely<Database>,
   lessonId: string,
+  sectionId: string,
   position: number,
   now: Date,
 ) {
@@ -233,6 +236,7 @@ export async function updateLessonPosition(
     .updateTable("course_lessons")
     .set({ position, updated_at: now })
     .where("id", "=", lessonId)
+    .where("section_id", "=", sectionId)
     .execute();
 }
 
