@@ -74,6 +74,39 @@ const serverConfigSchema = z.object({
   SMS_BACKUP_SID: z.string().optional(),
   SMS_BACKUP_TOKEN: z.string().optional(),
   SMS_BACKUP_FROM: z.string().default("+1234567890"),
+
+  // Storage Configs
+  STORAGE_ENDPOINT: z.string().optional(),
+  STORAGE_REGION: z.string().default("us-east-1"),
+  STORAGE_ACCESS_KEY_ID: z.string().optional(),
+  STORAGE_SECRET_ACCESS_KEY: z.string().optional(),
+  STORAGE_BUCKET: z.string().optional(),
+  STORAGE_FORCE_PATH_STYLE: booleanEnvironmentValueSchema.default(false),
+
+  // Worker Configs
+  VIDEO_WORKER_CONCURRENCY: z.coerce.number().int().min(1).default(1),
+  VIDEO_WORKER_HEARTBEAT_INTERVAL: z.coerce
+    .number()
+    .int()
+    .min(100)
+    .default(5000),
+  VIDEO_WORKER_STALE_THRESHOLD: z.coerce.number().int().min(100).default(15000),
+  VIDEO_WORKER_SHUTDOWN_TIMEOUT: z.coerce
+    .number()
+    .int()
+    .min(100)
+    .default(30000),
+
+  // Queue Configs
+  PG_BOSS_RETRY_LIMIT: z.coerce.number().int().min(0).default(3),
+  PG_BOSS_RETRY_DELAY: z.coerce.number().int().min(0).default(30),
+  PG_BOSS_RETRY_BACKOFF: booleanEnvironmentValueSchema.default(true),
+  PG_BOSS_JOB_EXPIRE: z.coerce.number().int().min(1).default(3600),
+
+  // Video Processing Dispatch
+  EVENTBRIDGE_BUS_NAME: z.string().optional(),
+  EVENTBRIDGE_EVENT_SOURCE: z.string().default("veolms.video-processing"),
+  EVENTBRIDGE_DETAIL_TYPE: z.string().default("video.transcode.requested"),
 });
 
 const webConfigSchema = z.object({
