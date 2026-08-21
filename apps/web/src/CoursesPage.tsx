@@ -41,6 +41,10 @@ import { SettingsPage } from "./SettingsPage";
 import { CourseCatalogue } from "./courses/CourseCatalogue";
 import { PlaceholderPage } from "./courses/PlaceholderPage";
 import { WorkspacePage } from "./workspace/WorkspacePages";
+import { ReviewsPage } from "./reviews/ReviewsPage";
+import { OrdersPage } from "./orders/OrdersPage";
+import { OrderHistoryPage } from "./order-history/OrderHistoryPage";
+import { NotificationsPage } from "./notifications/NotificationsPage";
 import { courses, getVisibleCourses } from "./courses/catalogue";
 import type {
   Course,
@@ -134,6 +138,16 @@ const ReadingModeQuickMenu = lazy(() =>
     default: module.ReadingModeQuickMenu,
   })),
 );
+const CourseCreatePage = lazy(() =>
+  import("./courses/CourseCreatePage").then((module) => ({
+    default: module.CourseCreatePage,
+  })),
+);
+const CourseOverviewPage = lazy(() =>
+  import("./courses/CourseOverviewPage").then((module) => ({
+    default: module.CourseOverviewPage,
+  })),
+);
 
 type ThemePreference = "light" | "dark" | "device";
 type AppearanceOption = ThemePreference | "theme";
@@ -148,6 +162,7 @@ interface CoursesPageProps {
   section?: string | null;
   settingsTab?: string;
   discussionTab?: string;
+  courseSlug?: string;
   renderMain?: (() => ReactNode) | null;
 }
 
@@ -428,6 +443,7 @@ export function CoursesPage({
   section: requestedSection = null,
   settingsTab = "profile",
   discussionTab = "q-and-a",
+  courseSlug,
   renderMain = null,
 }: CoursesPageProps) {
   const [role, setRole] = useState<CourseRole>("student");
@@ -3127,6 +3143,41 @@ export function CoursesPage({
                 sessionStorage.removeItem("veolms-course-section");
                 setRole("student");
               }}
+            />
+          ) : page === "course-create" ? (
+            <Suspense fallback={null}>
+              <CourseCreatePage
+                onNavigatePage={onNavigatePage}
+                bottomNavHidden={mobileBottomNavHidden}
+              />
+            </Suspense>
+          ) : page === "course-overview" ? (
+            <Suspense fallback={null}>
+              <CourseOverviewPage
+                courseSlug={courseSlug}
+                onNavigateCourses={() => onNavigatePage("/courses")}
+                onNavigatePage={onNavigatePage}
+              />
+            </Suspense>
+          ) : page === "reviews" || requestedSection === "Reviews" || activeSection === "Reviews" ? (
+            <ReviewsPage
+              onNavigatePage={onNavigatePage}
+              setNotice={setNotice}
+            />
+          ) : page === "orders" || requestedSection === "Orders" || activeSection === "Orders" ? (
+            <OrdersPage
+              onNavigatePage={onNavigatePage}
+              setNotice={setNotice}
+            />
+          ) : page === "order-history" || requestedSection === "Order History" || activeSection === "Order History" ? (
+            <OrderHistoryPage
+              onNavigatePage={onNavigatePage}
+              setNotice={setNotice}
+            />
+          ) : page === "notifications" || requestedSection === "Notifications" || activeSection === "Notifications" || requestedSection === "Notification" || activeSection === "Notification" ? (
+            <NotificationsPage
+              onNavigatePage={onNavigatePage}
+              setNotice={setNotice}
             />
           ) : page === "placeholder" ? (
             <PlaceholderPage
