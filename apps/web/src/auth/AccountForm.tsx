@@ -9,6 +9,7 @@ import type { AuthIdentifier } from "./authFlow.ts";
 
 export interface AccountFormProps {
   identifier: AuthIdentifier;
+  secondaryIdentifier?: AuthIdentifier;
   name: string;
   onNameChange: (name: string) => void;
   status: "idle" | "creating";
@@ -43,6 +44,7 @@ function validateName(value: string): string | null {
 export function AccountForm({
   errorMessage,
   identifier,
+  secondaryIdentifier,
   name,
   onBackToOtp,
   onIdentifierChange,
@@ -81,13 +83,25 @@ export function AccountForm({
         Let&apos;s finish setting up your account
       </p>
 
-      <p className="auth-account-form__verified">
-        <Icon aria-hidden emphasis="bold" name="verified" size={16} />
-        <span className="auth-account-form__verified-mask">
-          {maskIdentifier(identifier)}
-        </span>
-        <span className="auth-account-form__verified-state">verified</span>
-      </p>
+      <div style={{ display: "grid", gap: "6px", width: "100%" }}>
+        <p className="auth-account-form__verified" style={{ margin: 0 }}>
+          <Icon aria-hidden emphasis="bold" name="verified" size={16} />
+          <span className="auth-account-form__verified-mask">
+            {maskIdentifier(identifier)}
+          </span>
+          <span className="auth-account-form__verified-state">verified</span>
+        </p>
+
+        {secondaryIdentifier && (
+          <p className="auth-account-form__verified" style={{ margin: 0 }}>
+            <Icon aria-hidden emphasis="bold" name="verified" size={16} />
+            <span className="auth-account-form__verified-mask">
+              {maskIdentifier(secondaryIdentifier)}
+            </span>
+            <span className="auth-account-form__verified-state">verified</span>
+          </p>
+        )}
+      </div>
 
       <div className="auth-card__form-slot">
         <form className="auth-form" noValidate onSubmit={submit}>

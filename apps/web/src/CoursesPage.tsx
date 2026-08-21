@@ -56,7 +56,7 @@ import { AcademyPaletteMenu } from "./shell/AcademyPaletteMenu";
 import { FloatingScrollbar } from "./shell/FloatingScrollbar";
 import { SidebarToggleIcon } from "./shell/SidebarToggleIcon";
 import { AppLoadingScreen } from "./bootstrap/AppLoadingScreen";
-import { useCurrentUser, useLogout } from "./services/auth/use-auth";
+import { useCurrentUser, useLogout } from "./services/auth";
 import { useAuthStore } from "./store/auth.store";
 import {
   getDefaultNavigationOrder,
@@ -94,7 +94,10 @@ import {
   PAGE_TAB_COLORS_KEY,
   readPageTabColors,
 } from "./settings/settingsPreferences";
-import { getStoredProfilePreferences } from "./settings/profilePreferences";
+import {
+  clearStoredProfilePreferences,
+  getStoredProfilePreferences,
+} from "./settings/profilePreferences";
 import type { ProfilePreferences } from "./settings/profilePreferences";
 import type { NavigateTo } from "./routing/navigation";
 import type { SettingsPageProps } from "./SettingsPage";
@@ -544,16 +547,16 @@ export function CoursesPage({
   const activeUser = authUser || storeUser;
   const logoutMutation = useLogout();
 
-  const savedShellProfile = savedShellProfiles[role];
+  const savedShellProfile = activeUser ? savedShellProfiles[role] : null;
   const shellProfileDisplayName =
     activeUser?.displayName ??
-    savedShellProfile?.displayName ??
     (role === "creator" ? "Anurag Singh" : "Ashi Singh");
-  const shellProfileAvatarUrl = savedShellProfile
-    ? savedShellProfile.avatarDataUrl
-    : role === "creator"
-      ? "/assets/ethan-avatar-160.webp"
-      : "/assets/sofia-avatar-160.webp";
+  const shellProfileAvatarUrl =
+    activeUser && savedShellProfile?.avatarDataUrl
+      ? savedShellProfile.avatarDataUrl
+      : role === "creator"
+        ? "/assets/ethan-avatar-160.webp"
+        : "/assets/sofia-avatar-160.webp";
   const profileRef = useRef<HTMLDivElement>(null);
   const appearanceControlsRef = useRef<HTMLDivElement>(null);
   const appearanceControlRectsRef = useRef<DOMRect[]>([]);
@@ -2665,7 +2668,9 @@ export function CoursesPage({
                       } catch {
                         // ignore logout errors
                       }
-                      onNavigatePage?.("Logout");
+                      clearStoredProfilePreferences();
+                      setSavedShellProfiles({ student: null, creator: null });
+                      window.location.href = "/";
                     }}
                   >
                     <SignOut size={18} />

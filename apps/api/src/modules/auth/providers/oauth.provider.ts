@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { AppError } from "../../lib/errors.ts";
+import { AppError } from "../../../lib/errors.ts";
 
 export type OauthProviderName = "google" | "github";
 
@@ -35,12 +35,6 @@ function oauthFailure(message: string): AppError {
     `OAuth provider verification failed: ${message}`,
   );
 }
-
-// Google and GitHub payloads. These stay in the API rather than moving to
-// @veolms/contracts because they describe a *third party's* responses, not this
-// API's own surface — no client of ours ever sees these shapes. They are parsed
-// rather than cast because they are untrusted external input; only the fields
-// actually consumed are declared, since providers add others freely.
 
 const googleTokenSchema = z.object({ access_token: z.string().min(1) });
 
@@ -87,11 +81,7 @@ async function parseJson<T extends z.ZodType>(
   return parsed.data;
 }
 
-/** Synthesises a profile from a `mock_<...>_<email>` code for local testing. */
-function mockProfile(
-  provider: OauthProviderName,
-  code: string,
-): OauthProfile {
+function mockProfile(provider: OauthProviderName, code: string): OauthProfile {
   const parts = code.split("_");
   const email = parts[parts.length - 1] || "user@mock.academy.com";
   const username = email.split("@")[0] || "mockuser";
@@ -147,8 +137,6 @@ async function fetchGoogleProfile(
     "Google userinfo endpoint",
   );
 
-  // An unverified address must never establish account ownership: anyone can
-  // claim it at the provider and take over the matching local account.
   if (!profile.email_verified) {
     throw oauthFailure("Google email address is not verified");
   }
@@ -225,8 +213,6 @@ async function fetchGithubProfile(
     "GitHub user endpoint",
   );
 
-  // GitHub omits private addresses from /user, and only /user/emails reports
-  // verification state, which is what account ownership hinges on.
   const emailsResponse = await fetch("https://api.github.com/user/emails", {
     headers: authHeaders,
   });
@@ -239,7 +225,8 @@ async function fetchGithubProfile(
       "GitHub emails endpoint",
     );
     const verified = emails.filter((entry) => entry.verified);
-    email = (verified.find((entry) => entry.primary) || verified[0])?.email || "";
+    email =
+      (verified.find((entry) => entry.primary) || verified[0])?.email || "";
   }
 
   if (!email) {
@@ -254,14 +241,6 @@ async function fetchGithubProfile(
   };
 }
 
-/**
- * Exchanges an authorization code for the provider's account profile.
- *
- * Throws `AppError` on any failure rather than writing to a reply, so the
- * caller decides how the failure surfaces. Note the code is single-use at the
- * provider: once this resolves or rejects, the same code cannot be exchanged
- * again, which is why login and registration cannot fall back to one another.
- */
 export async function fetchOauthProfile(
   input: FetchOauthProfileInput,
 ): Promise<OauthProfile> {
@@ -274,21 +253,12 @@ export async function fetchOauthProfile(
     : fetchGithubProfile(input);
 }
 
-// Internal cookie payload, not part of the published contract: clients never
-// read it, and its shape can change without being a breaking API change.
 const oauthStateCookieSchema = z.object({
   state: z.string().min(1),
   provider: z.enum(["google", "github"]),
   code_verifier: z.string().optional(),
 });
 
-/**
- * Validates the OAuth state cookie against the state echoed back by the
- * provider, and returns the PKCE verifier stashed alongside it.
- *
- * Shared by login and registration; both must perform this check or the
- * callback is forgeable.
- */
 export function verifyOauthState({
   cookieValue,
   provider,

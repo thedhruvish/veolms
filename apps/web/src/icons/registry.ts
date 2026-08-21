@@ -2,6 +2,7 @@ import {
   ArrowRight,
   CheckIcon,
   ClockIcon,
+  Copy as CopyIcon,
   DeviceMobile,
   EnvelopeSimple,
   KeyIcon,
@@ -17,6 +18,7 @@ import {
   CircleAlert,
   CircleUserRound,
   Clock,
+  Copy,
   Lock,
   Mail,
   UserRoundKey,
@@ -30,8 +32,6 @@ export const ICON_PACKS = ["lucide", "phosphor"] as const;
 
 export type IconPack = (typeof ICON_PACKS)[number];
 
-// Phosphor carries state in `weight`; Lucide has no equivalent, so the resolver
-// translates these three steps into whichever knob the active pack offers.
 export type IconEmphasis = "regular" | "bold" | "fill";
 
 export interface IconGlyphProps {
@@ -44,9 +44,6 @@ export interface IconGlyphProps {
 
 export type IconGlyph = ComponentType<IconGlyphProps>;
 
-// A semantic name earns its place only when both packs can draw it, so switching
-// packs can never leave a hole. Nothing here is auth-specific: the same table is
-// what a platform-wide switcher would read.
 export const iconRegistry = {
   email: { lucide: Mail, phosphor: EnvelopeSimple },
   mobile: { lucide: Smartphone, phosphor: DeviceMobile },
@@ -59,6 +56,7 @@ export const iconRegistry = {
   recommended: { lucide: Star, phosphor: StarIcon },
   shield: { lucide: ShieldCheck, phosphor: ShieldCheckIcon },
   refreshTimer: { lucide: Clock, phosphor: ClockIcon },
+  copy: { lucide: Copy, phosphor: CopyIcon },
 } as const satisfies Record<string, Record<IconPack, IconGlyph>>;
 
 export type IconName = keyof typeof iconRegistry;

@@ -59,6 +59,11 @@ export type AuthFlowState =
       readonly method: TwoFactorMethod;
       readonly code: string;
     }
+  | {
+      readonly status: "adminMfaSetup";
+      readonly identifier: AuthIdentifier;
+      readonly message: string | null;
+    }
   | { readonly status: "authenticated" }
   | { readonly status: "error"; readonly message: string };
 
@@ -71,6 +76,7 @@ export type OtpVerifiedOutcome =
   | "newUserName"
   | "twoFactorPasskey"
   | "twoFactorAuthenticator"
+  | "adminMfaSetup"
   | "authenticated";
 
 export type OtpMessageKey = OtpFailureReason | "sendFailed" | "unexpected";
@@ -80,8 +86,6 @@ export interface OtpMessage {
   readonly body: string;
 }
 
-// "Too many attempts" drops the spec's "for today" wording: the backend consumes
-// the code after three tries and never resets on a daily schedule.
 export const OTP_MESSAGES: Record<OtpMessageKey, OtpMessage> = {
   incorrect: {
     title: "Incorrect OTP",
@@ -206,6 +210,8 @@ export type AuthFlowAction =
   | { readonly type: "SUBMIT_TWO_FACTOR" }
   | { readonly type: "TWO_FACTOR_VERIFIED" }
   | { readonly type: "TWO_FACTOR_REJECTED"; readonly message: string }
+  | { readonly type: "ADMIN_MFA_SETUP_DONE" }
+  | { readonly type: "ADMIN_MFA_SETUP_FAILED"; readonly message: string }
   | { readonly type: "UNEXPECTED_FAILURE" };
 
 const TWO_FACTOR_STATUS = {
@@ -313,6 +319,14 @@ export function authFlowReducer(
       };
     }
 
+    if (action.next === "adminMfaSetup") {
+      return {
+        status: "adminMfaSetup",
+        identifier: state.identifier,
+        message: null,
+      };
+    }
+
     return {
       status: action.next,
       identifier: state.identifier,
@@ -378,6 +392,20 @@ export function authFlowReducer(
       code: state.code,
       message: action.message,
     };
+  }
+
+  if (
+    state.status === "adminMfaSetup" &&
+    action.type === "ADMIN_MFA_SETUP_DONE"
+  ) {
+    return { status: "authenticated" };
+  }
+
+  if (
+    state.status === "adminMfaSetup" &&
+    action.type === "ADMIN_MFA_SETUP_FAILED"
+  ) {
+    return { ...state, message: action.message };
   }
 
   return state;

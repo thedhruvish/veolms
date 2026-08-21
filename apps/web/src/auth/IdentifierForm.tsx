@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { Icon } from "../icons/Icon";
 import { ThemedSelect } from "../ThemedSelect";
 import type { ThemedSelectOption } from "../ThemedSelect";
+import { CountryFlag } from "./CountryFlag";
 import { IdentifierMethodSwitch } from "./IdentifierMethodSwitch";
 import {
   DEFAULT_COUNTRY_ID,
@@ -14,20 +15,34 @@ import {
   validateMobile,
 } from "./identifier";
 import type { CountryOption, IdentifierMethod } from "./identifier";
+import {
+  getDefaultLoginMethod,
+  isEmailLoginEnabled,
+  isMobileLoginEnabled,
+  isMethodSwitchVisible,
+} from "./authConfig";
 
 export type IdentifierSubmission =
-  { method: "email"; email: string } | { method: "mobile"; phoneNo: string };
+  | { method: "email"; email: string }
+  | { method: "mobile"; phoneNo: string };
 
 export interface IdentifierFormProps {
   status: "idle" | "sending";
   errorMessage?: string;
+  forcedMethod?: IdentifierMethod;
   onSubmit: (submission: IdentifierSubmission) => void;
 }
 
-// The dial code alone keeps the trigger narrow. Windows Chrome ships no flag
-// emoji font, so a regional-indicator glyph would degrade to the letters "IN".
 const COUNTRY_OPTIONS: readonly ThemedSelectOption[] = SUPPORTED_COUNTRIES.map(
-  (country) => [country.id, country.dialCode],
+  (country) => [
+    country.id,
+    country.dialCode,
+    {
+      flag: <CountryFlag code={country.id} />,
+      label: `${country.name} (${country.dialCode})`,
+      searchKeywords: `${country.name} ${country.dialCode} ${country.id}`,
+    },
+  ],
 );
 
 const EMAIL_FIELD_ID = "auth-identifier-email";
@@ -65,10 +80,14 @@ function toInternational(value: string, country: CountryOption): string {
 export function IdentifierForm({
   status,
   errorMessage,
+  forcedMethod,
   onSubmit,
 }: IdentifierFormProps) {
   const sending = status === "sending";
-  const [method, setMethod] = useState<IdentifierMethod>("mobile");
+
+  const [method, setMethod] = useState<IdentifierMethod>(
+    forcedMethod ?? getDefaultLoginMethod(),
+  );
   const [email, setEmail] = useState("");
   const [mobile, setMobile] = useState("");
   const [country, setCountry] = useState<CountryOption>(DEFAULT_COUNTRY);
@@ -108,15 +127,39 @@ export function IdentifierForm({
     }
   };
 
+  const showEmailOnly = forcedMethod
+    ? forcedMethod === "email"
+    : isEmailLoginEnabled() && !isMobileLoginEnabled();
+  const showMobileOnly = forcedMethod
+    ? forcedMethod === "mobile"
+    : isMobileLoginEnabled() && !isEmailLoginEnabled();
+  const showSwitch = !forcedMethod && isMethodSwitchVisible();
+
   return (
     <form className="auth-form" noValidate onSubmit={submit}>
-      <div className="auth-form__method">
-        <p className="auth-form__section-label">Continue with</p>
-        <IdentifierMethodSwitch method={method} onMethodChange={changeMethod} />
-        <p className="auth-form__helper">We&apos;ll send you a one-time code</p>
-      </div>
+      {showSwitch && (
+        <div className="auth-form__method">
+          <p className="auth-form__section-label">Continue with</p>
+          <IdentifierMethodSwitch method={method} onMethodChange={changeMethod} />
+          <p className="auth-form__helper">We&apos;ll send you a one-time code</p>
+        </div>
+      )}
 
-      {method === "email" ? (
+      {showEmailOnly && (
+        <div className="auth-form__method">
+          <p className="auth-form__section-label">Continue with email</p>
+          <p className="auth-form__helper">We&apos;ll send you a one-time code</p>
+        </div>
+      )}
+
+      {showMobileOnly && (
+        <div className="auth-form__method">
+          <p className="auth-form__section-label">Continue with mobile</p>
+          <p className="auth-form__helper">We&apos;ll send you a one-time code</p>
+        </div>
+      )}
+
+      {(showEmailOnly || (showSwitch && method === "email")) && (
         <div className="auth-form__field">
           <label className="auth-form__label" htmlFor={EMAIL_FIELD_ID}>
             Email address
@@ -147,7 +190,9 @@ export function IdentifierForm({
             </p>
           ) : null}
         </div>
-      ) : (
+      )}
+
+      {(showMobileOnly || (showSwitch && method === "mobile")) && (
         <div className="auth-form__field">
           <label className="auth-form__label" htmlFor={MOBILE_FIELD_ID}>
             Mobile number
@@ -159,6 +204,8 @@ export function IdentifierForm({
               contentClassName="auth-form__country-menu"
               onValueChange={selectCountry}
               options={COUNTRY_OPTIONS}
+              searchable
+              searchPlaceholder="Search country or code..."
               triggerClassName="auth-form__country"
               value={country.id}
             />

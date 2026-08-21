@@ -8,9 +8,16 @@ import type {
   OauthUrlResponse,
   OtpSendRequest,
   RegisterRequest,
+  SessionResponse,
+  TotpEnableRequest,
   TotpVerifyRequest,
   UserProfileResponse,
 } from "@veolms/contracts";
+
+export interface TotpSetupResponse {
+  secret: string;
+  uri: string;
+}
 
 export const authService = {
   sendOtp: (payload: OtpSendRequest): Promise<AuthMessageResponse> => {
@@ -33,8 +40,56 @@ export const authService = {
     return api.post<LoginResponse>("/auth/oauth/login", payload);
   },
 
+  setupTotp: (): Promise<TotpSetupResponse> => {
+    return api.post<TotpSetupResponse>("/auth/totp/setup");
+  },
+
+  enableTotp: (
+    payload: TotpEnableRequest,
+  ): Promise<{ backupCodes: string[] }> => {
+    return api.post<{ backupCodes: string[] }>("/auth/totp/enable", payload);
+  },
+
   verifyMfaTotp: (payload: TotpVerifyRequest): Promise<AuthMessageResponse> => {
-    return api.post<AuthMessageResponse>("/auth/mfa/totp/verify", payload);
+    return api.post<AuthMessageResponse>("/auth/totp/verify", payload);
+  },
+
+  getPasskeyRegisterOptions: (): Promise<unknown> => {
+    return api.post<unknown>("/auth/passkey/register/options");
+  },
+
+  verifyPasskeyRegister: (payload: {
+    response: unknown;
+  }): Promise<AuthMessageResponse> => {
+    return api.post<AuthMessageResponse>(
+      "/auth/passkey/register/verify",
+      payload,
+    );
+  },
+
+  getPasskeyLoginOptions: (): Promise<unknown> => {
+    return api.post<unknown>("/auth/passkey/login/options");
+  },
+
+  verifyPasskeyLogin: (payload: {
+    response: unknown;
+  }): Promise<AuthMessageResponse> => {
+    return api.post<AuthMessageResponse>(
+      "/auth/passkey/login/verify",
+      payload,
+    );
+  },
+
+  getSessions: (): Promise<SessionResponse[]> => {
+    return api.get<SessionResponse[]>("/auth/sessions");
+  },
+
+  revokeSession: (id: string): Promise<AuthMessageResponse> => {
+    return api.delete<AuthMessageResponse>(`/auth/sessions/${id}`);
+  },
+
+  revokeAllOtherSessions: (): Promise<AuthMessageResponse> => {
+    return api.post<AuthMessageResponse>("/auth/sessions/revoke-all");
   },
 
   getMe: (): Promise<UserProfileResponse> => {

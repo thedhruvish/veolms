@@ -20,6 +20,8 @@ export interface TwoFactorFormProps {
   errorMessage?: string;
   onSubmit: (code: string) => void;
   onUsePasskey: () => void;
+  allowPasskey?: boolean;
+  allowAuthenticator?: boolean;
 }
 
 type TwoFactorMethod = TwoFactorFormProps["method"];
@@ -36,6 +38,8 @@ const METHOD_TABS: readonly (readonly [TwoFactorMethod, string, IconName])[] = [
 ];
 
 export function TwoFactorForm({
+  allowAuthenticator = true,
+  allowPasskey = true,
   code,
   errorMessage,
   method,
@@ -48,6 +52,7 @@ export function TwoFactorForm({
   const verifying = status === "verifying";
   const [invalidReason, setInvalidReason] = useState<string | null>(null);
   const error = invalidReason ?? errorMessage ?? null;
+  const hasBothMethods = allowPasskey && allowAuthenticator;
 
   const chooseMethod = (next: TwoFactorMethod) => {
     setInvalidReason(null);
@@ -75,43 +80,49 @@ export function TwoFactorForm({
     onSubmit(code);
   };
 
+  const subheadingText = hasBothMethods
+    ? "Choose a method to verify your identity"
+    : method === "passkey"
+      ? "Verify your identity with your passkey"
+      : "Enter the code from your authenticator app";
+
   return (
     <div className="auth-two-factor">
       <AuthBrandMark />
       <h1 className="auth-card__heading" id={AUTH_CARD_HEADING_ID}>
         Two-factor authentication
       </h1>
-      <p className="auth-card__subheading">
-        Choose a method to verify your identity
-      </p>
+      <p className="auth-card__subheading">{subheadingText}</p>
 
       <div className="auth-card__form-slot">
-        <div
-          aria-label="Verification method"
-          className="auth-method-switch"
-          role="tablist"
-        >
-          {METHOD_TABS.map(([value, label, glyph]) => (
-            <button
-              aria-selected={method === value}
-              className="auth-method-switch__tab"
-              key={value}
-              onClick={() => chooseMethod(value)}
-              onKeyDown={handleRovingTabKeyDown}
-              role="tab"
-              tabIndex={method === value ? 0 : -1}
-              type="button"
-            >
-              <Icon
-                aria-hidden
-                emphasis={method === value ? "bold" : "regular"}
-                name={glyph}
-                size={16}
-              />
-              {label}
-            </button>
-          ))}
-        </div>
+        {hasBothMethods ? (
+          <div
+            aria-label="Verification method"
+            className="auth-method-switch"
+            role="tablist"
+          >
+            {METHOD_TABS.map(([value, label, glyph]) => (
+              <button
+                aria-selected={method === value}
+                className="auth-method-switch__tab"
+                key={value}
+                onClick={() => chooseMethod(value)}
+                onKeyDown={handleRovingTabKeyDown}
+                role="tab"
+                tabIndex={method === value ? 0 : -1}
+                type="button"
+              >
+                <Icon
+                  aria-hidden
+                  emphasis={method === value ? "bold" : "regular"}
+                  name={glyph}
+                  size={16}
+                />
+                {label}
+              </button>
+            ))}
+          </div>
+        ) : null}
 
         {method === "passkey" ? (
           <div className="auth-two-factor__passkey">
@@ -164,13 +175,15 @@ export function TwoFactorForm({
               <Icon aria-hidden emphasis="bold" name="arrowRight" size={18} />
             </button>
 
-            <button
-              className="auth-two-factor__alternate"
-              onClick={() => chooseMethod("authenticator")}
-              type="button"
-            >
-              {USE_AUTHENTICATOR_ACTION}
-            </button>
+            {hasBothMethods ? (
+              <button
+                className="auth-two-factor__alternate"
+                onClick={() => chooseMethod("authenticator")}
+                type="button"
+              >
+                {USE_AUTHENTICATOR_ACTION}
+              </button>
+            ) : null}
           </div>
         ) : (
           <form className="auth-form" noValidate onSubmit={submit}>
@@ -215,13 +228,15 @@ export function TwoFactorForm({
               <Icon aria-hidden emphasis="bold" name="arrowRight" size={18} />
             </button>
 
-            <button
-              className="auth-two-factor__alternate"
-              onClick={() => chooseMethod("passkey")}
-              type="button"
-            >
-              {USE_PASSKEY_ACTION}
-            </button>
+            {hasBothMethods ? (
+              <button
+                className="auth-two-factor__alternate"
+                onClick={() => chooseMethod("passkey")}
+                type="button"
+              >
+                {USE_PASSKEY_ACTION}
+              </button>
+            ) : null}
           </form>
         )}
       </div>

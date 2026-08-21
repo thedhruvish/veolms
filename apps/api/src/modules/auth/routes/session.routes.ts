@@ -3,17 +3,17 @@ import {
   sessionParamsSchema,
   sessionResponseSchema,
 } from "@veolms/contracts";
-import { z } from "zod";
 
-import { errorResponse } from "../../lib/errors.ts";
-import { jsonResponse } from "../../lib/responses.ts";
-import type { RoutePlugin } from "../../lib/route-plugin.ts";
-import { createAuthContext } from "./auth.context.ts";
-import * as repository from "./auth.repository.ts";
+import { errorResponse } from "../../../lib/errors.ts";
+import { jsonResponse } from "../../../lib/responses.ts";
+import type { RoutePlugin } from "../../../lib/route-plugin.ts";
+import { createAuthContext } from "../auth.context.ts";
+import { createSessionController } from "../controllers/session.controller.ts";
 
 const sessionRoutes: RoutePlugin = async (app, options) => {
-  const { mfaVerified } = createAuthContext(options);
-  const { database } = options;
+  const context = createAuthContext(options);
+  const { mfaVerified } = context;
+  const controller = createSessionController(context);
 
   app.get(
     "/auth/sessions",
@@ -26,7 +26,7 @@ const sessionRoutes: RoutePlugin = async (app, options) => {
         response: {
           200: jsonResponse(
             "List of active sessions.",
-            z.array(sessionResponseSchema),
+            sessionResponseSchema.array(),
           ),
           401: errorResponse("Unauthorized."),
           403: errorResponse("MFA step-up required."),
@@ -34,22 +34,7 @@ const sessionRoutes: RoutePlugin = async (app, options) => {
       },
       preHandler: mfaVerified,
     },
-    async (request) => {
-      const currentSessionId = request.session!.id;
-      const sessions = await repository.listUserSessions(
-        database,
-        request.user!.id,
-      );
-
-      return sessions.map((session) => ({
-        id: session.id,
-        ipAddress: session.ip_address,
-        userAgent: session.user_agent,
-        isCurrent: session.id === currentSessionId,
-        createdAt: session.created_at.toISOString(),
-        lastUsedAt: session.last_used_at.toISOString(),
-      }));
-    },
+    controller.list,
   );
 
   app.delete(
@@ -69,17 +54,7 @@ const sessionRoutes: RoutePlugin = async (app, options) => {
       },
       preHandler: mfaVerified,
     },
-    async (request) => {
-      // Scoped by user id in the query, so a known session UUID belonging to
-      // someone else is a no-op rather than a cross-account revocation.
-      await repository.deleteUserSession(
-        database,
-        request.user!.id,
-        request.params.id,
-      );
-
-      return { message: "Session revoked" };
-    },
+    controller.revoke,
   );
 
   app.post(
@@ -102,15 +77,7 @@ const sessionRoutes: RoutePlugin = async (app, options) => {
       },
       preHandler: mfaVerified,
     },
-    async (request) => {
-      await repository.deleteOtherUserSessions(
-        database,
-        request.user!.id,
-        request.session!.id,
-      );
-
-      return { message: "All other sessions revoked" };
-    },
+    controller.revokeAll,
   );
 };
 

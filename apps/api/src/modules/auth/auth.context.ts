@@ -4,11 +4,33 @@ import {
   createAuthMiddleware,
   type AuthMiddleware,
 } from "../../middlewares/auth.middleware.ts";
-import { createAuthService, type AuthService } from "./auth.service.ts";
+import {
+  createAuthService,
+  type AuthService,
+} from "./services/auth.service.ts";
+import { createMfaService, type MfaService } from "./services/mfa.service.ts";
+import {
+  createOauthService,
+  type OauthService,
+} from "./services/oauth.service.ts";
+import { createOtpService, type OtpService } from "./services/otp.service.ts";
+import {
+  createSessionService,
+  type SessionService,
+} from "./services/session.service.ts";
+import {
+  createSetupService,
+  type SetupService,
+} from "./services/setup.service.ts";
 
 export interface AuthContext {
   middleware: AuthMiddleware;
-  service: AuthService;
+  authService: AuthService;
+  otpService: OtpService;
+  oauthService: OauthService;
+  sessionService: SessionService;
+  mfaService: MfaService;
+  setupService: SetupService;
   /** Requires a valid session, without asserting MFA step-up. */
   authenticated: AuthMiddleware["authenticate"][];
   /** Requires a valid session that has cleared MFA where the account has it. */
@@ -26,12 +48,24 @@ export function createAuthContext({
   database,
   services,
 }: RoutePluginOptions): AuthContext {
-  const middleware = createAuthMiddleware(database);
-
-  const service = createAuthService({
+  const otpService = createOtpService({
     database,
     services,
     academyName: config.RP_NAME,
+  });
+  const sessionService = createSessionService({ database });
+  const middleware = createAuthMiddleware(sessionService);
+  const authService = createAuthService({
+    database,
+    otpService,
+    sessionService,
+  });
+  const oauthService = createOauthService({ authService, sessionService });
+  const mfaService = createMfaService({ database, sessionService });
+  const setupService = createSetupService({
+    database,
+    authService,
+    sessionService,
   });
 
   const authenticated = [
@@ -41,7 +75,12 @@ export function createAuthContext({
 
   return {
     middleware,
-    service,
+    authService,
+    otpService,
+    oauthService,
+    sessionService,
+    mfaService,
+    setupService,
     authenticated,
     mfaVerified: [...authenticated, middleware.requireMfaVerified],
   };

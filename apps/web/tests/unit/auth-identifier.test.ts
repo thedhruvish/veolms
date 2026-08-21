@@ -40,11 +40,22 @@ describe("supported countries", () => {
       name: "India",
       dialCode: "+91",
       nationalDigits: 10,
+      flag: "🇮🇳",
     });
   });
 
-  it("returns undefined for a country it does not support yet", () => {
-    expect(findCountry("US")).toBeUndefined();
+  it("finds United States by its ISO code", () => {
+    expect(findCountry("US")).toEqual({
+      id: "US",
+      name: "United States",
+      dialCode: "+1",
+      nationalDigits: 10,
+      flag: "🇺🇸",
+    });
+  });
+
+  it("returns undefined for an invalid country code", () => {
+    expect(findCountry("XX")).toBeUndefined();
   });
 });
 
