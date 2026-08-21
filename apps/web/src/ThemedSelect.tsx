@@ -285,6 +285,7 @@ export function ThemedSelect<Value extends string>({
                 left: position.left,
                 top: position.top,
                 width: position.width,
+                boxSizing: "border-box",
                 maxHeight: position.maxHeight,
                 overflowY: "auto",
                 transform:
