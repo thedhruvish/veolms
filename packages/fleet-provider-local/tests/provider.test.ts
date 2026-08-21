@@ -1,5 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createLocalProvider, parsePidFromWorkerId } from "../src/provider.ts";
 
 describe("Local Fleet Provider", () => {
@@ -53,15 +56,66 @@ describe("Local Fleet Provider", () => {
     // Terminate worker
     await provider.terminateWorker(handle.providerWorkerId);
 
-    // Verify worker is terminated
+    // A deliberate, successful termination must be reported as TERMINATED
+    // everywhere — not "FAILED", which is what a SIGTERM exit (exitCode
+    // null) would otherwise be misclassified as.
     const statusAfter = await provider.getWorkerStatus(handle.providerWorkerId);
-    assert.ok(
-      statusAfter === "COMPLETED" ||
-        statusAfter === "FAILED" ||
-        statusAfter === "TERMINATED",
-    );
+    assert.equal(statusAfter, "TERMINATED");
 
     const healthAfter = await provider.healthCheck(handle.providerWorkerId);
     assert.equal(healthAfter.healthy, false);
+    assert.equal(healthAfter.state, "TERMINATED");
+
+    const workerAfter = await provider.getWorker(handle.providerWorkerId);
+    assert.ok(
+      workerAfter,
+      "getWorker() should still find the just-terminated worker",
+    );
+    assert.equal(workerAfter?.status, "TERMINATED");
+  });
+
+  it("getWorker() does not report PROCESSING once a worker has exited, even if its PID is later reused", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "veolms-local-provider-test-"));
+    const scriptPath = join(dir, "exit-immediately.js");
+    await writeFile(scriptPath, "process.exit(0);\n");
+
+    try {
+      const provider = createLocalProvider({
+        workerExecutable: process.execPath,
+        workerScriptPath: scriptPath,
+        gracePeriodMs: 1000,
+      });
+
+      const workerId = "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22";
+      // Spawn a process that exits almost immediately on its own (not via
+      // terminateWorker()), so managed.terminated gets set by the child's
+      // own "exit" event handler.
+      const handle = await provider.createWorker(workerId, {
+        cpu: 1,
+        memoryMb: 512,
+        architecture: "arm64",
+        storageGb: 10,
+        region: "local",
+        environmentVariables: {},
+      });
+
+      // Wait for the process to exit on its own.
+      for (let i = 0; i < 50; i++) {
+        const status = await provider.getWorkerStatus(handle.providerWorkerId);
+        if (status !== "PROCESSING") break;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+
+      const worker = await provider.getWorker(handle.providerWorkerId);
+      assert.ok(worker);
+      // Regardless of whatever PID now happens to be alive on the host,
+      // getWorker() must trust the recorded exit state, not a raw isAlive()
+      // check against a PID that may have been reused by an unrelated
+      // process in the meantime.
+      assert.notEqual(worker?.status, "PROCESSING");
+      assert.equal(worker?.status, "COMPLETED");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });

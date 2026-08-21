@@ -65,6 +65,7 @@ set -ex
 
 systemctl stop apt-daily.timer apt-daily-upgrade.timer || true
 systemctl kill --kill-who=all apt-daily.service apt-daily-upgrade.service || true
+systemctl mask apt-daily.timer apt-daily-upgrade.timer apt-daily.service apt-daily-upgrade.service unattended-upgrades.service || true
 
 while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do
   sleep 1

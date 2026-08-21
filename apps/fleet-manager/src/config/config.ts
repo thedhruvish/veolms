@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { resolveProviderName } from "../core/provider-resolver.ts";
 
 const baseFleetManagerConfigSchema = z.object({
   DATABASE_URL: z
@@ -17,14 +18,10 @@ const baseFleetManagerConfigSchema = z.object({
 
 export const fleetManagerConfigSchema = z.preprocess((raw) => {
   if (raw && typeof raw === "object") {
-    const record = raw as Record<string, unknown>;
-    const provider = record["PROVIDER"] ?? record["FLEET_PROVIDER"];
-    if (provider !== undefined) {
-      return {
-        ...record,
-        PROVIDER: provider,
-      };
-    }
+    const record = raw as Record<string, string | undefined>;
+    const provider = resolveProviderName(undefined, record);
+    const { PROVIDER: _rawProvider, ...rest } = record;
+    return provider !== undefined ? { ...rest, PROVIDER: provider } : rest;
   }
   return raw;
 }, baseFleetManagerConfigSchema);

@@ -110,6 +110,7 @@ interface SetupAnswers {
   readonly s3CredentialMode: CredentialMode | null;
   readonly allowedInstanceTypes: readonly string[];
   readonly bootMode: BootMode;
+  readonly amiId: string | null;
   readonly maxWorkers: number;
   readonly workerIdlePollSeconds: number;
   readonly useSpot: boolean;
@@ -153,6 +154,20 @@ function info(msg: string): void {
 }
 function warn(msg: string): void {
   console.log(`  ${yellow("⚠")} ${msg}`);
+}
+
+// S3 bucket names can't contain characters that matter to a shell (quotes,
+// `$`, backticks, etc.), so validating the format up front — before the
+// name is ever interpolated into an `aws s3api ...` command below — turns
+// a confusing raw shell/AWS-CLI failure into a clear re-prompt.
+const S3_BUCKET_NAME_PATTERN = /^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/;
+
+function isValidS3BucketName(name: string): boolean {
+  return (
+    S3_BUCKET_NAME_PATTERN.test(name) &&
+    !name.includes("..") &&
+    !/^\d+\.\d+\.\d+\.\d+$/.test(name)
+  );
 }
 
 async function ask(
@@ -325,6 +340,7 @@ export async function checkOrCreateRole(
           "ec2:TerminateInstances",
           "ec2:DescribeInstances",
           "ec2:DescribeInstanceStatus",
+          "ec2:DescribeImages",
           "ec2:CreateTags",
           "ec2:RequestSpotInstances",
         ],
@@ -973,6 +989,12 @@ async function generateEnvFiles(
     fleetEnv["AMI_ID"] = LOCALSTACK_DOCKER_AMI_ID;
     fleetEnv["AWS_ACCESS_KEY_ID"] = "test";
     fleetEnv["AWS_SECRET_ACCESS_KEY"] = "test";
+  } else if (answers.amiId) {
+    // writeEnvFile() below replaces the whole file, not just the keys
+    // listed here — without this, re-running the wizard for any reason
+    // would silently erase an AMI_ID that `pnpm fleet:build-ami` had
+    // already written.
+    fleetEnv["AMI_ID"] = answers.amiId;
   }
 
   await writeEnvFile(
@@ -1071,6 +1093,7 @@ function loadExistingConfig(repoRoot: string): Partial<SetupAnswers> {
     : ["c7g.xlarge", "c7g.2xlarge", "c6i.xlarge"];
   const bootMode: BootMode =
     combined["EC2_BOOT_MODE"] === "fresh" ? "fresh" : "ami";
+  const amiId = combined["AMI_ID"] || null;
   const maxWorkers = parseInt(combined["MAX_WORKERS"] || "8", 10) || 8;
   const workerIdlePollSeconds =
     parseInt(combined["WORKER_IDLE_POLL_SECONDS"] || "15", 10) || 15;
@@ -1096,6 +1119,7 @@ function loadExistingConfig(repoRoot: string): Partial<SetupAnswers> {
     s3CredentialMode,
     allowedInstanceTypes,
     bootMode,
+    amiId,
     maxWorkers,
     workerIdlePollSeconds,
     useSpot,
@@ -1233,6 +1257,14 @@ async function runSetupFlow(
       if (!bucketInput) {
         s3BucketName = null;
         break;
+      }
+
+      if (!isValidS3BucketName(bucketInput)) {
+        warn(
+          `"${bucketInput}" is not a valid S3 bucket name — use 3-63 lowercase letters, digits, dots, or hyphens, starting and ending with a letter or digit.`,
+        );
+        defaultBucket = "";
+        continue;
       }
 
       info(`Checking bucket ${bold(bucketInput)}...`);
@@ -1546,6 +1578,14 @@ async function runSetupFlow(
   await ensureLogGroup(cw, LOG_GROUP_WORKERS);
   await ensureLogGroup(cw, LOG_GROUP_FLEET);
 
+  // Not a wizard question — build-ami.ts is what actually sets this, by
+  // writing AMI_ID into apps/fleet-manager/.env after a successful build.
+  // Since this process is launched via `node --env-file-if-exists=.env`,
+  // process.env already reflects that by the time this runs; initialDefaults
+  // covers the same value when this flow was entered via "Interactive
+  // Re-configure" with an explicitly-loaded existing config.
+  const amiId = initialDefaults?.amiId ?? process.env["AMI_ID"] ?? null;
+
   let lambdaFunctionArn: string | null = null;
   if (fleetMode === "serverless") {
     info("Setting up Lambda function...");
@@ -1576,6 +1616,8 @@ async function runSetupFlow(
       lambdaEnvVars["AWS_SECRET_ACCESS_KEY"] = "test";
       lambdaEnvVars["AMI_ID"] = LOCALSTACK_DOCKER_AMI_ID;
       lambdaEnvVars["EC2_VM_MANAGER"] = "docker";
+    } else if (amiId) {
+      lambdaEnvVars["AMI_ID"] = amiId;
     }
     lambdaFunctionArn = await setupLambda(region, workerRoleArn, lambdaEnvVars);
   }
@@ -1608,6 +1650,7 @@ async function runSetupFlow(
     s3CredentialMode,
     allowedInstanceTypes,
     bootMode,
+    amiId,
     maxWorkers,
     workerIdlePollSeconds,
     useSpot,
@@ -1731,6 +1774,7 @@ async function runUpdateFlow(
       "c6i.xlarge",
     ];
   const bootMode: BootMode = existing.bootMode ?? "ami";
+  const amiId: string | null = existing.amiId ?? null;
   const maxWorkers: number = existing.maxWorkers ?? 8;
   const workerIdlePollSeconds: number = existing.workerIdlePollSeconds ?? 15;
   const useSpot: boolean = existing.useSpot ?? true;
@@ -1852,6 +1896,8 @@ ${bold("Next Steps:")}
       lambdaEnvVars["AWS_SECRET_ACCESS_KEY"] = "test";
       lambdaEnvVars["AMI_ID"] = LOCALSTACK_DOCKER_AMI_ID;
       lambdaEnvVars["EC2_VM_MANAGER"] = "docker";
+    } else if (amiId) {
+      lambdaEnvVars["AMI_ID"] = amiId;
     }
     lambdaFunctionArn = await setupLambda(region, workerRoleArn, lambdaEnvVars);
   }
@@ -1873,6 +1919,7 @@ ${bold("Next Steps:")}
     s3CredentialMode,
     allowedInstanceTypes,
     bootMode,
+    amiId,
     maxWorkers,
     workerIdlePollSeconds,
     useSpot,

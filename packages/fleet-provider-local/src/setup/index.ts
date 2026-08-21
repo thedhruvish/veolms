@@ -5,7 +5,7 @@
  * This setup verifies that the local machine has the required tools
  * installed: Node.js 24+ and FFmpeg.
  *
- * Dispatched via: apps/fleet-manager/src/infra.ts
+ * Dispatched via: apps/fleet-manager/src/cli.ts's "infra" command
  * Triggered by:   pnpm fleet:infra  (when FLEET_PROVIDER=local)
  */
 

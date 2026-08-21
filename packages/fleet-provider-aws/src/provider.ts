@@ -1,4 +1,5 @@
 import {
+  DescribeImagesCommand,
   DescribeInstancesCommand,
   DescribeInstanceStatusCommand,
   EC2Client,
@@ -36,10 +37,30 @@ export interface AwsProviderConfig {
   readonly keyName?: string;
   readonly iamInstanceProfile?: string;
   readonly useSpot?: boolean;
-  readonly usePrebakedAmi?: boolean;
   readonly defaultEnv?: Readonly<Record<string, string>>;
   readonly ec2Client?: EC2Client;
   readonly ssmClient?: SSMClient;
+}
+
+const DEFAULT_ROOT_DEVICE_NAME = "/dev/sda1";
+
+
+async function resolveRootDeviceName(
+  ec2: EC2Client,
+  imageId: string,
+): Promise<string> {
+  try {
+    const response = await ec2.send(
+      new DescribeImagesCommand({ ImageIds: [imageId] }),
+    );
+    return response.Images?.[0]?.RootDeviceName ?? DEFAULT_ROOT_DEVICE_NAME;
+  } catch (err: unknown) {
+    console.error(
+      `Failed to resolve root device name for AMI ${imageId}, falling back to ${DEFAULT_ROOT_DEVICE_NAME}:`,
+      err,
+    );
+    return DEFAULT_ROOT_DEVICE_NAME;
+  }
 }
 
 export function mapEc2StateToWorkerStatus(stateName?: string): WorkerStatus {
@@ -103,11 +124,16 @@ export function createAwsProvider(
         (isLocalStack
           ? defaultLocalStackAmi
           : await resolveDebianAmiId(ssm, region, spec.architecture));
+      // LocalStack's EC2 mock doesn't model real AMI metadata (see the
+      // isLocalStack comment above), so DescribeImages there wouldn't
+      // return a meaningful RootDeviceName — skip straight to the default.
+      const rootDeviceName = isLocalStack
+        ? DEFAULT_ROOT_DEVICE_NAME
+        : await resolveRootDeviceName(ec2, imageId);
 
       const userDataScript = generateUserDataScript({
         workerId: id,
         spec,
-        usePrebakedAmi: config.usePrebakedAmi,
         extraEnv: config.defaultEnv,
       });
 
@@ -128,7 +154,7 @@ export function createAwsProvider(
         InstanceMarketOptions: useSpot ? { MarketType: "spot" } : undefined,
         BlockDeviceMappings: [
           {
-            DeviceName: "/dev/sda1",
+            DeviceName: rootDeviceName,
             Ebs: {
               VolumeSize: Math.max(30, spec.storageGb),
               VolumeType: "gp3",

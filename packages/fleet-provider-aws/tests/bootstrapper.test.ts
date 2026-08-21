@@ -6,7 +6,7 @@ import {
 } from "../src/bootstrapper.ts";
 
 describe("EC2 UserData Bootstrapper Generator", () => {
-  it("should generate Debian 13 / Linux bootstrapper script with environment variables", () => {
+  it("should generate a bootstrapper script with environment variables and install-if-missing checks", () => {
     const script = generateUserDataScript({
       workerId: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
       spec: {
@@ -20,7 +20,6 @@ describe("EC2 UserData Bootstrapper Generator", () => {
           DATABASE_URL: "postgresql://veolms:veolms@db:5432/veolms",
         },
       },
-      usePrebakedAmi: false,
     });
 
     assert.ok(script.startsWith("#!/bin/bash"));
@@ -28,10 +27,13 @@ describe("EC2 UserData Bootstrapper Generator", () => {
       script.includes('WORKER_ID="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"'),
     );
     assert.ok(script.includes('JOB_ID="job-123"'));
-    assert.ok(script.includes("apt-get install -y ffmpeg"));
+     assert.ok(script.includes("apt-get install -y ffmpeg"));
+    assert.ok(script.includes("if ! command -v node"));
+    assert.ok(script.includes("if ! command -v ffmpeg"));
+    assert.ok(script.includes("if ! command -v aws"));
   });
 
-  it("should generate pre-baked AMI bootstrapper with systemd service start", () => {
+  it("always installs a trap-based cleanup that uploads the log and terminates on any exit", () => {
     const script = generateUserDataScript({
       workerId: "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
       spec: {
@@ -44,17 +46,49 @@ describe("EC2 UserData Bootstrapper Generator", () => {
           JOB_ID: "job-456",
         },
       },
-      usePrebakedAmi: true,
     });
 
-    assert.ok(
-      script.includes(
-        "systemctl restart veolms-media-worker || systemctl start veolms-media-worker",
-      ),
-    );
+    assert.ok(script.includes("trap cleanup_and_terminate EXIT"));
+    assert.ok(script.includes("aws s3 cp /var/log/veolms-bootstrap.log"));
+    assert.ok(script.includes("aws ec2 terminate-instances"));
     assert.ok(
       script.includes('WORKER_ID="b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22"'),
     );
+  });
+
+  it("resolves BUCKET_NAME only after worker.env has been sourced, not before", () => {
+    const script = generateUserDataScript({
+      workerId: "c2eebc99-9c0b-4ef8-bb6d-6bb9bd380a33",
+      spec: {
+        cpu: 2,
+        memoryMb: 2048,
+        architecture: "arm64",
+        storageGb: 10,
+        region: "us-east-1",
+        environmentVariables: {},
+      },
+      extraEnv: { S3_BUCKET: "real-bucket-name" },
+    });
+
+    const sourceIndex = script.indexOf("source /opt/veolms/worker.env");
+    const realResolutionIndex = script.indexOf(
+      'BUCKET_NAME="${S3_BUCKET:-${S3_BUCKET_NAME:-}}"',
+    );
+
+    assert.ok(sourceIndex !== -1, "script must source worker.env");
+    assert.ok(
+      realResolutionIndex !== -1,
+      "script must resolve BUCKET_NAME from S3_BUCKET/S3_BUCKET_NAME",
+    );
+    assert.ok(
+      realResolutionIndex > sourceIndex,
+      "BUCKET_NAME must be resolved after worker.env is sourced, not before",
+    );
+
+    // And the download step (further down) must come after that real
+    // resolution too, not accidentally reference an earlier empty default.
+    const downloadIndex = script.indexOf('aws s3 cp "s3://$BUCKET_NAME');
+    assert.ok(downloadIndex > realResolutionIndex);
   });
 
   it("should encode UserData script to Base64", () => {

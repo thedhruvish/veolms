@@ -36,6 +36,10 @@ const QUALITIES: VideoQualityLevel[] = (
   process.env.QUALITIES?.split(",") ?? ["240p"]
 ).map((q) => videoQualityLevelSchema.parse(q.trim()));
 
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
 async function main(): Promise<void> {
   const config = loadServerConfig(process.env);
   const db = createDatabase(config.DATABASE_URL);
@@ -116,9 +120,23 @@ async function main(): Promise<void> {
     invokeArgs.push(outFile);
 
     try {
-      execFileSync("aws", invokeArgs, { stdio: "pipe" });
+      // aws lambda invoke's own stdout JSON carries FunctionError when the
+      // function threw unhandled — that's distinct from (and checked
+      // before) the payload written to outFile, since a crash produces an
+      // {errorMessage, errorType, trace} envelope there, not the
+      // {success, ...} shape a normal response has.
+      const invokeResultRaw = execFileSync("aws", invokeArgs, {
+        stdio: "pipe",
+      }).toString();
       const responseRaw = readFileSync(outFile, "utf-8").trim();
       unlinkSync(outFile);
+
+      let invokeResult: Record<string, unknown> = {};
+      try {
+        invokeResult = JSON.parse(invokeResultRaw);
+      } catch {
+        // Non-JSON CLI output; fall through to inspecting the payload below.
+      }
 
       let parsedPayload: Record<string, unknown> = {};
       try {
@@ -129,6 +147,20 @@ async function main(): Promise<void> {
             : topLevel;
       } catch {
         parsedPayload = { raw: responseRaw };
+      }
+
+      const crashed =
+        Boolean(invokeResult["FunctionError"]) ||
+        typeof parsedPayload["errorMessage"] === "string";
+
+      if (crashed) {
+        console.error(
+          `✘ Lambda function crashed (FunctionError: ${invokeResult["FunctionError"] ?? "unknown"}): ${
+            parsedPayload["errorMessage"] ?? responseRaw
+          }`,
+        );
+        process.exitCode = 1;
+        return;
       }
 
       if (parsedPayload.success === false) {
@@ -149,14 +181,27 @@ async function main(): Promise<void> {
     }
 
     console.info(`\n[3/3] Checking worker and EC2 instance status...`);
-    // Allow brief time for instance record in database
-    await new Promise((r) => setTimeout(r, 2000));
-
-    const updatedJob = await db
-      .selectFrom("jobs")
-      .select(["id", "status", "worker_id", "error_message"])
-      .where("id", "=", jobId)
-      .executeTakeFirst();
+    // Poll for the worker_id to land instead of a single fixed-delay check
+    // — Lambda's EC2 launch (spot capacity lookup, IAM propagation) can
+    // take longer than a couple seconds to persist the workers row.
+    let updatedJob:
+      | {
+          id: string;
+          status: string;
+          worker_id: string | null;
+          error_message: string | null;
+        }
+      | undefined;
+    const maxPollAttempts = 15;
+    for (let attempt = 0; attempt < maxPollAttempts; attempt++) {
+      updatedJob = await db
+        .selectFrom("jobs")
+        .select(["id", "status", "worker_id", "error_message"])
+        .where("id", "=", jobId)
+        .executeTakeFirst();
+      if (updatedJob?.worker_id) break;
+      await new Promise((r) => setTimeout(r, 1000));
+    }
 
     if (updatedJob?.worker_id) {
       const worker = await db
@@ -210,25 +255,31 @@ async function main(): Promise<void> {
               );
               console.info(`    Key Pair:          ${keyName}`);
 
-              // Find matching .pem key file in repo root
-              const repoRoot = resolve(process.cwd(), "../..");
-              const possibleKeys = [
-                join(process.cwd(), "mykey.pem"),
-                join(repoRoot, "mykey.pem"),
-                join(process.cwd(), `${keyName}.pem`),
-                join(repoRoot, `${keyName}.pem`),
-              ];
-              const foundKey = possibleKeys.find((k) => existsSync(k));
-              const keyArg = foundKey
-                ? `-i "${foundKey}"`
-                : `-i "${keyName}.pem"`;
-
               if (publicIp) {
+                // Find the matching .pem key file, checked only once we
+                // actually need it (the common case right after launch is
+                // "IP still being allocated," which never reaches here).
+                // The instance's real key name is checked before the
+                // generic "mykey.pem" fallback, so a stale/unrelated
+                // mykey.pem left over from another instance is never
+                // picked over the key that actually matches this one.
+                const repoRoot = resolve(process.cwd(), "../..");
+                const possibleKeys = [
+                  join(process.cwd(), `${keyName}.pem`),
+                  join(repoRoot, `${keyName}.pem`),
+                  join(process.cwd(), "mykey.pem"),
+                  join(repoRoot, "mykey.pem"),
+                ];
+                const foundKey = possibleKeys.find((k) => existsSync(k));
+                const keyPath = foundKey ?? `${keyName}.pem`;
+                const keyArg = `-i ${shellQuote(keyPath)}`;
+                const target = `admin@${shellQuote(publicIp)}`;
+
                 console.info(`\n  SSH Access to Worker:`);
-                console.info(`    ssh ${keyArg} admin@${publicIp}`);
+                console.info(`    ssh ${keyArg} ${target}`);
                 console.info(`\n  Live Worker Logs:`);
                 console.info(
-                  `    ssh ${keyArg} admin@${publicIp} "tail -f /var/log/veolms-bootstrap.log /var/log/veolms-worker.log"`,
+                  `    ssh ${keyArg} ${target} ${shellQuote("tail -f /var/log/veolms-bootstrap.log /var/log/veolms-worker.log")}`,
                 );
               } else {
                 console.info(

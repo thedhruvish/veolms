@@ -1,6 +1,14 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { extractVideoExtension } from "../src/processor.ts";
+import type { Kysely } from "kysely";
+import type { Database } from "@veolms/database";
+import type { FleetEventType } from "@veolms/fleet-types";
+import { loadMediaWorkerConfig } from "../src/config.ts";
+import {
+  executeTranscodeJob,
+  extractVideoExtension,
+} from "../src/processor.ts";
+import type { MediaWorkerContext } from "../src/worker.ts";
 
 describe("extractVideoExtension", () => {
   it("extracts the extension from a plain S3 key", () => {
@@ -27,5 +35,289 @@ describe("extractVideoExtension", () => {
       extractVideoExtension("https://cdn.example.com/clip.webm#t=10"),
       "webm",
     );
+  });
+});
+
+const WORKER_ID = "worker-1";
+const JOB_ID = "job-1";
+
+const VALID_REQUIREMENTS = {
+  hardware: {
+    minCpu: 4,
+    minMemoryMb: 8192,
+    architecture: "arm64",
+    storageGb: 100,
+    estimatedDurationSeconds: 600,
+  },
+  qualities: ["720p"],
+  segmentDurationSeconds: 6,
+};
+
+function makeChain(
+  onTerminal: () => unknown,
+  onSet?: (payload: unknown) => void,
+): any {
+  const chain: any = {};
+  for (const m of [
+    "select",
+    "selectAll",
+    "where",
+    "orderBy",
+    "limit",
+    "forUpdate",
+    "skipLocked",
+    "values",
+  ]) {
+    chain[m] = () => chain;
+  }
+  chain.set = (payload: unknown) => {
+    onSet?.(payload);
+    return chain;
+  };
+  chain.execute = async () => onTerminal();
+  chain.executeTakeFirst = async () => onTerminal();
+  return chain;
+}
+
+/**
+ * Builds a fake db that lets executeTranscodeJob's claim transaction and
+ * (optionally) its retry/attempt-limit failure transaction run for real,
+ * while short-circuiting before any real fs/ffmpeg/S3 work by making the
+ * worker_monitoring update throw right after a successful claim — the
+ * earliest point after ownership is established but before any I/O.
+ */
+function buildFakeDb(options: {
+  jobRow: Record<string, unknown>;
+  workerRow: Record<string, unknown> | undefined;
+  workerMonitoringThrows?: boolean;
+  jobsSetCalls: unknown[];
+  workersSetCalls: unknown[];
+}): Kysely<Database> {
+  const {
+    jobRow,
+    workerRow,
+    workerMonitoringThrows,
+    jobsSetCalls,
+    workersSetCalls,
+  } = options;
+
+  function makeTrx() {
+    return {
+      selectFrom(table: string) {
+        if (table === "workers") return makeChain(() => workerRow);
+        throw new Error(`trx: unexpected selectFrom table ${table}`);
+      },
+      updateTable(table: string) {
+        if (table === "jobs") {
+          return makeChain(
+            () => ({ numUpdatedRows: 1n }),
+            (payload) => jobsSetCalls.push(payload),
+          );
+        }
+        if (table === "workers") {
+          return makeChain(
+            () => undefined,
+            (payload) => workersSetCalls.push(payload),
+          );
+        }
+        throw new Error(`trx: unexpected updateTable ${table}`);
+      },
+    };
+  }
+
+  return {
+    selectFrom(table: string) {
+      if (table === "jobs") return makeChain(() => jobRow);
+      throw new Error(`db: unexpected selectFrom ${table}`);
+    },
+    updateTable(table: string) {
+      if (table === "worker_monitoring") {
+        return makeChain(() => {
+          if (workerMonitoringThrows) {
+            throw new Error("worker_monitoring update failed (simulated)");
+          }
+          return undefined;
+        });
+      }
+      throw new Error(`db: unexpected top-level updateTable ${table}`);
+    },
+    transaction() {
+      return {
+        execute: async (cb: (trx: unknown) => Promise<unknown>) =>
+          cb(makeTrx()),
+      };
+    },
+  } as unknown as Kysely<Database>;
+}
+
+function buildCtx(
+  db: Kysely<Database>,
+  recordedEvents: Array<{
+    event: FleetEventType;
+    jobId?: string | null;
+    metadata?: Readonly<Record<string, unknown>>;
+  }>,
+): MediaWorkerContext {
+  return {
+    workerId: WORKER_ID,
+    db,
+    config: loadMediaWorkerConfig({
+      WORKER_ID: "11111111-1111-4111-8111-111111111111",
+    }),
+    stopHeartbeat: async () => undefined,
+    recordEvent: async (event, jobId, metadata) => {
+      recordedEvents.push({ event, jobId, metadata });
+    },
+  };
+}
+
+describe("executeTranscodeJob — claim and retry logic", () => {
+  it("rejects claiming a job whose hardware requirements exceed the worker's recorded capacity", async () => {
+    const jobsSetCalls: unknown[] = [];
+    const workersSetCalls: unknown[] = [];
+    const recordedEvents: Array<{ event: FleetEventType }> = [];
+
+    const db = buildFakeDb({
+      jobRow: {
+        id: JOB_ID,
+        status: "QUEUED",
+        worker_id: null,
+        video_key: "raw/video.mp4",
+        output_prefix: "out/job-1",
+        requirements: VALID_REQUIREMENTS,
+        attempts: 0,
+        max_attempts: 3,
+        started_at: null,
+      },
+      // Worker's actual capacity is well below what the job requires.
+      workerRow: {
+        id: WORKER_ID,
+        cpu: 1,
+        memory_mb: 1024,
+        storage_gb: 10,
+        architecture: "arm64",
+      },
+      jobsSetCalls,
+      workersSetCalls,
+    });
+
+    const ctx = buildCtx(db, recordedEvents);
+
+    await assert.rejects(
+      () => executeTranscodeJob(ctx, JOB_ID),
+      /does not meet/,
+    );
+
+    // The job was never actually claimed or touched, and no failure/retry
+    // bookkeeping ran, since the mismatch is caught before ownership.
+    assert.equal(jobsSetCalls.length, 0);
+    assert.equal(workersSetCalls.length, 0);
+    assert.equal(recordedEvents.length, 0);
+  });
+
+  it("requeues a failed job for retry when attempts remain below max_attempts", async () => {
+    const jobsSetCalls: any[] = [];
+    const workersSetCalls: any[] = [];
+    const recordedEvents: Array<{
+      event: FleetEventType;
+      jobId?: string | null;
+      metadata?: Readonly<Record<string, unknown>>;
+    }> = [];
+
+    const db = buildFakeDb({
+      jobRow: {
+        id: JOB_ID,
+        status: "QUEUED",
+        worker_id: null,
+        video_key: "raw/video.mp4",
+        output_prefix: "out/job-1",
+        requirements: VALID_REQUIREMENTS,
+        attempts: 0,
+        max_attempts: 3,
+        started_at: null,
+      },
+      workerRow: {
+        id: WORKER_ID,
+        cpu: 8,
+        memory_mb: 16384,
+        storage_gb: 200,
+        architecture: "arm64",
+      },
+      workerMonitoringThrows: true,
+      jobsSetCalls,
+      workersSetCalls,
+    });
+
+    const ctx = buildCtx(db, recordedEvents);
+
+    await assert.rejects(
+      () => executeTranscodeJob(ctx, JOB_ID),
+      /worker_monitoring update failed/,
+    );
+
+    // First set() call is the claim; second is the failure/retry update.
+    assert.equal(jobsSetCalls.length, 2);
+    assert.equal(jobsSetCalls[1].status, "QUEUED");
+    assert.equal(jobsSetCalls[1].attempts, 1);
+    assert.equal(jobsSetCalls[1].worker_id, null);
+    assert.equal(jobsSetCalls[1].failed_at, null);
+
+    assert.equal(workersSetCalls.length, 2);
+    assert.equal(workersSetCalls[1].status, "READY");
+    assert.equal(workersSetCalls[1].job_id, null);
+
+    const jobFailedEvent = recordedEvents.find((e) => e.event === "JOB_FAILED");
+    assert.ok(jobFailedEvent, "JOB_FAILED event should be recorded");
+    assert.equal(jobFailedEvent?.metadata?.["willRetry"], true);
+    assert.equal(jobFailedEvent?.metadata?.["attempts"], 1);
+  });
+
+  it("marks a job FAILED once max_attempts is reached", async () => {
+    const jobsSetCalls: any[] = [];
+    const workersSetCalls: any[] = [];
+    const recordedEvents: Array<{
+      event: FleetEventType;
+      jobId?: string | null;
+      metadata?: Readonly<Record<string, unknown>>;
+    }> = [];
+
+    const db = buildFakeDb({
+      jobRow: {
+        id: JOB_ID,
+        status: "QUEUED",
+        worker_id: null,
+        video_key: "raw/video.mp4",
+        output_prefix: "out/job-1",
+        requirements: VALID_REQUIREMENTS,
+        attempts: 2,
+        max_attempts: 3,
+        started_at: null,
+      },
+      workerRow: {
+        id: WORKER_ID,
+        cpu: 8,
+        memory_mb: 16384,
+        storage_gb: 200,
+        architecture: "arm64",
+      },
+      workerMonitoringThrows: true,
+      jobsSetCalls,
+      workersSetCalls,
+    });
+
+    const ctx = buildCtx(db, recordedEvents);
+
+    await assert.rejects(() => executeTranscodeJob(ctx, JOB_ID));
+
+    assert.equal(jobsSetCalls.length, 2);
+    assert.equal(jobsSetCalls[1].status, "FAILED");
+    assert.equal(jobsSetCalls[1].attempts, 3);
+    assert.ok(jobsSetCalls[1].failed_at instanceof Date);
+
+    assert.equal(workersSetCalls.length, 2);
+    assert.equal(workersSetCalls[1].status, "FAILED");
+
+    const jobFailedEvent = recordedEvents.find((e) => e.event === "JOB_FAILED");
+    assert.equal(jobFailedEvent?.metadata?.["willRetry"], false);
   });
 });

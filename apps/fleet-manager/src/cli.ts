@@ -10,7 +10,10 @@ import { bold, cyan, dim, red } from "@veolms/fleet-types/terminal";
 import { loadFleetManagerConfig } from "./config/config.ts";
 import { loadModuleFunction } from "./core/dynamic-module.ts";
 import { createJobManager } from "./core/job-manager.ts";
-import { resolveFleetProvider } from "./core/provider-resolver.ts";
+import {
+  resolveFleetProvider,
+  resolveProviderName,
+} from "./core/provider-resolver.ts";
 import {
   getFleetHealthSummary,
   getJobDiagnostics,
@@ -61,11 +64,24 @@ export async function runCli(
   argv: readonly string[] = process.argv.slice(2),
 ): Promise<void> {
   const { command, positional, flags } = parseCliArgs(argv);
-  const cliProvider = flags["provider"] as string | undefined;
+
+if (flags["provider"] === true) {
+    console.error(
+      `${red("✘")} --provider requires a value, e.g. --provider=aws`,
+    );
+    process.exit(1);
+  }
+  const cliProvider =
+    typeof flags["provider"] === "string" ? flags["provider"] : undefined;
+
   const config = loadFleetManagerConfig(
     cliProvider ? { ...process.env, PROVIDER: cliProvider } : process.env,
   );
-  const db = createDatabase(config.DATABASE_URL);
+let dbInstance: ReturnType<typeof createDatabase> | undefined;
+  const getDb = () => {
+    dbInstance ??= createDatabase(config.DATABASE_URL);
+    return dbInstance;
+  };
   const workerScript =
     config.MEDIA_WORKER_SCRIPT_PATH ??
     (existsSync(join(process.cwd(), "apps/media-worker/src/index.ts"))
@@ -136,7 +152,7 @@ export async function runCli(
         });
       }
 
-      const jobManager = createJobManager({ db, config });
+      const jobManager = createJobManager({ db: getDb(), config });
       const job = await jobManager.queueJob({
         videoKey,
         outputPrefix,
@@ -158,7 +174,7 @@ export async function runCli(
         process.exit(1);
       }
 
-      const diagnostics = await getJobDiagnostics(db, jobId);
+      const diagnostics = await getJobDiagnostics(getDb(), jobId);
       if (!diagnostics) {
         console.error(`Error: Job not found with ID '${jobId}'`);
         process.exit(1);
@@ -206,7 +222,7 @@ export async function runCli(
     }
 
     case "workers": {
-      const workers = await db
+      const workers = await getDb()
         .selectFrom("workers")
         .selectAll()
         .orderBy("created_at", "desc")
@@ -223,7 +239,7 @@ export async function runCli(
     }
 
     case "jobs": {
-      const jobs = await db
+      const jobs = await getDb()
         .selectFrom("jobs")
         .selectAll()
         .orderBy("created_at", "desc")
@@ -240,7 +256,7 @@ export async function runCli(
     }
 
     case "health": {
-      const summary = await getFleetHealthSummary(db, heartbeatTimeoutMs);
+      const summary = await getFleetHealthSummary(getDb(), heartbeatTimeoutMs);
       console.info(`\n=== FLEET HEALTH SUMMARY ===`);
       console.info(`Queued Jobs:     ${summary.queuedJobsCount}`);
       console.info(`Processing Jobs: ${summary.processingJobsCount}`);
@@ -256,32 +272,33 @@ export async function runCli(
       const provider = await resolveFleetProvider(config.PROVIDER, {
         workerScriptPath: workerScript,
       });
-      const pruned = await pruneZombieWorkers(db, provider, heartbeatTimeoutMs);
+      const pruned = await pruneZombieWorkers(
+        getDb(),
+        provider,
+        heartbeatTimeoutMs,
+      );
       console.info(`✓ Pruned ${pruned.length} stalled workers.`);
       break;
     }
 
     case "infra": {
-      const infraProvider = (
-        cliProvider ??
-        process.env["FLEET_PROVIDER"] ??
-        process.env["PROVIDER"] ??
-        ""
-      )
-        .toLowerCase()
-        .trim();
+      const infraProvider = resolveProviderName(cliProvider, process.env) ?? "";
 
       if (!infraProvider) {
         console.error(`
-  ${red("✘ FLEET_PROVIDER is not set.")}
+  ${red("✘ No provider set.")}
 
   Set it before running infra setup:
 
-    ${bold("Option 1 — Environment variable:")}
+    ${bold("Option 1 — CLI flag:")}
+      ${cyan("pnpm fleet:infra --provider=aws")}
+      ${cyan("pnpm fleet:infra --provider=local")}
+
+    ${bold("Option 2 — Environment variable:")}
       ${cyan("FLEET_PROVIDER=aws pnpm fleet:infra")}
       ${cyan("FLEET_PROVIDER=local pnpm fleet:infra")}
 
-    ${bold("Option 2 — .env file")} ${dim("(apps/fleet-manager/.env):")}
+    ${bold("Option 3 — .env file")} ${dim("(apps/fleet-manager/.env):")}
       ${cyan('FLEET_PROVIDER="aws"')}
 
   ${bold("Supported providers:")}
@@ -304,25 +321,32 @@ export async function runCli(
 
       const packageName = `@veolms/fleet-provider-${infraProvider}/setup`;
 
+      let setupFn: () => Promise<void>;
       try {
-        try {
-          const setupFn = await loadModuleFunction<() => Promise<void>>(
-            packageName,
-            [
-              "runAwsInfraSetup",
-              "runLocalInfraSetup",
-              "runInfraSetup",
-              "default",
-            ],
-            `Provider setup package "${packageName}" does not export a setup function.`,
-          );
-          await setupFn();
-        } catch (err: unknown) {
-          const msg = err instanceof Error ? err.message : String(err);
-          throw new Error(
-            `Failed to load setup module for provider "${infraProvider}" (${packageName}). Run "pnpm fleet:provider" to install it. Details: ${msg}`,
-          );
-        }
+        setupFn = await loadModuleFunction<() => Promise<void>>(
+          packageName,
+          [
+            "runAwsInfraSetup",
+            "runLocalInfraSetup",
+            "runInfraSetup",
+            "default",
+          ],
+          `Provider setup package "${packageName}" does not export a setup function.`,
+        );
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(
+          `\n  ${red("✘ Infrastructure setup failed:")} Failed to load setup module for provider "${infraProvider}" (${packageName}). Run "pnpm fleet:provider" to install it. Details: ${msg}\n`,
+        );
+        process.exit(1);
+      }
+
+      try {
+        // Outside the try above so a real provisioning failure (bad AWS
+        // credentials, an S3 bucket name conflict, IAM propagation
+        // timeout) propagates with its own message instead of being
+        // mislabeled as "failed to load the module."
+        await setupFn();
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         console.error(`\n  ${red("✘ Infrastructure setup failed:")} ${msg}\n`);

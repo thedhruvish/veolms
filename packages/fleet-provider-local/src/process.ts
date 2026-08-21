@@ -5,8 +5,11 @@ export interface ManagedProcess {
   readonly pid: number;
   readonly child: ChildProcess;
   readonly startedAt: Date;
+  readonly cwd: string;
+  readonly env: Readonly<Record<string, string>>;
   exitCode: number | null;
   terminated: boolean;
+  terminatedByRequest: boolean;
 }
 
 export class LocalProcessRegistry {
@@ -21,14 +24,16 @@ export class LocalProcessRegistry {
     cwd?: string;
   }): ManagedProcess {
     const { workerId, command, args, env, cwd } = options;
+    const resolvedCwd = cwd ?? process.cwd();
 
     const isPosix = process.platform !== "win32";
+
     const child = spawn(command, [...args], {
       env: {
         ...process.env,
         ...env,
       },
-      cwd: cwd ?? process.cwd(),
+      cwd: resolvedCwd,
       detached: isPosix,
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -42,8 +47,11 @@ export class LocalProcessRegistry {
       pid: child.pid,
       child,
       startedAt: new Date(),
+      cwd: resolvedCwd,
+      env,
       exitCode: null,
       terminated: false,
+      terminatedByRequest: false,
     };
 
     child.on("exit", (code) => {
@@ -119,11 +127,16 @@ export class LocalProcessRegistry {
   }
 
   public async terminate(pid: number, gracePeriodMs = 5000): Promise<void> {
-    if (!this.isAlive(pid)) {
+    const markTerminated = () => {
       const managed = this.getByPid(pid);
       if (managed) {
         managed.terminated = true;
+        managed.terminatedByRequest = true;
       }
+    };
+
+    if (!this.isAlive(pid)) {
+      markTerminated();
       return;
     }
 
@@ -135,10 +148,7 @@ export class LocalProcessRegistry {
     while (Date.now() - start < gracePeriodMs) {
       await new Promise((resolve) => setTimeout(resolve, checkInterval));
       if (!this.isAlive(pid)) {
-        const managed = this.getByPid(pid);
-        if (managed) {
-          managed.terminated = true;
-        }
+        markTerminated();
         return;
       }
     }
@@ -148,10 +158,7 @@ export class LocalProcessRegistry {
       this.killProcessOrGroup(pid, "SIGKILL");
     }
 
-    const managed = this.getByPid(pid);
-    if (managed) {
-      managed.terminated = true;
-    }
+    markTerminated();
   }
 
   public remove(workerId: string): void {

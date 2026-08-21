@@ -8,9 +8,11 @@ import type {
   WorkerSpec,
   WorkerStatus,
 } from "@veolms/fleet-types";
-import { LocalProcessRegistry } from "./process.ts";
+import { LocalProcessRegistry, type ManagedProcess } from "./process.ts";
 
 const execFileAsync = promisify(execFile);
+
+const POST_TERMINATE_RETENTION_MS = 5 * 60 * 1000;
 
 export interface LocalProviderConfig {
   readonly workerExecutable?: string;
@@ -18,6 +20,20 @@ export interface LocalProviderConfig {
   readonly defaultEnv?: Readonly<Record<string, string>>;
   readonly cwd?: string;
   readonly gracePeriodMs?: number;
+}
+
+/**
+ * Single source of truth for turning a ManagedProcess's raw exit state into
+ * a WorkerStatus, used by getWorker/getWorkerStatus/healthCheck alike.
+ * terminatedByRequest is checked first because a SIGTERM/SIGKILL exit
+ * normally reports exitCode === null, which would otherwise fall through
+ * to "FAILED" even for a deliberate, successful terminateWorker() call.
+ */
+function deriveWorkerStatus(managed: ManagedProcess): WorkerStatus {
+  if (managed.terminatedByRequest) {
+    return "TERMINATED";
+  }
+  return managed.exitCode === 0 ? "COMPLETED" : "FAILED";
 }
 
 export function parsePidFromWorkerId(providerWorkerId: string): number | null {
@@ -84,12 +100,17 @@ export function createLocalProvider(
         return null;
       }
 
-      const alive = registry.isAlive(pid);
-      const status: WorkerStatus = alive
-        ? "PROCESSING"
-        : managed.exitCode === 0
-          ? "COMPLETED"
-          : "FAILED";
+      // Check the recorded terminal state first — isAlive() only proves
+      // *some* process currently holds this PID, and once a worker exits
+      // the OS is free to reuse its PID for something unrelated.
+      if (!managed.terminated && !registry.isAlive(pid)) {
+        // Process died but the child's own "exit" event hasn't been
+        // processed yet — record it now so later calls see it too.
+        managed.terminated = true;
+      }
+      const status: WorkerStatus = managed.terminated
+        ? deriveWorkerStatus(managed)
+        : "PROCESSING";
 
       return {
         id: managed.workerId,
@@ -114,19 +135,19 @@ export function createLocalProvider(
       }
 
       if (managed.terminated) {
-        return managed.exitCode === 0 ? "COMPLETED" : "FAILED";
+        return deriveWorkerStatus(managed);
       }
 
       if (!registry.isAlive(pid)) {
         managed.terminated = true;
-        return managed.exitCode === 0 ? "COMPLETED" : "FAILED";
+        return deriveWorkerStatus(managed);
       }
 
       return "PROCESSING";
     },
 
     async execute(
-      _providerWorkerId: string,
+      providerWorkerId: string,
       command: readonly string[],
     ): Promise<ExecutionResult> {
       const cmd = command[0];
@@ -134,9 +155,19 @@ export function createLocalProvider(
         return { exitCode: 0, stdout: "", stderr: "" };
       }
 
+      // Run in the target worker's own cwd/env when it's a known local
+      // worker, mirroring the AWS provider's execute() running on the
+      // actual target instance — falling back to this process's own
+      // defaults when the id doesn't resolve to a tracked worker.
+      const pid = parsePidFromWorkerId(providerWorkerId);
+      const managed = pid ? registry.getByPid(pid) : undefined;
+
       const args = command.slice(1);
       try {
-        const { stdout, stderr } = await execFileAsync(cmd, [...args]);
+        const { stdout, stderr } = await execFileAsync(cmd, [...args], {
+          cwd: managed?.cwd,
+          env: managed ? { ...process.env, ...managed.env } : undefined,
+        });
         return {
           exitCode: 0,
           stdout: stdout.toString(),
@@ -165,7 +196,16 @@ export function createLocalProvider(
       await registry.terminate(pid, gracePeriodMs);
       const managed = registry.getByPid(pid);
       if (managed) {
-        registry.remove(managed.workerId);
+        // Delay removal instead of dropping it immediately: getWorker(),
+        // getWorkerStatus(), and healthCheck() all need managed.exitCode/
+        // terminatedByRequest to still be there for callers that poll
+        // shortly after termination, so a clean shutdown reports as
+        // TERMINATED rather than degrading to "not found" or FAILED.
+        const workerId = managed.workerId;
+        const timer = setTimeout(() => {
+          registry.remove(workerId);
+        }, POST_TERMINATE_RETENTION_MS);
+        timer.unref();
       }
     },
 
@@ -184,8 +224,10 @@ export function createLocalProvider(
         const managed = registry.getByPid(pid);
         return {
           healthy: false,
-          state: managed?.exitCode === 0 ? "COMPLETED" : "FAILED",
-          message: `Process ${pid} is not running. Exit code: ${managed?.exitCode ?? "unknown"}`,
+          state: managed ? deriveWorkerStatus(managed) : "TERMINATED",
+          message: managed
+            ? `Process ${pid} is not running. Exit code: ${managed.exitCode ?? "unknown"}${managed.terminatedByRequest ? " (terminated on request)" : ""}`
+            : `Process ${pid} is not running and is no longer tracked.`,
         };
       }
 

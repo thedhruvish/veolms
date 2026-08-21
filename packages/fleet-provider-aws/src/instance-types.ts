@@ -111,7 +111,18 @@ export function selectOptimalInstanceType(spec: WorkerSpec): string {
     return matched.instanceType;
   }
 
-  // Fallback to highest available instance in table
+  // Fallback to highest available instance in table. This under-provisions
+  // the job relative to its own stated requirements, so log it — silently
+  // returning the largest instance would otherwise leave no trace of why a
+  // job later runs slowly or gets OOM-killed.
   const fallback = profiles[profiles.length - 1];
-  return fallback ? fallback.instanceType : isArm ? "c7g.xlarge" : "c6i.xlarge";
+  const fallbackType = fallback
+    ? fallback.instanceType
+    : isArm
+      ? "c7g.xlarge"
+      : "c6i.xlarge";
+  console.warn(
+    `[fleet-provider-aws] No ${isArm ? "arm64" : "x86_64"} instance profile meets the requested ${spec.cpu} vCPU / ${spec.memoryMb}MB — falling back to the largest available (${fallbackType}), which may not satisfy the job's requirements.`,
+  );
+  return fallbackType;
 }
