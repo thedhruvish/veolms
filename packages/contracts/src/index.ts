@@ -1,15 +1,4 @@
-export {
-  courseListResponseSchema,
-  courseSlugParamsSchema,
-  courseSlugSchema,
-  courseSummarySchema,
-  publicCourseSchema,
-} from "./course.ts";
-export type {
-  CourseSlugParams,
-  CourseSummary,
-  PublicCourse,
-} from "./course.ts";
+export * from "./course.ts";
 
 export { healthResponseSchema } from "./health.ts";
 export type { HealthResponse } from "./health.ts";

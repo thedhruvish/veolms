@@ -64,6 +64,7 @@ export const OAUTH_STATE_TTL_SECONDS = 10 * 60;
 // --- Roles ------------------------------------------------------------------
 
 export const CREATOR_ROLE = "creator";
+export const INSTRUCTOR_ROLE = "instructor";
 export const STUDENT_ROLE = "student";
 
 /** Bounded so a pathological username prefix cannot spin indefinitely. */
