@@ -2,9 +2,9 @@ import type { Generated, JSONColumnType } from "kysely";
 import type {
   Architecture,
   FleetEventType,
-  JobRequirements,
   JobStatus,
   ProviderType,
+  VideoQualityLevel,
   WorkerStatus,
 } from "@veolms/fleet-types";
 
@@ -166,11 +166,8 @@ export interface JobTable {
   status: JobStatus;
   video_key: string;
   output_prefix: string;
-  requirements: JSONColumnType<
-    JobRequirements,
-    JobRequirements | string,
-    JobRequirements | string
-  >;
+  video_size: number;
+  qualities: VideoQualityLevel[];
   worker_id: string | null;
   attempts: Generated<number>;
   max_attempts: Generated<number>;

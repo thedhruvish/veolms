@@ -11,12 +11,13 @@ export async function up(database: Kysely<unknown>): Promise<void> {
     )
     .addColumn("video_key", "text", (column) => column.notNull())
     .addColumn("output_prefix", "text", (column) => column.notNull())
-    .addColumn("requirements", "jsonb", (column) =>
+    .addColumn("video_size", "bigint", (column) =>
+      column.notNull().defaultTo(0),
+    )
+    .addColumn("qualities", sql`text[]`, (column) =>
       column
         .notNull()
-        .defaultTo(
-          sql`'{"qualities": ["1080p", "720p", "480p", "360p"]}'::jsonb`,
-        ),
+        .defaultTo(sql`ARRAY['1080p', '720p', '480p', '360p']::text[]`),
     )
     .addColumn("worker_id", "uuid")
     .addColumn("attempts", "integer", (column) => column.notNull().defaultTo(0))

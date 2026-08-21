@@ -41,17 +41,33 @@ export async function claimNextQueuedJob(
     if (worker) {
       query = query
         .where(
-          sql<boolean>`COALESCE((requirements->'hardware'->>'minCpu')::integer, 1) <= ${worker.cpu}`,
+          sql<boolean>`
+            CASE
+              WHEN qualities @> ARRAY['2160p'] THEN 8
+              WHEN qualities @> ARRAY['1440p'] OR cardinality(qualities) >= 5 THEN 4
+              ELSE 2
+            END <= ${worker.cpu}
+          `,
         )
         .where(
-          sql<boolean>`COALESCE((requirements->'hardware'->>'minMemoryMb')::integer, 512) <= ${worker.memory_mb}`,
+          sql<boolean>`
+            CASE
+              WHEN qualities @> ARRAY['2160p'] THEN 16384
+              WHEN qualities @> ARRAY['1440p'] OR cardinality(qualities) >= 5 THEN 8192
+              ELSE 4096
+            END <= ${worker.memory_mb}
+          `,
         )
         .where(
-          sql<boolean>`COALESCE((requirements->'hardware'->>'storageGb')::integer, 5) <= ${worker.storage_gb}`,
+          sql<boolean>`
+            CASE
+              WHEN qualities @> ARRAY['2160p'] THEN 80
+              WHEN qualities @> ARRAY['1440p'] OR cardinality(qualities) >= 5 THEN 50
+              ELSE 30
+            END <= ${worker.storage_gb}
+          `,
         )
-        .where(
-          sql<boolean>`COALESCE(requirements->'hardware'->>'architecture', 'arm64') = ${worker.architecture}`,
-        );
+        .where(sql<boolean>`'arm64' = ${worker.architecture}`);
     }
 
     const row = await query
