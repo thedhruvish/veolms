@@ -23,7 +23,7 @@ export function createMediaController({
     const { mediaId } = request.params;
     const creatorId = request.user!.id;
     const result = await service.confirmUpload(mediaId, creatorId, request.log);
-    return { success: true, status: result.status };
+    return { status: result.status };
   }
 
   async function getVideoJobProgress(

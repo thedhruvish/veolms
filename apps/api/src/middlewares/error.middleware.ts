@@ -53,7 +53,7 @@ export function registerErrorHandler(app: FastifyInstance): void {
           httpError(
             500,
             "RESPONSE_SERIALIZATION_FAILED",
-            "The server produced a response that does not match its documented schema.",
+            `The server produced a response that does not match its documented schema: ${(error as any).cause?.message || error.message}`,
           ),
         );
     }

@@ -53,7 +53,7 @@ const mediaRoutes: RoutePlugin = async (app, options) => {
         response: {
           200: jsonResponse(
             "Upload confirmed",
-            z.object({ success: z.boolean(), status: mediaAssetStatusSchema }),
+            z.object({ status: mediaAssetStatusSchema }),
           ),
         },
       },
