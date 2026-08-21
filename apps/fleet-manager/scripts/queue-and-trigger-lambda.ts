@@ -15,12 +15,17 @@
  * Usage:
  *   pnpm fleet:queue:trigger
  *   VIDEO_KEY=raw/other.mp4 QUALITIES=240p,360p pnpm fleet:queue:trigger
+ *
+ * If VIDEO_KEY and/or QUALITIES aren't passed as env vars, it prompts for
+ * them interactively instead of silently defaulting.
  */
 import { randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { stdin as input, stdout as output } from "node:process";
+import * as readline from "node:readline/promises";
 import { createDatabase } from "@veolms/database";
 import { loadServerConfig } from "@veolms/config";
 import {
@@ -30,14 +35,85 @@ import {
 
 const REGION = process.env.AWS_REGION || "us-east-1";
 const LAMBDA_NAME = process.env.LAMBDA_FUNCTION_NAME || "veolms-fleet-manager";
-const VIDEO_KEY = process.env.VIDEO_KEY || "raw/video.mp4";
 const ENDPOINT_URL = process.env.AWS_ENDPOINT_URL;
-const QUALITIES: VideoQualityLevel[] = (
-  process.env.QUALITIES?.split(",") ?? ["240p"]
-).map((q) => videoQualityLevelSchema.parse(q.trim()));
+const DEFAULT_VIDEO_KEY = "raw/video.mp4";
+const DEFAULT_QUALITIES: readonly VideoQualityLevel[] = ["240p"];
 
 function shellQuote(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+function parseQualities(raw: string): VideoQualityLevel[] {
+  return raw.split(",").map((q) => videoQualityLevelSchema.parse(q.trim()));
+}
+
+// Only prompts for whichever of VIDEO_KEY/QUALITIES wasn't passed as an env
+// var, so `VIDEO_KEY=... QUALITIES=... pnpm fleet:queue:trigger` still runs
+// fully non-interactively for repeated/scripted use.
+async function resolveVideoKeyAndQualities(): Promise<{
+  videoKey: string;
+  qualities: VideoQualityLevel[];
+}> {
+  const envVideoKey = process.env.VIDEO_KEY;
+  const envQualities = process.env.QUALITIES;
+
+  if (envVideoKey && envQualities) {
+    return { videoKey: envVideoKey, qualities: parseQualities(envQualities) };
+  }
+
+  const rl = readline.createInterface({ input, output });
+  try {
+    let videoKey = envVideoKey;
+    if (!videoKey) {
+      const answer = (
+        await rl.question(`Video key or URL [${DEFAULT_VIDEO_KEY}]: `)
+      ).trim();
+      videoKey = answer || DEFAULT_VIDEO_KEY;
+    }
+
+    let qualities: VideoQualityLevel[];
+    if (envQualities) {
+      qualities = parseQualities(envQualities);
+    } else {
+      qualities = [];
+      while (qualities.length === 0) {
+        const answer = (
+          await rl.question(
+            `Target qualities, comma-separated [${DEFAULT_QUALITIES.join(",")}]: `,
+          )
+        ).trim();
+        try {
+          qualities = parseQualities(answer || DEFAULT_QUALITIES.join(","));
+        } catch {
+          console.error(
+            `  Invalid quality. Allowed: 2160p, 1440p, 1080p, 720p, 480p, 360p, 240p, 144p`,
+          );
+        }
+      }
+    }
+
+    return { videoKey, qualities };
+  } finally {
+    rl.close();
+  }
+}
+
+async function resolveVideoSize(videoKey: string): Promise<number> {
+  if (process.env.VIDEO_SIZE) {
+    return Number(process.env.VIDEO_SIZE);
+  }
+  if (/^https?:\/\//i.test(videoKey)) {
+    try {
+      const res = await fetch(videoKey, { method: "HEAD" });
+      const contentLength = res.headers.get("content-length");
+      if (contentLength) {
+        return Number(contentLength);
+      }
+    } catch {
+      // Fall through to the 0 baseline below.
+    }
+  }
+  return 0;
 }
 
 async function main(): Promise<void> {
@@ -45,8 +121,11 @@ async function main(): Promise<void> {
   const db = createDatabase(config.DATABASE_URL);
 
   try {
+    const { videoKey: VIDEO_KEY, qualities: QUALITIES } =
+      await resolveVideoKeyAndQualities();
     const jobId = randomUUID();
     const outputPrefix = `hls/test-${jobId.slice(0, 8)}/`;
+    const videoSize = await resolveVideoSize(VIDEO_KEY);
 
     console.info(
       `\n╔══════════════════════════════════════════════════════════════╗`,
@@ -63,6 +142,7 @@ async function main(): Promise<void> {
     console.info(`  Video Key:     ${VIDEO_KEY}`);
     console.info(`  Output Prefix: ${outputPrefix}`);
     console.info(`  Qualities:     ${QUALITIES.join(", ")}`);
+    console.info(`  Video Size:    ${videoSize} bytes`);
 
     await db
       .insertInto("jobs")
@@ -71,19 +151,8 @@ async function main(): Promise<void> {
         status: "QUEUED",
         video_key: VIDEO_KEY,
         output_prefix: outputPrefix,
-        requirements: {
-          qualities: QUALITIES,
-          videoCodec: "h264",
-          audioCodec: "aac",
-          segmentDurationSeconds: 4,
-          hardware: {
-            minCpu: 2,
-            minMemoryMb: 2048,
-            architecture: "arm64",
-            storageGb: 10,
-            estimatedDurationSeconds: 60,
-          },
-        },
+        video_size: videoSize,
+        qualities: QUALITIES,
         worker_id: null,
         attempts: 0,
         max_attempts: 3,

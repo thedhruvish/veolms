@@ -56,16 +56,8 @@ describe("Fleet Manager End-to-End Core Integration", () => {
       status: "QUEUED",
       videoKey: "videos/lecture.mp4",
       outputPrefix: "hls/lecture",
-      requirements: {
-        qualities: ["1080p", "720p", "480p", "360p"],
-        hardware: {
-          minCpu: 2,
-          minMemoryMb: 4096,
-          architecture: "arm64",
-          storageGb: 30,
-          estimatedDurationSeconds: 600,
-        },
-      },
+      videoSize: 0,
+      qualities: ["1080p", "720p", "480p", "360p"],
       workerId: null,
       attempts: 0,
       maxAttempts: 3,

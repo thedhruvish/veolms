@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
-  jobRequirementsSchema,
+  estimateJobHardware,
   jobStatusSchema,
   JOB_STATUSES,
 } from "../src/job.ts";
@@ -25,33 +25,38 @@ describe("Job & Worker Schemas and Contracts", () => {
     }
   });
 
-  it("should validate job requirements with target quality array", () => {
-    const valid = {
-      qualities: ["1080p", "720p", "480p"],
-      videoCodec: "h264",
-      audioCodec: "aac",
-      segmentDurationSeconds: 6,
-      hardware: {
-        minCpu: 4,
-        minMemoryMb: 8192,
-        architecture: "arm64",
-        storageGb: 50,
-        estimatedDurationSeconds: 1200,
-      },
-    };
-
-    const parsed = jobRequirementsSchema.parse(valid);
-    assert.deepEqual(parsed.qualities, ["1080p", "720p", "480p"]);
-    assert.equal(parsed.videoCodec, "h264");
-    assert.equal(parsed.hardware.minCpu, 4);
-    assert.equal(parsed.hardware.architecture, "arm64");
+  it("estimates baseline hardware for a small standard-quality job", () => {
+    const hw = estimateJobHardware(0, ["720p"]);
+    assert.equal(hw.minCpu, 2);
+    assert.equal(hw.minMemoryMb, 4096);
+    assert.equal(hw.storageGb, 30);
+    assert.equal(hw.architecture, "arm64");
   });
 
-  it("should reject empty qualities array in job requirements", () => {
-    const invalid = {
-      qualities: [],
-    };
-    assert.throws(() => jobRequirementsSchema.parse(invalid));
+  it("scales cpu/memory/storage up for 2160p regardless of size", () => {
+    const hw = estimateJobHardware(0, ["2160p", "1080p"]);
+    assert.equal(hw.minCpu, 8);
+    assert.equal(hw.minMemoryMb, 16384);
+    assert.equal(hw.storageGb, 80);
+  });
+
+  it("scales up when 5+ qualities are requested even without 1440p/2160p", () => {
+    const hw = estimateJobHardware(0, [
+      "1080p",
+      "720p",
+      "480p",
+      "360p",
+      "240p",
+    ]);
+    assert.equal(hw.minCpu, 4);
+    assert.equal(hw.minMemoryMb, 8192);
+  });
+
+  it("scales storage and estimated duration up for a large source video", () => {
+    const small = estimateJobHardware(1024, ["720p"]);
+    const large = estimateJobHardware(50 * 1024 ** 3, ["720p"]);
+    assert.ok(large.storageGb > small.storageGb);
+    assert.ok(large.estimatedDurationSeconds > small.estimatedDurationSeconds);
   });
 
   it("should validate worker spec schema", () => {

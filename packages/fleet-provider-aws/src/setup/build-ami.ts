@@ -8,9 +8,10 @@
 
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { SSMClient } from "@aws-sdk/client-ssm";
-import { bold, cyan, dim, green } from "@veolms/fleet-types/terminal";
+import { bold, cyan, dim, green, yellow } from "@veolms/fleet-types/terminal";
 import { resolveDebianAmiId } from "../debian-ami.ts";
 
 const REGION = process.env.AWS_REGION || "us-east-1";
@@ -176,10 +177,20 @@ shutdown -h now
   );
   console.info(`✔ Terminated builder instance ${instanceId}`);
 
-  // Update .env files
+  // Update .env files — resolved from this file's own location (always
+  // packages/fleet-provider-aws/src/setup/), not process.cwd(), since this
+  // script can be invoked from the repo root or from inside any package
+  // directory and cwd differs between them.
+  const repoRoot = join(
+    dirname(fileURLToPath(import.meta.url)),
+    "..",
+    "..",
+    "..",
+    "..",
+  );
   const envFiles = [
-    join(process.cwd(), "apps/fleet-manager/.env"),
-    join(process.cwd(), "apps/media-worker/.env"),
+    join(repoRoot, "apps/fleet-manager/.env"),
+    join(repoRoot, "apps/media-worker/.env"),
   ];
 
   for (const envPath of envFiles) {
@@ -192,6 +203,10 @@ shutdown -h now
       }
       writeFileSync(envPath, content, "utf-8");
       console.info(`✔ Updated ${bold(envPath)} with AMI_ID="${amiId}"`);
+    } else {
+      console.warn(
+        `${yellow("⚠")} ${envPath} not found — skipped. Add AMI_ID="${amiId}" to it manually.`,
+      );
     }
   }
 

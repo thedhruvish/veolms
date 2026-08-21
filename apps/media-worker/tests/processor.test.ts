@@ -41,17 +41,12 @@ describe("extractVideoExtension", () => {
 const WORKER_ID = "worker-1";
 const JOB_ID = "job-1";
 
-const VALID_REQUIREMENTS = {
-  hardware: {
-    minCpu: 4,
-    minMemoryMb: 8192,
-    architecture: "arm64",
-    storageGb: 100,
-    estimatedDurationSeconds: 600,
-  },
-  qualities: ["720p"],
-  segmentDurationSeconds: 6,
-};
+// Baseline estimateJobHardware() output for a small 720p-only job:
+// 2 vCPU / 4096MB / 30GB — comfortably within the "large" mock worker below.
+const STANDARD_QUALITIES = ["720p"];
+// 2160p pushes the estimate to 8 vCPU / 16384MB / 80GB, which exceeds the
+// "small" mock worker used by the capacity-rejection test.
+const OVERSIZED_QUALITIES = ["2160p"];
 
 function makeChain(
   onTerminal: () => unknown,
@@ -184,7 +179,8 @@ describe("executeTranscodeJob — claim and retry logic", () => {
         worker_id: null,
         video_key: "raw/video.mp4",
         output_prefix: "out/job-1",
-        requirements: VALID_REQUIREMENTS,
+        video_size: 0,
+        qualities: OVERSIZED_QUALITIES,
         attempts: 0,
         max_attempts: 3,
         started_at: null,
@@ -231,7 +227,8 @@ describe("executeTranscodeJob — claim and retry logic", () => {
         worker_id: null,
         video_key: "raw/video.mp4",
         output_prefix: "out/job-1",
-        requirements: VALID_REQUIREMENTS,
+        video_size: 0,
+        qualities: STANDARD_QUALITIES,
         attempts: 0,
         max_attempts: 3,
         started_at: null,
@@ -288,7 +285,8 @@ describe("executeTranscodeJob — claim and retry logic", () => {
         worker_id: null,
         video_key: "raw/video.mp4",
         output_prefix: "out/job-1",
-        requirements: VALID_REQUIREMENTS,
+        video_size: 0,
+        qualities: STANDARD_QUALITIES,
         attempts: 2,
         max_attempts: 3,
         started_at: null,

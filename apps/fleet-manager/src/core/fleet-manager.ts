@@ -80,7 +80,7 @@ export function createFleetManager(
       }
 
       console.info(
-        `[fleet-manager] Claimed job ${job.id} for processing (qualities: ${job.requirements.qualities.join(", ")})`,
+        `[fleet-manager] Claimed job ${job.id} for processing (qualities: ${job.qualities.join(", ")})`,
       );
 
       try {

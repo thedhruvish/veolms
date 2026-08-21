@@ -44,7 +44,6 @@ export interface AwsProviderConfig {
 
 const DEFAULT_ROOT_DEVICE_NAME = "/dev/sda1";
 
-
 async function resolveRootDeviceName(
   ec2: EC2Client,
   imageId: string,

@@ -18,17 +18,8 @@ describe("Fleet Manager End-to-End Workflow Simulation", () => {
 
     // 2. Worker manager calculates scaled spec for 4K video
     const spec = calculateWorkerSpec({
+      videoSize: 0,
       qualities: requestedQualities,
-      videoCodec: "h264",
-      audioCodec: "aac",
-      segmentDurationSeconds: 6,
-      hardware: {
-        minCpu: 2,
-        minMemoryMb: 4096,
-        architecture: "arm64",
-        storageGb: 30,
-        estimatedDurationSeconds: 600,
-      },
     });
 
     assert.equal(spec.cpu, 8); // Scaled up to 8 vCPU for 4K
@@ -77,17 +68,8 @@ describe("Fleet Manager End-to-End Workflow Simulation", () => {
 
   it("should handle default standard quality transcode lifecycle correctly", () => {
     const spec = calculateWorkerSpec({
+      videoSize: 0,
       qualities: DEFAULT_VIDEO_QUALITIES,
-      videoCodec: "h264",
-      audioCodec: "aac",
-      segmentDurationSeconds: 6,
-      hardware: {
-        minCpu: 2,
-        minMemoryMb: 4096,
-        architecture: "arm64",
-        storageGb: 30,
-        estimatedDurationSeconds: 300,
-      },
     });
 
     assert.equal(spec.cpu, 2);

@@ -4,8 +4,9 @@ import { copyFile, cp, mkdir, rm, stat, writeFile } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { promisify } from "node:util";
 import {
-  jobRequirementsSchema,
-  type JobRequirements,
+  DEFAULT_SEGMENT_DURATION_SECONDS,
+  estimateJobHardware,
+  type JobHardwareRequirements,
   type VideoQualityLevel,
 } from "@veolms/fleet-types";
 import {
@@ -228,7 +229,7 @@ export async function executeTranscodeJob(
     throw new Error(`Job ${jobId} not found in database`);
   }
 
-  let requirements: JobRequirements | null = null;
+  let hardware: JobHardwareRequirements | null = null;
   const jobScratchDir = join(config.SCRATCH_DIR, jobId);
   const inputVideoPath = join(
     jobScratchDir,
@@ -249,8 +250,8 @@ export async function executeTranscodeJob(
       throw new Error(`Job ${jobId} is assigned to another worker`);
     }
 
-    requirements = jobRequirementsSchema.parse(job.requirements);
-    const { hardware } = requirements;
+    hardware = estimateJobHardware(job.video_size, job.qualities);
+    const claimHardware = hardware;
 
     // Claim ownership before doing any work. The worker-ID guard prevents a
     // stale process from overwriting a job that has been reassigned. The
@@ -271,13 +272,13 @@ export async function executeTranscodeJob(
       }
 
       if (
-        hardware.minCpu > worker.cpu ||
-        hardware.minMemoryMb > worker.memory_mb ||
-        hardware.storageGb > worker.storage_gb ||
-        hardware.architecture !== worker.architecture
+        claimHardware.minCpu > worker.cpu ||
+        claimHardware.minMemoryMb > worker.memory_mb ||
+        claimHardware.storageGb > worker.storage_gb ||
+        claimHardware.architecture !== worker.architecture
       ) {
         throw new Error(
-          `Job ${jobId} requires ${hardware.minCpu} vCPU / ${hardware.minMemoryMb}MB / ${hardware.storageGb}GB / ${hardware.architecture}, which worker ${workerId} (${worker.cpu} vCPU / ${worker.memory_mb}MB / ${worker.storage_gb}GB / ${worker.architecture}) does not meet`,
+          `Job ${jobId} requires ${claimHardware.minCpu} vCPU / ${claimHardware.minMemoryMb}MB / ${claimHardware.storageGb}GB / ${claimHardware.architecture}, which worker ${workerId} (${worker.cpu} vCPU / ${worker.memory_mb}MB / ${worker.storage_gb}GB / ${worker.architecture}) does not meet`,
         );
       }
 
@@ -314,7 +315,7 @@ export async function executeTranscodeJob(
     await db
       .updateTable("worker_monitoring")
       .set({
-        estimated_duration_sec: requirements.hardware.estimatedDurationSeconds,
+        estimated_duration_sec: hardware.estimatedDurationSeconds,
         progress_percent: 0,
         last_progress_at: null,
         monitoring_attempts: 0,
@@ -327,7 +328,7 @@ export async function executeTranscodeJob(
     await recordEvent("JOB_STARTED", jobId, {
       videoKey: job.video_key,
       outputPrefix: job.output_prefix,
-      qualities: requirements.qualities,
+      qualities: job.qualities,
     });
 
     const s3Client = createS3ClientFromConfig(config);
@@ -400,7 +401,7 @@ export async function executeTranscodeJob(
 
     // 5. Build FFmpeg command for requested qualities array
     const targetQualities: readonly VideoQualityLevel[] = [
-      ...new Set(requirements.qualities),
+      ...new Set(job.qualities),
     ];
 
     // 4b. When necessary, cap the source to the largest requested quality
@@ -445,7 +446,7 @@ export async function executeTranscodeJob(
         outputDir: outputHlsDir,
         qualities: targetQualities,
         metadata,
-        segmentDurationSeconds: requirements.segmentDurationSeconds ?? 6,
+        segmentDurationSeconds: DEFAULT_SEGMENT_DURATION_SECONDS,
       });
 
     // 6. Setup progress tracking directly to PostgreSQL

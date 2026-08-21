@@ -27,7 +27,7 @@ describe("EC2 UserData Bootstrapper Generator", () => {
       script.includes('WORKER_ID="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"'),
     );
     assert.ok(script.includes('JOB_ID="job-123"'));
-     assert.ok(script.includes("apt-get install -y ffmpeg"));
+    assert.ok(script.includes("apt-get install -y ffmpeg"));
     assert.ok(script.includes("if ! command -v node"));
     assert.ok(script.includes("if ! command -v ffmpeg"));
     assert.ok(script.includes("if ! command -v aws"));

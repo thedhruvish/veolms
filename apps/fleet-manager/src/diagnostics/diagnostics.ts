@@ -4,7 +4,6 @@ import type {
   FleetEvent,
   FleetProvider,
   Job,
-  JobRequirements,
   WorkerHandle,
   WorkerSpec,
   WorkerStatus,
@@ -46,17 +45,13 @@ export async function getJobDiagnostics(
     return null;
   }
 
-  const requirements: JobRequirements =
-    typeof jobRow.requirements === "string"
-      ? JSON.parse(jobRow.requirements)
-      : (jobRow.requirements as unknown as JobRequirements);
-
   const job: Job = {
     id: jobRow.id,
     status: jobRow.status,
     videoKey: jobRow.video_key,
     outputPrefix: jobRow.output_prefix,
-    requirements,
+    videoSize: jobRow.video_size,
+    qualities: jobRow.qualities,
     workerId: jobRow.worker_id,
     attempts: jobRow.attempts,
     maxAttempts: jobRow.max_attempts,

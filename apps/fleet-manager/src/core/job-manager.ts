@@ -1,20 +1,14 @@
 import { randomUUID } from "node:crypto";
 import type { Kysely } from "kysely";
 import { claimNextQueuedJob, type Database } from "@veolms/database";
-import type {
-  Job,
-  JobRequirements,
-  JobStatus,
-  VideoQualityLevel,
-} from "@veolms/fleet-types";
+import type { Job, JobStatus, VideoQualityLevel } from "@veolms/fleet-types";
 import type { FleetManagerConfig } from "../config/config.ts";
 
 export interface QueueJobParams {
   videoKey: string;
   outputPrefix: string;
   qualities: readonly VideoQualityLevel[];
-  hardware?: Partial<JobRequirements["hardware"]>;
-  segmentDurationSeconds?: number;
+  videoSize?: number;
 }
 
 export interface JobManager {
@@ -44,7 +38,8 @@ export function createJobManager(options: {
         status: "PROCESSING" as JobStatus,
         videoKey: row.video_key,
         outputPrefix: row.output_prefix,
-        requirements: row.requirements,
+        videoSize: row.video_size,
+        qualities: row.qualities,
         workerId: row.worker_id,
         attempts: row.attempts,
         maxAttempts: row.max_attempts,
@@ -112,22 +107,7 @@ export function createJobManager(options: {
 
     async queueJob(params: QueueJobParams): Promise<Job> {
       const id = randomUUID();
-      const hardware = {
-        minCpu: params.hardware?.minCpu ?? 2,
-        minMemoryMb: params.hardware?.minMemoryMb ?? 4096,
-        architecture: params.hardware?.architecture ?? "arm64",
-        storageGb: params.hardware?.storageGb ?? 30,
-        estimatedDurationSeconds:
-          params.hardware?.estimatedDurationSeconds ?? 600,
-      };
-
-      const requirements: JobRequirements = {
-        qualities: params.qualities,
-        videoCodec: "h264",
-        audioCodec: "aac",
-        segmentDurationSeconds: params.segmentDurationSeconds ?? 6,
-        hardware,
-      };
+      const videoSize = params.videoSize ?? 0;
 
       await db
         .insertInto("jobs")
@@ -136,7 +116,8 @@ export function createJobManager(options: {
           status: "QUEUED",
           video_key: params.videoKey,
           output_prefix: params.outputPrefix,
-          requirements,
+          video_size: videoSize,
+          qualities: [...params.qualities],
           worker_id: null,
           attempts: 0,
           max_attempts: config.MAX_RETRIES,
@@ -154,7 +135,8 @@ export function createJobManager(options: {
         status: "QUEUED",
         videoKey: params.videoKey,
         outputPrefix: params.outputPrefix,
-        requirements,
+        videoSize,
+        qualities: params.qualities,
         workerId: null,
         attempts: 0,
         maxAttempts: config.MAX_RETRIES,
@@ -183,7 +165,8 @@ export function createJobManager(options: {
         status: row.status,
         videoKey: row.video_key,
         outputPrefix: row.output_prefix,
-        requirements: row.requirements,
+        videoSize: row.video_size,
+        qualities: row.qualities,
         workerId: row.worker_id,
         attempts: row.attempts,
         maxAttempts: row.max_attempts,

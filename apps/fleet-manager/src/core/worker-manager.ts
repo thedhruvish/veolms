@@ -1,13 +1,14 @@
 import { randomUUID } from "node:crypto";
 import type { Kysely } from "kysely";
 import type { Database } from "@veolms/database";
-import type {
-  FleetEventType,
-  FleetProvider,
-  Job,
-  JobRequirements,
-  WorkerHandle,
-  WorkerSpec,
+import {
+  estimateJobHardware,
+  type FleetEventType,
+  type FleetProvider,
+  type Job,
+  type VideoQualityLevel,
+  type WorkerHandle,
+  type WorkerSpec,
 } from "@veolms/fleet-types";
 import type { FleetManagerConfig } from "../config/config.ts";
 import type { Scheduler } from "./scheduler.ts";
@@ -37,36 +38,16 @@ export interface WorkerManager {
 }
 
 export function calculateWorkerSpec(
-  requirements: JobRequirements,
+  job: { videoSize: number; qualities: readonly VideoQualityLevel[] },
   options: { databaseUrl?: string; jobId?: string } = {},
 ): WorkerSpec {
-  const hw = requirements.hardware;
-  const qualities = requirements.qualities;
-
-  let cpu = hw.minCpu;
-  let memoryMb = hw.minMemoryMb;
-  let storageGb = hw.storageGb;
-
-  // Scale CPU and memory if heavy resolutions are requested
-  const has2160p = qualities.includes("2160p");
-  const has1440p = qualities.includes("1440p");
-  const numQualities = qualities.length;
-
-  if (has2160p) {
-    cpu = Math.max(cpu, 8);
-    memoryMb = Math.max(memoryMb, 16384);
-    storageGb = Math.max(storageGb, 80);
-  } else if (has1440p || numQualities >= 5) {
-    cpu = Math.max(cpu, 4);
-    memoryMb = Math.max(memoryMb, 8192);
-    storageGb = Math.max(storageGb, 50);
-  }
+  const hw = estimateJobHardware(job.videoSize, job.qualities);
 
   return {
-    cpu,
-    memoryMb,
+    cpu: hw.minCpu,
+    memoryMb: hw.minMemoryMb,
     architecture: hw.architecture,
-    storageGb,
+    storageGb: hw.storageGb,
     region: "local",
     environmentVariables: {
       ...(options.jobId ? { JOB_ID: options.jobId } : {}),
@@ -110,7 +91,7 @@ export function createWorkerManager(options: {
     recordEvent,
 
     calculateWorkerSpec(job: Job): WorkerSpec {
-      return calculateWorkerSpec(job.requirements, {
+      return calculateWorkerSpec(job, {
         databaseUrl: config.DATABASE_URL,
         jobId: job.id,
       });
@@ -127,6 +108,17 @@ export function createWorkerManager(options: {
 
     async provisionWorker(job: Job): Promise<WorkerHandle> {
       const workerId = randomUUID();
+
+      if (job.videoSize <= 0) {
+        // Falls back to baseline (qualities-only) sizing in
+        // estimateJobHardware() — worth surfacing here since a large video
+        // queued without a real size would otherwise be silently
+        // under-provisioned instead of failing loudly.
+        console.warn(
+          `[fleet-manager] Job ${job.id} has no video_size (${job.videoSize}) — sizing worker from qualities alone.`,
+        );
+      }
+
       const spec = this.calculateWorkerSpec(job);
 
       // 1. Insert PENDING worker record
@@ -155,7 +147,7 @@ export function createWorkerManager(options: {
       await recordEvent("WORKER_CREATED", workerId, job.id, {
         cpu: spec.cpu,
         memoryMb: spec.memoryMb,
-        qualities: job.requirements.qualities,
+        qualities: job.qualities,
       });
 
       // 2. Call provider to launch worker
@@ -177,8 +169,10 @@ export function createWorkerManager(options: {
       });
 
       // 4. Initialize worker_monitoring schedule
-      const estimatedDuration =
-        job.requirements.hardware.estimatedDurationSeconds;
+      const estimatedDuration = estimateJobHardware(
+        job.videoSize,
+        job.qualities,
+      ).estimatedDurationSeconds;
       const initialCheck = scheduler.calculateNextCheck({
         estimatedDurationSec: estimatedDuration,
         progressPercent: 0,

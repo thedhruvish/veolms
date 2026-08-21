@@ -1,11 +1,7 @@
 import { z } from "zod";
 import {
-  audioCodecSchema,
   DEFAULT_QUALITIES,
-  videoCodecSchema,
   videoQualityLevelSchema,
-  type AudioCodec,
-  type VideoCodec,
   type VideoQualityLevel,
 } from "./quality.ts";
 
@@ -20,6 +16,14 @@ export const JOB_STATUSES = [
 export type JobStatus = (typeof JOB_STATUSES)[number];
 export const jobStatusSchema = z.enum(JOB_STATUSES);
 
+// The codec/segment settings a job used to be able to override per-row were
+// never actually set by the real inserter (the backend API only ever writes
+// video_key/output_prefix/qualities/video_size) — so they're fixed defaults
+// here instead of DB-backed fields nothing ever populated.
+export const DEFAULT_VIDEO_CODEC = "h264";
+export const DEFAULT_AUDIO_CODEC = "aac";
+export const DEFAULT_SEGMENT_DURATION_SECONDS = 6;
+
 export interface JobHardwareRequirements {
   minCpu: number;
   minMemoryMb: number;
@@ -28,58 +32,83 @@ export interface JobHardwareRequirements {
   estimatedDurationSeconds: number;
 }
 
-export const jobHardwareRequirementsSchema = z.object({
-  minCpu: z.number().int().min(1).default(2),
-  minMemoryMb: z.number().int().min(512).default(4096),
-  architecture: z.enum(["arm64", "x86_64"]).default("arm64"),
-  storageGb: z.number().int().min(5).default(30),
-  estimatedDurationSeconds: z.number().int().min(10).default(600),
-});
+const BASE_HARDWARE: JobHardwareRequirements = {
+  minCpu: 2,
+  minMemoryMb: 4096,
+  architecture: "arm64",
+  storageGb: 30,
+  estimatedDurationSeconds: 600,
+};
 
-export interface JobHlsOptions {
-  masterPlaylistName?: string;
-  segmentPrefix?: string;
+const BYTES_PER_GB = 1024 ** 3;
+
+/**
+ * Derives how much hardware a job needs from what the backend actually
+ * provides (video_size, qualities) instead of trusting a per-job hardware
+ * object nothing ever wrote. Shared by fleet-manager (sizing a new EC2
+ * worker) and media-worker (re-checking a claimed job against its own
+ * capacity) so there is exactly one formula, not two that can drift apart.
+ *
+ * jobs.ts's SQL pre-filter (claimNextQueuedJob) mirrors only the
+ * qualities-tier thresholds below in raw SQL, as a coarse pre-check — it
+ * does not replicate the video-size scaling, which is re-checked here.
+ * Keep the two in sync if the tier thresholds change.
+ */
+export function estimateJobHardware(
+  videoSizeBytes: number,
+  qualities: readonly VideoQualityLevel[],
+): JobHardwareRequirements {
+  let { minCpu, minMemoryMb, storageGb, estimatedDurationSeconds } =
+    BASE_HARDWARE;
+  const { architecture } = BASE_HARDWARE;
+
+  const has2160p = qualities.includes("2160p");
+  const has1440p = qualities.includes("1440p");
+  const numQualities = qualities.length;
+
+  if (has2160p) {
+    minCpu = Math.max(minCpu, 8);
+    minMemoryMb = Math.max(minMemoryMb, 16384);
+    storageGb = Math.max(storageGb, 80);
+  } else if (has1440p || numQualities >= 5) {
+    minCpu = Math.max(minCpu, 4);
+    minMemoryMb = Math.max(minMemoryMb, 8192);
+    storageGb = Math.max(storageGb, 50);
+  }
+
+  const videoSizeGb = Math.max(videoSizeBytes, 0) / BYTES_PER_GB;
+
+  // Scratch storage needs the source plus one full-size encode per
+  // requested quality, with headroom. Starting-point heuristic — tune
+  // against real job data once it's available.
+  const estimatedStorageGb =
+    Math.ceil(videoSizeGb * (numQualities + 1) * 1.5) + 5;
+  storageGb = Math.max(storageGb, estimatedStorageGb);
+
+  // ~15 CPU-minutes per source GB, scaled by however many renditions are
+  // being produced in parallel. Same caveat as above — a first pass.
+  const estimatedSecondsForSize = Math.ceil(videoSizeGb * 900) + 120;
+  estimatedDurationSeconds = Math.max(
+    estimatedDurationSeconds,
+    estimatedSecondsForSize,
+  );
+
+  return {
+    minCpu,
+    minMemoryMb,
+    architecture,
+    storageGb,
+    estimatedDurationSeconds,
+  };
 }
-
-export const jobHlsOptionsSchema = z.object({
-  masterPlaylistName: z.string().default("master.m3u8"),
-  segmentPrefix: z.string().default("segment_"),
-});
-
-export interface JobRequirements {
-  /** The explicit array of target qualities to generate */
-  qualities: readonly VideoQualityLevel[];
-  videoCodec?: VideoCodec;
-  audioCodec?: AudioCodec;
-  segmentDurationSeconds?: number;
-  hardware: JobHardwareRequirements;
-  hlsOptions?: JobHlsOptions;
-}
-
-export const jobRequirementsSchema = z.object({
-  qualities: z
-    .array(videoQualityLevelSchema)
-    .min(1)
-    .default([...DEFAULT_QUALITIES]),
-  videoCodec: videoCodecSchema.default("h264"),
-  audioCodec: audioCodecSchema.default("aac"),
-  segmentDurationSeconds: z.number().int().min(1).max(30).default(6),
-  hardware: jobHardwareRequirementsSchema.default({
-    minCpu: 2,
-    minMemoryMb: 4096,
-    architecture: "arm64",
-    storageGb: 30,
-    estimatedDurationSeconds: 600,
-  }),
-  hlsOptions: jobHlsOptionsSchema.optional(),
-});
 
 export interface Job {
   id: string;
   status: JobStatus;
   videoKey: string;
   outputPrefix: string;
-  requirements: JobRequirements;
+  videoSize: number;
+  qualities: readonly VideoQualityLevel[];
   workerId: string | null;
   attempts: number;
   maxAttempts: number;
@@ -90,3 +119,8 @@ export interface Job {
   failedAt: Date | null;
   updatedAt: Date;
 }
+
+export const qualitiesArraySchema = z
+  .array(videoQualityLevelSchema)
+  .min(1)
+  .default([...DEFAULT_QUALITIES]);

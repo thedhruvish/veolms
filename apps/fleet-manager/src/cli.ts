@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createDatabase } from "@veolms/database";
 import {
   DEFAULT_QUALITIES,
@@ -65,7 +66,7 @@ export async function runCli(
 ): Promise<void> {
   const { command, positional, flags } = parseCliArgs(argv);
 
-if (flags["provider"] === true) {
+  if (flags["provider"] === true) {
     console.error(
       `${red("✘")} --provider requires a value, e.g. --provider=aws`,
     );
@@ -77,16 +78,24 @@ if (flags["provider"] === true) {
   const config = loadFleetManagerConfig(
     cliProvider ? { ...process.env, PROVIDER: cliProvider } : process.env,
   );
-let dbInstance: ReturnType<typeof createDatabase> | undefined;
+  let dbInstance: ReturnType<typeof createDatabase> | undefined;
   const getDb = () => {
     dbInstance ??= createDatabase(config.DATABASE_URL);
     return dbInstance;
   };
+  // Resolved from this file's own location, not process.cwd() — the CLI
+  // can be run from the repo root or from inside apps/fleet-manager, and
+  // cwd differs between the two.
+  const repoRoot = join(
+    dirname(fileURLToPath(import.meta.url)),
+    "..",
+    "..",
+    "..",
+  );
+  const defaultWorkerScript = join(repoRoot, "apps/media-worker/src/index.ts");
   const workerScript =
     config.MEDIA_WORKER_SCRIPT_PATH ??
-    (existsSync(join(process.cwd(), "apps/media-worker/src/index.ts"))
-      ? join(process.cwd(), "apps/media-worker/src/index.ts")
-      : undefined);
+    (existsSync(defaultWorkerScript) ? defaultWorkerScript : undefined);
 
   const heartbeatTimeoutMs = config.HEARTBEAT_TIMEOUT_SECONDS * 1000;
 
@@ -152,18 +161,28 @@ let dbInstance: ReturnType<typeof createDatabase> | undefined;
         });
       }
 
+      const rawVideoSize = flags["video-size"] as string | undefined;
+      const videoSize = rawVideoSize ? Number(rawVideoSize) : undefined;
+      if (rawVideoSize && (!Number.isFinite(videoSize) || videoSize! < 0)) {
+        console.error(
+          `Error: --video-size must be a non-negative number of bytes`,
+        );
+        process.exit(1);
+      }
+
       const jobManager = createJobManager({ db: getDb(), config });
       const job = await jobManager.queueJob({
         videoKey,
         outputPrefix,
         qualities,
+        videoSize,
       });
 
       console.info(`✓ Job queued successfully!`);
       console.info(`  Job ID:        ${job.id}`);
       console.info(`  Video Key:     ${job.videoKey}`);
       console.info(`  Output Prefix: ${job.outputPrefix}`);
-      console.info(`  Qualities:     ${job.requirements.qualities.join(", ")}`);
+      console.info(`  Qualities:     ${job.qualities.join(", ")}`);
       break;
     }
 
@@ -184,9 +203,7 @@ let dbInstance: ReturnType<typeof createDatabase> | undefined;
       console.info(`Status:        ${diagnostics.job.status}`);
       console.info(`Video Key:     ${diagnostics.job.videoKey}`);
       console.info(`Output Prefix: ${diagnostics.job.outputPrefix}`);
-      console.info(
-        `Qualities:     ${diagnostics.job.requirements.qualities.join(", ")}`,
-      );
+      console.info(`Qualities:     ${diagnostics.job.qualities.join(", ")}`);
       console.info(
         `Attempts:      ${diagnostics.job.attempts} / ${diagnostics.job.maxAttempts}`,
       );
@@ -364,6 +381,7 @@ Usage:
   fleet queue <video-key>       Queue video transcoding job
     --qualities=1080p,720p,...  Specify target resolutions
     --prefix=courses/xyz/       Specify S3 output folder
+    --video-size=<bytes>        Source file size, used to size the worker
   fleet status <job-id>         Inspect job progress & diagnostic history
   fleet workers                 List active & recent workers
   fleet jobs                    List recent jobs

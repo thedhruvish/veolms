@@ -1,5 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import type { Kysely } from "kysely";
+import type { Database } from "@veolms/database";
 import type {
   FleetProvider,
   Job,
@@ -56,16 +58,8 @@ describe("Worker Manager Spec Calculations", () => {
       status: "QUEUED",
       videoKey: "raw/4k-intro.mp4",
       outputPrefix: "transcoded/4k-intro",
-      requirements: {
-        qualities: ["2160p", "1080p", "720p"],
-        hardware: {
-          minCpu: 2,
-          minMemoryMb: 4096,
-          architecture: "arm64",
-          storageGb: 30,
-          estimatedDurationSeconds: 600,
-        },
-      },
+      videoSize: 0,
+      qualities: ["2160p", "1080p", "720p"],
       workerId: null,
       attempts: 0,
       maxAttempts: 3,
@@ -90,16 +84,8 @@ describe("Worker Manager Spec Calculations", () => {
       status: "QUEUED",
       videoKey: "raw/lesson1.mp4",
       outputPrefix: "transcoded/lesson1",
-      requirements: {
-        qualities: ["1080p", "720p", "480p"],
-        hardware: {
-          minCpu: 2,
-          minMemoryMb: 4096,
-          architecture: "arm64",
-          storageGb: 30,
-          estimatedDurationSeconds: 300,
-        },
-      },
+      videoSize: 0,
+      qualities: ["1080p", "720p", "480p"],
       workerId: null,
       attempts: 0,
       maxAttempts: 3,

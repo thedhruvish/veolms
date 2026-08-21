@@ -53,10 +53,10 @@ export function generateUserDataScript(options: BootstrapperOptions): string {
     .map(([k, v]) => `${k}="${escapeEnvValue(v)}"`)
     .join("\n");
 
-  return BOOTSTRAP_SCRIPT_TEMPLATE.replaceAll("__WORKER_ID__", workerId).replaceAll(
-    "__ENV_FILE_LINES__",
-    envFileLines,
-  );
+  return BOOTSTRAP_SCRIPT_TEMPLATE.replaceAll(
+    "__WORKER_ID__",
+    workerId,
+  ).replaceAll("__ENV_FILE_LINES__", envFileLines);
 }
 
 export function encodeUserDataBase64(script: string): string {

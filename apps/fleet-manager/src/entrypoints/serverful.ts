@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createDatabase } from "@veolms/database";
 import type { FleetProvider } from "@veolms/fleet-types";
 import {
@@ -29,11 +30,17 @@ export async function startServerfulFleetManager(
 
   const db = createDatabase(config.DATABASE_URL);
 
+  const repoRoot = join(
+    dirname(fileURLToPath(import.meta.url)),
+    "..",
+    "..",
+    "..",
+    "..",
+  );
+  const defaultWorkerScript = join(repoRoot, "apps/media-worker/src/index.ts");
   const workerScript =
     config.MEDIA_WORKER_SCRIPT_PATH ??
-    (existsSync(join(process.cwd(), "apps/media-worker/src/index.ts"))
-      ? join(process.cwd(), "apps/media-worker/src/index.ts")
-      : undefined);
+    (existsSync(defaultWorkerScript) ? defaultWorkerScript : undefined);
 
   const provider: FleetProvider =
     options.provider ??

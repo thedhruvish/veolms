@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createDatabase } from "@veolms/database";
 import { loadServerConfig } from "@veolms/config";
 import type { VideoQualityLevel } from "@veolms/fleet-types";
@@ -18,10 +19,17 @@ async function main() {
 
   const db = createDatabase(serverConfig.DATABASE_URL);
 
-  const workerScript = existsSync(
-    join(process.cwd(), "apps/media-worker/src/index.ts"),
-  )
-    ? join(process.cwd(), "apps/media-worker/src/index.ts")
+  // Resolved from this file's own location, not process.cwd() — this
+  // script always lives at apps/fleet-manager/scripts/.
+  const repoRoot = join(
+    dirname(fileURLToPath(import.meta.url)),
+    "..",
+    "..",
+    "..",
+  );
+  const defaultWorkerScript = join(repoRoot, "apps/media-worker/src/index.ts");
+  const workerScript = existsSync(defaultWorkerScript)
+    ? defaultWorkerScript
     : undefined;
 
   const provider = await resolveFleetProvider("local", {
@@ -77,19 +85,8 @@ async function main() {
       status: "QUEUED",
       video_key: videoKey,
       output_prefix: outputPrefix,
-      requirements: {
-        qualities,
-        videoCodec: "h264",
-        audioCodec: "aac",
-        segmentDurationSeconds: 4,
-        hardware: {
-          minCpu: 2,
-          minMemoryMb: 2048,
-          architecture: "arm64",
-          storageGb: 10,
-          estimatedDurationSeconds: 120,
-        },
-      },
+      video_size: 0,
+      qualities,
       worker_id: null,
       attempts: 0,
       max_attempts: 3,

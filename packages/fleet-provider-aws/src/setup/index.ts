@@ -558,7 +558,9 @@ function createZipFromBuffers(
   eocdView.setUint32(12, centralDirLength, true);
   eocdView.setUint32(16, localSectionLength, true);
 
-  const total = new Uint8Array(localSectionLength + centralDirLength + eocd.length);
+  const total = new Uint8Array(
+    localSectionLength + centralDirLength + eocd.length,
+  );
   let offset = 0;
   for (const part of [...localParts, ...centralParts, eocd]) {
     total.set(part, offset);
@@ -609,9 +611,12 @@ function buildLambdaBundleZip(): Uint8Array {
   // Attempt to use system zip CLI if available
   try {
     const zipPath = path.join(distDir, "function.zip");
-    execSync(`cd "${distDir}" && zip -q -9 function.zip index.js bootstrap-script.sh`, {
-      stdio: "pipe",
-    });
+    execSync(
+      `cd "${distDir}" && zip -q -9 function.zip index.js bootstrap-script.sh`,
+      {
+        stdio: "pipe",
+      },
+    );
     if (fsSync.existsSync(zipPath)) {
       return fsSync.readFileSync(zipPath);
     }
@@ -1502,7 +1507,7 @@ async function runSetupFlow(
     "";
   const keyNameInput = await ask(
     rl,
-    "EC2 SSH Key Pair Name / ID (e.g. key-03fe15e84e3eee02c, leave empty to skip)",
+    "EC2 SSH Key Pair Name leave empty to skip . it must me same region)",
     defaultKeyName || undefined,
   );
   const keyName = keyNameInput.trim() || null;
@@ -1995,7 +2000,8 @@ async function runDestroyFlow(
   const endpointUrl =
     existing.endpointUrl ?? process.env.AWS_ENDPOINT_URL ?? null;
   const region = existing.region ?? process.env.AWS_REGION ?? "us-east-1";
-  const s3BucketName = existing.s3BucketName ?? resolveS3BucketName(process.env);
+  const s3BucketName =
+    existing.s3BucketName ?? resolveS3BucketName(process.env);
 
   console.log(`\n${bold(red("⚠ Teardown Confirmation"))}`);
   console.log(dim("─".repeat(52)));

@@ -1,6 +1,7 @@
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import * as readline from "node:readline/promises";
 import { bold, cyan, dim, green, yellow } from "@veolms/fleet-types/terminal";
 
@@ -135,7 +136,8 @@ export async function runProviderSelection(): Promise<void> {
   console.info(
     `[2/3] Configuring FLEET_PROVIDER="${selectedProvider.id}" in apps/fleet-manager/.env...`,
   );
-  const envPath = join(process.cwd(), "apps/fleet-manager/.env");
+
+  const envPath = join(dirname(fileURLToPath(import.meta.url)), "..", ".env");
   let envContent = existsSync(envPath) ? readFileSync(envPath, "utf-8") : "";
   if (envContent && !envContent.endsWith("\n")) {
     envContent += "\n";
