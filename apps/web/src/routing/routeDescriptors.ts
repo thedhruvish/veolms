@@ -18,6 +18,8 @@ export type ShellPage =
   | "notifications"
   | "placeholder"
   | "settings"
+  | "course-create"
+  | "course-overview"
   | "workspace";
 
 export interface ShellRouteDescriptor {
@@ -38,7 +40,18 @@ export interface LearningRouteDescriptor {
   discussionTab?: undefined;
 }
 
-export type RouteDescriptor = ShellRouteDescriptor | LearningRouteDescriptor;
+export interface CourseOverviewRouteDescriptor {
+  kind: "course-overview";
+  page: "course-overview";
+  section: "Courses";
+  settingsTab?: undefined;
+  discussionTab?: undefined;
+}
+
+export type RouteDescriptor =
+  | ShellRouteDescriptor
+  | LearningRouteDescriptor
+  | CourseOverviewRouteDescriptor;
 
 const discussionsRouteBase = {
   kind: "shell",
@@ -83,18 +96,14 @@ export const routeDescriptors = {
   },
   "course-create": {
     kind: "shell",
-    page: "placeholder",
+    page: "course-create",
     section: "Create Course",
     title: "Create Course",
     description: "Create and publish a new ProCodrr course.",
   },
-  "course-overview": {
-    kind: "shell",
-    page: "placeholder",
-    section: "Course Overview",
-    title: "Course Overview",
-    description: "Review course information, curriculum, and progress.",
-  },
+  // course-overview is now handled by a dedicated RouteDescriptor kind;
+  // the shell descriptor entry is kept only for routeId lookup / meta.
+  // Academy-layout detects it via the learningDescriptor-like approach below.
   wishlist: {
     kind: "shell",
     page: "explore-courses",
@@ -262,6 +271,12 @@ const learningDescriptor = {
   section: "Explore Courses",
 } as const satisfies LearningRouteDescriptor;
 
+const courseOverviewDescriptor = {
+  kind: "course-overview",
+  page: "course-overview",
+  section: "Courses",
+} as const satisfies CourseOverviewRouteDescriptor;
+
 export const destinationPaths: Readonly<Record<string, string>> = {
   home: "/",
   dashboard: "/dashboard",
@@ -378,6 +393,7 @@ export const getEffectiveRouteId = (
 export const getRouteDescriptor = (
   routeId: string,
 ): RouteDescriptor | undefined => {
+  if (routeId === "course-overview") return courseOverviewDescriptor;
   if (routeId === "learning" || routeId === "legacy-learning")
     return learningDescriptor;
   if (routeId === "settings") {
@@ -451,6 +467,14 @@ export const getRouteMeta = (
     return {
       title: `${title} \u00B7 ${productName}`,
       description: `Continue ${title} in the focused ${productName} learning workspace.`,
+    };
+  }
+
+  if (effectiveRouteId === "course-overview") {
+    const title = getCourseTitle(params.courseSlug);
+    return {
+      title: `${title} · ${productName}`,
+      description: `Course overview for ${title} on ${productName}.`,
     };
   }
 

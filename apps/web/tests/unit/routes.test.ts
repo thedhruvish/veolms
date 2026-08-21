@@ -202,6 +202,10 @@ describe("framework route descriptors", () => {
       page: "learning",
       section: "Explore Courses",
     });
+    expect(getRouteDescriptor("course-overview")).toMatchObject({
+      kind: "course-overview",
+      page: "course-overview",
+    });
     expect(getRouteDescriptor("missing")).toBeUndefined();
   });
 
@@ -362,17 +366,16 @@ describe("framework route descriptors", () => {
   });
 
   it("keeps deferred product surfaces on the shared empty state", () => {
-    for (const routeId of [
-      "students",
-      "course-create",
-      "course-overview",
-      "analytics",
-      "messages",
-    ]) {
+    for (const routeId of ["students", "analytics", "messages"]) {
       expect(getRouteDescriptor(routeId)).toMatchObject({
         kind: "shell",
         page: "placeholder",
       });
     }
+
+    expect(getRouteDescriptor("course-create")).toMatchObject({
+      kind: "shell",
+      page: "course-create",
+    });
   });
 });

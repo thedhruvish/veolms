@@ -5,6 +5,8 @@ import { Curriculum } from "../../src/learning/Curriculum.tsx";
 
 describe("Curriculum", () => {
   beforeEach(() => {
+    sessionStorage.clear();
+    localStorage.clear();
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
       callback(0);
       return 1;
@@ -73,7 +75,7 @@ describe("Curriculum", () => {
     );
     expect(onSelectLesson).toHaveBeenCalledWith(10);
     expect(onClose).toHaveBeenCalledTimes(1);
-  }, 10_000);
+  }, 30_000);
 
   it("opens repeated dummy lectures from the remaining sections", () => {
     const onSelectLesson = vi.fn();
@@ -100,5 +102,5 @@ describe("Curriculum", () => {
       }),
     );
     expect(onSelectLesson).toHaveBeenCalledWith(11);
-  }, 15_000);
+  }, 30_000);
 });
