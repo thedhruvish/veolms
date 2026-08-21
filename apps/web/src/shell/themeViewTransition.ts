@@ -93,6 +93,14 @@ function clearStagedRevealOrigin(transitionId: number): void {
   stagedOriginTransitionId = null;
 }
 
+// Applies the committed palette to the root dataset so every CSS-driven
+// palette surface swaps inside the caller's commit (view transition
+// snapshot or effect sync). Lives here, outside component scope, because
+// palette surfaces are owned by the shell theme layer.
+export function applyRootPalette(palette: string): void {
+  document.documentElement.dataset.palette = palette;
+}
+
 export function applyWithThemeViewTransition(
   commit: () => void,
   kind: ThemeViewTransitionKind = "mode",

@@ -70,6 +70,7 @@ import {
   getInitialSidebarWidth,
 } from "./shell/sidebarPreferences";
 import {
+  applyRootPalette,
   applyWithThemeViewTransition,
   themeRevealOriginFromClick,
 } from "./shell/themeViewTransition";
@@ -554,12 +555,19 @@ export function CoursesPage({
   const profileRef = useRef<HTMLDivElement>(null);
   const appliedThemeRef = useRef<"light" | "dark" | null>(null);
   const appliedPaletteRef = useRef<string | null>(null);
-  // Pointer-triggered commits stage their pointer position here so the next
-  // reveal emanates from the interaction that caused it. Keyboard and
-  // OS-triggered commits leave it null, and the theme effects drain it on
-  // every application, so an unrelated earlier click can never become the
-  // reveal origin.
+  // Pointer-triggered display-mode commits stage their pointer position
+  // here so the next reveal emanates from the interaction that caused it.
+  // Keyboard and OS-triggered commits leave it null, and the theme effect
+  // drains it on every application, so an unrelated earlier click can
+  // never become the reveal origin. Palette changes instead pass their
+  // origin straight from the interaction handler that commits them.
   const themeRevealOriginRef = useRef<ThemeRevealOrigin | null>(null);
+  // Document-level dismiss listeners (outside click, global Escape) only
+  // re-subscribe when navigation changes, so they reach the latest revert
+  // handler through this ref instead of a stale render's closure.
+  const revertPalettePreviewRef = useRef<
+    ((origin?: ThemeRevealOrigin) => void) | null
+  >(null);
   const appearanceControlsRef = useRef<HTMLDivElement>(null);
   const appearanceControlRectsRef = useRef<DOMRect[]>([]);
   const appearanceLayoutRef = useRef<boolean | null>(null);
@@ -719,33 +727,13 @@ export function CoursesPage({
 
   useEffect(() => {
     if (!storedPreferencesReady) return;
-    // Same drain-and-reveal contract as the theme effect: only a pointer
-    // commit (swatch click) stages an origin; keyboard arrow previews and
-    // Enter confirms find null and use the corner fallback.
-    const pointerOrigin = themeRevealOriginRef.current;
-    themeRevealOriginRef.current = null;
-    const shouldReveal =
-      appliedPaletteRef.current !== null &&
-      appliedPaletteRef.current !== displayedAcademyTheme;
+    // Synchronization only: palette interaction handlers own the animated
+    // reveals, so this covers the initial application once stored
+    // preferences load and any change that arrives outside a handler.
+    if (appliedPaletteRef.current === displayedAcademyTheme) return;
     appliedPaletteRef.current = displayedAcademyTheme;
-    // appliedAcademyTheme mirrors the palette into React state for surfaces
-    // that render palette colors from props (settings previews, dashboard
-    // charts). Updating it inside the transition commit via flushSync keeps
-    // those re-renders between the old and new snapshots so they join the
-    // reveal instead of flipping ahead of it.
-    const commit = () => {
-      document.documentElement.dataset.palette = displayedAcademyTheme;
-      setAppliedAcademyTheme(displayedAcademyTheme);
-    };
-    if (shouldReveal) {
-      applyWithThemeViewTransition(
-        () => flushSync(commit),
-        "palette",
-        pointerOrigin ?? undefined,
-      );
-    } else {
-      commit();
-    }
+    applyRootPalette(displayedAcademyTheme);
+    setAppliedAcademyTheme(displayedAcademyTheme);
   }, [displayedAcademyTheme, storedPreferencesReady]);
 
   useEffect(() => {
@@ -1115,7 +1103,7 @@ export function CoursesPage({
         !(event.target instanceof Element) ||
         !event.target.closest("[data-palette-menu], [data-palette-trigger]")
       ) {
-        setPalettePreviewTheme(null);
+        revertPalettePreviewRef.current?.();
         setPaletteMenu(false);
       }
       if (
@@ -1149,7 +1137,7 @@ export function CoursesPage({
       if (event.key === "Escape") {
         setCourseMenu(null);
         setProfileMenu(false);
-        setPalettePreviewTheme(null);
+        revertPalettePreviewRef.current?.();
         setPaletteMenu(false);
         setReadingModeMenu(null);
         setMobileMenuOpen(false);
@@ -1557,7 +1545,7 @@ export function CoursesPage({
 
   const toggleAppearance = (mobile = false) => {
     setTheme(resolvedTheme === "dark" ? "light" : "dark");
-    setPalettePreviewTheme(null);
+    revertPalettePreviewRef.current?.();
     setReadingModeMenu(null);
     if (mobile) setMobilePaletteMenu(false);
     else setPaletteMenu(false);
@@ -1573,7 +1561,7 @@ export function CoursesPage({
     updateReadingMode({ enabled: !readingModePreferences.enabled });
   };
   const showReadingModeMenu = (mobile = false) => {
-    setPalettePreviewTheme(null);
+    revertPalettePreviewRef.current?.();
     setPaletteMenu(false);
     setMobilePaletteMenu(false);
     setReadingModeMenu(mobile ? "mobile" : "desktop");
@@ -1635,33 +1623,88 @@ export function CoursesPage({
     return true;
   };
 
-  const selectAcademyTheme = (themeId: string, origin?: ThemeRevealOrigin) => {
-    // Stage the origin only when the click actually changes the displayed
-    // palette; clicking the current selection runs no effect, so a staged
-    // origin would otherwise linger for an unrelated later transition.
-    if (themeId !== displayedAcademyTheme) {
-      themeRevealOriginRef.current = origin ?? null;
+  // Applies a palette change as one synchronous commit: the root dataset
+  // for CSS-driven colors plus the appliedAcademyTheme React mirror for
+  // prop-driven surfaces (settings previews, dashboard charts). Handlers
+  // run this inside the view transition so those React re-renders land
+  // between the old and new snapshots and join the reveal instead of
+  // flipping ahead of it. Flushing synchronously is only legal here, in
+  // the interaction handler — never from an effect.
+  const commitPalette = (nextTheme: string) => {
+    appliedPaletteRef.current = nextTheme;
+    applyRootPalette(nextTheme);
+    setAppliedAcademyTheme(nextTheme);
+  };
+
+  const changePalette = (nextTheme: string, origin?: ThemeRevealOrigin) => {
+    // Selecting what is already displayed runs no transition; plain state
+    // updates keep the committed selection and preview in sync.
+    if (nextTheme === displayedAcademyTheme) {
+      setAcademyTheme(nextTheme);
+      setPalettePreviewTheme(null);
+      return;
     }
-    setAcademyTheme(themeId);
-    setPalettePreviewTheme(null);
+    applyWithThemeViewTransition(
+      () =>
+        flushSync(() => {
+          setAcademyTheme(nextTheme);
+          setPalettePreviewTheme(null);
+          commitPalette(nextTheme);
+        }),
+      "palette",
+      origin,
+    );
   };
 
   const previewAcademyTheme = (themeId: string, origin?: ThemeRevealOrigin) => {
-    // Keyboard previews carry the focused swatch's center; pointer-driven
-    // previews carry the pointer position. No origin when the previewed
-    // theme already matches the displayed one (no transition would drain it).
-    if (themeId !== displayedAcademyTheme) {
-      themeRevealOriginRef.current = origin ?? null;
+    // No transition when the previewed theme already matches the displayed
+    // one; keyboard previews carry the focused swatch's center and pointer
+    // previews carry the pointer position as the reveal origin.
+    if (themeId === displayedAcademyTheme) {
+      setPalettePreviewTheme(themeId);
+      return;
     }
-    setPalettePreviewTheme(themeId);
+    applyWithThemeViewTransition(
+      () =>
+        flushSync(() => {
+          setPalettePreviewTheme(themeId);
+          commitPalette(themeId);
+        }),
+      "palette",
+      origin,
+    );
   };
+
+  // Reverts an unconfirmed keyboard preview back to the committed theme.
+  // Only the revert (previewed theme differing from the committed one)
+  // runs a transition; otherwise clearing the preview changes nothing
+  // displayed and stays silent. Keyboard Escape carries the focused
+  // swatch's center; other dismissals pass nothing for the corner
+  // fallback.
+  const revertPalettePreview = (origin?: ThemeRevealOrigin) => {
+    if (!palettePreviewTheme || palettePreviewTheme === academyTheme) {
+      setPalettePreviewTheme(null);
+      return;
+    }
+    const committedTheme = academyTheme;
+    applyWithThemeViewTransition(
+      () =>
+        flushSync(() => {
+          setPalettePreviewTheme(null);
+          commitPalette(committedTheme);
+        }),
+      "palette",
+      origin,
+    );
+  };
+  revertPalettePreviewRef.current = revertPalettePreview;
 
   const focusPaletteTrigger = (trigger: HTMLButtonElement | null) => {
     window.setTimeout(() => trigger?.focus({ preventScroll: true }), 0);
   };
 
   const confirmDesktopPaletteTheme = (themeId: string) => {
-    selectAcademyTheme(themeId);
+    changePalette(themeId);
     setPaletteMenu(false);
     focusPaletteTrigger(
       paletteMenuSource === "appearance"
@@ -1671,14 +1714,7 @@ export function CoursesPage({
   };
 
   const cancelDesktopPalettePreview = (origin?: ThemeRevealOrigin) => {
-    // Only the revert (previewed theme differing from the committed one)
-    // runs a transition, so only then may an origin be staged. Keyboard
-    // Escape carries the focused swatch's center; the trigger click passes
-    // its own pointer position.
-    if (palettePreviewTheme && palettePreviewTheme !== academyTheme) {
-      themeRevealOriginRef.current = origin ?? null;
-    }
-    setPalettePreviewTheme(null);
+    revertPalettePreview(origin);
     setPaletteMenu(false);
     focusPaletteTrigger(
       paletteMenuSource === "appearance"
@@ -1688,7 +1724,7 @@ export function CoursesPage({
   };
 
   const confirmMobilePaletteTheme = (themeId: string) => {
-    selectAcademyTheme(themeId);
+    changePalette(themeId);
     setMobilePaletteMenu(false);
     focusPaletteTrigger(
       paletteMenuSource === "appearance"
@@ -1698,10 +1734,7 @@ export function CoursesPage({
   };
 
   const cancelMobilePalettePreview = (origin?: ThemeRevealOrigin) => {
-    if (palettePreviewTheme && palettePreviewTheme !== academyTheme) {
-      themeRevealOriginRef.current = origin ?? null;
-    }
-    setPalettePreviewTheme(null);
+    revertPalettePreview(origin);
     setMobilePaletteMenu(false);
     focusPaletteTrigger(
       paletteMenuSource === "appearance"
@@ -1723,7 +1756,7 @@ export function CoursesPage({
       return;
     }
     setTheme(option);
-    setPalettePreviewTheme(null);
+    revertPalettePreview();
     if (mobile) setMobilePaletteMenu(false);
     else setPaletteMenu(false);
   };
@@ -2995,7 +3028,7 @@ export function CoursesPage({
                     selectedTheme={displayedAcademyTheme}
                     id="desktop-theme-menu"
                     className={`sidebar-palette-menu sidebar-palette-menu--dock-attached${sidebarCollapsed ? " sidebar-palette-menu--collapsed" : ""}`}
-                    onSelect={selectAcademyTheme}
+                    onSelect={changePalette}
                     onPreview={previewAcademyTheme}
                     onConfirm={confirmDesktopPaletteTheme}
                     onCancel={cancelDesktopPalettePreview}
@@ -3074,12 +3107,7 @@ export function CoursesPage({
                 setTheme(next);
               }}
               academyTheme={appliedAcademyTheme}
-              onAcademyThemeChange={(next, origin) => {
-                if (next !== displayedAcademyTheme) {
-                  themeRevealOriginRef.current = origin ?? null;
-                }
-                setAcademyTheme(next);
-              }}
+              onAcademyThemeChange={changePalette}
               pageTabColors={pageTabColors}
               onPageTabColorsChange={setPageTabColors}
               sidebarPreferences={sidebarPreferences}
@@ -3543,7 +3571,7 @@ export function CoursesPage({
                 id="mobile-theme-menu"
                 className="sidebar-palette-menu mobile-palette-menu"
                 mobile
-                onSelect={selectAcademyTheme}
+                onSelect={changePalette}
                 onPreview={previewAcademyTheme}
                 onConfirm={confirmMobilePaletteTheme}
                 onCancel={cancelMobilePalettePreview}
