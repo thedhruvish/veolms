@@ -25,6 +25,7 @@ import * as path from "node:path";
 import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import * as esbuild from "esbuild";
+import { resolveS3BucketName } from "../config.ts";
 
 import {
   IAMClient,
@@ -489,14 +490,12 @@ function crc32(buf: Uint8Array): number {
   return (crc ^ -1) >>> 0;
 }
 
-function createZipFromBuffer(
-  fileName: string,
-  content: Uint8Array,
+// Minimal "store" (uncompressed) multi-entry ZIP writer — fallback for
+// when the system `zip` CLI isn't available.
+function createZipFromBuffers(
+  entries: readonly { name: string; content: Uint8Array }[],
 ): Uint8Array {
   const encoder = new TextEncoder();
-  const fileBytes = encoder.encode(fileName);
-  const fileCrc = crc32(content);
-
   const now = new Date();
   const dosDate =
     (((now.getFullYear() - 1980) << 9) |
@@ -505,56 +504,66 @@ function createZipFromBuffer(
     0;
   const dosTime = ((now.getHours() << 11) | (now.getMinutes() << 5)) >>> 0;
 
-  const localHeader = new Uint8Array(30 + fileBytes.length);
-  const lhView = new DataView(localHeader.buffer);
-  lhView.setUint32(0, 0x04034b50, true);
-  lhView.setUint16(4, 20, true);
-  lhView.setUint16(6, 0, true);
-  lhView.setUint16(8, 0, true); // store (no compression)
-  lhView.setUint16(10, dosTime, true);
-  lhView.setUint16(12, dosDate, true);
-  lhView.setUint32(14, fileCrc, true);
-  lhView.setUint32(18, content.length, true);
-  lhView.setUint32(22, content.length, true);
-  lhView.setUint16(26, fileBytes.length, true);
-  lhView.setUint16(28, 0, true);
-  localHeader.set(fileBytes, 30);
+  const localParts: Uint8Array[] = [];
+  const centralParts: Uint8Array[] = [];
+  let localSectionLength = 0;
 
-  const centralDir = new Uint8Array(46 + fileBytes.length);
-  const cdView = new DataView(centralDir.buffer);
-  cdView.setUint32(0, 0x02014b50, true);
-  cdView.setUint16(4, 20, true);
-  cdView.setUint16(6, 20, true);
-  cdView.setUint16(8, 0, true);
-  cdView.setUint16(10, 0, true);
-  cdView.setUint16(12, dosTime, true);
-  cdView.setUint16(14, dosDate, true);
-  cdView.setUint32(16, fileCrc, true);
-  cdView.setUint32(20, content.length, true);
-  cdView.setUint32(24, content.length, true);
-  cdView.setUint16(28, fileBytes.length, true);
-  cdView.setUint32(42, 0, true);
-  centralDir.set(fileBytes, 46);
+  for (const { name, content } of entries) {
+    const fileBytes = encoder.encode(name);
+    const fileCrc = crc32(content);
+    const localHeaderOffset = localSectionLength;
 
+    const localHeader = new Uint8Array(30 + fileBytes.length);
+    const lhView = new DataView(localHeader.buffer);
+    lhView.setUint32(0, 0x04034b50, true);
+    lhView.setUint16(4, 20, true);
+    lhView.setUint16(6, 0, true);
+    lhView.setUint16(8, 0, true); // store (no compression)
+    lhView.setUint16(10, dosTime, true);
+    lhView.setUint16(12, dosDate, true);
+    lhView.setUint32(14, fileCrc, true);
+    lhView.setUint32(18, content.length, true);
+    lhView.setUint32(22, content.length, true);
+    lhView.setUint16(26, fileBytes.length, true);
+    lhView.setUint16(28, 0, true);
+    localHeader.set(fileBytes, 30);
+
+    localParts.push(localHeader, content);
+    localSectionLength += localHeader.length + content.length;
+
+    const centralDir = new Uint8Array(46 + fileBytes.length);
+    const cdView = new DataView(centralDir.buffer);
+    cdView.setUint32(0, 0x02014b50, true);
+    cdView.setUint16(4, 20, true);
+    cdView.setUint16(6, 20, true);
+    cdView.setUint16(8, 0, true);
+    cdView.setUint16(10, 0, true);
+    cdView.setUint16(12, dosTime, true);
+    cdView.setUint16(14, dosDate, true);
+    cdView.setUint32(16, fileCrc, true);
+    cdView.setUint32(20, content.length, true);
+    cdView.setUint32(24, content.length, true);
+    cdView.setUint16(28, fileBytes.length, true);
+    cdView.setUint32(42, localHeaderOffset, true);
+    centralDir.set(fileBytes, 46);
+    centralParts.push(centralDir);
+  }
+
+  const centralDirLength = centralParts.reduce((sum, p) => sum + p.length, 0);
   const eocd = new Uint8Array(22);
   const eocdView = new DataView(eocd.buffer);
   eocdView.setUint32(0, 0x06054b50, true);
-  eocdView.setUint16(8, 1, true);
-  eocdView.setUint16(10, 1, true);
-  eocdView.setUint32(12, centralDir.length, true);
-  eocdView.setUint32(16, localHeader.length + content.length, true);
+  eocdView.setUint16(8, entries.length, true);
+  eocdView.setUint16(10, entries.length, true);
+  eocdView.setUint32(12, centralDirLength, true);
+  eocdView.setUint32(16, localSectionLength, true);
 
-  const total = new Uint8Array(
-    localHeader.length + content.length + centralDir.length + eocd.length,
-  );
+  const total = new Uint8Array(localSectionLength + centralDirLength + eocd.length);
   let offset = 0;
-  total.set(localHeader, offset);
-  offset += localHeader.length;
-  total.set(content, offset);
-  offset += content.length;
-  total.set(centralDir, offset);
-  offset += centralDir.length;
-  total.set(eocd, offset);
+  for (const part of [...localParts, ...centralParts, eocd]) {
+    total.set(part, offset);
+    offset += part.length;
+  }
   return total;
 }
 
@@ -585,12 +594,22 @@ function buildLambdaBundleZip(): Uint8Array {
     logLevel: "silent",
   });
 
+  // bootstrapper.ts reads this as a sibling file at runtime — must ship
+  // in the zip alongside index.js.
+  const bootstrapScriptSource = path.join(
+    repoRoot,
+    "packages/fleet-provider-aws/src/bootstrap-script.sh",
+  );
+  const bootstrapScriptDest = path.join(distDir, "bootstrap-script.sh");
+  fsSync.copyFileSync(bootstrapScriptSource, bootstrapScriptDest);
+
   const jsContent = fsSync.readFileSync(outfile);
+  const shContent = fsSync.readFileSync(bootstrapScriptDest);
 
   // Attempt to use system zip CLI if available
   try {
     const zipPath = path.join(distDir, "function.zip");
-    execSync(`cd "${distDir}" && zip -q -9 function.zip index.js`, {
+    execSync(`cd "${distDir}" && zip -q -9 function.zip index.js bootstrap-script.sh`, {
       stdio: "pipe",
     });
     if (fsSync.existsSync(zipPath)) {
@@ -600,7 +619,10 @@ function buildLambdaBundleZip(): Uint8Array {
     // Fall back to pure JS zip generator with valid CRC32
   }
 
-  return createZipFromBuffer("index.js", jsContent);
+  return createZipFromBuffers([
+    { name: "index.js", content: jsContent },
+    { name: "bootstrap-script.sh", content: shContent },
+  ]);
 }
 
 export async function ensureSecurityGroup(
@@ -1081,8 +1103,7 @@ function loadExistingConfig(repoRoot: string): Partial<SetupAnswers> {
     combined["STORAGE_PROVIDER"] === "local"
       ? "other"
       : "s3";
-  const s3BucketName =
-    combined["S3_BUCKET_NAME"] || combined["S3_BUCKET"] || null;
+  const s3BucketName = resolveS3BucketName(combined);
   const s3CredentialMode: CredentialMode =
     combined["S3_USE_INSTANCE_ROLE"] === "true" ? "automatic" : "manual";
   const allowedInstanceTypes = combined["EC2_ALLOWED_INSTANCE_TYPES"]
@@ -1974,8 +1995,7 @@ async function runDestroyFlow(
   const endpointUrl =
     existing.endpointUrl ?? process.env.AWS_ENDPOINT_URL ?? null;
   const region = existing.region ?? process.env.AWS_REGION ?? "us-east-1";
-  const s3BucketName =
-    existing.s3BucketName ?? process.env.S3_BUCKET_NAME ?? null;
+  const s3BucketName = existing.s3BucketName ?? resolveS3BucketName(process.env);
 
   console.log(`\n${bold(red("⚠ Teardown Confirmation"))}`);
   console.log(dim("─".repeat(52)));

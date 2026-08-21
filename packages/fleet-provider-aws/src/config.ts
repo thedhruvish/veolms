@@ -23,12 +23,18 @@ export type AwsProviderEnvironmentConfig = z.infer<
   typeof awsProviderConfigSchema
 >;
 
+export function resolveS3BucketName(
+  env: Readonly<Record<string, string | undefined>>,
+): string | null {
+  return env["S3_BUCKET"] || env["S3_BUCKET_NAME"] || null;
+}
+
 export function loadAwsProviderConfig(
   env: Readonly<Record<string, string | undefined>> = process.env,
 ): AwsProviderEnvironmentConfig {
   const resolvedEnv = {
     ...env,
-    S3_BUCKET: env["S3_BUCKET"] || env["S3_BUCKET_NAME"],
+    S3_BUCKET: resolveS3BucketName(env) ?? undefined,
     KEY_NAME: env["KEY_NAME"] || env["EC2_KEY_NAME"],
     SECURITY_GROUP_IDS:
       env["SECURITY_GROUP_IDS"] ||

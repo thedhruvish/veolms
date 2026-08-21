@@ -9,16 +9,11 @@ import {
   red,
   yellow,
 } from "@veolms/fleet-types/terminal";
+import { resolveS3BucketName } from "../config.ts";
 
-const REGION = process.env.AWS_REGION || "us-east-1";
 const ROLE_NAME = "VeoLMSWorkerRole";
 const INSTANCE_PROFILE_NAME = "VeoLMSWorkerInstanceProfile";
 const LAMBDA_NAME = "veolms-fleet-manager";
-// Same env var every AWS SDK client and the `aws` CLI itself already honor
-// (see setup/index.ts) — if fleet:infra wrote it into apps/fleet-manager/.env
-// during LocalStack setup, this destroy run targets the same place.
-const ENDPOINT_URL = process.env.AWS_ENDPOINT_URL || null;
-const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME || null;
 
 export interface DestroyOptions {
   readonly rl?: readline.Interface;
@@ -114,7 +109,7 @@ export async function runAwsInfraDestroy(
   const s3BucketName =
     options.s3BucketName !== undefined
       ? options.s3BucketName
-      : process.env.S3_BUCKET_NAME || null;
+      : resolveS3BucketName(process.env);
 
   console.info(`
 ${bold(red("╔══════════════════════════════════════════════════════╗"))}
