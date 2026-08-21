@@ -1,4 +1,4 @@
-import type { MfaState, SessionUser } from "./auth.service.ts";
+import type { MfaState, SessionUser } from "./auth.types.ts";
 
 /**
  * Shapes the login/registration payload.

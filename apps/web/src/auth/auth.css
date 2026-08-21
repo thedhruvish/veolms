@@ -336,19 +336,14 @@
 
 /* width:auto overrides the shared trigger's 100%, which would otherwise take the
    whole row and leave the number field with no space. */
-.auth-form__country,
-.auth-form__country-menu {
-  --auth-flag-in: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 24'%3E%3Crect width='36' height='8' fill='%23ff9933'/%3E%3Crect y='8' width='36' height='8' fill='%23ffffff'/%3E%3Crect y='16' width='36' height='8' fill='%23138808'/%3E%3Ccircle cx='18' cy='12' r='3.1' fill='none' stroke='%23000080' stroke-width='.9'/%3E%3Ccircle cx='18' cy='12' r='.8' fill='%23000080'/%3E%3C/svg%3E");
-}
-
 .auth-form__country {
   flex: 0 0 auto;
   width: auto;
   min-width: 0;
   min-height: var(--auth-h-field);
   justify-content: center;
-  gap: 4px;
-  padding: 0 10px;
+  gap: 6px;
+  padding: 0 11px;
   border: 1px solid var(--auth-line);
   border-radius: var(--auth-radius);
   overflow: hidden;
@@ -359,21 +354,9 @@
   font-weight: 600;
 }
 
-.auth-form__country::before,
-.auth-form__country-menu .themed-select__item::before {
-  content: "";
-  flex: 0 0 auto;
-  width: 19px;
-  height: 13px;
-  margin-right: 4px;
-  border-radius: 2px;
-  background: var(--auth-flag-in) center / cover no-repeat;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 16%, transparent);
-}
-
-.auth-form__country-menu .themed-select__item {
-  display: flex;
-  align-items: center;
+.auth-form__country-menu {
+  min-width: 260px;
+  max-width: min(340px, calc(100vw - 24px));
 }
 
 .auth-form__country:focus-visible:not([data-state="open"]),
@@ -863,6 +846,7 @@
     align-items: stretch;
     gap: 40px;
     max-width: 1085px;
+    min-height: 480px;
     padding: var(--auth-pad-y) var(--auth-pad-x);
   }
 
@@ -879,17 +863,21 @@
   .auth-page__brand-column {
     display: grid;
     align-self: stretch;
+    min-height: 350px;
   }
 
   .auth-brand-panel {
     display: grid;
     align-content: stretch;
+    height: 100%;
+    min-height: 350px;
   }
 
   .auth-brand-panel__illustration-slot {
     position: relative;
     width: 100%;
     height: 100%;
+    min-height: 350px;
     background: url("../assets/auth-illustration.webp") center / contain
       no-repeat;
   }

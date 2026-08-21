@@ -9,9 +9,24 @@ export interface AuthState {
   isLoading: boolean;
 }
 
+const STORAGE_KEY = "veolms-auth-user";
+
+function getInitialUser(): AuthUser | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+const initialUser = getInitialUser();
+
 let state: AuthState = {
-  user: null,
-  isAuthenticated: false,
+  user: initialUser,
+  isAuthenticated: Boolean(initialUser),
   isLoading: false,
 };
 
@@ -35,6 +50,17 @@ export const authStore = {
       isAuthenticated: Boolean(user),
       isLoading: false,
     };
+    if (typeof window !== "undefined") {
+      try {
+        if (user) {
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+        } else {
+          window.localStorage.removeItem(STORAGE_KEY);
+        }
+      } catch {
+        // ignore storage errors
+      }
+    }
     notify();
   },
 
@@ -52,6 +78,13 @@ export const authStore = {
       isAuthenticated: false,
       isLoading: false,
     };
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.removeItem(STORAGE_KEY);
+      } catch {
+        // ignore storage errors
+      }
+    }
     notify();
   },
 

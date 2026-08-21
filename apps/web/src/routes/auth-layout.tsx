@@ -3,6 +3,7 @@ import { AuthBrandPanel } from "../auth/AuthBrandPanel";
 import { useAuthAppearance } from "../auth/useAuthAppearance";
 import { productName } from "../routing/routeDescriptors";
 import "../auth/auth.css";
+import "../auth/mfa-setup.css";
 
 export default function AuthLayout() {
   useAuthAppearance();

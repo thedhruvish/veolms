@@ -8,6 +8,7 @@ import { QueryProvider } from "./providers/query-provider";
 import { ReadingModeEffects } from "./reading-mode/ReadingModeEffects";
 import { getReadingModeBootstrapScript } from "./reading-mode/readingModePreferences";
 import { getSurfaceDepthBootstrapScript } from "./settings/settingsPreferences";
+import { useCurrentUser } from "./services/auth";
 import {
   ACADEMY_THEME_VERSION,
   DEFAULT_ACADEMY_THEME,
@@ -90,10 +91,17 @@ export function HydrateFallback() {
   return <AppLoadingScreen />;
 }
 
+function SessionInitializer({ children }: { children: ReactNode }) {
+  useCurrentUser();
+  return <>{children}</>;
+}
+
 export default function Root() {
   return (
     <QueryProvider>
-      <Outlet />
+      <SessionInitializer>
+        <Outlet />
+      </SessionInitializer>
     </QueryProvider>
   );
 }

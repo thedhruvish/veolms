@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { GitHubBrandIcon, GoogleBrandIcon } from "./SocialBrandIcons";
-import { useOauthUrl } from "../services/auth/use-auth";
+import { useOauthUrl } from "../services/auth";
 
 interface SocialLoginActionsProps {
   onError?: (message: string) => void;
@@ -15,6 +15,7 @@ export function SocialLoginActions({ onError }: SocialLoginActionsProps) {
     setLoadingProvider(provider);
 
     try {
+      sessionStorage.setItem("veolms_oauth_provider", provider);
       const redirectUri = `${window.location.origin}/auth/callback`;
       const response = await oauthUrlMutation.mutateAsync({
         provider,
