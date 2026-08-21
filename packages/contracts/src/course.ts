@@ -21,8 +21,8 @@ const courseSummaryObjectSchema = z.strictObject({
   title: z.string().min(1).max(255).meta({ description: "Course title." }),
   shortDescription: z
     .string()
-    .min(1)
     .max(500)
+    .default("")
     .meta({ description: "One-line summary shown in catalogue listings." }),
 });
 

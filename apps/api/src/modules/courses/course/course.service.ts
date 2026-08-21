@@ -65,11 +65,18 @@ export function createCourseService({
       id,
       slug,
       title,
+      shortDescription: null,
+      description: null,
+      difficulty: null,
       status: "draft" as const,
       creatorId,
+      categoryId: null,
+      thumbnailMediaId: null,
+      trailerMediaId: null,
       version: 1,
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
+      publishedAt: null,
     };
   }
 
