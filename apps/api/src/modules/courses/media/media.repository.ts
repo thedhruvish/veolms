@@ -4,7 +4,6 @@ import type {
   MediaAssetStatus,
   VideoJobStatus,
   VideoJobStage,
-  VideoQualityLevel,
 } from "@veolms/database";
 
 export async function findMediaAssetById(
@@ -69,33 +68,6 @@ export async function updateMediaAssetStatus(
     .set({ status, updated_at: new Date() })
     .where("id", "=", mediaId)
     .execute();
-}
-
-export async function insertJob(
-  database: Kysely<Database>,
-  values: {
-    video_key: string;
-    video_size: number;
-    qualities: VideoQualityLevel[];
-  },
-) {
-  return await database
-    .insertInto("jobs")
-    .values(values)
-    .returningAll()
-    .executeTakeFirstOrThrow();
-}
-
-export async function findJobByVideoKey(
-  database: Kysely<Database>,
-  videoKey: string,
-) {
-  return await database
-    .selectFrom("jobs")
-    .selectAll()
-    .where("video_key", "=", videoKey)
-    .orderBy("created_at", "desc")
-    .executeTakeFirst();
 }
 
 export async function insertVideoJob(
