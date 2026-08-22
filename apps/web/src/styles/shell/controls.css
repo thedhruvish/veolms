@@ -77,15 +77,14 @@
 
 .themed-select__content {
   z-index: 700;
-  min-width: var(--radix-select-trigger-width);
-  max-width: min(360px, calc(100vw - 24px));
+  box-sizing: border-box;
+  max-width: calc(100vw - 24px);
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
   border-radius: 10px;
   color: var(--text);
   background: color-mix(in srgb, var(--surface-strong) 92%, var(--canvas));
   box-shadow: 0 16px 34px color-mix(in srgb, var(--canvas) 68%, transparent);
-  transform-origin: var(--radix-select-content-transform-origin);
   animation: themed-select-in 150ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 

@@ -182,7 +182,7 @@ export function Curriculum({
 
       <label
         className={`learning-curriculum__search ${searchOpen ? "is-visible" : ""}`}
-        aria-hidden={!searchOpen}
+        aria-hidden={!searchOpen ? true : undefined}
       >
         <MagnifyingGlass size={19} aria-hidden="true" />
         <span className="sr-only">Search lessons</span>
@@ -220,7 +220,9 @@ export function Curriculum({
                 aria-expanded={isOpen}
                 className="learning-curriculum__section-toggle"
               >
-                {isOpen ? <CaretDown size={17} /> : <CaretRight size={17} />}
+                <span className={`learning-curriculum__section-arrow${isOpen ? " is-open" : ""}`} aria-hidden="true">
+                  <CaretRight size={17} />
+                </span>
                 <span className="min-w-0 flex-1 truncate">
                   Section {section.id}: {section.title}
                 </span>
@@ -231,8 +233,8 @@ export function Curriculum({
               {matchingLessons.length > 0 && (
                 <div
                   className={`learning-curriculum__section-lessons ${isOpen ? "is-open" : ""}`}
-                  aria-hidden={!isOpen}
-                  inert={!isOpen}
+                  aria-hidden={!isOpen ? true : undefined}
+                  inert={!isOpen ? true : undefined}
                 >
                   <div className="learning-curriculum__section-lessons-inner">
                     {matchingLessons.map(
