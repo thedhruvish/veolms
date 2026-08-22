@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { config } from "../../../config.ts";
 
 import { AppError } from "../../../lib/errors.ts";
+import { PRIVILEGED_MFA_IDENTIFIERS } from "./auth.constants.ts";
 import type { IdentifierType } from "./auth.types.ts";
 
 // 2. Token Hashing (SHA-256 for secure session storage and verification tokens)
@@ -30,6 +31,27 @@ export function resolveIdentifier(body: {
     "INVALID_REQUEST",
     "Email or phone number is required.",
   );
+}
+
+/**
+ * Privileged access must have at least one enrolled factor before it can be
+ * used. Roles are the source of truth today; permission namespaces are also
+ * checked so future admin/creator permissions cannot bypass the policy.
+ */
+export function requiresPrivilegedMfa(
+  roles: string[],
+  permissions: string[],
+): boolean {
+  const identifiers = new Set<string>(PRIVILEGED_MFA_IDENTIFIERS);
+  const hasPrivilegedRole = roles.some((role) =>
+    identifiers.has(role.trim().toLowerCase()),
+  );
+  if (hasPrivilegedRole) return true;
+
+  return permissions.some((permission) => {
+    const namespace = permission.trim().toLowerCase().split(/[:/]/, 1)[0];
+    return namespace ? identifiers.has(namespace) : false;
+  });
 }
 
 export function generatePkce(): { verifier: string; challenge: string } {

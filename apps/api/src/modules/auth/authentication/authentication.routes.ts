@@ -16,7 +16,7 @@ import { createAuthController } from "./authentication.controller.ts";
 const authenticationRoutes: RoutePlugin = async (app, options) => {
   const context = createAuthContext(options);
   const controller = createAuthController(context);
-  const { middleware, mfaVerified } = context;
+  const { middleware, authenticated } = context;
 
   app.post(
     "/auth/login",
@@ -106,10 +106,9 @@ const authenticationRoutes: RoutePlugin = async (app, options) => {
         response: {
           200: jsonResponse("User context.", userProfileResponseSchema),
           401: errorResponse("Session missing or invalid."),
-          403: errorResponse("MFA step-up required."),
         },
       },
-      preHandler: mfaVerified,
+      preHandler: authenticated,
     },
     controller.me,
   );

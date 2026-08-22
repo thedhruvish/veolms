@@ -13,7 +13,11 @@ import type {
 import * as mfaRepository from "../mfa/mfa.repository.ts";
 import * as sessionRepository from "./session.repository.ts";
 import * as userRepository from "../authentication/authentication.repository.ts";
-import { generateRandomToken, hashToken } from "../shared/auth.utils.ts";
+import {
+  generateRandomToken,
+  hashToken,
+  requiresPrivilegedMfa,
+} from "../shared/auth.utils.ts";
 
 export interface SessionServiceOptions {
   database: Kysely<Database>;
@@ -49,7 +53,14 @@ export function createSessionService({ database }: SessionServiceOptions) {
     user: SessionUser,
     request: { ip: string; userAgent: string | null },
   ): Promise<EstablishedSession> {
-    const mfa = await resolveMfaState(user.id, Boolean(user.mfa_mandatory));
+    const [roles, permissions] = await Promise.all([
+      userRepository.listUserRoleNames(database, user.id),
+      userRepository.listUserPermissions(database, user.id),
+    ]);
+    const mfa = await resolveMfaState(
+      user.id,
+      Boolean(user.mfa_mandatory) || requiresPrivilegedMfa(roles, permissions),
+    );
 
     const token = generateRandomToken();
     const sessionId = crypto.randomUUID();
@@ -145,7 +156,9 @@ export function createSessionService({ database }: SessionServiceOptions) {
         permissions,
         totpEnabled,
         passkeyEnabled: passkeyCount > 0,
-        mfaMandatory: Boolean(user.mfa_mandatory),
+        mfaMandatory:
+          Boolean(user.mfa_mandatory) ||
+          requiresPrivilegedMfa(roles, permissions),
       },
       session: {
         id: session.id,

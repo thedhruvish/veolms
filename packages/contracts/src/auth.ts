@@ -258,6 +258,10 @@ export const userProfileResponseSchema = z.object({
   phoneNo: z.string().max(15).nullable(),
   roles: z.array(z.string().max(50)),
   permissions: z.array(z.string().max(50)),
+  mfaMandatory: z.boolean().meta({
+    description:
+      "True when a privileged account must enroll a passkey or authenticator app.",
+  }),
   mfaVerified: z.boolean(),
   totpEnabled: z.boolean(),
   passkeyEnabled: z.boolean(),
