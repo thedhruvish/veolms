@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import React from "react";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import AuthLayout from "../../src/routes/auth-layout.tsx";
 import RegisterRoute, {
   clientLoader as registerClientLoader,
@@ -11,10 +11,25 @@ import {
   AuthBrandPanel,
 } from "../../src/auth/AuthBrandPanel.tsx";
 import LoginRoute, { meta as loginMeta } from "../../src/routes/login.tsx";
+import {
+  renderWithAppProviders,
+  renderWithQueryClient,
+} from "./test-utils.tsx";
+
+vi.mock("../../src/services/auth", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../src/services/auth")
+  >("../../src/services/auth");
+
+  return {
+    ...actual,
+    useCurrentUser: () => ({ data: undefined, isSuccess: false }),
+  };
+});
 
 describe("login screen", () => {
   it("welcomes new and returning visitors with the same neutral heading", () => {
-    render(<LoginRoute />);
+    renderWithAppProviders(<LoginRoute />);
 
     expect(
       screen.getByRole("heading", { level: 1, name: "Welcome to ProCodrr" }),
@@ -23,7 +38,7 @@ describe("login screen", () => {
   });
 
   it("tells visitors that the single screen both logs in and registers", () => {
-    render(<LoginRoute />);
+    renderWithAppProviders(<LoginRoute />);
 
     expect(
       screen.getByText("Log in or create an account to continue."),
@@ -31,7 +46,7 @@ describe("login screen", () => {
   });
 
   it("mounts the identifier form and the social actions in the card", () => {
-    render(<LoginRoute />);
+    renderWithAppProviders(<LoginRoute />);
 
     expect(screen.getByRole("tab", { name: "Mobile" })).toHaveAttribute(
       "aria-selected",
@@ -46,14 +61,14 @@ describe("login screen", () => {
   });
 
   it("keeps account creation on this page rather than offering a register link", () => {
-    render(<LoginRoute />);
+    renderWithAppProviders(<LoginRoute />);
 
     expect(screen.queryByText(/register/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/no account found/i)).not.toBeInTheDocument();
   });
 
   it("leaves the copyright to the page footer rather than the card", () => {
-    const { container } = render(<LoginRoute />);
+    const { container } = renderWithAppProviders(<LoginRoute />);
 
     expect(container.querySelector(".auth-page__footer")).toBeNull();
     expect(
@@ -66,8 +81,7 @@ describe("login screen", () => {
       { title: "Log in · ProCodrr" },
       {
         name: "description",
-        content:
-          "Log in to ProCodrr or create an account with a one-time code.",
+        content: "Log in to ProCodrr with a secure one-time code.",
       },
     ]);
   });
@@ -85,7 +99,7 @@ describe("auth layout", () => {
       { initialEntries: ["/"] },
     );
 
-    return render(<RouterProvider router={router} />);
+    return renderWithQueryClient(<RouterProvider router={router} />);
   };
 
   it("frames the routed screen beside the brand panel", async () => {
@@ -165,7 +179,7 @@ describe("auth routes alongside the academy catch-all", () => {
       { initialEntries: [initialEntry] },
     );
 
-    return render(<RouterProvider router={router} />);
+    return renderWithQueryClient(<RouterProvider router={router} />);
   };
 
   it("leaves the root path with the academy layout", async () => {

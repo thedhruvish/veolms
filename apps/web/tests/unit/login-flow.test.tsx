@@ -1,7 +1,62 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import React from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import LoginRoute from "../../src/routes/login.tsx";
+import { authStore } from "../../src/store/auth.store.ts";
+import { renderWithAppProviders } from "./test-utils.tsx";
+
+vi.mock("../../src/services/auth/auth.service.ts", () => {
+  const user = {
+    id: "00000000-0000-0000-0000-000000000001",
+    username: "learner",
+    displayName: "Anurag",
+    email: "learner@procodrr.com",
+    phoneNo: "+919876543210",
+  };
+
+  return {
+    authService: {
+      getMe: vi.fn().mockRejectedValue(new Error("Not authenticated")),
+      sendOtp: vi.fn().mockResolvedValue({ message: "OTP sent" }),
+      login: vi.fn(async (payload: { email?: string; phoneNo?: string }) => {
+        if (payload.email) {
+          throw Object.assign(new Error("Registration required"), {
+            code: "REGISTRATION_REQUIRED",
+          });
+        }
+
+        return {
+          user,
+          mfaRequired: true,
+          mfaMandatory: false,
+          totpEnabled: true,
+          passkeyEnabled: true,
+        };
+      }),
+      register: vi.fn().mockResolvedValue({
+        user,
+        mfaRequired: false,
+        mfaMandatory: false,
+        totpEnabled: false,
+        passkeyEnabled: false,
+      }),
+      verifyMfaTotp: vi.fn().mockResolvedValue({ message: "MFA verified" }),
+      getPasskeyLoginOptions: vi.fn().mockResolvedValue({ challenge: "test" }),
+      verifyPasskeyLogin: vi
+        .fn()
+        .mockResolvedValue({ message: "Passkey verified" }),
+      getOauthUrl: vi.fn().mockResolvedValue({
+        url: "https://accounts.example.test/oauth",
+        state: "test-state",
+      }),
+    },
+  };
+});
+
+vi.mock("../../src/auth/webauthn.ts", () => ({
+  isPasskeySupported: () => true,
+  startPasskeyAuthentication: vi.fn().mockResolvedValue({ id: "credential" }),
+}));
 
 vi.mock("../../src/ThemedSelect.tsx", () => ({
   ThemedSelect: ({
@@ -19,19 +74,21 @@ vi.mock("../../src/ThemedSelect.tsx", () => ({
   ),
 }));
 
-const submitEmail = (address: string) => {
+const submitEmail = async (address: string) => {
   fireEvent.click(screen.getByRole("tab", { name: "Email" }));
   fireEvent.change(screen.getByLabelText("Email address"), {
     target: { value: address },
   });
   fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+  await screen.findByRole("heading", { level: 1, name: "Verify your OTP" });
 };
 
-const submitMobile = (number: string) => {
+const submitMobile = async (number: string) => {
   fireEvent.change(screen.getByLabelText("Mobile number"), {
     target: { value: number },
   });
   fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+  await screen.findByRole("heading", { level: 1, name: "Verify your OTP" });
 };
 
 const typeCode = (code: string) => {
@@ -53,16 +110,12 @@ const typeAuthenticatorCode = (code: string) => {
 };
 
 beforeEach(() => {
-  vi.useFakeTimers();
-});
-
-afterEach(() => {
-  vi.useRealTimers();
+  authStore.clearAuth();
 });
 
 describe("the login flow", () => {
   it("opens on the identifier step with the social actions in place", () => {
-    render(<LoginRoute />);
+    renderWithAppProviders(<LoginRoute />);
 
     expect(
       screen.getByRole("heading", { level: 1, name: "Welcome to ProCodrr" }),
@@ -73,10 +126,10 @@ describe("the login flow", () => {
     ).toBeInTheDocument();
   });
 
-  it("moves to the code step, which echoes the email and drops the social actions", () => {
-    render(<LoginRoute />);
+  it("moves to the code step, which echoes the email and drops the social actions", async () => {
+    renderWithAppProviders(<LoginRoute />);
 
-    submitEmail("learner@procodrr.com");
+    await submitEmail("learner@procodrr.com");
 
     expect(
       screen.getByRole("heading", { level: 1, name: "Verify your OTP" }),
@@ -88,10 +141,10 @@ describe("the login flow", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("masks the mobile number the code was sent to", () => {
-    render(<LoginRoute />);
+  it("masks the mobile number the code was sent to", async () => {
+    renderWithAppProviders(<LoginRoute />);
 
-    submitMobile("9876543210");
+    await submitMobile("9876543210");
 
     expect(screen.getByText("+91 ●●●●● ●●210")).toBeInTheDocument();
     expect(
@@ -99,10 +152,10 @@ describe("the login flow", () => {
     ).toBeInTheDocument();
   });
 
-  it("returns to the identifier step when the learner changes the email", () => {
-    render(<LoginRoute />);
+  it("returns to the identifier step when the learner changes the email", async () => {
+    renderWithAppProviders(<LoginRoute />);
 
-    submitEmail("learner@procodrr.com");
+    await submitEmail("learner@procodrr.com");
     fireEvent.click(screen.getByRole("button", { name: "Change email" }));
 
     expect(
@@ -114,42 +167,42 @@ describe("the login flow", () => {
     ).toBeInTheDocument();
   });
 
-  it("asks an email learner for a name once the code is accepted", () => {
-    render(<LoginRoute />);
+  it("asks an email learner for a name once the code is accepted", async () => {
+    renderWithAppProviders(<LoginRoute />);
 
-    submitEmail("learner@procodrr.com");
+    await submitEmail("learner@procodrr.com");
     typeCode("140926");
-    fireEvent.click(screen.getByRole("button", { name: "Verify & Continue" }));
 
-    expect(screen.getByLabelText("Your name")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Your name")).toBeInTheDocument();
     expect(screen.getByText("le●●●●●@procodrr.com")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("closes the flow once the account is created, having no academy to open yet", () => {
-    render(<LoginRoute />);
+  it("closes the flow once the account is created, having no academy to open yet", async () => {
+    renderWithAppProviders(<LoginRoute />);
 
-    submitEmail("learner@procodrr.com");
+    await submitEmail("learner@procodrr.com");
     typeCode("140926");
-    fireEvent.click(screen.getByRole("button", { name: "Verify & Continue" }));
-    fireEvent.change(screen.getByLabelText("Your name"), {
+    fireEvent.change(await screen.findByLabelText("Your name"), {
       target: { value: "Anurag" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
-    expect(screen.queryByLabelText("Your name")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Mobile number")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("region", { name: "Redirecting" }),
+      ).toBeInTheDocument(),
+    );
   });
 
-  it("walks a mobile learner through the second factor to the end of the flow", () => {
-    render(<LoginRoute />);
+  it("walks a mobile learner through the second factor to the end of the flow", async () => {
+    renderWithAppProviders(<LoginRoute />);
 
-    submitMobile("9876543210");
+    await submitMobile("9876543210");
     typeCode("140926");
-    fireEvent.click(screen.getByRole("button", { name: "Verify & Continue" }));
 
     expect(
-      screen.getByRole("heading", {
+      await screen.findByRole("heading", {
         level: 1,
         name: "Two-factor authentication",
       }),
@@ -159,33 +212,31 @@ describe("the login flow", () => {
       screen.getByRole("button", { name: "Use authenticator app instead" }),
     );
     typeAuthenticatorCode("184273");
-    fireEvent.click(screen.getByRole("button", { name: "Verify & Continue" }));
 
-    expect(
-      screen.queryByRole("heading", {
-        level: 1,
-        name: "Two-factor authentication",
-      }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Mobile number")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Redirecting to your profile/),
+      ).toBeInTheDocument(),
+    );
   });
 
-  it("ends the flow for a mobile learner straight from the passkey", () => {
-    render(<LoginRoute />);
+  it("ends the flow for a mobile learner straight from the passkey", async () => {
+    renderWithAppProviders(<LoginRoute />);
 
-    submitMobile("9876543210");
+    await submitMobile("9876543210");
     typeCode("140926");
-    fireEvent.click(screen.getByRole("button", { name: "Verify & Continue" }));
+    await screen.findByRole("heading", {
+      level: 1,
+      name: "Two-factor authentication",
+    });
     fireEvent.click(
       screen.getByRole("button", { name: "Continue with passkey" }),
     );
 
-    expect(
-      screen.queryByRole("heading", {
-        level: 1,
-        name: "Two-factor authentication",
-      }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Mobile number")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Redirecting to your profile/),
+      ).toBeInTheDocument(),
+    );
   });
 });
