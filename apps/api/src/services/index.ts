@@ -51,10 +51,11 @@ export function createServices({
 
   if (
     config.NODE_ENV === "production" &&
-    !config.EVENTBRIDGE_BUS_NAME
+    !config.FLEET_MANAGER_TRIGGER_URL &&
+    !config.FLEET_MANAGER_LAMBDA_NAME
   ) {
     logger.warn(
-      "EVENTBRIDGE_BUS_NAME is not set; video dispatch will target the default event bus",
+      "Neither FLEET_MANAGER_TRIGGER_URL nor FLEET_MANAGER_LAMBDA_NAME is set; Fleet Manager will rely solely on database reconciliation",
     );
   }
 
@@ -106,17 +107,8 @@ export function createServices({
       forcePathStyle: config.STORAGE_FORCE_PATH_STYLE,
     }),
     videoDispatch: createVideoDispatchService({
-      queue: {
-        retryLimit: config.PG_BOSS_RETRY_LIMIT,
-        retryDelay: config.PG_BOSS_RETRY_DELAY,
-        retryBackoff: config.PG_BOSS_RETRY_BACKOFF,
-        jobExpire: config.PG_BOSS_JOB_EXPIRE,
-      },
-      eventBridge: {
-        busName: config.EVENTBRIDGE_BUS_NAME,
-        eventSource: config.EVENTBRIDGE_EVENT_SOURCE,
-        detailType: config.EVENTBRIDGE_DETAIL_TYPE,
-      },
+      triggerUrl: config.FLEET_MANAGER_TRIGGER_URL,
+      lambdaName: config.FLEET_MANAGER_LAMBDA_NAME,
       logger,
     }),
   };

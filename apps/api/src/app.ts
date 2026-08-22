@@ -15,7 +15,6 @@ import type { RoutePluginOptions } from "./lib/route-plugin.ts";
 import { registerOpenApi } from "./openapi.ts";
 import { createServices, type AppServices } from "./services/index.ts";
 import { config } from "./config.ts";
-import { stopBoss } from "./lib/pg-boss.ts";
 
 export const API_ROUTE_PREFIX = "/api/v1";
 
@@ -99,10 +98,9 @@ export async function createApp({
     } satisfies RoutePluginOptions,
   });
 
-  // Release pooled SMTP connections and pg-boss when the server shuts down.
+  // Release pooled SMTP connections when the server shuts down.
   app.addHook("onClose", async () => {
     await appServices.email.close();
-    await stopBoss();
   });
 
   return app;

@@ -1,9 +1,7 @@
-import { PutEventsCommand } from "@aws-sdk/client-eventbridge";
+import { InvokeCommand } from "@aws-sdk/client-lambda";
 import type { FastifyBaseLogger } from "fastify";
 
-import { getBoss } from "../../lib/pg-boss.ts";
-import { getEventBridgeClient } from "../../lib/eventbridge.ts";
-import { config } from "../../config.ts";
+import { getLambdaClient } from "../../lib/lambda.ts";
 
 export interface VideoJobDispatchPayload {
   jobId: string;
@@ -16,69 +14,60 @@ export interface VideoDispatchService {
   dispatch(payload: VideoJobDispatchPayload): Promise<void>;
 }
 
-export interface VideoDispatchQueueOptions {
-  retryLimit: number;
-  retryDelay: number;
-  retryBackoff: boolean;
-  jobExpire: number;
-}
-
-export interface VideoDispatchEventBridgeOptions {
-  /** EventBridge bus name. If undefined, AWS SDK defaults to the default event bus. */
-  busName: string | undefined;
-  eventSource: string;
-  detailType: string;
-}
-
-export interface VideoDispatchOptions {
-  queue: VideoDispatchQueueOptions;
-  eventBridge: VideoDispatchEventBridgeOptions;
+export interface FleetManagerTriggerOptions {
+  triggerUrl?: string;
+  lambdaName?: string;
   logger: FastifyBaseLogger;
 }
 
 /**
- * Builds the service responsible for dispatching video transcode jobs:
- * - Queues the job to pg-boss.
- * - Triggers Lambda via EventBridge.
+ * Builds the service responsible for triggering Fleet Manager (Serverless Mode).
+ * In serverless mode, notifies Fleet Manager Lambda via HTTP Function URL or AWS SDK Invoke.
+ * In serverful mode or local dev with no lambda configured, Fleet Manager polls DB directly.
  */
 export function createVideoDispatchService(
-  options: VideoDispatchOptions,
+  options: FleetManagerTriggerOptions,
 ): VideoDispatchService {
-  async function dispatchToQueue(
+  async function triggerViaHttp(
+    url: string,
     payload: VideoJobDispatchPayload,
   ): Promise<void> {
-    const boss = await getBoss();
-    await boss.send("video-processing", payload, {
-      retryLimit: options.queue.retryLimit,
-      retryDelay: options.queue.retryDelay,
-      retryBackoff: options.queue.retryBackoff,
-      expireInSeconds: options.queue.jobExpire,
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Fleet Manager trigger returned HTTP status ${response.status}: ${response.statusText}`,
+        );
+      }
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
-  async function dispatchToLambda(
+  async function triggerViaLambdaSdk(
+    functionName: string,
     payload: VideoJobDispatchPayload,
   ): Promise<void> {
-    const client = getEventBridgeClient();
-    const response = await client.send(
-      new PutEventsCommand({
-        Entries: [
-          {
-            Source: options.eventBridge.eventSource,
-            DetailType: options.eventBridge.detailType,
-            ...(options.eventBridge.busName
-              ? { EventBusName: options.eventBridge.busName }
-              : {}),
-            Detail: JSON.stringify(payload),
-          },
-        ],
-      }),
-    );
+    const client = getLambdaClient();
+    const command = new InvokeCommand({
+      FunctionName: functionName,
+      InvocationType: "Event", // Asynchronous fire-and-forget
+      Payload: Buffer.from(JSON.stringify(payload)),
+    });
 
-    if (response?.FailedEntryCount && response.FailedEntryCount > 0) {
-      const failedEntry = response.Entries?.find((entry) => entry.ErrorCode);
+    const response = await client.send(command);
+    if (response.StatusCode && (response.StatusCode < 200 || response.StatusCode >= 300)) {
       throw new Error(
-        `EventBridge rejected the transcode event: ${failedEntry?.ErrorCode ?? "unknown"} — ${failedEntry?.ErrorMessage ?? "no message"}`,
+        `Lambda invocation returned status code ${response.StatusCode}: ${response.FunctionError ?? "unknown error"}`,
       );
     }
   }
@@ -86,49 +75,41 @@ export function createVideoDispatchService(
   async function dispatch(payload: VideoJobDispatchPayload): Promise<void> {
     options.logger.info(
       { jobId: payload.jobId, videoId: payload.videoId },
-      "Dispatching video transcode job",
+      "Triggering Fleet Manager for video job",
     );
 
-    let queueSucceeded = false;
-    let lambdaSucceeded = false;
-    let lastError: unknown = null;
-
-    // 1. Send to pg-boss queue
-    try {
-      await dispatchToQueue(payload);
-      queueSucceeded = true;
+    if (options.triggerUrl) {
+      try {
+        await triggerViaHttp(options.triggerUrl, payload);
+        options.logger.info(
+          { jobId: payload.jobId, triggerUrl: options.triggerUrl },
+          "Successfully triggered Fleet Manager via HTTP trigger URL",
+        );
+      } catch (err) {
+        options.logger.error(
+          { err, jobId: payload.jobId },
+          "Failed to trigger Fleet Manager via HTTP trigger URL",
+        );
+        throw err;
+      }
+    } else if (options.lambdaName) {
+      try {
+        await triggerViaLambdaSdk(options.lambdaName, payload);
+        options.logger.info(
+          { jobId: payload.jobId, lambdaName: options.lambdaName },
+          "Successfully triggered Fleet Manager Lambda via AWS SDK",
+        );
+      } catch (err) {
+        options.logger.error(
+          { err, jobId: payload.jobId },
+          "Failed to trigger Fleet Manager Lambda via AWS SDK",
+        );
+        throw err;
+      }
+    } else {
       options.logger.info(
         { jobId: payload.jobId },
-        "Successfully sent video processing job to pg-boss queue",
-      );
-    } catch (queueErr) {
-      lastError = queueErr;
-      options.logger.error(
-        { err: queueErr, jobId: payload.jobId },
-        "Failed to send video processing job to pg-boss queue",
-      );
-    }
-
-    // 2. Trigger Lambda via EventBridge
-    try {
-      await dispatchToLambda(payload);
-      lambdaSucceeded = true;
-      options.logger.info(
-        { jobId: payload.jobId },
-        "Successfully triggered video processing Lambda via EventBridge",
-      );
-    } catch (lambdaErr) {
-      lastError = lambdaErr;
-      options.logger.error(
-        { err: lambdaErr, jobId: payload.jobId },
-        "Failed to trigger video processing Lambda via EventBridge",
-      );
-    }
-
-    if (!queueSucceeded && !lambdaSucceeded) {
-      throw (
-        lastError ??
-        new Error("Failed to dispatch video transcode job to queue and lambda")
+        "Fleet Manager trigger not configured (serverful or local mode); Fleet Manager will reconcile directly from database",
       );
     }
   }
