@@ -4,10 +4,7 @@ type ValidAuthConfig = {
   ALLOW_EMAIL_LOGIN: boolean;
   ALLOW_MOBILE_LOGIN: boolean;
   REGISTER_VERIFY: RegisterVerificationMode;
-} & (
-  | { ALLOW_EMAIL_LOGIN: true }
-  | { ALLOW_MOBILE_LOGIN: true }
-);
+} & ({ ALLOW_EMAIL_LOGIN: true } | { ALLOW_MOBILE_LOGIN: true });
 
 export const AUTH_CONFIG: ValidAuthConfig = {
   // Login / Start screen options (At least one MUST be true)
@@ -48,8 +45,8 @@ export function getSecondaryVerificationMethodRequired(
 }
 
 export function getDefaultLoginMethod(): "email" | "mobile" {
-  if (isEmailLoginEnabled()) return "email";
-  return "mobile";
+  if (isMobileLoginEnabled()) return "mobile";
+  return "email";
 }
 
 export function isMethodSwitchVisible(): boolean {
@@ -57,7 +54,5 @@ export function isMethodSwitchVisible(): boolean {
 }
 
 export function isIdentifierMethodEnabled(method: "email" | "mobile"): boolean {
-  return method === "email"
-    ? isEmailLoginEnabled()
-    : isMobileLoginEnabled();
+  return method === "email" ? isEmailLoginEnabled() : isMobileLoginEnabled();
 }

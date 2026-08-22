@@ -123,6 +123,8 @@ describe("React Router framework route configuration", () => {
     ).toEqual({
       login: "login",
       register: "register",
+      "auth-callback": "auth/callback",
+      "mfa-setup": "mfa-setup",
     });
     expect(authChildRoutes.find(({ id }) => id === "login")).toMatchObject({
       file: "routes/login.tsx",
@@ -130,6 +132,16 @@ describe("React Router framework route configuration", () => {
     });
     expect(authChildRoutes.find(({ id }) => id === "register")).toMatchObject({
       file: "routes/register.tsx",
+      caseSensitive: true,
+    });
+    expect(
+      authChildRoutes.find(({ id }) => id === "auth-callback"),
+    ).toMatchObject({
+      file: "routes/auth-callback.tsx",
+      caseSensitive: true,
+    });
+    expect(authChildRoutes.find(({ id }) => id === "mfa-setup")).toMatchObject({
+      file: "routes/mfa-setup.tsx",
       caseSensitive: true,
     });
     expect(

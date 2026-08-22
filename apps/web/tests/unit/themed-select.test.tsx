@@ -92,14 +92,19 @@ describe("ThemedSelect with search and flags", () => {
 
   it("filters countries by name or dial code when user searches", () => {
     render(<TestSelectWrapper />);
-    fireEvent.click(screen.getByRole("button", { name: /Country code: \+91/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /Country code: \+91/i }),
+    );
 
-    const searchInput = screen.getByPlaceholderText("Search country or code...");
+    const searchInput = screen.getByPlaceholderText(
+      "Search country or code...",
+    );
     fireEvent.change(searchInput, { target: { value: "united" } });
 
     const options = screen.getAllByRole("option");
-    expect(options).toHaveLength(2);
+    expect(options).toHaveLength(3);
     expect(screen.getByText("United States (+1)")).toBeInTheDocument();
+    expect(screen.getByText("United Kingdom (+44)")).toBeInTheDocument();
     expect(screen.getByText("United Arab Emirates (+971)")).toBeInTheDocument();
     expect(screen.queryByText("India (+91)")).not.toBeInTheDocument();
   });
@@ -107,7 +112,9 @@ describe("ThemedSelect with search and flags", () => {
   it("selects a country and updates trigger value", () => {
     const onValueChange = vi.fn();
     render(<TestSelectWrapper onValueChange={onValueChange} />);
-    fireEvent.click(screen.getByRole("button", { name: /Country code: \+91/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /Country code: \+91/i }),
+    );
 
     const usOption = screen.getByText("United States (+1)");
     fireEvent.click(usOption);
@@ -121,9 +128,13 @@ describe("ThemedSelect with search and flags", () => {
 
   it("shows empty message when no countries match query", () => {
     render(<TestSelectWrapper />);
-    fireEvent.click(screen.getByRole("button", { name: /Country code: \+91/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /Country code: \+91/i }),
+    );
 
-    const searchInput = screen.getByPlaceholderText("Search country or code...");
+    const searchInput = screen.getByPlaceholderText(
+      "Search country or code...",
+    );
     fireEvent.change(searchInput, { target: { value: "xyznonexistent" } });
 
     expect(screen.getByText("No results found")).toBeInTheDocument();
