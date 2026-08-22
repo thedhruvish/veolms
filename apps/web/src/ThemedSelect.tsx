@@ -214,8 +214,10 @@ export function ThemedSelect<Value extends string>({
         event.preventDefault();
         itemRefs.current[0]?.focus();
       } else if (event.key === "Enter" && filteredOptions.length === 1) {
+        const firstOption = filteredOptions[0];
+        if (!firstOption) return;
         event.preventDefault();
-        onValueChange(filteredOptions[0][0]);
+        onValueChange(firstOption[0]);
         closeMenu(true);
       }
       return;
