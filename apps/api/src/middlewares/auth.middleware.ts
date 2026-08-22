@@ -1,6 +1,6 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { httpError } from "../lib/errors.ts";
-import type { SessionService } from "../modules/auth/services/session.service.ts";
+import type { SessionService } from "../modules/auth/index.ts";
 
 export interface AuthMiddleware {
   authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
