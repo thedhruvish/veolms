@@ -5,13 +5,10 @@ import { Palette } from "@phosphor-icons/react/Palette";
 import { ShieldCheck } from "@phosphor-icons/react/ShieldCheck";
 import { SidebarSimple } from "@phosphor-icons/react/SidebarSimple";
 import { UserCircle } from "@phosphor-icons/react/UserCircle";
-import {
-  useEffect,
-  useRef,
-  type ComponentType,
-} from "react";
+import { useEffect, useRef, type ComponentType } from "react";
 import { handleRovingTabKeyDown } from "./accessibility/rovingTabFocus";
 import type { DisplayMode } from "./settings/AppearanceSettings";
+import type { ThemeRevealOrigin } from "./shell/themeViewTransition";
 import type {
   ProfilePreferences,
   ProfileRole,
@@ -93,9 +90,9 @@ export interface SettingsPageProps {
   onExitSettings?: () => void;
   onProfileSaved?: (profile: ProfilePreferences) => void;
   theme: DisplayMode;
-  onThemeChange: (theme: DisplayMode) => void;
+  onThemeChange: (theme: DisplayMode, origin?: ThemeRevealOrigin) => void;
   academyTheme: string;
-  onAcademyThemeChange: (themeId: string) => void;
+  onAcademyThemeChange: (themeId: string, origin?: ThemeRevealOrigin) => void;
   pageTabColors: PageTabColors;
   onPageTabColorsChange: (colors: PageTabColors) => void;
   sidebarPreferences?: SidebarPreferences;
