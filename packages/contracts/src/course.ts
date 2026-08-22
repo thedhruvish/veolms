@@ -461,7 +461,7 @@ export const courseValidationResponseSchema = z.object({
 
 export const videoJobProgressResponseSchema = z.object({
   status: z.enum(["queued", "processing", "completed", "failed"]),
-  progress: z.number().int().min(0).max(100),
+  progressPercent: z.number().int().min(0).max(100),
   currentStage: z.enum([
     "queued",
     "downloading",

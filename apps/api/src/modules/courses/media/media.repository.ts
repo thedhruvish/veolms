@@ -78,7 +78,7 @@ export async function insertVideoJob(
     input_path: string;
     status: "queued";
     current_stage: "queued";
-    progress: number;
+    progress_percent?: number;
     quality: number[];
     created_at: Date;
   },
@@ -92,6 +92,7 @@ export async function updateVideoJobStatus(
   values: {
     status: VideoJobStatus;
     current_stage?: VideoJobStage;
+    progress_percent?: number;
     error?: string | null;
     failed_at?: Date;
   },
