@@ -97,17 +97,11 @@ const serverConfigSchema = z.object({
     .min(100)
     .default(30000),
 
-  // Queue Configs
-  PG_BOSS_RETRY_LIMIT: z.coerce.number().int().min(0).default(3),
-  PG_BOSS_RETRY_DELAY: z.coerce.number().int().min(0).default(30),
-  PG_BOSS_RETRY_BACKOFF: booleanEnvironmentValueSchema.default(true),
-  PG_BOSS_JOB_EXPIRE: z.coerce.number().int().min(1).default(3600),
-
-  // Video Processing Dispatch
-  EVENTBRIDGE_REGION: z.string().optional(),
-  EVENTBRIDGE_BUS_NAME: z.string().optional(),
-  EVENTBRIDGE_EVENT_SOURCE: z.string().default("veolms.video-processing"),
-  EVENTBRIDGE_DETAIL_TYPE: z.string().default("video.transcode.requested"),
+  // Fleet Manager & Video Processing Dispatch
+  FLEET_MANAGER_TRIGGER_URL: z.string().url().optional(),
+  FLEET_MANAGER_LAMBDA_NAME: z.string().optional(),
+  FLEET_MANAGER_LAMBDA_REGION: z.string().optional(),
+  FLEET_MANAGER_HEARTBEAT_SECONDS: z.coerce.number().int().min(1).default(10),
 })
   .refine(
     (data) =>

@@ -7,7 +7,21 @@ export type {
   AccessType,
   AccessDurationType,
   PricingType,
+  JobStatus,
+  VideoQualityLevel,
+  ProviderType,
+  Architecture,
+  FleetEventType,
+  WorkerStatus,
+  JobTable,
+  WorkerTable,
+  WorkerMonitoringTable,
+  WorkerEventTable,
   VideoJobStatus,
   VideoJobStage,
+  VideoJobTable,
+  VideoOutputTable,
 } from "./schema.ts";
+
+
 
