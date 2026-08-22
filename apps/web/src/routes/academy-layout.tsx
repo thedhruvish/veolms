@@ -28,7 +28,6 @@ import type {
 } from "../learning/coursePlayerNavigation";
 import { LearningSessionConflictDialog } from "../learning/LearningSessionConflictDialog";
 import { getCourseTitle } from "../learning/courseMetadata";
-import { MfaEnrollmentBanner } from "../auth/MfaEnrollmentBanner";
 import type { NavigateTo } from "../routing/navigation";
 import {
   getInitialNavigationOrder,
@@ -250,7 +249,6 @@ export default function AcademyLayout() {
 
   return (
     <>
-      <MfaEnrollmentBanner onSetup={() => navigateTo("/settings/security")} />
       <CoursesPage
         page={route.page}
         section={

@@ -20,34 +20,6 @@ export interface AuthMiddleware {
 export function createAuthMiddleware(
   sessionService: SessionService,
 ): AuthMiddleware {
-  function getMfaFailure(
-    request: FastifyRequest,
-  ): { code: "MFA_REQUIRED" | "MFA_SETUP_REQUIRED"; message: string } | null {
-    if (!request.user || !request.session) return null;
-
-    const hasFactor = request.user.totpEnabled || request.user.passkeyEnabled;
-    if (request.user.mfaMandatory && !hasFactor) {
-      return {
-        code: "MFA_SETUP_REQUIRED",
-        message:
-          "Set up a passkey or authenticator app before using this resource.",
-      };
-    }
-
-    if (
-      (request.user.mfaMandatory || hasFactor) &&
-      !request.session.mfa_verified
-    ) {
-      return {
-        code: "MFA_REQUIRED",
-        message:
-          "Multi-factor authentication is required to access this resource.",
-      };
-    }
-
-    return null;
-  }
-
   async function authenticate(
     request: FastifyRequest,
     reply: FastifyReply,
@@ -79,7 +51,7 @@ export function createAuthMiddleware(
   }
 
   /**
-   * Enforces MFA step-up and enrollment for accounts with MFA enabled or required.
+   * Enforces MFA step-up for users who have any MFA factor enabled.
    * Must be used AFTER authenticate + requireAuthenticated in the preHandler chain.
    */
   async function requireMfaVerified(
@@ -92,11 +64,21 @@ export function createAuthMiddleware(
         .send(httpError(401, "UNAUTHORIZED", "Authentication required"));
     }
 
-    const mfaFailure = getMfaFailure(request);
-    if (mfaFailure) {
+    const mfaRequired =
+      request.user.mfaMandatory ||
+      request.user.totpEnabled ||
+      request.user.passkeyEnabled;
+
+    if (mfaRequired && !request.session.mfa_verified) {
       return reply
         .code(403)
-        .send(httpError(403, mfaFailure.code, mfaFailure.message));
+        .send(
+          httpError(
+            403,
+            "MFA_REQUIRED",
+            "Multi-factor authentication is required to access this resource.",
+          ),
+        );
     }
   }
 
@@ -113,11 +95,20 @@ export function createAuthMiddleware(
       }
 
       // 2. Enforce MFA check for users who have MFA enabled or mandatory
-      const mfaFailure = getMfaFailure(request);
-      if (mfaFailure) {
+      const mfaRequired =
+        request.user.mfaMandatory ||
+        request.user.totpEnabled ||
+        request.user.passkeyEnabled;
+      if (mfaRequired && !request.session.mfa_verified) {
         return reply
           .code(403)
-          .send(httpError(403, mfaFailure.code, mfaFailure.message));
+          .send(
+            httpError(
+              403,
+              "MFA_REQUIRED",
+              "Multi-factor authentication code required to complete action",
+            ),
+          );
       }
 
       // 3. Verify user has capability permission
