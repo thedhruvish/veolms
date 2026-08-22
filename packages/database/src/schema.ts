@@ -1,4 +1,4 @@
-import type { Generated, JSONColumnType } from "kysely";
+import type { Generated } from "kysely";
 
 export type CourseStatus = "draft" | "published" | "archived";
 export type OtpIdentifierType = "email" | "phone";
@@ -276,96 +276,8 @@ export interface CourseSettingsTable {
   updated_at: Generated<Date>;
 }
 
-export type JobStatus = "queued" | "processing" | "completed" | "failed";
-export type VideoQualityLevel = "360p" | "480p" | "720p" | "1080p" | "1440p" | "2160p" | string;
-export type ProviderType = "aws" | "hetzner" | "digitalocean" | "docker" | string;
-export type Architecture = "x86_64" | "arm64" | string;
-export type FleetEventType =
-  | "worker_started"
-  | "worker_heartbeat"
-  | "worker_terminating"
-  | "worker_terminated"
-  | "job_claimed"
-  | "job_completed"
-  | "job_failed"
-  | string;
-
-export type WorkerStatus =
-  | "starting"
-  | "idle"
-  | "processing"
-  | "shutting_down"
-  | "terminating"
-  | "terminated"
-  | "failed";
-
-export interface JobTable {
-  id: Generated<string>;
-  status: Generated<JobStatus>;
-  video_key: string;
-  output_prefix: Generated<string>;
-  video_size: number;
-  qualities: VideoQualityLevel[];
-  worker_id: string | null;
-  attempts: Generated<number>;
-  max_attempts: Generated<number>;
-  error_message: string | null;
-  created_at: Generated<Date>;
-  started_at: Date | null;
-  completed_at: Date | null;
-  failed_at: Date | null;
-  updated_at: Generated<Date>;
-}
-
-export interface WorkerTable {
-  id: string;
-  provider: ProviderType;
-  provider_worker_id: string;
-  status: WorkerStatus;
-  architecture: Architecture;
-  cpu: number;
-  memory_mb: number;
-  storage_gb: Generated<number>;
-  region: Generated<string>;
-  job_id: string | null;
-  metadata: JSONColumnType<
-    Record<string, unknown>,
-    Record<string, unknown> | string,
-    Record<string, unknown> | string
-  >;
-  last_heartbeat_at: Date | null;
-  created_at: Generated<Date>;
-  started_at: Date | null;
-  terminated_at: Date | null;
-  updated_at: Generated<Date>;
-}
-
-export interface WorkerMonitoringTable {
-  worker_id: string;
-  next_check_at: Date;
-  last_check_at: Date | null;
-  estimated_duration_sec: number;
-  progress_percent: Generated<number>;
-  last_progress_at: Date | null;
-  monitoring_attempts: Generated<number>;
-  check_interval_sec: Generated<number>;
-  updated_at: Generated<Date>;
-}
-
-export interface WorkerEventTable {
-  id: string;
-  worker_id: string | null;
-  job_id: string | null;
-  event: FleetEventType;
-  metadata: JSONColumnType<
-    Record<string, unknown>,
-    Record<string, unknown> | string,
-    Record<string, unknown> | string
-  >;
-  created_at: Generated<Date>;
-}
-
-export type VideoJobStatus = JobStatus;
+export type VideoJobStatus = "queued" | "processing" | "completed" | "failed";
+export type JobStatus = VideoJobStatus;
 export type VideoJobStage =
   | "queued"
   | "downloading"
@@ -421,10 +333,7 @@ export interface Database {
   course_access_rules: CourseAccessRuleTable;
   course_pricing: CoursePricingTable;
   course_settings: CourseSettingsTable;
-  jobs: JobTable;
-  workers: WorkerTable;
-  worker_monitoring: WorkerMonitoringTable;
-  worker_events: WorkerEventTable;
   video_jobs: VideoJobTable;
   video_outputs: VideoOutputTable;
 }
+

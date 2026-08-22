@@ -240,28 +240,7 @@ export async function up(database: Kysely<unknown>): Promise<void> {
     )
     .execute();
 
-  // 10. Create workers table
-  await database.schema
-    .createTable("workers")
-    .addColumn("id", "uuid", (column) => column.primaryKey())
-    .addColumn("instance_id", "text", (column) => column.notNull().unique())
-    .addColumn("status", "text", (column) => column.notNull())
-    .addColumn("current_job_id", "uuid")
-    .addColumn("started_at", "timestamptz", (column) =>
-      column.notNull().defaultTo(sql`CURRENT_TIMESTAMP`),
-    )
-    .addColumn("last_heartbeat_at", "timestamptz", (column) =>
-      column.notNull().defaultTo(sql`CURRENT_TIMESTAMP`),
-    )
-    .addColumn("shutdown_at", "timestamptz")
-    .addColumn("terminated_at", "timestamptz")
-    .addCheckConstraint(
-      "workers_status_valid",
-      sql`status in ('starting', 'idle', 'processing', 'shutting_down', 'terminated', 'failed')`,
-    )
-    .execute();
-
-  // 11. Create video_jobs table
+  // 10. Create video_jobs table
   await database.schema
     .createTable("video_jobs")
     .addColumn("id", "uuid", (column) => column.primaryKey())
@@ -272,9 +251,7 @@ export async function up(database: Kysely<unknown>): Promise<void> {
     .addColumn("status", "text", (column) => column.notNull())
     .addColumn("progress", "integer", (column) => column.notNull().defaultTo(0))
     .addColumn("current_stage", "text", (column) => column.notNull())
-    .addColumn("worker_id", "uuid", (column) =>
-      column.references("workers.id").onDelete("set null"),
-    )
+    .addColumn("worker_id", "text")
     .addColumn("quality", sql`integer[]`, (column) =>
       column.notNull().defaultTo(sql`ARRAY[720]::integer[]`),
     )
@@ -295,7 +272,7 @@ export async function up(database: Kysely<unknown>): Promise<void> {
     )
     .execute();
 
-  // 12. Create video_outputs table
+  // 11. Create video_outputs table
   await database.schema
     .createTable("video_outputs")
     .addColumn("id", "uuid", (column) => column.primaryKey())
@@ -308,7 +285,7 @@ export async function up(database: Kysely<unknown>): Promise<void> {
     )
     .execute();
 
-  // 13. Create foreign-key indexes
+  // 12. Create foreign-key indexes
   await database.schema
     .createIndex("idx_media_assets_owner_id")
     .on("media_assets")
@@ -364,12 +341,6 @@ export async function up(database: Kysely<unknown>): Promise<void> {
     .execute();
 
   await database.schema
-    .createIndex("idx_video_jobs_worker_id")
-    .on("video_jobs")
-    .column("worker_id")
-    .execute();
-
-  await database.schema
     .createIndex("idx_video_outputs_video_id")
     .on("video_outputs")
     .column("video_id")
@@ -379,7 +350,6 @@ export async function up(database: Kysely<unknown>): Promise<void> {
 export async function down(database: Kysely<unknown>): Promise<void> {
   await database.schema.dropTable("video_outputs").execute();
   await database.schema.dropTable("video_jobs").execute();
-  await database.schema.dropTable("workers").execute();
   await database.schema.dropTable("course_settings").execute();
   await database.schema.dropTable("course_pricing").execute();
   await database.schema.dropTable("course_access_rules").execute();
