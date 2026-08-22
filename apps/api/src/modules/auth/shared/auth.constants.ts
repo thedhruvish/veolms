@@ -65,6 +65,7 @@ export const OAUTH_STATE_TTL_SECONDS = 10 * 60;
 
 export const CREATOR_ROLE = "creator";
 export const STUDENT_ROLE = "student";
+export const PRIVILEGED_MFA_IDENTIFIERS = ["admin", CREATOR_ROLE] as const;
 
 /** Bounded so a pathological username prefix cannot spin indefinitely. */
 export const USERNAME_SUFFIX_ATTEMPTS = 10;

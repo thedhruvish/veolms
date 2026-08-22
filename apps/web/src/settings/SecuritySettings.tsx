@@ -9,6 +9,7 @@ import { SignOut } from "@phosphor-icons/react/SignOut";
 import { Timer } from "@phosphor-icons/react/Timer";
 import { X } from "@phosphor-icons/react/X";
 import { SettingRow } from "./SettingsControls";
+import { MFA_CONFIG } from "../auth/mfa.config";
 import { OtpCodeInput } from "../auth/OtpCodeInput";
 import { validateOtpCode } from "../auth/authFlow";
 import { isPasskeySupported, startPasskeyRegistration } from "../auth/webauthn";
@@ -85,10 +86,7 @@ function BackupCodesModal({ codes, onClose }: BackupCodesModalProps) {
           access to your authenticator app.
         </p>
 
-        <ul
-          className="auth-mfa-setup__backup-codes"
-          aria-label="Backup codes"
-        >
+        <ul className="auth-mfa-setup__backup-codes" aria-label="Backup codes">
           {codes.map((code) => (
             <li key={code} className="auth-mfa-setup__backup-code">
               <code>{code}</code>
@@ -96,7 +94,10 @@ function BackupCodesModal({ codes, onClose }: BackupCodesModalProps) {
           ))}
         </ul>
 
-        <div className="auth-mfa-setup__modal-actions" style={{ justifyContent: "space-between" }}>
+        <div
+          className="auth-mfa-setup__modal-actions"
+          style={{ justifyContent: "space-between" }}
+        >
           <button
             className="auth-mfa-setup__copy-button"
             onClick={copyAll}
@@ -104,11 +105,7 @@ function BackupCodesModal({ codes, onClose }: BackupCodesModalProps) {
           >
             {copied ? "Copied!" : "Copy all codes"}
           </button>
-          <button
-            className="settings-action"
-            onClick={onClose}
-            type="button"
-          >
+          <button className="settings-action" onClick={onClose} type="button">
             Done
           </button>
         </div>
@@ -140,9 +137,7 @@ function TotpSetupModal({ onSuccess, onClose }: TotpSetupModalProps) {
       setStep("qr");
     } catch (err: unknown) {
       const errorObj = err as { message?: string };
-      setCodeError(
-        errorObj?.message || "Could not start authenticator setup.",
-      );
+      setCodeError(errorObj?.message || "Could not start authenticator setup.");
     }
   };
 
@@ -158,7 +153,10 @@ function TotpSetupModal({ onSuccess, onClose }: TotpSetupModalProps) {
     }
     setCodeError(null);
     try {
-      const result = await enableMutation.mutateAsync({ code: codeToVerify, secret });
+      const result = await enableMutation.mutateAsync({
+        code: codeToVerify,
+        secret,
+      });
       onSuccess(result.backupCodes);
     } catch (err: unknown) {
       const errorObj = err as { message?: string };
@@ -186,7 +184,9 @@ function TotpSetupModal({ onSuccess, onClose }: TotpSetupModalProps) {
       <div className="auth-mfa-setup__modal">
         <div className="auth-mfa-setup__modal-header">
           <h3 id="totp-modal-title">
-            {step === "verify" ? "Verify authenticator" : "Set up authenticator"}
+            {step === "verify"
+              ? "Verify authenticator"
+              : "Set up authenticator"}
           </h3>
           <button
             aria-label="Close"
@@ -205,7 +205,8 @@ function TotpSetupModal({ onSuccess, onClose }: TotpSetupModalProps) {
         {step === "qr" && (
           <>
             <p className="auth-mfa-setup__modal-body">
-              Scan this QR code with Google Authenticator, Authy, or any TOTP app.
+              Scan this QR code with Google Authenticator, Authy, or any TOTP
+              app.
             </p>
 
             <div className="auth-mfa-setup__qr-wrapper" aria-hidden="true">
@@ -219,11 +220,16 @@ function TotpSetupModal({ onSuccess, onClose }: TotpSetupModalProps) {
             </div>
 
             <div className="auth-mfa-setup__secret">
-              <span className="auth-mfa-setup__inline-hint">Or enter key manually:</span>
+              <span className="auth-mfa-setup__inline-hint">
+                Or enter key manually:
+              </span>
               <code className="auth-mfa-setup__secret-key">{secret}</code>
             </div>
 
-            <div className="auth-mfa-setup__modal-actions" style={{ justifyContent: "flex-end", marginTop: "8px" }}>
+            <div
+              className="auth-mfa-setup__modal-actions"
+              style={{ justifyContent: "flex-end", marginTop: "8px" }}
+            >
               <button
                 className="settings-action settings-action--quiet"
                 onClick={onClose}
@@ -243,9 +249,14 @@ function TotpSetupModal({ onSuccess, onClose }: TotpSetupModalProps) {
         )}
 
         {step === "verify" && (
-          <form className="auth-mfa-setup__verify-form" noValidate onSubmit={handleVerify}>
+          <form
+            className="auth-mfa-setup__verify-form"
+            noValidate
+            onSubmit={handleVerify}
+          >
             <p className="auth-mfa-setup__modal-body">
-              Enter the 6-digit code shown in your authenticator app to confirm it is working.
+              Enter the 6-digit code shown in your authenticator app to confirm
+              it is working.
             </p>
 
             <OtpCodeInput
@@ -256,7 +267,11 @@ function TotpSetupModal({ onSuccess, onClose }: TotpSetupModalProps) {
               onChange={(v) => {
                 setCode(v);
                 setCodeError(null);
-                if (v.length === 6 && !validateOtpCode(v) && !enableMutation.isPending) {
+                if (
+                  v.length === 6 &&
+                  !validateOtpCode(v) &&
+                  !enableMutation.isPending
+                ) {
                   void submitCode(v);
                 }
               }}
@@ -274,7 +289,10 @@ function TotpSetupModal({ onSuccess, onClose }: TotpSetupModalProps) {
               </p>
             ) : null}
 
-            <div className="auth-mfa-setup__modal-actions" style={{ justifyContent: "space-between", marginTop: "8px" }}>
+            <div
+              className="auth-mfa-setup__modal-actions"
+              style={{ justifyContent: "space-between", marginTop: "8px" }}
+            >
               <button
                 className="settings-action settings-action--quiet"
                 onClick={() => setStep("qr")}
@@ -327,8 +345,7 @@ export function SecuritySettings() {
     } catch (err: unknown) {
       const errorObj = err as { message?: string };
       setPasskeyError(
-        errorObj?.message ||
-          "Passkey registration failed. Please try again.",
+        errorObj?.message || "Passkey registration failed. Please try again.",
       );
     }
   };
@@ -379,10 +396,7 @@ export function SecuritySettings() {
       </header>
 
       {MFA_CONFIG.ALLOW_PASSKEY && (
-        <section
-          className="settings-section"
-          aria-labelledby="passkey-heading"
-        >
+        <section className="settings-section" aria-labelledby="passkey-heading">
           <header className="settings-section__heading">
             <Fingerprint size={20} weight="duotone" />
             <div>
@@ -440,7 +454,11 @@ export function SecuritySettings() {
             )}
 
             {passkeyError && (
-              <p className="auth-form__error" role="alert" style={{ padding: "4px 14px" }}>
+              <p
+                className="auth-form__error"
+                role="alert"
+                style={{ padding: "4px 14px" }}
+              >
                 {passkeyError}
               </p>
             )}
@@ -449,10 +467,7 @@ export function SecuritySettings() {
       )}
 
       {MFA_CONFIG.ALLOW_TOTP && (
-        <section
-          className="settings-section"
-          aria-labelledby="totp-heading"
-        >
+        <section className="settings-section" aria-labelledby="totp-heading">
           <header className="settings-section__heading">
             <ShieldCheck size={20} weight="duotone" />
             <div>
@@ -494,10 +509,7 @@ export function SecuritySettings() {
         </section>
       )}
 
-      <section
-        className="settings-section"
-        aria-labelledby="sessions-heading"
-      >
+      <section className="settings-section" aria-labelledby="sessions-heading">
         <header className="settings-section__heading">
           <Laptop size={20} weight="duotone" />
           <div>

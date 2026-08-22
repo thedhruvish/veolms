@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { AuthBrandMark } from "./AuthBrandPanel.tsx";
+import { MFA_CONFIG } from "./mfa.config.ts";
 import { OtpCodeInput } from "./OtpCodeInput.tsx";
 import { Icon } from "../icons/Icon.tsx";
 import { AUTH_CARD_HEADING_ID, validateOtpCode } from "./authFlow.ts";
@@ -90,11 +91,7 @@ function BackupCodesScreen({ codes, onContinue }: BackupCodesScreenProps) {
 }
 
 type Screen =
-  | "chooseMethod"
-  | "totpQr"
-  | "totpVerify"
-  | "backupCodes"
-  | "passkeyPending";
+  "chooseMethod" | "totpQr" | "totpVerify" | "backupCodes" | "passkeyPending";
 
 export function AdminMfaSetup({ onDone, onError }: AdminMfaSetupProps) {
   const [screen, setScreen] = useState<Screen>("chooseMethod");
@@ -161,7 +158,8 @@ export function AdminMfaSetup({ onDone, onError }: AdminMfaSetupProps) {
     } catch (err: unknown) {
       const errorObj = err as { message?: string };
       setCodeError(
-        errorObj?.message || "Invalid code. Check your authenticator app and try again.",
+        errorObj?.message ||
+          "Invalid code. Check your authenticator app and try again.",
       );
     }
   };
@@ -174,9 +172,7 @@ export function AdminMfaSetup({ onDone, onError }: AdminMfaSetupProps) {
   };
 
   if (screen === "backupCodes") {
-    return (
-      <BackupCodesScreen codes={backupCodes} onContinue={onDone} />
-    );
+    return <BackupCodesScreen codes={backupCodes} onContinue={onDone} />;
   }
 
   if (screen === "passkeyPending") {
@@ -279,7 +275,11 @@ export function AdminMfaSetup({ onDone, onError }: AdminMfaSetupProps) {
                 onChange={(code) => {
                   setTotpCode(code);
                   setCodeError(null);
-                  if (code.length === 6 && !validateOtpCode(code) && !enableTotpMutation.isPending) {
+                  if (
+                    code.length === 6 &&
+                    !validateOtpCode(code) &&
+                    !enableTotpMutation.isPending
+                  ) {
                     void submitTotpCode(code);
                   }
                 }}
@@ -355,12 +355,10 @@ export function AdminMfaSetup({ onDone, onError }: AdminMfaSetupProps) {
                 </span>
 
                 <div className="auth-two-factor__copy">
-                  <p className="auth-two-factor__title">
-                    Register a passkey
-                  </p>
+                  <p className="auth-two-factor__title">Register a passkey</p>
                   <p className="auth-two-factor__body">
-                    Use your device fingerprint, face, or PIN. No code to type
-                    — secure and phishing-resistant.
+                    Use your device fingerprint, face, or PIN. No code to type —
+                    secure and phishing-resistant.
                   </p>
                 </div>
               </div>
