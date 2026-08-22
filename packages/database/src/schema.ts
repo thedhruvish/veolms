@@ -300,10 +300,10 @@ export type WorkerStatus =
   | "failed";
 
 export interface JobTable {
-  id: string;
-  status: JobStatus;
+  id: Generated<string>;
+  status: Generated<JobStatus>;
   video_key: string;
-  output_prefix: string;
+  output_prefix: Generated<string>;
   video_size: number;
   qualities: VideoQualityLevel[];
   worker_id: string | null;
