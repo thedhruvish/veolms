@@ -155,7 +155,7 @@ export function createMediaService({ database, services }: MediaServiceOptions) 
         input_path: media.storage_key,
         status: "queued",
         current_stage: "queued",
-        progress: 0,
+        progress_percent: 0,
         quality: [360, 720, 1080],
         created_at: now,
       });
@@ -279,7 +279,7 @@ export function createMediaService({ database, services }: MediaServiceOptions) 
 
     return {
       status: job.status as "queued" | "processing" | "completed" | "failed",
-      progress: job.progress,
+      progressPercent: job.progress_percent,
       currentStage: job.current_stage as
         | "queued"
         | "downloading"

@@ -249,7 +249,9 @@ export async function up(database: Kysely<unknown>): Promise<void> {
     )
     .addColumn("input_path", "text", (column) => column.notNull())
     .addColumn("status", "text", (column) => column.notNull())
-    .addColumn("progress", "integer", (column) => column.notNull().defaultTo(0))
+    .addColumn("progress_percent", "integer", (column) =>
+      column.notNull().defaultTo(0),
+    )
     .addColumn("current_stage", "text", (column) => column.notNull())
     .addColumn("worker_id", "text")
     .addColumn("quality", sql`integer[]`, (column) =>

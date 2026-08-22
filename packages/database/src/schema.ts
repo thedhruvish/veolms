@@ -292,7 +292,7 @@ export interface VideoJobTable {
   video_id: string;
   input_path: string;
   status: VideoJobStatus;
-  progress: Generated<number>;
+  progress_percent: Generated<number>;
   current_stage: VideoJobStage;
   worker_id: string | null;
   quality: number[];
