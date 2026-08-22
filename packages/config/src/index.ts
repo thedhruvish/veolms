@@ -83,36 +83,12 @@ const serverConfigSchema = z.object({
   STORAGE_BUCKET: z.string().min(1).default("veolms"),
   STORAGE_FORCE_PATH_STYLE: booleanEnvironmentValueSchema.default(false),
 
-  // Worker Configs
-  VIDEO_WORKER_CONCURRENCY: z.coerce.number().int().min(1).default(1),
-  VIDEO_WORKER_HEARTBEAT_INTERVAL: z.coerce
-    .number()
-    .int()
-    .min(100)
-    .default(5000),
-  VIDEO_WORKER_STALE_THRESHOLD: z.coerce.number().int().min(100).default(15000),
-  VIDEO_WORKER_SHUTDOWN_TIMEOUT: z.coerce
-    .number()
-    .int()
-    .min(100)
-    .default(30000),
-
   // Fleet Manager & Video Processing Dispatch
   FLEET_MANAGER_TRIGGER_URL: z.string().url().optional(),
   FLEET_MANAGER_LAMBDA_NAME: z.string().optional(),
   FLEET_MANAGER_LAMBDA_REGION: z.string().optional(),
   FLEET_MANAGER_HEARTBEAT_SECONDS: z.coerce.number().int().min(1).default(10),
-})
-  .refine(
-    (data) =>
-      data.VIDEO_WORKER_STALE_THRESHOLD >=
-      2 * data.VIDEO_WORKER_HEARTBEAT_INTERVAL,
-    {
-      message:
-        "VIDEO_WORKER_STALE_THRESHOLD must be at least twice VIDEO_WORKER_HEARTBEAT_INTERVAL",
-      path: ["VIDEO_WORKER_STALE_THRESHOLD"],
-    },
-  );
+});
 
 const webConfigSchema = z.object({
   WEB_PORT: z.coerce.number().int().min(1).max(65535).default(3000),
