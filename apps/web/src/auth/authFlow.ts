@@ -201,7 +201,6 @@ export type AuthFlowAction =
   | { readonly type: "CHANGE_ACCOUNT_NAME"; readonly name: string }
   | { readonly type: "SUBMIT_ACCOUNT_NAME"; readonly name: string }
   | { readonly type: "ACCOUNT_CREATED" }
-  | { readonly type: "ACCOUNT_CREATED_REQUIRES_MFA" }
   | { readonly type: "ACCOUNT_CREATION_FAILED"; readonly message: string }
   | {
       readonly type: "CHANGE_TWO_FACTOR_METHOD";
@@ -350,17 +349,6 @@ export function authFlowReducer(
 
   if (state.status === "creatingAccount" && action.type === "ACCOUNT_CREATED") {
     return { status: "authenticated" };
-  }
-
-  if (
-    state.status === "creatingAccount" &&
-    action.type === "ACCOUNT_CREATED_REQUIRES_MFA"
-  ) {
-    return {
-      status: "adminMfaSetup",
-      identifier: state.identifier,
-      message: null,
-    };
   }
 
   if (

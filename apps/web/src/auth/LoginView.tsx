@@ -206,7 +206,6 @@ export function LoginView() {
       };
 
       const response = await registerMutation.mutateAsync(payload);
-      authStore.setUser(response.user);
 
       if (
         response.mfaRequired &&
@@ -214,10 +213,10 @@ export function LoginView() {
         !response.passkeyEnabled &&
         !response.totpEnabled
       ) {
-        dispatch({ type: "ACCOUNT_CREATED_REQUIRES_MFA" });
-        return;
+        dispatch({ type: "ADMIN_MFA_SETUP_DONE" });
       }
 
+      authStore.setUser(response.user);
       dispatch({ type: "ACCOUNT_CREATED" });
       handleAuthComplete();
     } catch (err: unknown) {
