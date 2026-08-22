@@ -30,11 +30,13 @@ export async function softDeleteCategory(
   database: Kysely<Database>,
   categoryId: string,
 ) {
-  await database
+  const now = new Date();
+  return await database
     .updateTable("categories")
-    .set({ deleted_at: new Date(), updated_at: new Date() })
+    .set({ deleted_at: now, updated_at: now })
     .where("id", "=", categoryId)
-    .execute();
+    .where("deleted_at", "is", null)
+    .executeTakeFirst();
 }
 
 export async function findCategoryById(

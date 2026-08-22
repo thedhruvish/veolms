@@ -46,23 +46,28 @@ export class S3StorageService {
   }
 
   /**
-   * Verifies if an object exists in storage using Metadata/HEAD operation.
+   * Verifies if an object exists in storage using Metadata/HEAD operation,
+   * returning object metadata or null if not found.
    */
-  async headObject(key: string): Promise<boolean> {
+  async headObject(
+    key: string,
+  ): Promise<{ contentLength?: number } | null> {
     try {
-      await this.client.send(
+      const response = await this.client.send(
         new HeadObjectCommand({
           Bucket: this.bucket,
           Key: key,
         }),
       );
-      return true;
+      return {
+        contentLength: response.ContentLength,
+      };
     } catch (error: any) {
       if (
         error.name === "NotFound" ||
         error.$metadata?.httpStatusCode === 404
       ) {
-        return false;
+        return null;
       }
       throw error;
     }
@@ -121,12 +126,14 @@ export class S3StorageService {
   async getPresignedPutUrl(
     key: string,
     contentType: string,
+    contentLength?: number,
     expiresIn = 300,
   ): Promise<string> {
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       Key: key,
       ContentType: contentType,
+      ContentLength: contentLength,
     });
     return getSignedUrl(this.client, command, { expiresIn });
   }

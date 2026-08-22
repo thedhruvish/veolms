@@ -16,6 +16,13 @@ export interface VideoDispatchService {
   dispatch(payload: VideoJobDispatchPayload): Promise<void>;
 }
 
+export interface VideoDispatchQueueOptions {
+  retryLimit: number;
+  retryDelay: number;
+  retryBackoff: boolean;
+  jobExpire: number;
+}
+
 export interface VideoDispatchEventBridgeOptions {
   /** EventBridge bus name. If undefined, AWS SDK defaults to the default event bus. */
   busName: string | undefined;
@@ -24,6 +31,7 @@ export interface VideoDispatchEventBridgeOptions {
 }
 
 export interface VideoDispatchOptions {
+  queue: VideoDispatchQueueOptions;
   eventBridge: VideoDispatchEventBridgeOptions;
   logger: FastifyBaseLogger;
 }
@@ -41,10 +49,10 @@ export function createVideoDispatchService(
   ): Promise<void> {
     const boss = await getBoss();
     await boss.send("video-processing", payload, {
-      retryLimit: config.PG_BOSS_RETRY_LIMIT,
-      retryDelay: config.PG_BOSS_RETRY_DELAY,
-      retryBackoff: config.PG_BOSS_RETRY_BACKOFF,
-      expireInSeconds: config.PG_BOSS_JOB_EXPIRE,
+      retryLimit: options.queue.retryLimit,
+      retryDelay: options.queue.retryDelay,
+      retryBackoff: options.queue.retryBackoff,
+      expireInSeconds: options.queue.jobExpire,
     });
   }
 
@@ -81,14 +89,20 @@ export function createVideoDispatchService(
       "Dispatching video transcode job",
     );
 
+    let queueSucceeded = false;
+    let lambdaSucceeded = false;
+    let lastError: unknown = null;
+
     // 1. Send to pg-boss queue
     try {
       await dispatchToQueue(payload);
+      queueSucceeded = true;
       options.logger.info(
         { jobId: payload.jobId },
         "Successfully sent video processing job to pg-boss queue",
       );
     } catch (queueErr) {
+      lastError = queueErr;
       options.logger.error(
         { err: queueErr, jobId: payload.jobId },
         "Failed to send video processing job to pg-boss queue",
@@ -98,16 +112,24 @@ export function createVideoDispatchService(
     // 2. Trigger Lambda via EventBridge
     try {
       await dispatchToLambda(payload);
+      lambdaSucceeded = true;
       options.logger.info(
         { jobId: payload.jobId },
         "Successfully triggered video processing Lambda via EventBridge",
       );
     } catch (lambdaErr) {
+      lastError = lambdaErr;
       options.logger.error(
         { err: lambdaErr, jobId: payload.jobId },
         "Failed to trigger video processing Lambda via EventBridge",
       );
-      throw lambdaErr;
+    }
+
+    if (!queueSucceeded && !lambdaSucceeded) {
+      throw (
+        lastError ??
+        new Error("Failed to dispatch video transcode job to queue and lambda")
+      );
     }
   }
 

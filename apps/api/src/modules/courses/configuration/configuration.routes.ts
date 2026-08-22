@@ -8,6 +8,7 @@ import {
   updateCourseSettingsRequestSchema,
 } from "@veolms/contracts";
 
+import { errorResponse } from "../../../lib/errors.ts";
 import { jsonResponse } from "../../../lib/responses.ts";
 import type { RoutePlugin } from "../../../lib/route-plugin.ts";
 
@@ -29,10 +30,12 @@ const configurationRoutes: RoutePlugin = async (app, options) => {
         operationId: "upsertCourseAccessRules",
         tags: ["Course Configuration"],
         summary: "Configure course visibility and durations",
-        params: z.object({ id: z.string().uuid() }),
+        params: z.object({ id: z.uuid() }),
         body: updateCourseAccessRuleRequestSchema,
         response: {
           200: jsonResponse("Access rules updated", courseAccessRuleSchema),
+          403: errorResponse("Forbidden - not course owner"),
+          404: errorResponse("Course not found"),
         },
       },
       preHandler: ctx.requireCourseAuthor,
@@ -47,13 +50,15 @@ const configurationRoutes: RoutePlugin = async (app, options) => {
         operationId: "upsertCoursePricing",
         tags: ["Course Configuration"],
         summary: "Configure pricing tiers and currencies",
-        params: z.object({ id: z.string().uuid() }),
+        params: z.object({ id: z.uuid() }),
         body: updateCoursePricingRequestSchema,
         response: {
           200: jsonResponse(
             "Pricing configuration updated",
             coursePricingSchema,
           ),
+          403: errorResponse("Forbidden - not course owner"),
+          404: errorResponse("Course not found"),
         },
       },
       preHandler: ctx.requireCourseAuthor,
@@ -68,10 +73,12 @@ const configurationRoutes: RoutePlugin = async (app, options) => {
         operationId: "upsertCourseSettings",
         tags: ["Course Configuration"],
         summary: "Configure QA, certificates, and features",
-        params: z.object({ id: z.string().uuid() }),
+        params: z.object({ id: z.uuid() }),
         body: updateCourseSettingsRequestSchema,
         response: {
           200: jsonResponse("Settings updated", courseSettingsSchema),
+          403: errorResponse("Forbidden - not course owner"),
+          404: errorResponse("Course not found"),
         },
       },
       preHandler: ctx.requireCourseAuthor,

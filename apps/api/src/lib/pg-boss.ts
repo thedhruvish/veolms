@@ -35,3 +35,22 @@ export async function getBoss(): Promise<Boss> {
 
   return startingPromise;
 }
+
+export async function stopBoss(): Promise<void> {
+  if (bossInstance) {
+    const instance = bossInstance;
+    bossInstance = null;
+    startingPromise = null;
+    await instance.stop({ graceful: true });
+  } else if (startingPromise) {
+    try {
+      const instance = await startingPromise;
+      bossInstance = null;
+      startingPromise = null;
+      await instance.stop({ graceful: true });
+    } catch {
+      bossInstance = null;
+      startingPromise = null;
+    }
+  }
+}

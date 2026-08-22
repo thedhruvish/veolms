@@ -76,7 +76,7 @@ z.globalRegistry.add(courseListResponseSchema, {
 
 // --- Categories ---
 export const categorySchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   name: z.string().min(1).max(100),
   slug: z.string().min(1).max(120),
 });
@@ -97,9 +97,15 @@ export const mediaAssetStatusSchema = z.enum([
   "failed",
 ]);
 
+export const MEDIA_MAX_SIZES = {
+  image: 10 * 1024 * 1024, // 10MB
+  video: 5 * 1024 * 1024 * 1024, // 5GB
+  document: 100 * 1024 * 1024, // 100MB
+} as const;
+
 export const mediaAssetSchema = z.object({
-  id: z.string().uuid(),
-  ownerId: z.string().uuid(),
+  id: z.uuid(),
+  ownerId: z.uuid(),
   type: mediaAssetTypeSchema,
   storageProvider: z.string(),
   storageKey: z.string(),
@@ -114,16 +120,21 @@ export const mediaAssetSchema = z.object({
   updatedAt: z.string(),
 });
 
-export const presignMediaRequestSchema = z.object({
-  filename: z.string().min(1),
-  contentType: z.string().min(1),
-  fileSize: z.number().int().positive(),
-  type: mediaAssetTypeSchema,
-});
+export const presignMediaRequestSchema = z
+  .object({
+    filename: z.string().min(1),
+    contentType: z.string().min(1),
+    fileSize: z.number().int().positive(),
+    type: mediaAssetTypeSchema,
+  })
+  .refine((data) => data.fileSize <= MEDIA_MAX_SIZES[data.type], {
+    message: "File size exceeds maximum allowed for this media type",
+    path: ["fileSize"],
+  });
 
 export const presignMediaResponseSchema = z.object({
-  uploadUrl: z.string().url(),
-  mediaAssetId: z.string().uuid(),
+  uploadUrl: z.url(),
+  mediaAssetId: z.uuid(),
 });
 
 export type MediaAsset = z.infer<typeof mediaAssetSchema>;
@@ -139,22 +150,51 @@ export const accessDurationTypeSchema = z.enum([
 ]);
 
 export const courseAccessRuleSchema = z.object({
-  id: z.string().uuid(),
-  courseId: z.string().uuid(),
+  id: z.uuid(),
+  courseId: z.uuid(),
   accessType: accessTypeSchema,
   durationType: accessDurationTypeSchema,
   durationDays: z.number().int().positive().nullable().optional(),
-  startsAt: z.string().nullable().optional(),
-  expiresAt: z.string().nullable().optional(),
+  startsAt: z.iso.datetime().nullable().optional(),
+  expiresAt: z.iso.datetime().nullable().optional(),
 });
 
-export const updateCourseAccessRuleRequestSchema = z.object({
-  accessType: accessTypeSchema,
-  durationType: accessDurationTypeSchema,
-  durationDays: z.number().int().positive().nullable().optional(),
-  startsAt: z.string().nullable().optional(),
-  expiresAt: z.string().nullable().optional(),
-});
+export const updateCourseAccessRuleRequestSchema = z
+  .object({
+    accessType: accessTypeSchema,
+    durationType: accessDurationTypeSchema,
+    durationDays: z.number().int().positive().nullable().optional(),
+    startsAt: z.iso.datetime().nullable().optional(),
+    expiresAt: z.iso.datetime().nullable().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.durationType === "fixed_duration") {
+        return (
+          data.durationDays !== null &&
+          data.durationDays !== undefined &&
+          data.durationDays > 0
+        );
+      }
+      return true;
+    },
+    {
+      message: "durationDays is required when durationType is fixed_duration",
+      path: ["durationDays"],
+    },
+  )
+  .refine(
+    (data) => {
+      if (data.durationType === "custom_expiration") {
+        return Boolean(data.expiresAt);
+      }
+      return true;
+    },
+    {
+      message: "expiresAt is required when durationType is custom_expiration",
+      path: ["expiresAt"],
+    },
+  );
 
 export type CourseAccessRule = z.infer<typeof courseAccessRuleSchema>;
 export type UpdateCourseAccessRuleRequest = z.infer<
@@ -165,24 +205,53 @@ export type UpdateCourseAccessRuleRequest = z.infer<
 export const pricingTypeSchema = z.enum(["free", "paid"]);
 
 export const coursePricingSchema = z.object({
-  id: z.string().uuid(),
-  courseId: z.string().uuid(),
+  id: z.uuid(),
+  courseId: z.uuid(),
   pricingType: pricingTypeSchema,
   price: z.number().int().nonnegative(), // in minor units (cents)
   currency: z.string().min(3).max(3),
   salePrice: z.number().int().nonnegative().nullable().optional(),
-  saleStartsAt: z.string().nullable().optional(),
-  saleEndsAt: z.string().nullable().optional(),
+  saleStartsAt: z.iso.datetime().nullable().optional(),
+  saleEndsAt: z.iso.datetime().nullable().optional(),
 });
 
-export const updateCoursePricingRequestSchema = z.object({
-  pricingType: pricingTypeSchema,
-  price: z.number().int().nonnegative(),
-  currency: z.string().min(3).max(3).default("USD"),
-  salePrice: z.number().int().nonnegative().nullable().optional(),
-  saleStartsAt: z.string().nullable().optional(),
-  saleEndsAt: z.string().nullable().optional(),
-});
+export const updateCoursePricingRequestSchema = z
+  .object({
+    pricingType: pricingTypeSchema,
+    price: z.number().int().nonnegative(),
+    currency: z.string().min(3).max(3).default("USD"),
+    salePrice: z.number().int().nonnegative().nullable().optional(),
+    saleStartsAt: z.iso.datetime().nullable().optional(),
+    saleEndsAt: z.iso.datetime().nullable().optional(),
+  })
+  .refine(
+    (data) => {
+      if (
+        data.salePrice !== null &&
+        data.salePrice !== undefined &&
+        data.salePrice > data.price
+      ) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "salePrice cannot exceed price",
+      path: ["salePrice"],
+    },
+  )
+  .refine(
+    (data) => {
+      if (data.saleStartsAt && data.saleEndsAt) {
+        return new Date(data.saleEndsAt) >= new Date(data.saleStartsAt);
+      }
+      return true;
+    },
+    {
+      message: "saleEndsAt cannot precede saleStartsAt",
+      path: ["saleEndsAt"],
+    },
+  );
 
 export type CoursePricing = z.infer<typeof coursePricingSchema>;
 export type UpdateCoursePricingRequest = z.infer<
@@ -191,8 +260,8 @@ export type UpdateCoursePricingRequest = z.infer<
 
 // --- Course Settings ---
 export const courseSettingsSchema = z.object({
-  id: z.string().uuid(),
-  courseId: z.string().uuid(),
+  id: z.uuid(),
+  courseId: z.uuid(),
   allowQa: z.boolean(),
   allowComments: z.boolean(),
   allowReviews: z.boolean(),
@@ -218,10 +287,16 @@ export type UpdateCourseSettingsRequest = z.infer<
 >;
 
 // --- Curriculum ---
+export const createLessonResourceRequestSchema = z.object({
+  mediaAssetId: z.uuid(),
+  title: z.string().min(1).max(100),
+  description: z.string().max(255).optional(),
+});
+
 export const lessonResourceSchema = z.object({
-  id: z.string().uuid(),
-  lessonId: z.string().uuid(),
-  mediaAssetId: z.string().uuid(),
+  id: z.uuid(),
+  lessonId: z.uuid(),
+  mediaAssetId: z.uuid(),
   title: z.string().min(1),
   description: z.string().nullable().optional(),
   position: z.number().int().nonnegative(),
@@ -229,13 +304,13 @@ export const lessonResourceSchema = z.object({
 });
 
 export const courseLessonSchema = z.object({
-  id: z.string().uuid(),
-  courseId: z.string().uuid(),
-  sectionId: z.string().uuid(),
+  id: z.uuid(),
+  courseId: z.uuid(),
+  sectionId: z.uuid(),
   title: z.string().min(1),
   description: z.string().nullable().optional(),
   contentType: z.enum(["video", "document"]),
-  contentMediaId: z.string().uuid().nullable().optional(),
+  contentMediaId: z.uuid().nullable().optional(),
   position: z.number().int().nonnegative(),
   isPreview: z.boolean(),
   isPublished: z.boolean(),
@@ -243,8 +318,8 @@ export const courseLessonSchema = z.object({
 });
 
 export const courseSectionSchema = z.object({
-  id: z.string().uuid(),
-  courseId: z.string().uuid(),
+  id: z.uuid(),
+  courseId: z.uuid(),
   title: z.string().min(1),
   description: z.string().nullable().optional(),
   position: z.number().int().nonnegative(),
@@ -262,7 +337,7 @@ export const updateCourseSectionRequestSchema = z.object({
 });
 
 export const reorderSectionsRequestSchema = z.object({
-  orderedSectionIds: z.array(z.string().uuid()),
+  orderedSectionIds: z.array(z.uuid()),
   version: z.number().int().positive(),
 });
 
@@ -276,16 +351,19 @@ export const updateCourseLessonRequestSchema = z.object({
   title: z.string().min(1).max(255).optional(),
   description: z.string().max(1500).nullable().optional(),
   contentType: z.enum(["video", "document"]).optional(),
-  contentMediaId: z.string().uuid().nullable().optional(),
+  contentMediaId: z.uuid().nullable().optional(),
   isPreview: z.boolean().optional(),
   isPublished: z.boolean().optional(),
 });
 
 export const reorderLessonsRequestSchema = z.object({
-  orderedLessonIds: z.array(z.string().uuid()),
+  orderedLessonIds: z.array(z.uuid()),
   version: z.number().int().positive(),
 });
 
+export type CreateLessonResourceRequest = z.infer<
+  typeof createLessonResourceRequestSchema
+>;
 export type CourseSection = z.infer<typeof courseSectionSchema>;
 export type CreateCourseSectionRequest = z.infer<
   typeof createCourseSectionRequestSchema
@@ -308,7 +386,7 @@ export type LessonResource = z.infer<typeof lessonResourceSchema>;
 
 // --- Course Authoring Operations ---
 export const courseSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   slug: z.string(),
   title: z.string(),
   shortDescription: z.string().nullable().optional(),
@@ -318,10 +396,10 @@ export const courseSchema = z.object({
     .nullable()
     .optional(),
   status: z.enum(["draft", "published", "archived"]),
-  creatorId: z.string().uuid().nullable(),
-  categoryId: z.string().uuid().nullable().optional(),
-  thumbnailMediaId: z.string().uuid().nullable().optional(),
-  trailerMediaId: z.string().uuid().nullable().optional(),
+  creatorId: z.uuid().nullable(),
+  categoryId: z.uuid().nullable().optional(),
+  thumbnailMediaId: z.uuid().nullable().optional(),
+  trailerMediaId: z.uuid().nullable().optional(),
   version: z.number().int(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -335,13 +413,13 @@ export const createCourseRequestSchema = z.object({
 export const updateCourseBasicsRequestSchema = z.object({
   title: z.string().min(1).max(120).optional(),
   description: z.string().max(1500).nullable().optional(),
-  categoryId: z.string().uuid().nullable().optional(),
+  categoryId: z.uuid().nullable().optional(),
   difficulty: z
     .enum(["beginner", "intermediate", "advanced"])
     .nullable()
     .optional(),
-  thumbnailMediaId: z.string().uuid().nullable().optional(),
-  trailerMediaId: z.string().uuid().nullable().optional(),
+  thumbnailMediaId: z.uuid().nullable().optional(),
+  trailerMediaId: z.uuid().nullable().optional(),
   version: z.number().int(),
 });
 
@@ -410,7 +488,7 @@ export const courseOverviewSchema = z.object({
   category: categorySchema.nullable().optional(),
   creator: z
     .object({
-      id: z.string().uuid(),
+      id: z.uuid(),
       displayName: z.string(),
       username: z.string(),
     })
@@ -438,6 +516,9 @@ z.globalRegistry.add(presignMediaResponseSchema, {
 z.globalRegistry.add(courseAccessRuleSchema, { id: "CourseAccessRule" });
 z.globalRegistry.add(coursePricingSchema, { id: "CoursePricing" });
 z.globalRegistry.add(courseSettingsSchema, { id: "CourseSettings" });
+z.globalRegistry.add(createLessonResourceRequestSchema, {
+  id: "CreateLessonResourceRequest",
+});
 z.globalRegistry.add(courseLessonSchema, { id: "CourseLesson" });
 z.globalRegistry.add(courseSectionSchema, { id: "CourseSection" });
 z.globalRegistry.add(courseSchema, { id: "Course" });

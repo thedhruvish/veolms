@@ -49,12 +49,14 @@ const mediaRoutes: RoutePlugin = async (app, options) => {
         operationId: "confirmMediaUpload",
         tags: ["Course Media"],
         summary: "Confirm that a media asset upload is complete",
-        params: z.object({ mediaId: z.string().uuid() }),
+        params: z.object({ mediaId: z.uuid() }),
         response: {
           200: jsonResponse(
             "Upload confirmed",
             z.object({ status: mediaAssetStatusSchema }),
           ),
+          400: errorResponse("File not found or size mismatch"),
+          404: errorResponse("Media not found"),
         },
       },
       preHandler: ctx.requireCourseAuthor,
@@ -69,12 +71,13 @@ const mediaRoutes: RoutePlugin = async (app, options) => {
         operationId: "getVideoJobProgress",
         tags: ["Course Media"],
         summary: "Poll transcoding progress for a media asset",
-        params: z.object({ id: z.string().uuid(), videoId: z.string().uuid() }),
+        params: z.object({ id: z.uuid(), videoId: z.uuid() }),
         response: {
           200: jsonResponse(
             "Polling progress response",
             videoJobProgressResponseSchema,
           ),
+          403: errorResponse("Forbidden - not course owner"),
           404: errorResponse("Job not found"),
         },
       },

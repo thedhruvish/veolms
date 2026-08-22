@@ -102,10 +102,16 @@ export function createServices({
       region: config.STORAGE_REGION,
       accessKeyId: config.STORAGE_ACCESS_KEY_ID,
       secretAccessKey: config.STORAGE_SECRET_ACCESS_KEY,
-      bucket: config.STORAGE_BUCKET ?? "veolms",
+      bucket: config.STORAGE_BUCKET,
       forcePathStyle: config.STORAGE_FORCE_PATH_STYLE,
     }),
     videoDispatch: createVideoDispatchService({
+      queue: {
+        retryLimit: config.PG_BOSS_RETRY_LIMIT,
+        retryDelay: config.PG_BOSS_RETRY_DELAY,
+        retryBackoff: config.PG_BOSS_RETRY_BACKOFF,
+        jobExpire: config.PG_BOSS_JOB_EXPIRE,
+      },
       eventBridge: {
         busName: config.EVENTBRIDGE_BUS_NAME,
         eventSource: config.EVENTBRIDGE_EVENT_SOURCE,

@@ -80,7 +80,7 @@ const serverConfigSchema = z.object({
   STORAGE_REGION: z.string().default("us-east-1"),
   STORAGE_ACCESS_KEY_ID: z.string().optional(),
   STORAGE_SECRET_ACCESS_KEY: z.string().optional(),
-  STORAGE_BUCKET: z.string().optional(),
+  STORAGE_BUCKET: z.string().min(1).default("veolms"),
   STORAGE_FORCE_PATH_STYLE: booleanEnvironmentValueSchema.default(false),
 
   // Worker Configs
@@ -104,10 +104,21 @@ const serverConfigSchema = z.object({
   PG_BOSS_JOB_EXPIRE: z.coerce.number().int().min(1).default(3600),
 
   // Video Processing Dispatch
+  EVENTBRIDGE_REGION: z.string().optional(),
   EVENTBRIDGE_BUS_NAME: z.string().optional(),
   EVENTBRIDGE_EVENT_SOURCE: z.string().default("veolms.video-processing"),
   EVENTBRIDGE_DETAIL_TYPE: z.string().default("video.transcode.requested"),
-});
+})
+  .refine(
+    (data) =>
+      data.VIDEO_WORKER_STALE_THRESHOLD >=
+      2 * data.VIDEO_WORKER_HEARTBEAT_INTERVAL,
+    {
+      message:
+        "VIDEO_WORKER_STALE_THRESHOLD must be at least twice VIDEO_WORKER_HEARTBEAT_INTERVAL",
+      path: ["VIDEO_WORKER_STALE_THRESHOLD"],
+    },
+  );
 
 const webConfigSchema = z.object({
   WEB_PORT: z.coerce.number().int().min(1).max(65535).default(3000),

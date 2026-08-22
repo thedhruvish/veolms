@@ -43,7 +43,7 @@ const categoryRoutes: RoutePlugin = async (app, options) => {
           400: errorResponse("Category slug already exists"),
         },
       },
-      preHandler: ctx.requireCourseAuthor,
+      preHandler: ctx.requireAdmin,
     },
     controller.createCategory,
   );
@@ -55,15 +55,16 @@ const categoryRoutes: RoutePlugin = async (app, options) => {
         operationId: "deleteCategory",
         tags: ["Course Categories"],
         summary: "Soft delete a category",
-        params: z.object({ categoryId: z.string().uuid() }),
+        params: z.object({ categoryId: z.uuid() }),
         response: {
           200: jsonResponse(
             "Category soft-deleted",
             z.object({ success: z.boolean() }),
           ),
+          404: errorResponse("Category not found"),
         },
       },
-      preHandler: ctx.requireCourseAuthor,
+      preHandler: ctx.requireAdmin,
     },
     controller.deleteCategory,
   );

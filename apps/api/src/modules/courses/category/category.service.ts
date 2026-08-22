@@ -16,6 +16,9 @@ export function createCategoryService({ database }: CategoryServiceOptions) {
 
   async function createCategory(name: string) {
     const slug = slugify(name);
+    if (!slug) {
+      throw new AppError(400, "INVALID_SLUG", "Category slug cannot be empty.");
+    }
     const existing = await categoryRepo.findCategoryBySlug(database, slug);
     if (existing) {
       throw new AppError(
@@ -26,13 +29,24 @@ export function createCategoryService({ database }: CategoryServiceOptions) {
     }
     const id = crypto.randomUUID();
     const now = new Date();
-    await categoryRepo.insertCategory(database, {
-      id,
-      name,
-      slug,
-      created_at: now,
-      updated_at: now,
-    });
+    try {
+      await categoryRepo.insertCategory(database, {
+        id,
+        name,
+        slug,
+        created_at: now,
+        updated_at: now,
+      });
+    } catch (error: unknown) {
+      if ((error as { code?: string })?.code === "23505") {
+        throw new AppError(
+          400,
+          "DUPLICATE_CATEGORY",
+          `Category slug "${slug}" already exists.`,
+        );
+      }
+      throw error;
+    }
     return { id, name, slug };
   }
 
