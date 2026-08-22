@@ -40,7 +40,7 @@ const courseRoutes: RoutePlugin = async (app, options) => {
           "Returns every course with `published` status, oldest first. " +
           "Unpublished courses are never exposed. Supports optional filtering by creatorId.",
         querystring: z.object({
-          creatorId: z.string().uuid().optional(),
+          creatorId: z.uuid().optional(),
         }),
         response: {
           200: jsonResponse(
@@ -63,7 +63,7 @@ const courseRoutes: RoutePlugin = async (app, options) => {
         description:
           "Returns all available published courses created by the specified author.",
         params: z.object({
-          creatorId: z.string().uuid().meta({ description: "Creator UUID" }),
+          creatorId: z.uuid().meta({ description: "Creator UUID" }),
         }),
         response: {
           200: jsonResponse(
@@ -174,7 +174,7 @@ const courseRoutes: RoutePlugin = async (app, options) => {
         operationId: "getCourseEditor",
         tags: ["Course Authoring"],
         summary: "Load full course editor state",
-        params: z.object({ id: z.string().uuid() }),
+        params: z.object({ id: z.uuid() }),
         response: {
           200: jsonResponse(
             "Course editor data",
@@ -196,20 +196,21 @@ const courseRoutes: RoutePlugin = async (app, options) => {
         tags: ["Course Authoring"],
         summary:
           "Update basic course details with optimistic concurrency check",
-        params: z.object({ id: z.string().uuid() }),
+        params: z.object({ id: z.uuid() }),
         body: updateCourseBasicsRequestSchema,
         response: {
           200: jsonResponse("Course basics updated", courseSchema),
           202: jsonResponse(
             "Video processing accepted",
             z.object({
-              videoJobId: z.string().uuid(),
+              videoJobId: z.uuid(),
               processingStatus: z.enum([
                 "queued",
                 "processing",
                 "completed",
                 "failed",
               ]),
+              version: z.number().int(),
             }),
           ),
           409: errorResponse("Optimistic lock conflict"),

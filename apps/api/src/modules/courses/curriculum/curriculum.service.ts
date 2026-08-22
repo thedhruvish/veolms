@@ -5,6 +5,7 @@ import type { Database } from "@veolms/database";
 import type {
   CreateCourseLessonRequest,
   UpdateCourseLessonRequest,
+  CreateLessonResourceRequest,
 } from "@veolms/contracts";
 import { AppError } from "../../../lib/errors.ts";
 import type { AppServices } from "../../../services/index.ts";
@@ -81,7 +82,7 @@ export function createCurriculumService({
       throw new AppError(404, "SECTION_NOT_FOUND", "Section not found.");
     }
 
-    await curriculumRepo.updateSection(database, sectionId, {
+    await curriculumRepo.updateSection(database, sectionId, courseId, {
       title,
       description,
       updated_at: new Date(),
@@ -106,27 +107,29 @@ export function createCurriculumService({
       throw new AppError(404, "SECTION_NOT_FOUND", "Section not found.");
     }
 
-    const now = new Date();
-    await curriculumRepo.softDeleteSection(database, sectionId, now);
+    await database.transaction().execute(async (trx) => {
+      const now = new Date();
+      await curriculumRepo.softDeleteSection(trx, sectionId, courseId, now);
 
-    const lessons = await curriculumRepo.findLessonsBySectionId(
-      database,
-      sectionId,
-    );
-    const lessonIds = lessons.map((l) => l.id);
-
-    if (lessonIds.length > 0) {
-      await curriculumRepo.softDeleteLessonsBySectionId(
-        database,
+      const lessons = await curriculumRepo.findLessonsBySectionId(
+        trx,
         sectionId,
-        now,
       );
-      await curriculumRepo.softDeleteResourcesByLessonIds(
-        database,
-        lessonIds,
-        now,
-      );
-    }
+      const lessonIds = lessons.map((l) => l.id);
+
+      if (lessonIds.length > 0) {
+        await curriculumRepo.softDeleteLessonsBySectionId(
+          trx,
+          sectionId,
+          now,
+        );
+        await curriculumRepo.softDeleteResourcesByLessonIds(
+          trx,
+          lessonIds,
+          now,
+        );
+      }
+    });
 
     return { success: true };
   }
@@ -162,27 +165,29 @@ export function createCurriculumService({
       );
     }
 
-    const now = new Date();
-    for (let i = 0; i < orderedSectionIds.length; i++) {
-      await curriculumRepo.updateSectionPosition(
-        database,
-        orderedSectionIds[i]!,
+    await database.transaction().execute(async (trx) => {
+      const now = new Date();
+      const updateResult = await courseRepo.updateCourse(
+        trx,
         courseId,
-        i,
-        now,
+        version,
+        {
+          version: version + 1,
+          updated_at: now,
+        },
       );
-    }
+      assertOptimisticUpdate(updateResult);
 
-    const updateResult = await courseRepo.updateCourse(
-      database,
-      courseId,
-      version,
-      {
-        version: version + 1,
-        updated_at: now,
-      },
-    );
-    assertOptimisticUpdate(updateResult);
+      for (let i = 0; i < orderedSectionIds.length; i++) {
+        await curriculumRepo.updateSectionPosition(
+          trx,
+          orderedSectionIds[i]!,
+          courseId,
+          i,
+          now,
+        );
+      }
+    });
 
     return { success: true };
   }
@@ -249,43 +254,40 @@ export function createCurriculumService({
       throw new AppError(404, "LESSON_NOT_FOUND", "Lesson not found.");
     }
 
-    let transcodeJobInfo: {
-      should202: boolean;
-      jobId: string | null;
-    } | null = null;
-    if (
-      payload.contentMediaId &&
-      payload.contentMediaId !== lesson.content_media_id
-    ) {
+    const effectiveContentType = payload.contentType ?? lesson.content_type;
+    const effectiveMediaId =
+      payload.contentMediaId !== undefined
+        ? payload.contentMediaId
+        : lesson.content_media_id;
+
+    const mediaChanged =
+      payload.contentMediaId !== undefined &&
+      payload.contentMediaId !== lesson.content_media_id;
+    const typeChanged =
+      payload.contentType !== undefined &&
+      payload.contentType !== lesson.content_type;
+
+    if (effectiveMediaId && (mediaChanged || typeChanged)) {
       const media = await mediaRepo.findMediaAssetById(
         database,
-        payload.contentMediaId,
+        effectiveMediaId,
         creatorId,
       );
       if (!media) {
         throw new AppError(400, "INVALID_MEDIA", "Media asset not found.");
       }
 
-      const expectedType = payload.contentType ?? lesson.content_type;
-      if (media.type !== expectedType) {
+      if (media.type !== effectiveContentType) {
         throw new AppError(
           400,
           "TYPE_MISMATCH",
-          `Media asset type '${media.type}' does not match lesson content type '${expectedType}'.`,
-        );
-      }
-
-      if (expectedType === "video") {
-        transcodeJobInfo = await mediaService.queueTranscodeJob(
-          payload.contentMediaId,
-          creatorId,
-          logger,
+          `Media asset type '${media.type}' does not match lesson content type '${effectiveContentType}'.`,
         );
       }
     }
 
     const now = new Date();
-    await curriculumRepo.updateLesson(database, lessonId, {
+    await curriculumRepo.updateLesson(database, lessonId, courseId, {
       title: payload.title,
       description: payload.description,
       content_type: payload.contentType,
@@ -294,6 +296,22 @@ export function createCurriculumService({
       is_published: payload.isPublished,
       updated_at: now,
     });
+
+    let transcodeJobInfo: {
+      should202: boolean;
+      jobId: string | null;
+    } | null = null;
+    if (
+      effectiveMediaId &&
+      (mediaChanged || typeChanged) &&
+      effectiveContentType === "video"
+    ) {
+      transcodeJobInfo = await mediaService.queueTranscodeJob(
+        effectiveMediaId,
+        creatorId,
+        logger,
+      );
+    }
 
     if (transcodeJobInfo && transcodeJobInfo.should202) {
       return {
@@ -323,7 +341,7 @@ export function createCurriculumService({
     }
 
     const now = new Date();
-    await curriculumRepo.softDeleteLesson(database, lessonId, now);
+    await curriculumRepo.softDeleteLesson(database, lessonId, courseId, now);
     await curriculumRepo.softDeleteResourcesByLessonId(
       database,
       lessonId,
@@ -374,27 +392,29 @@ export function createCurriculumService({
       );
     }
 
-    const now = new Date();
-    for (let i = 0; i < orderedLessonIds.length; i++) {
-      await curriculumRepo.updateLessonPosition(
-        database,
-        orderedLessonIds[i]!,
-        sectionId,
-        i,
-        now,
+    await database.transaction().execute(async (trx) => {
+      const now = new Date();
+      const updateResult = await courseRepo.updateCourse(
+        trx,
+        courseId,
+        version,
+        {
+          version: version + 1,
+          updated_at: now,
+        },
       );
-    }
+      assertOptimisticUpdate(updateResult);
 
-    const updateResult = await courseRepo.updateCourse(
-      database,
-      courseId,
-      version,
-      {
-        version: version + 1,
-        updated_at: now,
-      },
-    );
-    assertOptimisticUpdate(updateResult);
+      for (let i = 0; i < orderedLessonIds.length; i++) {
+        await curriculumRepo.updateLessonPosition(
+          trx,
+          orderedLessonIds[i]!,
+          sectionId,
+          i,
+          now,
+        );
+      }
+    });
 
     return { success: true };
   }
@@ -405,7 +425,7 @@ export function createCurriculumService({
     courseId: string,
     lessonId: string,
     creatorId: string,
-    payload: { mediaAssetId: string; title: string; description?: string },
+    payload: CreateLessonResourceRequest,
   ) {
     await getCourseAndVerifyOwner(courseId, creatorId);
 
@@ -464,7 +484,12 @@ export function createCurriculumService({
       throw new AppError(404, "RESOURCE_NOT_FOUND", "Resource not found.");
     }
 
-    await curriculumRepo.softDeleteResource(database, resourceId, new Date());
+    await curriculumRepo.softDeleteResource(
+      database,
+      resourceId,
+      resource.lesson_id,
+      new Date(),
+    );
     return { success: true };
   }
 

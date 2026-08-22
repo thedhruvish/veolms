@@ -307,6 +307,73 @@ export async function up(database: Kysely<unknown>): Promise<void> {
       column.notNull().defaultTo(sql`CURRENT_TIMESTAMP`),
     )
     .execute();
+
+  // 13. Create foreign-key indexes
+  await database.schema
+    .createIndex("idx_media_assets_owner_id")
+    .on("media_assets")
+    .column("owner_id")
+    .execute();
+
+  await database.schema
+    .createIndex("idx_courses_creator_id")
+    .on("courses")
+    .column("creator_id")
+    .execute();
+
+  await database.schema
+    .createIndex("idx_courses_category_id")
+    .on("courses")
+    .column("category_id")
+    .execute();
+
+  await database.schema
+    .createIndex("idx_course_sections_course_id")
+    .on("course_sections")
+    .column("course_id")
+    .execute();
+
+  await database.schema
+    .createIndex("idx_course_lessons_course_id")
+    .on("course_lessons")
+    .column("course_id")
+    .execute();
+
+  await database.schema
+    .createIndex("idx_course_lessons_section_id")
+    .on("course_lessons")
+    .column("section_id")
+    .execute();
+
+  await database.schema
+    .createIndex("idx_lesson_resources_lesson_id")
+    .on("lesson_resources")
+    .column("lesson_id")
+    .execute();
+
+  await database.schema
+    .createIndex("idx_lesson_resources_media_asset_id")
+    .on("lesson_resources")
+    .column("media_asset_id")
+    .execute();
+
+  await database.schema
+    .createIndex("idx_video_jobs_video_id")
+    .on("video_jobs")
+    .column("video_id")
+    .execute();
+
+  await database.schema
+    .createIndex("idx_video_jobs_worker_id")
+    .on("video_jobs")
+    .column("worker_id")
+    .execute();
+
+  await database.schema
+    .createIndex("idx_video_outputs_video_id")
+    .on("video_outputs")
+    .column("video_id")
+    .execute();
 }
 
 export async function down(database: Kysely<unknown>): Promise<void> {
@@ -319,6 +386,16 @@ export async function down(database: Kysely<unknown>): Promise<void> {
   await database.schema.dropTable("lesson_resources").execute();
   await database.schema.dropTable("course_lessons").execute();
   await database.schema.dropTable("course_sections").execute();
+
+  // Drop courses FK indexes before dropping columns
+  await database.schema
+    .dropIndex("idx_courses_creator_id")
+    .ifExists()
+    .execute();
+  await database.schema
+    .dropIndex("idx_courses_category_id")
+    .ifExists()
+    .execute();
 
   // Revert course alterations
   await sql`alter table courses drop constraint if exists courses_difficulty_valid`.execute(
@@ -335,6 +412,14 @@ export async function down(database: Kysely<unknown>): Promise<void> {
     .dropColumn("published_at")
     .dropColumn("deleted_at")
     .execute();
+
+  // Backfill NULLs before restoring NOT NULL constraints
+  await sql`update courses set short_description = coalesce(short_description, '') where short_description is null`.execute(
+    database,
+  );
+  await sql`update courses set description = coalesce(description, '') where description is null`.execute(
+    database,
+  );
 
   await sql`alter table courses alter column short_description set not null`.execute(
     database,

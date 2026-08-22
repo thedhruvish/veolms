@@ -43,13 +43,33 @@ export function createMediaService({ database, services }: MediaServiceOptions) 
       throw new AppError(404, "MEDIA_NOT_FOUND", "Media asset not found.");
     }
 
-    const fileExists = await services.storage.headObject(media.storage_key);
+    if (media.status !== "uploading") {
+      let existingJobId: string | null = null;
+      if (media.type === "video") {
+        const job = await mediaRepo.findVideoJobByVideoId(database, mediaId);
+        existingJobId = job ? job.id : null;
+      }
+      return { status: media.status, jobId: existingJobId };
+    }
 
-    if (!fileExists) {
+    const metadata = await services.storage.headObject(media.storage_key);
+
+    if (!metadata) {
       throw new AppError(
         400,
         "FILE_NOT_FOUND",
         "File could not be found in storage.",
+      );
+    }
+
+    if (
+      metadata.contentLength !== undefined &&
+      metadata.contentLength !== media.size_bytes
+    ) {
+      throw new AppError(
+        400,
+        "FILE_SIZE_MISMATCH",
+        "Uploaded file size does not match presigned size.",
       );
     }
 
@@ -208,6 +228,7 @@ export function createMediaService({ database, services }: MediaServiceOptions) 
     const uploadUrl = await services.storage.getPresignedPutUrl(
       storageKey,
       payload.contentType,
+      payload.fileSize,
     );
 
     await mediaRepo.insertMediaAsset(database, {

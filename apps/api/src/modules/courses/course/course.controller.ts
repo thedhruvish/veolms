@@ -96,6 +96,7 @@ export function createCourseController({
       return {
         videoJobId: result.videoJobId,
         processingStatus: result.processingStatus,
+        version: result.version,
       };
     }
 

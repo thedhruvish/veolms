@@ -6,6 +6,7 @@ import type {
   CreateCourseLessonRequest,
   UpdateCourseLessonRequest,
   ReorderLessonsRequest,
+  CreateLessonResourceRequest,
 } from "@veolms/contracts";
 import type { CurriculumService } from "./curriculum.service.ts";
 
@@ -167,7 +168,7 @@ export function createCurriculumController({
   async function addLessonResource(
     request: FastifyRequest<{
       Params: { id: string; lessonId: string };
-      Body: { mediaAssetId: string; title: string; description?: string };
+      Body: CreateLessonResourceRequest;
     }>,
     reply: FastifyReply,
   ) {

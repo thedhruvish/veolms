@@ -27,12 +27,10 @@ export function createConfigurationService({
   ) {
     await getCourseAndVerifyOwner(courseId, creatorId);
 
-    const existing = await configRepo.findAccessRuleByCourseId(
-      database,
-      courseId,
-    );
     const now = new Date();
 
+    const durationType =
+      updates.accessType === "everyone" ? "lifetime" : updates.durationType;
     const durationDays =
       updates.accessType === "everyone" ? null : updates.durationDays ?? null;
     const startsAt =
@@ -44,49 +42,27 @@ export function createConfigurationService({
         ? null
         : new Date(updates.expiresAt);
 
-    if (existing) {
-      await configRepo.updateAccessRule(database, existing.id, {
-        access_type: updates.accessType,
-        duration_type: updates.durationType,
-        duration_days: durationDays,
-        starts_at: startsAt,
-        expires_at: expiresAt,
-        updated_at: now,
-      });
+    const id = await configRepo.upsertAccessRule(database, {
+      id: crypto.randomUUID(),
+      course_id: courseId,
+      access_type: updates.accessType,
+      duration_type: durationType,
+      duration_days: durationDays,
+      starts_at: startsAt,
+      expires_at: expiresAt,
+      created_at: now,
+      updated_at: now,
+    });
 
-      return {
-        id: existing.id,
-        courseId,
-        accessType: updates.accessType,
-        durationType: updates.durationType,
-        durationDays,
-        startsAt: startsAt ? startsAt.toISOString() : null,
-        expiresAt: expiresAt ? expiresAt.toISOString() : null,
-      };
-    } else {
-      const ruleId = crypto.randomUUID();
-      await configRepo.insertAccessRule(database, {
-        id: ruleId,
-        course_id: courseId,
-        access_type: updates.accessType,
-        duration_type: updates.durationType,
-        duration_days: durationDays,
-        starts_at: startsAt,
-        expires_at: expiresAt,
-        created_at: now,
-        updated_at: now,
-      });
-
-      return {
-        id: ruleId,
-        courseId,
-        accessType: updates.accessType,
-        durationType: updates.durationType,
-        durationDays,
-        startsAt: startsAt ? startsAt.toISOString() : null,
-        expiresAt: expiresAt ? expiresAt.toISOString() : null,
-      };
-    }
+    return {
+      id,
+      courseId,
+      accessType: updates.accessType,
+      durationType,
+      durationDays,
+      startsAt: startsAt ? startsAt.toISOString() : null,
+      expiresAt: expiresAt ? expiresAt.toISOString() : null,
+    };
   }
 
   async function upsertCoursePricing(
@@ -96,10 +72,6 @@ export function createConfigurationService({
   ) {
     await getCourseAndVerifyOwner(courseId, creatorId);
 
-    const existing = await configRepo.findPricingByCourseId(
-      database,
-      courseId,
-    );
     const now = new Date();
 
     const price = updates.pricingType === "free" ? 0 : updates.price;
@@ -114,53 +86,29 @@ export function createConfigurationService({
         ? null
         : new Date(updates.saleEndsAt);
 
-    if (existing) {
-      await configRepo.updatePricing(database, existing.id, {
-        pricing_type: updates.pricingType,
-        price,
-        currency: updates.currency,
-        sale_price: salePrice,
-        sale_starts_at: saleStartsAt,
-        sale_ends_at: saleEndsAt,
-        updated_at: now,
-      });
+    const id = await configRepo.upsertPricing(database, {
+      id: crypto.randomUUID(),
+      course_id: courseId,
+      pricing_type: updates.pricingType,
+      price,
+      currency: updates.currency,
+      sale_price: salePrice,
+      sale_starts_at: saleStartsAt,
+      sale_ends_at: saleEndsAt,
+      created_at: now,
+      updated_at: now,
+    });
 
-      return {
-        id: existing.id,
-        courseId,
-        pricingType: updates.pricingType,
-        price,
-        currency: updates.currency,
-        salePrice,
-        saleStartsAt: saleStartsAt ? saleStartsAt.toISOString() : null,
-        saleEndsAt: saleEndsAt ? saleEndsAt.toISOString() : null,
-      };
-    } else {
-      const pricingId = crypto.randomUUID();
-      await configRepo.insertPricing(database, {
-        id: pricingId,
-        course_id: courseId,
-        pricing_type: updates.pricingType,
-        price,
-        currency: updates.currency,
-        sale_price: salePrice,
-        sale_starts_at: saleStartsAt,
-        sale_ends_at: saleEndsAt,
-        created_at: now,
-        updated_at: now,
-      });
-
-      return {
-        id: pricingId,
-        courseId,
-        pricingType: updates.pricingType,
-        price,
-        currency: updates.currency,
-        salePrice,
-        saleStartsAt: saleStartsAt ? saleStartsAt.toISOString() : null,
-        saleEndsAt: saleEndsAt ? saleEndsAt.toISOString() : null,
-      };
-    }
+    return {
+      id,
+      courseId,
+      pricingType: updates.pricingType,
+      price,
+      currency: updates.currency,
+      salePrice,
+      saleStartsAt: saleStartsAt ? saleStartsAt.toISOString() : null,
+      saleEndsAt: saleEndsAt ? saleEndsAt.toISOString() : null,
+    };
   }
 
   async function upsertCourseSettings(
@@ -170,67 +118,41 @@ export function createConfigurationService({
   ) {
     await getCourseAndVerifyOwner(courseId, creatorId);
 
-    const existing = await configRepo.findSettingsByCourseId(
-      database,
-      courseId,
-    );
     const now = new Date();
 
-    if (existing) {
-      await configRepo.updateSettings(database, existing.id, {
-        allow_qa: updates.allowQa,
-        allow_comments: updates.allowComments,
-        allow_reviews: updates.allowReviews,
-        allow_downloads: updates.allowDownloads,
-        certificate_enabled: updates.certificateEnabled,
-        language: updates.language,
-        estimated_duration: updates.estimatedDuration,
-        updated_at: now,
-      });
+    const allowQa = updates.allowQa ?? true;
+    const allowComments = updates.allowComments ?? true;
+    const allowReviews = updates.allowReviews ?? true;
+    const allowDownloads = updates.allowDownloads ?? false;
+    const certificateEnabled = updates.certificateEnabled ?? false;
+    const language = updates.language ?? "en";
+    const estimatedDuration = updates.estimatedDuration ?? null;
 
-      return {
-        id: existing.id,
-        courseId,
-        allowQa: updates.allowQa ?? existing.allow_qa,
-        allowComments: updates.allowComments ?? existing.allow_comments,
-        allowReviews: updates.allowReviews ?? existing.allow_reviews,
-        allowDownloads: updates.allowDownloads ?? existing.allow_downloads,
-        certificateEnabled:
-          updates.certificateEnabled ?? existing.certificate_enabled,
-        language: updates.language ?? existing.language,
-        estimatedDuration:
-          updates.estimatedDuration !== undefined
-            ? updates.estimatedDuration
-            : existing.estimated_duration,
-      };
-    } else {
-      const settingsId = crypto.randomUUID();
-      await configRepo.insertSettings(database, {
-        id: settingsId,
-        course_id: courseId,
-        allow_qa: updates.allowQa ?? true,
-        allow_comments: updates.allowComments ?? true,
-        allow_reviews: updates.allowReviews ?? true,
-        allow_downloads: updates.allowDownloads ?? false,
-        certificate_enabled: updates.certificateEnabled ?? false,
-        language: updates.language ?? "en",
-        estimated_duration: updates.estimatedDuration ?? null,
-        created_at: now,
-        updated_at: now,
-      });
+    const id = await configRepo.upsertSettings(database, {
+      id: crypto.randomUUID(),
+      course_id: courseId,
+      allow_qa: allowQa,
+      allow_comments: allowComments,
+      allow_reviews: allowReviews,
+      allow_downloads: allowDownloads,
+      certificate_enabled: certificateEnabled,
+      language,
+      estimated_duration: estimatedDuration,
+      created_at: now,
+      updated_at: now,
+    });
 
-      return {
-        id: settingsId,
-        courseId,
-        allowQa: updates.allowQa ?? true,
-        allowComments: updates.allowComments ?? true,
-        allowReviews: updates.allowReviews ?? true,
-        allowDownloads: updates.allowDownloads ?? false,
-        certificateEnabled: updates.certificateEnabled ?? false,
-        language: updates.language ?? "en",
-        estimatedDuration: updates.estimatedDuration ?? null,
-      };
-    }
+    return {
+      id,
+      courseId,
+      allowQa,
+      allowComments,
+      allowReviews,
+      allowDownloads,
+      certificateEnabled,
+      language,
+      estimatedDuration,
+    };
   }
 
   return {

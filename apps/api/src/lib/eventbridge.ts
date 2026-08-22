@@ -14,7 +14,7 @@ let clientInstance: EventBridgeClient | null = null;
 export function getEventBridgeClient(): EventBridgeClient {
   if (!clientInstance) {
     clientInstance = new EventBridgeClient({
-      region: config.STORAGE_REGION,
+      region: config.EVENTBRIDGE_REGION || config.STORAGE_REGION,
       credentials:
         config.STORAGE_ACCESS_KEY_ID && config.STORAGE_SECRET_ACCESS_KEY
           ? {

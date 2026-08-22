@@ -3,12 +3,18 @@ import {
   createAuthMiddleware,
   type AuthMiddleware,
 } from "../../../middlewares/auth.middleware.ts";
-import { CREATOR_ROLE, INSTRUCTOR_ROLE } from "../../auth/auth.constants.ts";
+import {
+  ADMIN_ROLE,
+  CREATOR_ROLE,
+  INSTRUCTOR_ROLE,
+} from "../../auth/auth.constants.ts";
 
 export interface CoursesContext {
   middleware: AuthMiddleware;
   /** Course authoring is restricted to the creator and instructor roles. */
   requireCourseAuthor: AuthMiddleware["authenticate"][];
+  /** Administrator-only access. */
+  requireAdmin: AuthMiddleware["authenticate"][];
   /** General authenticated access for any logged-in role. */
   requireAuthenticated: AuthMiddleware["authenticate"][];
 }
@@ -29,9 +35,16 @@ export function createCoursesContext({
     middleware.requireRoles([CREATOR_ROLE, INSTRUCTOR_ROLE]),
   ];
 
+  const requireAdmin = [
+    middleware.authenticate,
+    middleware.requireAuthenticated,
+    middleware.requireRoles([ADMIN_ROLE]),
+  ];
+
   return {
     middleware,
     requireCourseAuthor,
+    requireAdmin,
     requireAuthenticated,
   };
 }

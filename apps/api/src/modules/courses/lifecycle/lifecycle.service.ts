@@ -28,16 +28,12 @@ export function createLifecycleService({
     return verifyCourseOwner(database, courseId, creatorId);
   }
 
-  /**
-   * Validates a course to ensure all requirements are satisfied prior to publishing.
-   */
-  async function validateCourse(
-    courseId: string,
+  async function validateCourseObject(
+    course: NonNullable<Awaited<ReturnType<typeof verifyCourseOwner>>>,
     creatorId: string,
   ): Promise<CourseValidationIssue[]> {
     const issues: CourseValidationIssue[] = [];
-
-    const course = await getCourseAndVerifyOwner(courseId, creatorId);
+    const courseId = course.id;
 
     // 1. Course Basics validation
     if (!course.title || course.title.trim().length === 0) {
@@ -66,25 +62,16 @@ export function createLifecycleService({
         code: "MISSING_THUMBNAIL",
         message: "Course thumbnail is required.",
       });
-    } else {
-      const thumb = await mediaRepo.findMediaAssetById(
-        database,
-        course.thumbnail_media_id,
-        creatorId,
-      );
-      if (!thumb || thumb.status !== "uploaded") {
-        issues.push({
-          code: "INVALID_THUMBNAIL",
-          message: "Thumbnail media must be fully uploaded.",
-        });
-      }
     }
 
-    // 2. Curriculum validation
-    const sections = await curriculumRepo.findSectionsByCourseId(
-      database,
-      courseId,
-    );
+    // 2. Curriculum & Configuration concurrently
+    const [sections, lessons, accessRules, pricing] = await Promise.all([
+      curriculumRepo.findSectionsByCourseId(database, courseId),
+      curriculumRepo.findLessonsByCourseId(database, courseId),
+      configRepo.findAccessRuleByCourseId(database, courseId),
+      configRepo.findPricingByCourseId(database, courseId),
+    ]);
+
     if (sections.length === 0) {
       issues.push({
         code: "EMPTY_CURRICULUM",
@@ -92,10 +79,6 @@ export function createLifecycleService({
       });
     }
 
-    const lessons = await curriculumRepo.findLessonsByCourseId(
-      database,
-      courseId,
-    );
     if (lessons.length === 0) {
       issues.push({
         code: "NO_LESSONS",
@@ -113,6 +96,33 @@ export function createLifecycleService({
       }
     }
 
+    // Batch fetch media assets
+    const mediaIds = new Set<string>();
+    if (course.thumbnail_media_id) {
+      mediaIds.add(course.thumbnail_media_id);
+    }
+    for (const lesson of lessons) {
+      if (lesson.content_media_id) {
+        mediaIds.add(lesson.content_media_id);
+      }
+    }
+
+    const mediaAssets = await mediaRepo.findMediaAssetsByIds(
+      database,
+      Array.from(mediaIds),
+    );
+    const mediaMap = new Map(mediaAssets.map((m) => [m.id, m]));
+
+    if (course.thumbnail_media_id) {
+      const thumb = mediaMap.get(course.thumbnail_media_id);
+      if (!thumb || thumb.owner_id !== creatorId || thumb.status !== "uploaded") {
+        issues.push({
+          code: "INVALID_THUMBNAIL",
+          message: "Thumbnail media must be fully uploaded.",
+        });
+      }
+    }
+
     // Validate media status for all lessons
     for (const lesson of lessons) {
       if (!lesson.content_media_id) {
@@ -121,12 +131,8 @@ export function createLifecycleService({
           message: `Lesson "${lesson.title}" does not have media content attached.`,
         });
       } else {
-        const media = await mediaRepo.findMediaAssetById(
-          database,
-          lesson.content_media_id,
-          creatorId,
-        );
-        if (!media) {
+        const media = mediaMap.get(lesson.content_media_id);
+        if (!media || media.owner_id !== creatorId) {
           issues.push({
             code: "LESSON_MEDIA_NOT_FOUND",
             message: `Media for lesson "${lesson.title}" was not found.`,
@@ -150,10 +156,6 @@ export function createLifecycleService({
     }
 
     // 3. Configuration validation
-    const accessRules = await configRepo.findAccessRuleByCourseId(
-      database,
-      courseId,
-    );
     if (!accessRules) {
       issues.push({
         code: "MISSING_ACCESS_RULES",
@@ -161,7 +163,6 @@ export function createLifecycleService({
       });
     }
 
-    const pricing = await configRepo.findPricingByCourseId(database, courseId);
     if (!pricing) {
       issues.push({
         code: "MISSING_PRICING",
@@ -177,10 +178,21 @@ export function createLifecycleService({
     return issues;
   }
 
+  /**
+   * Validates a course to ensure all requirements are satisfied prior to publishing.
+   */
+  async function validateCourse(
+    courseId: string,
+    creatorId: string,
+  ): Promise<CourseValidationIssue[]> {
+    const course = await getCourseAndVerifyOwner(courseId, creatorId);
+    return await validateCourseObject(course, creatorId);
+  }
+
   async function publishCourse(courseId: string, creatorId: string) {
     const course = await getCourseAndVerifyOwner(courseId, creatorId);
 
-    const issues = await validateCourse(courseId, creatorId);
+    const issues = await validateCourseObject(course, creatorId);
     if (issues.length > 0) {
       throw new AppError(
         400,

@@ -15,6 +15,7 @@ import {
   assertOptimisticUpdate,
   getCourseAndVerifyOwner as verifyCourseOwner,
 } from "../shared/courses.utils.ts";
+import { ADMIN_ROLE } from "../../auth/auth.constants.ts";
 import * as courseRepo from "./course.repository.ts";
 import * as categoryRepo from "../category/category.repository.ts";
 import * as curriculumRepo from "../curriculum/curriculum.repository.ts";
@@ -40,77 +41,23 @@ export function createCourseService({
     return verifyCourseOwner(database, courseId, creatorId);
   }
 
-  // --- Course Basics ---
-
-  async function createCourse(title: string, creatorId: string) {
-    const id = crypto.randomUUID();
-    const slug = `${slugify(title)}-${id.split("-")[0]}`;
-    const now = new Date();
-
-    await courseRepo.insertCourse(database, {
-      id,
-      slug,
-      title,
-      status: "draft",
-      creator_id: creatorId,
-      version: 1,
-      created_at: now,
-      updated_at: now,
-    });
-
-    return {
-      id,
-      slug,
-      title,
-      shortDescription: null,
-      description: null,
-      difficulty: null,
-      status: "draft" as const,
-      creatorId,
-      categoryId: null,
-      thumbnailMediaId: null,
-      trailerMediaId: null,
-      version: 1,
-      createdAt: now.toISOString(),
-      updatedAt: now.toISOString(),
-      publishedAt: null,
-    };
-  }
-
-  async function listMyCourses(creatorId: string) {
-    const rows = await courseRepo.listCoursesByCreator(database, creatorId);
-    const courses = rows.map((row) => ({
-      id: row.id,
-      slug: row.slug,
-      title: row.title,
-      shortDescription: row.short_description,
-      description: row.description,
-      difficulty: row.difficulty as
-        | "beginner"
-        | "intermediate"
-        | "advanced"
-        | null,
-      status: row.status as "draft" | "published" | "archived",
-      creatorId: row.creator_id as string,
-      categoryId: row.category_id,
-      thumbnailMediaId: row.thumbnail_media_id,
-      trailerMediaId: row.trailer_media_id,
-      version: row.version,
-      createdAt: row.created_at.toISOString(),
-      updatedAt: row.updated_at.toISOString(),
-      publishedAt: row.published_at?.toISOString() ?? null,
-    }));
-    return { courses };
-  }
-
+  /**
+   * Lists published courses with optional filtering.
+   */
   async function listPublishedCourses(filters?: { creatorId?: string }) {
     return await courseRepo.listPublishedCourses(database, filters);
   }
 
+  /**
+   * Retrieves a published course by its URL-safe slug.
+   */
   async function getPublishedCourseBySlug(slug: string) {
     return await courseRepo.findPublishedCourseBySlug(database, slug);
   }
 
+  /**
+   * Lists published courses authored by a specific creator.
+   */
   async function listAvailableCoursesByCreator(creatorId: string) {
     const rows = await courseRepo.listAvailableCoursesByCreator(
       database,
@@ -141,6 +88,92 @@ export function createCourseService({
     };
   }
 
+  /**
+   * Creates a draft course with only a title.
+   */
+  async function createCourse(title: string, creatorId: string) {
+    const baseSlug = slugify(title);
+    let slug = baseSlug;
+    let attempts = 0;
+
+    // Check slug collision and append salt if needed
+    while (await courseRepo.findCourseBySlug(database, slug)) {
+      attempts++;
+      slug = `${baseSlug}-${crypto.randomBytes(3).toString("hex")}`;
+      if (attempts > 5) {
+        slug = `${baseSlug}-${crypto.randomUUID().slice(0, 8)}`;
+        break;
+      }
+    }
+
+    const courseId = crypto.randomUUID();
+    const now = new Date();
+
+    await courseRepo.insertCourse(database, {
+      id: courseId,
+      slug,
+      title,
+      creator_id: creatorId,
+      status: "draft",
+      version: 1,
+      created_at: now,
+      updated_at: now,
+    });
+
+    return {
+      id: courseId,
+      slug,
+      title,
+      shortDescription: null,
+      description: null,
+      difficulty: null,
+      status: "draft" as const,
+      creatorId,
+      categoryId: null,
+      thumbnailMediaId: null,
+      trailerMediaId: null,
+      version: 1,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+      publishedAt: null,
+    };
+  }
+
+  /**
+   * Lists all courses owned by the authenticated creator.
+   */
+  async function listMyCourses(creatorId: string) {
+    const rows = await courseRepo.listCoursesByCreator(
+      database,
+      creatorId,
+    );
+    const courses = rows.map((c) => ({
+      id: c.id,
+      slug: c.slug,
+      title: c.title,
+      shortDescription: c.short_description,
+      description: c.description,
+      difficulty: c.difficulty as
+        | "beginner"
+        | "intermediate"
+        | "advanced"
+        | null,
+      status: c.status as "draft" | "published" | "archived",
+      creatorId: c.creator_id as string,
+      categoryId: c.category_id,
+      thumbnailMediaId: c.thumbnail_media_id,
+      trailerMediaId: c.trailer_media_id,
+      version: c.version,
+      createdAt: c.created_at.toISOString(),
+      updatedAt: c.updated_at.toISOString(),
+      publishedAt: c.published_at?.toISOString() ?? null,
+    }));
+    return { courses };
+  }
+
+  /**
+   * Updates basic course metadata with optimistic concurrency validation.
+   */
   async function updateCourseBasics(
     courseId: string,
     creatorId: string,
@@ -176,7 +209,11 @@ export function createCourseService({
         updates.categoryId,
       );
       if (!category) {
-        throw new AppError(400, "INVALID_CATEGORY", "Category not found.");
+        throw new AppError(
+          400,
+          "INVALID_CATEGORY",
+          "Selected category does not exist.",
+        );
       }
     }
 
@@ -195,16 +232,19 @@ export function createCourseService({
       }
     }
 
-    let transcodeJobInfo: {
-      should202: boolean;
-      jobId: string | null;
-    } | null = null;
     if (updates.trailerMediaId) {
-      transcodeJobInfo = await mediaService.queueTranscodeJob(
+      const trailer = await mediaRepo.findMediaAssetById(
+        database,
         updates.trailerMediaId,
         creatorId,
-        logger,
       );
+      if (!trailer || trailer.type !== "video") {
+        throw new AppError(
+          400,
+          "INVALID_TRAILER",
+          "Trailer must be a valid video asset.",
+        );
+      }
     }
 
     const now = new Date();
@@ -227,11 +267,24 @@ export function createCourseService({
     );
     assertOptimisticUpdate(updateResult);
 
+    let transcodeJobInfo: {
+      should202: boolean;
+      jobId: string | null;
+    } | null = null;
+    if (updates.trailerMediaId) {
+      transcodeJobInfo = await mediaService.queueTranscodeJob(
+        updates.trailerMediaId,
+        creatorId,
+        logger,
+      );
+    }
+
     if (transcodeJobInfo && transcodeJobInfo.should202) {
       return {
         accepted: true as const,
         videoJobId: transcodeJobInfo.jobId!,
         processingStatus: "queued" as const,
+        version: newVersion,
       };
     }
 
@@ -282,28 +335,18 @@ export function createCourseService({
   async function getCourseEditorData(courseId: string, creatorId: string) {
     const course = await getCourseAndVerifyOwner(courseId, creatorId);
 
-    const sections = await curriculumRepo.findSectionsByCourseId(
-      database,
-      courseId,
-    );
-    const lessons = await curriculumRepo.findLessonsByCourseId(
-      database,
-      courseId,
-    );
+    const [sections, lessons, accessRules, pricing, settings] =
+      await Promise.all([
+        curriculumRepo.findSectionsByCourseId(database, courseId),
+        curriculumRepo.findLessonsByCourseId(database, courseId),
+        configRepo.findAccessRuleByCourseId(database, courseId),
+        configRepo.findPricingByCourseId(database, courseId),
+        configRepo.findSettingsByCourseId(database, courseId),
+      ]);
     const lessonIds = lessons.map((l) => l.id);
     const resources = await curriculumRepo.listResourcesForLessons(
       database,
       lessonIds,
-    );
-
-    const accessRules = await configRepo.findAccessRuleByCourseId(
-      database,
-      courseId,
-    );
-    const pricing = await configRepo.findPricingByCourseId(database, courseId);
-    const settings = await configRepo.findSettingsByCourseId(
-      database,
-      courseId,
     );
 
     const fullSections = sections.map((sec) => {
@@ -426,9 +469,10 @@ export function createCourseService({
       throw new AppError(404, "COURSE_NOT_FOUND", "Course not found.");
     }
 
+    const isOwner = Boolean(user && user.id === course.creator_id);
+    const isAdmin = Boolean(user && user.roles && user.roles.includes(ADMIN_ROLE));
+
     if (course.status !== "published") {
-      const isOwner = user && user.id === course.creator_id;
-      const isAdmin = user && user.roles && user.roles.includes("admin");
       if (!isOwner && !isAdmin) {
         throw new AppError(404, "COURSE_NOT_FOUND", "Course not published.");
       }
@@ -436,57 +480,60 @@ export function createCourseService({
 
     const courseId = course.id;
 
-    let category = null;
-    if (course.category_id) {
-      const cat = await categoryRepo.findCategoryById(
-        database,
-        course.category_id,
-      );
-      if (cat) {
-        category = {
-          id: cat.id,
-          name: cat.name,
-          slug: cat.slug,
-        };
-      }
-    }
+    const [
+      creatorUser,
+      cat,
+      sections,
+      allLessons,
+      accessRules,
+      pricing,
+      settings,
+    ] = await Promise.all([
+      course.creator_id
+        ? courseRepo.findCourseCreator(database, course.creator_id)
+        : null,
+      course.category_id
+        ? categoryRepo.findCategoryById(database, course.category_id)
+        : null,
+      curriculumRepo.findSectionsByCourseId(database, courseId),
+      curriculumRepo.findLessonsByCourseId(database, courseId),
+      configRepo.findAccessRuleByCourseId(database, courseId),
+      configRepo.findPricingByCourseId(database, courseId),
+      configRepo.findSettingsByCourseId(database, courseId),
+    ]);
 
-    let creator = null;
-    if (course.creator_id) {
-      const creatorUser = await courseRepo.findCourseCreator(
-        database,
-        course.creator_id,
-      );
-      if (creatorUser) {
-        creator = {
+    const creator = creatorUser
+      ? {
           id: creatorUser.id,
           displayName: creatorUser.display_name,
           username: creatorUser.username,
-        };
-      }
-    }
+        }
+      : null;
 
-    const sections = await curriculumRepo.findSectionsByCourseId(
-      database,
-      courseId,
-    );
-    const lessons = await curriculumRepo.findLessonsByCourseId(
-      database,
-      courseId,
-    );
+    const category = cat
+      ? {
+          id: cat.id,
+          name: cat.name,
+          slug: cat.slug,
+        }
+      : null;
+
+    const lessons =
+      isOwner || isAdmin
+        ? allLessons
+        : allLessons.filter((l) => l.is_published);
+
     const lessonIds = lessons.map((l) => l.id);
-    const resources = await curriculumRepo.listResourcesForLessons(
-      database,
-      lessonIds,
-    );
+    const [resources, mediaAssets] = await Promise.all([
+      curriculumRepo.listResourcesForLessons(database, lessonIds),
+      mediaRepo.findMediaAssetsByIds(
+        database,
+        lessons
+          .map((l) => l.content_media_id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ]);
 
-    const mediaIds = lessons
-      .map((l) => l.content_media_id)
-      .filter((id): id is string => Boolean(id));
-    const mediaAssets = await mediaRepo.findMediaAssetsByIds(
-      database,
-      mediaIds,
-    );
     const mediaDurationMap = new Map<string, number>();
     for (const m of mediaAssets) {
       if (m.duration_seconds) {
@@ -494,31 +541,18 @@ export function createCourseService({
       }
     }
 
-    const accessRules = await configRepo.findAccessRuleByCourseId(
-      database,
-      courseId,
-    );
-    const pricing = await configRepo.findPricingByCourseId(database, courseId);
-    const settings = await configRepo.findSettingsByCourseId(
-      database,
-      courseId,
-    );
-
     let totalDurationSeconds = 0;
+    for (const les of lessons) {
+      if (les.content_media_id && mediaDurationMap.has(les.content_media_id)) {
+        totalDurationSeconds += mediaDurationMap.get(les.content_media_id) ?? 0;
+      }
+    }
 
     const fullSections = sections.map((sec) => {
       const secLessons = lessons
         .filter((l) => l.section_id === sec.id)
         .map((les) => {
           const lesResources = resources.filter((r) => r.lesson_id === les.id);
-          if (
-            les.content_media_id &&
-            mediaDurationMap.has(les.content_media_id)
-          ) {
-            totalDurationSeconds +=
-              mediaDurationMap.get(les.content_media_id) ?? 0;
-          }
-
           return {
             id: les.id,
             courseId: les.course_id,

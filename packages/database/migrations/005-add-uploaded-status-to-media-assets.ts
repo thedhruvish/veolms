@@ -22,6 +22,12 @@ export async function down(database: Kysely<unknown>): Promise<void> {
   `.execute(database);
 
   await sql`
+    update media_assets
+      set status = 'uploading'
+      where status = 'uploaded'
+  `.execute(database);
+
+  await sql`
     alter table media_assets
       add constraint media_assets_status_valid
       check (status in ('uploading', 'ready', 'failed'))

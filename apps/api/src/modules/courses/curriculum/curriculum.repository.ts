@@ -47,24 +47,28 @@ export async function findSectionById(
 export async function updateSection(
   database: Kysely<Database>,
   sectionId: string,
+  courseId: string,
   values: { title?: string; description?: string | null; updated_at: Date },
 ) {
   await database
     .updateTable("course_sections")
     .set(values)
     .where("id", "=", sectionId)
+    .where("course_id", "=", courseId)
     .execute();
 }
 
 export async function softDeleteSection(
   database: Kysely<Database>,
   sectionId: string,
+  courseId: string,
   now: Date,
 ) {
   await database
     .updateTable("course_sections")
     .set({ deleted_at: now, updated_at: now })
     .where("id", "=", sectionId)
+    .where("course_id", "=", courseId)
     .execute();
 }
 
@@ -146,6 +150,7 @@ export async function findLessonById(
 export async function updateLesson(
   database: Kysely<Database>,
   lessonId: string,
+  courseId: string,
   values: {
     title?: string;
     description?: string | null;
@@ -160,18 +165,21 @@ export async function updateLesson(
     .updateTable("course_lessons")
     .set(values)
     .where("id", "=", lessonId)
+    .where("course_id", "=", courseId)
     .execute();
 }
 
 export async function softDeleteLesson(
   database: Kysely<Database>,
   lessonId: string,
+  courseId: string,
   now: Date,
 ) {
   await database
     .updateTable("course_lessons")
     .set({ deleted_at: now, updated_at: now })
     .where("id", "=", lessonId)
+    .where("course_id", "=", courseId)
     .execute();
 }
 
@@ -299,12 +307,14 @@ export async function findResourceById(
 export async function softDeleteResource(
   database: Kysely<Database>,
   resourceId: string,
+  lessonId: string,
   now: Date,
 ) {
   await database
     .updateTable("lesson_resources")
     .set({ deleted_at: now })
     .where("id", "=", resourceId)
+    .where("lesson_id", "=", lessonId)
     .execute();
 }
 
@@ -325,6 +335,9 @@ export async function softDeleteResourcesByLessonIds(
   lessonIds: string[],
   now: Date,
 ) {
+  if (lessonIds.length === 0) {
+    return;
+  }
   await database
     .updateTable("lesson_resources")
     .set({ deleted_at: now })
@@ -336,6 +349,9 @@ export async function listResourcesForLessons(
   database: Kysely<Database>,
   lessonIds: string[],
 ) {
+  if (lessonIds.length === 0) {
+    return [];
+  }
   return await database
     .selectFrom("lesson_resources")
     .selectAll()
