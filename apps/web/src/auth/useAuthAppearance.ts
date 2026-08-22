@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  academyThemes,
-  getInitialAcademyTheme,
-  persistAcademyTheme,
-} from "../themes.ts";
+import { academyThemes, persistAcademyTheme } from "../themes.ts";
 
 export type ThemeDisplayMode = "light" | "dark" | "device";
+
+const AUTH_PALETTE = "midnight";
 
 function readStoredValue(key: string): string | null {
   try {
@@ -20,7 +18,7 @@ function readFlag(key: string): boolean {
 }
 
 function readPreviewPalette(): string | null {
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined" || !import.meta.env.DEV) return null;
   try {
     const requested = new URLSearchParams(window.location.search).get("theme");
     if (
@@ -37,17 +35,10 @@ function readPreviewPalette(): string | null {
 
 export function useAuthAppearance() {
   const [palette, setPaletteState] = useState<string>(() => {
-    const preview = readPreviewPalette();
-    if (preview) return preview;
-    return getInitialAcademyTheme();
+    return readPreviewPalette() ?? AUTH_PALETTE;
   });
 
-  const [themeMode, setThemeModeState] = useState<ThemeDisplayMode>(() => {
-    const stored = readStoredValue("veolms-theme");
-    return stored === "light" || stored === "dark" || stored === "device"
-      ? stored
-      : "dark";
-  });
+  const [themeMode, setThemeModeState] = useState<ThemeDisplayMode>("dark");
 
   const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("dark");
 
@@ -85,13 +76,9 @@ export function useAuthAppearance() {
 
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const applyAppearance = () => {
-      const activePalette = readPreviewPalette() ?? palette;
+      const activePalette = readPreviewPalette() ?? AUTH_PALETTE;
       const activeResolved =
-        themeMode === "device"
-          ? media.matches
-            ? "dark"
-            : "light"
-          : themeMode;
+        themeMode === "device" ? (media.matches ? "dark" : "light") : themeMode;
 
       root.dataset.palette = activePalette;
       root.dataset.theme = activeResolved;

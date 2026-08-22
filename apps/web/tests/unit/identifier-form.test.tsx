@@ -8,6 +8,7 @@ import {
   GitHubBrandIcon,
   GoogleBrandIcon,
 } from "../../src/auth/SocialBrandIcons.tsx";
+import { renderWithQueryClient } from "./test-utils.tsx";
 
 vi.mock("../../src/ThemedSelect.tsx", () => ({
   ThemedSelect: ({
@@ -245,7 +246,7 @@ describe("sending state", () => {
   it("locks the primary action while a code is on its way", () => {
     renderForm({ status: "sending" });
 
-    const submit = screen.getByRole("button", { name: "Continue" });
+    const submit = screen.getByRole("button", { name: "Sending..." });
     expect(submit).toBeDisabled();
     expect(submit).toHaveAttribute("aria-busy", "true");
   });
@@ -300,7 +301,7 @@ describe("mobile validation", () => {
 
 describe("social login actions", () => {
   it("offers Google ahead of GitHub under an 'OR' divider", () => {
-    render(<SocialLoginActions />);
+    renderWithQueryClient(<SocialLoginActions />);
 
     const labels = screen
       .getAllByRole("button")
@@ -310,7 +311,7 @@ describe("social login actions", () => {
   });
 
   it("carries the real brand marks rather than monochrome glyphs", () => {
-    render(<SocialLoginActions />);
+    renderWithQueryClient(<SocialLoginActions />);
 
     const [google, github] = screen.getAllByRole("button");
     expect(google?.querySelector('path[fill="#FFC107"]')).not.toBeNull();

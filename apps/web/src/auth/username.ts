@@ -10,7 +10,8 @@ export function generateUniqueUsername(displayName: string): string {
   if (typeof crypto !== "undefined" && crypto.getRandomValues) {
     crypto.getRandomValues(randomBuffer);
     for (let i = 0; i < 5; i++) {
-      randomSuffix += charset[randomBuffer[i] % charset.length];
+      const randomValue = randomBuffer[i] ?? 0;
+      randomSuffix += charset[randomValue % charset.length];
     }
   } else {
     for (let i = 0; i < 5; i++) {

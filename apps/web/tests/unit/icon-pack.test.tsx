@@ -38,6 +38,7 @@ describe("icon registry", () => {
     expect(Object.keys(iconRegistry).sort()).toEqual([
       "arrowRight",
       "authenticator",
+      "copy",
       "email",
       "mobile",
       "passkey",
