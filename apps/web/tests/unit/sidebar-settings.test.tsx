@@ -44,6 +44,24 @@ function StatefulSidebarSettings() {
   );
 }
 
+function StatefulGlowSettings() {
+  const [state, setState] = useState<SidebarPreferences>({
+    ...preferences,
+    glowPalette: "theme",
+    glowShape: "circle",
+    glowBlur: 8,
+    glowIntensity: 50,
+  });
+  return (
+    <SidebarSettings
+      sidebarPreferences={state}
+      onSidebarPreferencesChange={setState}
+      academyTheme="veo-onyx"
+      sidebarMode="expanded"
+    />
+  );
+}
+
 describe("sidebar settings draft inputs", () => {
   it("uses the shared themed slider for sidebar width", () => {
     renderSettings(vi.fn());
@@ -53,6 +71,127 @@ describe("sidebar settings draft inputs", () => {
     expect(slider).toHaveAttribute("aria-valuetext", "300 pixels");
     expect(slider.getAttribute("style")).toContain(
       "--app-slider-progress: 26.666666666666668%",
+    );
+  });
+
+  it("updates glow intensity through the shared themed slider", () => {
+    const onChange = vi.fn();
+    renderSettings(onChange);
+    const slider = screen.getByRole("slider", {
+      name: "Sidebar glow intensity",
+    });
+
+    expect(slider).toHaveValue("50");
+    expect(slider).toHaveAttribute("aria-valuetext", "50 percent");
+
+    fireEvent.change(slider, { target: { value: "42" } });
+    expect(onChange).toHaveBeenLastCalledWith({
+      ...preferences,
+      glowIntensity: 42,
+    });
+    expect(
+      screen.queryByText("Match the active academy color theme"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("updates the additional bokeh blur through the shared slider", () => {
+    const onChange = vi.fn();
+    renderSettings(onChange);
+    const slider = screen.getByRole("slider", {
+      name: "Additional sidebar bokeh blur",
+    });
+
+    expect(slider).toHaveValue("8");
+    expect(slider).toHaveAttribute("min", "0");
+    expect(slider).toHaveAttribute("max", "32");
+    expect(slider).toHaveAttribute("aria-valuetext", "8 pixels");
+
+    fireEvent.change(slider, { target: { value: "27" } });
+    expect(onChange).toHaveBeenLastCalledWith({
+      ...preferences,
+      glowBlur: 27,
+    });
+  });
+
+  it("offers CSS bokeh shapes and updates the selected shape", () => {
+    const onChange = vi.fn();
+    renderSettings(onChange);
+
+    expect(screen.getByRole("radio", { name: "Circle" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    const star = screen.getByRole("radio", { name: "Star" });
+    fireEvent.click(star);
+
+    expect(onChange).toHaveBeenLastCalledWith({
+      ...preferences,
+      glowShape: "star",
+    });
+  });
+
+  it("resets every sidebar glow control to the shared defaults", () => {
+    const onChange = vi.fn();
+    const customPreferences: SidebarPreferences = {
+      ...preferences,
+      glowPalette: "purple-blue",
+      glowShape: "star",
+      glowBlur: 27,
+      glowIntensity: 75,
+    };
+    render(
+      <SidebarSettings
+        sidebarPreferences={customPreferences}
+        onSidebarPreferencesChange={onChange}
+        academyTheme="veo-onyx"
+        sidebarMode="expanded"
+      />,
+    );
+
+    const reset = screen.getByRole("button", {
+      name: "Reset sidebar glow to defaults",
+    });
+    expect(reset).toBeEnabled();
+    fireEvent.click(reset);
+
+    expect(onChange).toHaveBeenLastCalledWith({
+      ...customPreferences,
+      glowPalette: "theme",
+      glowShape: "circle",
+      glowBlur: 8,
+      glowIntensity: 50,
+    });
+  });
+
+  it("keeps palette previews clipped and synchronized with blur and intensity", () => {
+    render(<StatefulGlowSettings />);
+    const preview = screen
+      .getByRole("radio", { name: "Follow theme" })
+      .querySelector<HTMLElement>(".settings-sidebar-glow-option__preview")!;
+
+    expect(preview.getAttribute("style")).toContain(
+      "--settings-sidebar-preview-blur: 8px",
+    );
+    expect(preview.getAttribute("style")).toContain(
+      "--settings-sidebar-preview-intensity: 0.5",
+    );
+    expect(preview).not.toHaveClass("is-clear");
+
+    fireEvent.change(
+      screen.getByRole("slider", { name: "Additional sidebar bokeh blur" }),
+      { target: { value: "0" } },
+    );
+    fireEvent.change(
+      screen.getByRole("slider", { name: "Sidebar glow intensity" }),
+      { target: { value: "35" } },
+    );
+
+    expect(preview).toHaveClass("is-clear");
+    expect(preview.getAttribute("style")).toContain(
+      "--settings-sidebar-preview-blur: 0px",
+    );
+    expect(preview.getAttribute("style")).toContain(
+      "--settings-sidebar-preview-intensity: 0.35",
     );
   });
 
@@ -139,9 +278,9 @@ describe("sidebar settings draft inputs", () => {
     const sidebarDepth = screen.getByRole("switch", {
       name: "Elevate sidebar menus",
     });
-    expect(sidebarDepth).toHaveAttribute("aria-checked", "false");
-    fireEvent.click(sidebarDepth);
     expect(sidebarDepth).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(sidebarDepth);
+    expect(sidebarDepth).toHaveAttribute("aria-checked", "false");
 
     const readingMode = screen.getByRole("switch", {
       name: "Show Reading mode in sidebar dock",

@@ -800,7 +800,7 @@ export function CourseOverviewPage({
           ) : onNavigatePage ? (
             <button
               type="button"
-              onClick={() => onNavigatePage("/explore-courses")}
+              onClick={() => onNavigatePage("/courses")}
             >
               Explore courses
             </button>

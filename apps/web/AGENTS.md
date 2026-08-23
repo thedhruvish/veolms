@@ -43,4 +43,12 @@ Typical exceptions may include complex keyframes, browser-specific pseudo-elemen
 - Avoid hidden coupling between features, broad selectors, and imports that cause one module's styling or behavior to leak into another.
 - Add or update focused tests for changed behavior. Run the relevant typecheck, lint, and tests before completing the work.
 
+## Manual commit verification
+
+- Do not add or configure a pre-commit hook for the browser memory regression tests.
+- Before creating a commit that includes changes under `apps/web`, manually run the production-browser memory regression test suite in addition to the relevant typecheck, lint, and functional tests.
+- Run memory checks against the production build and use the configured per-page baselines and budgets. Include ordinary pages without video and learning pages when they are affected by the change.
+- If a memory check fails, do not proceed with the commit. Diagnose whether the failure is a product regression, a test problem, or an unstable measurement; fix the underlying issue and rerun the complete verification until it passes.
+- If the memory suite is unavailable or cannot be run, report that clearly and do not claim that commit verification passed.
+
 Before adding plain CSS or growing an already large file, stop and confirm that the change cannot be expressed as Tailwind utilities, a small feature component, a focused hook, or a reusable variant.

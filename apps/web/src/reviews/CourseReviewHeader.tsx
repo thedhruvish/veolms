@@ -6,6 +6,7 @@ import { ShareNetwork } from "@phosphor-icons/react/ShareNetwork";
 import { Star } from "@phosphor-icons/react/Star";
 import { WarningCircle } from "@phosphor-icons/react/WarningCircle";
 import type { CourseReviewMeta } from "./reviewsData";
+import { useBackDismiss } from "../navigation/useBackDismiss";
 
 export interface CourseReviewHeaderProps {
   courseMeta: CourseReviewMeta;
@@ -23,6 +24,11 @@ export function CourseReviewHeader({
   setNotice,
 }: CourseReviewHeaderProps) {
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+
+  useBackDismiss({
+    open: moreMenuOpen,
+    onDismiss: () => setMoreMenuOpen(false),
+  });
 
   const handleShare = () => {
     setMoreMenuOpen(false);

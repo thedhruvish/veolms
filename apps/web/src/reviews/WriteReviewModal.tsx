@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check } from "@phosphor-icons/react/Check";
 import { Star } from "@phosphor-icons/react/Star";
 import { X } from "@phosphor-icons/react/X";
+import { useBackDismiss } from "../navigation/useBackDismiss";
 
 export interface WriteReviewModalProps {
   courseTitle: string;
@@ -28,6 +29,8 @@ export function WriteReviewModal({
   const [recommend, setRecommend] = useState(true);
   const [error, setError] = useState("");
   const modalRef = useRef<HTMLDivElement>(null);
+
+  useBackDismiss({ open: isOpen, onDismiss: onClose });
 
   useEffect(() => {
     if (!isOpen) {

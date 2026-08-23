@@ -74,10 +74,20 @@ const sourceLessonVideos = [
 ];
 
 const repeatedSectionLessonCounts = [6, 7, 8, 5, 5];
-const lessonMediaAssignments = [
+const preservedLessonMediaAssignments = [
   ...sourceLessonVideos,
   ...repeatedSectionLessonCounts.flatMap((count) =>
     sourceLessonVideos.slice(0, count),
+  ),
+];
+
+export const totalCourseLectures = 600;
+
+const lessonMediaAssignments = [
+  ...preservedLessonMediaAssignments,
+  ...Array.from(
+    { length: totalCourseLectures - preservedLessonMediaAssignments.length },
+    (_, index) => sourceLessonVideos[index % sourceLessonVideos.length]!,
   ),
 ];
 
@@ -115,7 +125,7 @@ const repeatedLessons = (startNumber: number, count: number): Lesson[] =>
     lesson(startNumber + index, sourceLessonTitles[index]!, "todo"),
   );
 
-export const sections: CourseSection[] = [
+const coreSections: CourseSection[] = [
   {
     id: 1,
     title: "Introduction",
@@ -171,6 +181,77 @@ export const sections: CourseSection[] = [
     lessons: repeatedLessons(37, 5),
   },
 ];
+
+const advancedSectionTitles = [
+  "Node.js Foundations",
+  "Package Management and Modules",
+  "Async JavaScript Patterns",
+  "Express Essentials",
+  "REST API Design",
+  "MongoDB Integration",
+  "SQL and Data Modeling",
+  "Authentication and Authorization",
+  "Validation and Error Handling",
+  "Testing Node.js Applications",
+  "Caching and Queues",
+  "File Uploads and Media",
+  "Observability and Performance",
+  "Security Hardening",
+  "Deployment and DevOps",
+  "Capstone Production API",
+] as const;
+
+const advancedLessonTopics = [
+  "Runtime and Event Loop",
+  "Modules and Packages",
+  "Async Control Flow",
+  "HTTP Fundamentals",
+  "Express Routing",
+  "Middleware Design",
+  "API Validation",
+  "Database Integration",
+  "Authentication",
+  "Testing and Debugging",
+] as const;
+
+const coreLectureCount = coreSections.reduce(
+  (total, section) => total + section.lessons.length,
+  0,
+);
+const advancedLectureCount = totalCourseLectures - coreLectureCount;
+const baseAdvancedSectionSize = Math.floor(
+  advancedLectureCount / advancedSectionTitles.length,
+);
+const largerAdvancedSectionCount =
+  advancedLectureCount % advancedSectionTitles.length;
+
+let nextAdvancedLessonNumber = coreLectureCount + 1;
+const advancedSections: CourseSection[] = advancedSectionTitles.map(
+  (title, index) => {
+    const lessonCount =
+      baseAdvancedSectionSize + (index < largerAdvancedSectionCount ? 1 : 0);
+    const sectionStart = nextAdvancedLessonNumber;
+    nextAdvancedLessonNumber += lessonCount;
+
+    return {
+      id: coreSections.length + index + 1,
+      title,
+      progress: `0/${lessonCount}`,
+      lessons: Array.from({ length: lessonCount }, (_, lessonIndex) => {
+        const lessonNumber = sectionStart + lessonIndex;
+        const topic =
+          advancedLessonTopics[lessonIndex % advancedLessonTopics.length]!;
+        return lesson(
+          lessonNumber,
+          `${topic} ${Math.floor(lessonIndex / advancedLessonTopics.length) + 1}`,
+          "todo",
+        );
+      }),
+    };
+  },
+);
+
+export const sections: CourseSection[] = [...coreSections, ...advancedSections];
 
 export const lessonsById = new Map<number, Lesson>(
   sections.flatMap((section) =>

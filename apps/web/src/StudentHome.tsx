@@ -59,7 +59,7 @@ const backendCourse: LearningCourse = {
   id: "backend-nodejs",
   title: "Complete Backend with Node.js",
   sections: 23,
-  lectures: 185,
+  lectures: 600,
   status: "in-progress",
   progress: 76,
   lastLesson: "Error Handling in Express",
@@ -226,7 +226,7 @@ export function StudentHome({
             <button
               type="button"
               className="resume-view-all"
-              onClick={() => onNavigatePage("my-courses")}
+              onClick={() => onNavigatePage("courses")}
             >
               View all in this section <ArrowRight size={17} />
             </button>
@@ -240,7 +240,7 @@ export function StudentHome({
             icon={BookOpen}
             title="Continue Learning"
             action="View All"
-            onAction={() => onNavigatePage("my-courses")}
+            onAction={() => onNavigatePage("courses")}
           />
           <div className="home-mini-course-grid">
             {[javascriptCourse, backendCourse].map((course) => (
@@ -365,7 +365,7 @@ export function StudentHome({
             icon={Target}
             title="New in Your Courses"
             action="View All"
-            onAction={() => onNavigatePage("my-courses")}
+            onAction={() => onNavigatePage("courses")}
           />
           <div className="home-update-list">
             {[currentCourse, backendCourse].map((course, index) => (

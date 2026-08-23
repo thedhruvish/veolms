@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VideoPlayer } from "../../src/VideoPlayer.js";
 
@@ -28,6 +28,8 @@ describe("video playback consent", () => {
     );
     const video = container.querySelector("video");
     expect(video).not.toBeNull();
+    expect(video).toHaveAttribute("preload", "auto");
+    expect(video).not.toHaveAttribute("poster");
 
     fireEvent.canPlay(video!);
     fireEvent.ended(video!);
@@ -199,6 +201,74 @@ describe("video playback consent", () => {
     ).toHaveAttribute("aria-pressed", "false");
   });
 
+  it("requests landscape orientation when fullscreen starts in portrait", async () => {
+    const requestFullscreen = vi.fn().mockResolvedValue(undefined);
+    const lock = vi.fn().mockResolvedValue(undefined);
+    const originalInnerWidth = window.innerWidth;
+    const originalInnerHeight = window.innerHeight;
+    const originalOrientation = Object.getOwnPropertyDescriptor(
+      window.screen,
+      "orientation",
+    );
+
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 390,
+    });
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      value: 844,
+    });
+    Object.defineProperty(window.screen, "orientation", {
+      configurable: true,
+      value: { type: "portrait-primary", lock },
+    });
+
+    try {
+      const { container } = render(
+        <VideoPlayer
+          media={{ fileName: "lesson.mp4", duration: 90, src: "/lesson.mp4" }}
+          lessonTitle="Portrait fullscreen lesson"
+          theaterMode={false}
+          onTheaterToggle={() => {}}
+        />,
+      );
+      const shell = container.querySelector<HTMLElement>(".video-shell");
+      if (!shell) throw new Error("Expected a video shell");
+      Object.defineProperty(shell, "requestFullscreen", {
+        configurable: true,
+        value: requestFullscreen,
+      });
+
+      fireEvent.click(
+        screen.getByRole("button", { name: "Toggle fullscreen" }),
+      );
+
+      await waitFor(() => {
+        expect(requestFullscreen).toHaveBeenCalledOnce();
+        expect(lock).toHaveBeenCalledWith("landscape");
+      });
+    } finally {
+      Object.defineProperty(window, "innerWidth", {
+        configurable: true,
+        value: originalInnerWidth,
+      });
+      Object.defineProperty(window, "innerHeight", {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      if (originalOrientation) {
+        Object.defineProperty(
+          window.screen,
+          "orientation",
+          originalOrientation,
+        );
+      } else {
+        Reflect.deleteProperty(window.screen, "orientation");
+      }
+    }
+  });
+
   it("throttles resume persistence and flushes it on pause and unmount", () => {
     const setItem = vi.spyOn(Storage.prototype, "setItem");
     const clock = vi.spyOn(Date, "now");
@@ -244,6 +314,68 @@ describe("video playback consent", () => {
 
     unmount();
     expect(resumeWrites()).toHaveLength(4);
+  });
+
+  it("reports lecture progress while watching and completion when playback ends", () => {
+    const onProgressChange = vi.fn();
+    const { container } = render(
+      <VideoPlayer
+        media={{ fileName: "lesson.mp4", duration: 100, src: "/lesson.mp4" }}
+        lessonTitle="Progress lesson"
+        theaterMode={false}
+        onTheaterToggle={() => {}}
+        onProgressChange={onProgressChange}
+      />,
+    );
+    const video = container.querySelector("video");
+    expect(video).not.toBeNull();
+    if (!video) throw new Error("Expected a video element");
+
+    Object.defineProperties(video, {
+      currentTime: { configurable: true, value: 50 },
+      duration: { configurable: true, value: 100 },
+    });
+    fireEvent.timeUpdate(video);
+    expect(onProgressChange).toHaveBeenLastCalledWith(50);
+
+    fireEvent.ended(video);
+    expect(onProgressChange).toHaveBeenLastCalledWith(100);
+  });
+
+  it("preserves reported lecture progress while the next media loads", () => {
+    const onProgressChange = vi.fn();
+    const { container, rerender } = render(
+      <VideoPlayer
+        media={{ fileName: "first.mp4", duration: 100, src: "/first.mp4" }}
+        lessonTitle="First lesson"
+        theaterMode={false}
+        onTheaterToggle={() => {}}
+        onProgressChange={onProgressChange}
+      />,
+    );
+    const video = container.querySelector("video");
+    expect(video).not.toBeNull();
+    if (!video) throw new Error("Expected a video element");
+
+    Object.defineProperties(video, {
+      currentTime: { configurable: true, value: 50 },
+      duration: { configurable: true, value: 100 },
+    });
+    fireEvent.timeUpdate(video);
+    expect(onProgressChange).toHaveBeenLastCalledWith(50);
+    onProgressChange.mockClear();
+
+    rerender(
+      <VideoPlayer
+        media={{ fileName: "second.mp4", duration: 100, src: "/second.mp4" }}
+        lessonTitle="Second lesson"
+        theaterMode={false}
+        onTheaterToggle={() => {}}
+        onProgressChange={onProgressChange}
+      />,
+    );
+
+    expect(onProgressChange).not.toHaveBeenCalled();
   });
 
   it("flushes the latest resume position before a media switch", () => {

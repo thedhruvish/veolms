@@ -3,6 +3,7 @@ import { DownloadSimple } from "@phosphor-icons/react/DownloadSimple";
 import { Receipt } from "@phosphor-icons/react/Receipt";
 import { ShoppingBag } from "@phosphor-icons/react/ShoppingBag";
 import { X } from "@phosphor-icons/react/X";
+import { useBackDismiss } from "../navigation/useBackDismiss";
 import type { OrderHistoryItem } from "./orderHistoryData";
 
 export interface OrderHistoryInvoiceModalProps {
@@ -18,6 +19,8 @@ export function OrderHistoryInvoiceModal({
   onClose,
   onDownloadReceipt,
 }: OrderHistoryInvoiceModalProps) {
+  useBackDismiss({ open: isOpen && order !== null, onDismiss: onClose });
+
   if (!isOpen || !order) return null;
 
   return (

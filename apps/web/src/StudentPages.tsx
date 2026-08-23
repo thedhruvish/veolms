@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { ArrowRight } from "@phosphor-icons/react/ArrowRight";
 import { BookOpen } from "@phosphor-icons/react/BookOpen";
-import { Certificate } from "@phosphor-icons/react/Certificate";
 import { ChartLineUp } from "@phosphor-icons/react/ChartLineUp";
 import { ChatCircleDots } from "@phosphor-icons/react/ChatCircleDots";
 import { CheckCircle } from "@phosphor-icons/react/CheckCircle";
@@ -32,6 +31,10 @@ import {
   isStoredString,
   useSessionStorageState,
 } from "./learning/useSessionStorageState";
+import {
+  SEARCH_SHORTCUT_ARIA_KEYSHORTCUTS,
+  SearchShortcutHint,
+} from "./searchShortcut";
 
 export interface LearningCourse {
   id: string;
@@ -108,7 +111,7 @@ const learningCourses: readonly LearningCourse[] = [
     id: "backend-nodejs",
     title: "Complete Backend with Node.js",
     sections: 23,
-    lectures: 185,
+    lectures: 600,
     status: "in-progress",
     progress: 76,
     lastLesson: "Error Handling in Express",
@@ -353,7 +356,7 @@ export function StudentHome({
             <button
               type="button"
               className="resume-view-all"
-              onClick={() => onNavigatePage("my-courses")}
+              onClick={() => onNavigatePage("courses")}
             >
               View all in this section <ArrowRight size={17} />
             </button>
@@ -367,7 +370,7 @@ export function StudentHome({
             icon={BookOpen}
             title="Continue Learning"
             action="View All"
-            onAction={() => onNavigatePage("my-courses")}
+            onAction={() => onNavigatePage("courses")}
           />
           <div className="home-mini-course-grid">
             {continueCourses.map((course) => (
@@ -492,7 +495,7 @@ export function StudentHome({
             icon={Target}
             title="New in Your Courses"
             action="View All"
-            onAction={() => onNavigatePage("my-courses")}
+            onAction={() => onNavigatePage("courses")}
           />
           <div className="home-update-list">
             {recentlyUpdatedCourses.map((course, index) => (
@@ -660,13 +663,6 @@ export function MyCoursesPage({
     return result;
   }, [filter, search, sort, status]);
 
-  const summary = [
-    { value: 9, label: "Enrolled Courses", icon: BookOpen, tone: "violet" },
-    { value: 6, label: "In Progress", icon: Clock, tone: "cyan" },
-    { value: 2, label: "Completed", icon: CheckCircle, tone: "green" },
-    { value: 2, label: "Certificates Earned", icon: Certificate, tone: "gold" },
-  ];
-
   return (
     <div className="my-courses-page">
       <header className="learning-page-header">
@@ -674,20 +670,6 @@ export function MyCoursesPage({
           <h1>My Courses</h1>
           <p>All your enrolled courses and learning progress in one place.</p>
         </div>
-        <section
-          className="learning-summary-row"
-          aria-label="Learning overview"
-        >
-          {summary.map(({ value, label, icon: Icon, tone }) => (
-            <article key={label} className={`tone-${tone}`}>
-              <span>
-                <Icon size={21} weight="duotone" />
-              </span>
-              <strong>{value}</strong>
-              <p>{label}</p>
-            </article>
-          ))}
-        </section>
       </header>
 
       <div className="learning-filters">
@@ -724,10 +706,14 @@ export function MyCoursesPage({
           <MagnifyingGlass size={20} />
           <span className="sr-only">Search my courses</span>
           <input
+            id="legacy-learning-search-input"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search my courses..."
+            data-search-shortcut-target
+            aria-keyshortcuts={SEARCH_SHORTCUT_ARIA_KEYSHORTCUTS}
           />
+          <SearchShortcutHint />
         </label>
         <div className="learning-select">
           <ThemedSelect

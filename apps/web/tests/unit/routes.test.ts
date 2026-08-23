@@ -40,8 +40,7 @@ describe("React Router framework route configuration", () => {
       home: "/",
       "home-alias": "home",
       dashboard: "dashboard",
-      "my-courses": "my-courses",
-      "explore-courses": "explore-courses",
+      courses: "courses",
       "course-create": "courses/create",
       wishlist: "wishlist",
       students: "students",
@@ -66,7 +65,7 @@ describe("React Router framework route configuration", () => {
       "settings-security": "settings/security",
       "settings-account": "settings/account",
       logout: "logout",
-      "course-overview": "explore-courses/:courseSlug/overview",
+      "course-overview": "courses/:courseSlug/overview",
       learning: "learn/:courseSlug/:lectureSlug?",
       "legacy-learning": "courses/:courseSlug/:lectureSlug?",
       "home-fallback": "*",
@@ -93,7 +92,7 @@ describe("React Router framework route configuration", () => {
     expect(
       childRoutes.find(({ id }) => id === "course-overview"),
     ).toMatchObject({
-      path: "explore-courses/:courseSlug/overview",
+      path: "courses/:courseSlug/overview",
       file: "routes/academy-marker.tsx",
       caseSensitive: true,
     });
@@ -123,8 +122,8 @@ describe("session tab routing", () => {
 
 describe("framework route descriptors", () => {
   it("normalizes same-route comparisons without changing leading path syntax", () => {
-    expect(normalizeNavigationPath("/explore-courses///")).toBe(
-      "/explore-courses",
+    expect(normalizeNavigationPath("/courses///")).toBe(
+      "/courses",
     );
     expect(normalizeNavigationPath("///")).toBe("/");
     expect(normalizeNavigationPath("")).toBe("/");
@@ -172,7 +171,7 @@ describe("framework route descriptors", () => {
     expect(getRouteDescriptor("learning")).toEqual({
       kind: "learning",
       page: "learning",
-      section: "Explore Courses",
+      section: "Courses",
     });
     expect(getRouteDescriptor("course-overview")).toMatchObject({
       kind: "course-overview",
@@ -182,13 +181,13 @@ describe("framework route descriptors", () => {
   });
 
   it("preserves case-sensitive route behavior around framework hydration", () => {
-    expect(getEffectiveRouteId("explore-courses", "/explore-courses")).toBe(
-      "explore-courses",
+    expect(getEffectiveRouteId("courses", "/courses")).toBe(
+      "courses",
     );
-    expect(getEffectiveRouteId("explore-courses", "/explore-courses/")).toBe(
-      "explore-courses",
+    expect(getEffectiveRouteId("courses", "/courses/")).toBe(
+      "courses",
     );
-    expect(getEffectiveRouteId("explore-courses", "/EXPLORE-COURSES")).toBe(
+    expect(getEffectiveRouteId("courses", "/COURSES")).toBe(
       "home-fallback",
     );
     expect(getEffectiveRouteId("dashboard", "/DASHBOARD")).toBe(
@@ -246,13 +245,13 @@ describe("framework route descriptors", () => {
     expect(
       getEffectiveRouteId(
         "course-overview",
-        "/explore-courses/typescript-course/overview",
+        "/courses/typescript-course/overview",
       ),
     ).toBe("course-overview");
     expect(
       getEffectiveRouteId(
         "course-overview",
-        "/explore-courses/%E0%A4%A/overview",
+        "/courses/%E0%A4%A/overview",
       ),
     ).toBe("home-fallback");
   });
@@ -276,9 +275,9 @@ describe("framework route descriptors", () => {
   });
 
   it("generates the existing static and course metadata", () => {
-    expect(getRouteMeta("explore-courses")).toEqual({
-      title: "Explore Courses \u00B7 ProCodrr",
-      description: "Browse enrolled and available ProCodrr courses.",
+    expect(getRouteMeta("courses")).toEqual({
+      title: "Courses \u00B7 ProCodrr",
+      description: "Browse available courses and continue learning in ProCodrr.",
     });
     expect(
       getRouteMeta("learning", { courseSlug: "typescript-course" }),
@@ -291,7 +290,7 @@ describe("framework route descriptors", () => {
       title: "Home \u00B7 ProCodrr",
       description: routeDescriptors.home.description,
     });
-    expect(getRouteMeta("explore-courses", {}, "/EXPLORE-COURSES")).toEqual({
+    expect(getRouteMeta("courses", {}, "/COURSES")).toEqual({
       title: "Home \u00B7 ProCodrr",
       description: routeDescriptors.home.description,
     });

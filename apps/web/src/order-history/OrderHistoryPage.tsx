@@ -123,7 +123,7 @@ export function OrderHistoryPage({
       {/* Tab Navigation Bar with delicate thin bottom line and icons */}
       <nav
         aria-label="Order history categories"
-        className="mb-5 flex min-w-0 gap-1 md:gap-3 overflow-x-auto bg-transparent border-b border-[color-mix(in_srgb,var(--text)_9%,transparent)] scrollbar-none"
+        className="mb-5 flex min-w-0 gap-1 md:gap-3 overflow-x-auto bg-transparent border-b border-[color-mix(in_srgb,var(--text)_9%,transparent)]"
         role="tablist"
       >
         {tabsConfig.map((tab, idx) => {

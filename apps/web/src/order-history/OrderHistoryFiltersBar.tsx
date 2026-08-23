@@ -4,6 +4,10 @@ import { Funnel } from "@phosphor-icons/react/Funnel";
 import { MagnifyingGlass } from "@phosphor-icons/react/MagnifyingGlass";
 import { X } from "@phosphor-icons/react/X";
 import { ThemedSelect } from "../ThemedSelect";
+import {
+  SEARCH_SHORTCUT_ARIA_KEYSHORTCUTS,
+  SearchShortcutHint,
+} from "../searchShortcut";
 
 export interface OrderHistoryFiltersBarProps {
   searchQuery: string;
@@ -74,8 +78,11 @@ export function OrderHistoryFiltersBar({
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search by order ID, course, or invoice..."
             aria-label="Search orders"
+            aria-keyshortcuts={SEARCH_SHORTCUT_ARIA_KEYSHORTCUTS}
+            data-search-shortcut-target
             className="w-full border-0 bg-transparent p-0 text-xs md:text-sm text-[var(--text-secondary)] placeholder-[var(--muted)] outline-none"
           />
+          <SearchShortcutHint />
           {searchQuery && (
             <button
               type="button"
@@ -90,7 +97,10 @@ export function OrderHistoryFiltersBar({
 
         {/* Date Range Select - single line whitespace-nowrap */}
         <div className="flex min-h-[39px] min-w-[150px] items-center gap-2 rounded-[9px] bg-[color-mix(in_srgb,var(--surface-strong)_72%,var(--canvas))] px-3 shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--accent)_20%,transparent)] focus-within:shadow-[inset_0_0_0_1px_var(--accent),0_0_0_3px_color-mix(in_srgb,var(--accent)_16%,transparent)] transition-all flex-shrink-0">
-          <CalendarBlank size={16} className="text-[var(--muted)] flex-shrink-0" />
+          <CalendarBlank
+            size={16}
+            className="text-[var(--muted)] flex-shrink-0"
+          />
           <ThemedSelect
             id="order-history-date-filter"
             value={dateRangeFilter}
@@ -141,7 +151,9 @@ export function OrderHistoryFiltersBar({
       {/* Expandable Extra Filters Drawer if toggled */}
       {extraFiltersOpen && (
         <div className="flex flex-wrap items-center gap-2 rounded-[10px] bg-[color-mix(in_srgb,var(--surface-strong)_79%,var(--canvas))] p-2.5 text-xs text-[var(--text-secondary)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--text)_7%,transparent)] animate-in fade-in slide-in-from-top-1 duration-150">
-          <span className="font-semibold text-[var(--text)]">Quick status:</span>
+          <span className="font-semibold text-[var(--text)]">
+            Quick status:
+          </span>
           <button
             type="button"
             onClick={() => onStatusFilterChange("completed")}

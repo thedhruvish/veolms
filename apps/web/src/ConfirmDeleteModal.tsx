@@ -1,6 +1,7 @@
 import { Trash, X } from "@phosphor-icons/react";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { useBackDismiss } from "./navigation/useBackDismiss";
 
 export interface ConfirmDeleteModalProps {
   isOpen: boolean;
@@ -28,6 +29,8 @@ export function ConfirmDeleteModal({
   const confirmBtnRef = useRef<HTMLButtonElement | null>(null);
   const [holdProgress, setHoldProgress] = useState(0);
   const [isHolding, setIsHolding] = useState(false);
+
+  useBackDismiss({ open: isOpen, onDismiss: onClose });
 
   const holdTimerRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);

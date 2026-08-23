@@ -16,6 +16,7 @@ import type { ReviewTabId } from "./reviewsData";
 import { TopReviewersWidget } from "./TopReviewersWidget";
 import { useReviewsFilter } from "./useReviewsFilter";
 import { WriteReviewModal } from "./WriteReviewModal";
+import { useBackDismiss } from "../navigation/useBackDismiss";
 
 export interface ReviewsPageProps {
   onNavigatePage?: NavigateTo;
@@ -67,6 +68,11 @@ export function ReviewsPage({ onNavigatePage, setNotice }: ReviewsPageProps) {
   const [mobileSummaryExpanded, setMobileSummaryExpanded] = useState(true);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
+  useBackDismiss({
+    open: isSupportModalOpen,
+    onDismiss: () => setIsSupportModalOpen(false),
+  });
+
   // Keyboard shortcut listener (/ or Cmd+K to search, W to write review)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -96,7 +102,10 @@ export function ReviewsPage({ onNavigatePage, setNotice }: ReviewsPageProps) {
   };
 
   return (
-    <div className="w-full min-w-0 flex flex-col font-sans" aria-labelledby="reviews-page-title">
+    <div
+      className="w-full min-w-0 flex flex-col font-sans"
+      aria-labelledby="reviews-page-title"
+    >
       {/* Top Header Row with Title, Description, and Header Icon Badge */}
       <header className="flex items-start justify-between gap-5 mb-6">
         <div>
@@ -114,7 +123,8 @@ export function ReviewsPage({ onNavigatePage, setNotice }: ReviewsPageProps) {
           className="inline-flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-[19px] text-[var(--accent)] transition-transform hover:scale-105"
           style={{
             background: "color-mix(in srgb, var(--accent) 16%, var(--surface))",
-            boxShadow: "0 14px 26px color-mix(in srgb, var(--accent-shadow) 40%, transparent)",
+            boxShadow:
+              "0 14px 26px color-mix(in srgb, var(--accent-shadow) 40%, transparent)",
           }}
           aria-hidden="true"
         >
@@ -140,7 +150,7 @@ export function ReviewsPage({ onNavigatePage, setNotice }: ReviewsPageProps) {
       {/* Tab Navigation Bar with delicate thin bottom line and transparent background */}
       <nav
         aria-label="Review categories"
-        className="mb-5 flex min-w-0 gap-1 md:gap-3 overflow-x-auto bg-transparent border-b border-[color-mix(in_srgb,var(--text)_9%,transparent)] scrollbar-none"
+        className="mb-5 flex min-w-0 gap-1 md:gap-3 overflow-x-auto bg-transparent border-b border-[color-mix(in_srgb,var(--text)_9%,transparent)]"
         role="tablist"
       >
         {tabsConfig.map((tab, idx) => {
@@ -165,7 +175,9 @@ export function ReviewsPage({ onNavigatePage, setNotice }: ReviewsPageProps) {
               <Icon
                 size={18}
                 weight={isActive ? "fill" : "regular"}
-                className={isActive ? "text-[var(--accent)]" : "text-[var(--muted)]"}
+                className={
+                  isActive ? "text-[var(--accent)]" : "text-[var(--muted)]"
+                }
               />
               <span>{tab.label}</span>
               {isActive && (
@@ -303,17 +315,22 @@ export function ReviewsPage({ onNavigatePage, setNotice }: ReviewsPageProps) {
         >
           <div
             className="w-full max-w-md rounded-[18px] border border-[var(--border)] bg-[var(--card-surface)] p-6 shadow-2xl animate-in zoom-in-95 duration-150"
-            style={{ boxShadow: "var(--card-floating-shadow,var(--card-shadow))" }}
+            style={{
+              boxShadow: "var(--card-floating-shadow,var(--card-shadow))",
+            }}
           >
             <h2 className="text-lg font-bold text-[var(--text)]">
               Contact Learner Support
             </h2>
             <p className="mt-2 text-xs md:text-sm text-[var(--text-secondary)]">
-              Have questions or feedback regarding this course's reviews? Our support team is here to help 24/7.
+              Have questions or feedback regarding this course&apos;s reviews? Our
+              support team is here to help 24/7.
             </p>
             <div className="mt-4 rounded-xl bg-[var(--card-surface-raised,var(--hover))] p-3.5 text-xs text-[var(--muted)]">
               <span>Support email: </span>
-              <strong className="text-[var(--text)]">support@procodrr.com</strong>
+              <strong className="text-[var(--text)]">
+                support@procodrr.com
+              </strong>
             </div>
             <div className="mt-5 flex justify-end gap-2">
               <button

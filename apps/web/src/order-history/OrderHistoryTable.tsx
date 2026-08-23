@@ -5,6 +5,7 @@ import { FileText } from "@phosphor-icons/react/FileText";
 import { LinkSimple } from "@phosphor-icons/react/LinkSimple";
 import { ShoppingBag } from "@phosphor-icons/react/ShoppingBag";
 import type { OrderHistoryItem, OrderHistoryStatus } from "./orderHistoryData";
+import { useBackDismiss } from "../navigation/useBackDismiss";
 
 export interface OrderHistoryTableProps {
   orders: readonly OrderHistoryItem[];
@@ -18,6 +19,11 @@ export function OrderHistoryTable({
   setNotice,
 }: OrderHistoryTableProps) {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  useBackDismiss({
+    open: openMenuId !== null,
+    onDismiss: () => setOpenMenuId(null),
+  });
 
   const getStatusBadgeStyle = (status: OrderHistoryStatus) => {
     switch (status) {

@@ -4,7 +4,7 @@ import {
   expectStoredValue,
   installBaselineState,
   openApp,
-  revealDeferredAppearanceSettings,
+  expectAppearanceSettingsReady,
   setApplicationScrollTop,
   updateSidebarPreferences,
 } from "./support.ts";
@@ -73,10 +73,51 @@ test("profile settings validate, autosave, and retain academy-local identity", a
   await mobileNavigation
     .getByRole("button", { name: "More navigation options" })
     .click();
-  const mobileProfile = page
-    .getByRole("dialog", { name: /More/ })
-    .locator(".mobile-menu-sheet__profile");
+  const mobileMenu = page.getByRole("dialog", { name: /More/ });
+  const mobileProfile = mobileMenu.locator(".mobile-menu-sheet__profile");
+  const mobileNavigationList = mobileMenu.locator(".mobile-menu-sheet__list");
   await expect(mobileProfile).toContainText("Avery Patel");
+  await expect(mobileProfile).toHaveAttribute("aria-haspopup", "menu");
+  const navigationListBefore = await mobileNavigationList.boundingBox();
+  await mobileProfile.click();
+  const mobileProfileMenu = page.locator("#mobile-profile-menu");
+  await expect(mobileProfileMenu).toBeVisible();
+  const [profileBounds, profileMenuBounds] = await Promise.all([
+    mobileProfile.boundingBox(),
+    mobileProfileMenu.boundingBox(),
+  ]);
+  expect(profileBounds).not.toBeNull();
+  expect(profileMenuBounds).not.toBeNull();
+  expect(profileMenuBounds!.x).toBeGreaterThan(profileBounds!.x);
+  expect(profileMenuBounds!.width).toBeLessThan(profileBounds!.width);
+  expect(profileMenuBounds!.x + profileMenuBounds!.width).toBeCloseTo(
+    profileBounds!.x + profileBounds!.width,
+    0,
+  );
+  expect(profileMenuBounds!.y).toBeGreaterThanOrEqual(
+    profileBounds!.y + profileBounds!.height,
+  );
+  const navigationListAfter = await mobileNavigationList.boundingBox();
+  expect(navigationListBefore).not.toBeNull();
+  expect(navigationListAfter).not.toBeNull();
+  expect(navigationListAfter!.y).toBeCloseTo(navigationListBefore!.y, 0);
+  await expect(
+    mobileProfileMenu.getByRole("menuitemradio", { name: "Student" }),
+  ).toHaveAttribute("aria-checked", "true");
+  await expect(
+    mobileProfileMenu.getByRole("menuitemradio", { name: "Creator" }),
+  ).toHaveAttribute("aria-checked", "false");
+  await expect(
+    mobileProfileMenu.getByRole("menuitem", { name: "Hide sidebar" }),
+  ).toHaveCount(0);
+  await expect(
+    mobileProfileMenu.getByRole("menuitem", { name: "Logout" }),
+  ).toBeVisible();
+  await mobileProfileMenu
+    .getByRole("menuitemradio", { name: "Creator" })
+    .click();
+  await expect(mobileProfileMenu).toBeHidden();
+  await expect(mobileProfile).toContainText("Instructor");
   await page.keyboard.press("Escape");
 });
 
@@ -174,7 +215,7 @@ test("Escape leaves Settings for the previous non-settings destination", async (
 test("leaving Settings restores the application scroll position", async ({
   page,
 }) => {
-  await openApp(page, "/my-courses");
+  await openApp(page, "/courses");
   await setApplicationScrollTop(page, 420);
   const originalScrollTop = await getApplicationScrollTop(page);
   expect(originalScrollTop).toBeGreaterThan(300);
@@ -185,7 +226,7 @@ test("leaving Settings restores the application scroll position", async ({
   await expect.poll(() => getApplicationScrollTop(page)).toBe(0);
 
   await page.keyboard.press("Escape");
-  await expect(page).toHaveURL(/\/my-courses$/);
+  await expect(page).toHaveURL(/\/courses$/);
   await expect
     .poll(() => getApplicationScrollTop(page))
     .toBe(originalScrollTop);
@@ -196,7 +237,7 @@ test("page tab colors follow the sidebar and keep explicit overrides", async ({
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await openApp(page, "/settings/appearance");
-  await revealDeferredAppearanceSettings(page);
+  await expectAppearanceSettingsReady(page);
 
   const root = page.locator("html");
   const pageTabColorOptions = page.getByRole("radiogroup", {
@@ -244,7 +285,7 @@ test("page tab colors follow the sidebar and keep explicit overrides", async ({
   await expect(root).toHaveAttribute("data-page-tab-colors", "monochrome");
   await expectStoredValue(page, "veolms-page-tab-colors", "monochrome");
   await page.reload();
-  await revealDeferredAppearanceSettings(page);
+  await expectAppearanceSettingsReady(page);
   await expect(root).toHaveAttribute("data-page-tab-colors", "monochrome");
   expect(await activeTabColor("Appearance")).toBe(followedMonochromeColor);
 
@@ -368,7 +409,7 @@ test("appearance and sidebar preferences persist through their direct settings r
     "monochrome",
   );
 
-  await revealDeferredAppearanceSettings(page);
+  await expectAppearanceSettingsReady(page);
   const randomTheme = page.getByRole("switch", {
     name: "Random theme on app open",
   });
@@ -809,6 +850,25 @@ test("learning settings save a coherent preference object", async ({
     page.getByRole("switch", { name: "Autoplay next lecture" }),
   ).toHaveCount(0);
 
+  const lessonPageScrollbar = page.getByRole("switch", {
+    name: "Show lesson page scrollbar",
+  });
+  const curriculumScrollbar = page.getByRole("switch", {
+    name: "Show course content scrollbar",
+  });
+  await expect(lessonPageScrollbar).toHaveAttribute("aria-checked", "true");
+  await expect(curriculumScrollbar).toHaveAttribute("aria-checked", "true");
+  await lessonPageScrollbar.click();
+  await curriculumScrollbar.click();
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-lesson-page-scrollbar",
+    "hidden",
+  );
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-curriculum-scrollbar",
+    "hidden",
+  );
+
   const reminders = page.getByRole("switch", { name: "Learning reminders" });
   if ((await reminders.getAttribute("aria-checked")) !== "true")
     await reminders.click();
@@ -825,9 +885,13 @@ test("learning settings save a coherent preference object", async ({
   expect(stored).not.toHaveProperty("autoplayNextLecture");
   expect(stored.learningReminders).toBe(true);
   expect(stored.reminderDays).toContain("sat");
+  expect(stored.showLessonPageScrollbar).toBe(false);
+  expect(stored.showCurriculumScrollbar).toBe(false);
 
   await page.reload();
   await expect(
     page.getByRole("button", { name: "Sat", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
+  await expect(lessonPageScrollbar).toHaveAttribute("aria-checked", "false");
+  await expect(curriculumScrollbar).toHaveAttribute("aria-checked", "false");
 });

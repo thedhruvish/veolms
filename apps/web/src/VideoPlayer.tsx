@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
+import { createPortal } from "react-dom";
 import { CaretLeft } from "@phosphor-icons/react/CaretLeft";
 import { CaretRight } from "@phosphor-icons/react/CaretRight";
 import { Check } from "@phosphor-icons/react/Check";
@@ -16,6 +17,11 @@ import { Sparkle } from "@phosphor-icons/react/Sparkle";
 import { SpeakerHigh } from "@phosphor-icons/react/SpeakerHigh";
 import { SpeakerSlash } from "@phosphor-icons/react/SpeakerSlash";
 import { AppSlider } from "./AppSlider";
+import {
+  getDocumentFullscreenElement,
+  lockScreenOrientation,
+  unlockScreenOrientation,
+} from "./fullscreen";
 import { isEditingShortcutTarget } from "./keyboardShortcuts";
 import type { CourseVideo } from "./learning/courseContent";
 
@@ -86,24 +92,25 @@ function SwitchVisual({ checked }: SwitchVisualProps) {
 interface VideoPlayerProps {
   media: CourseVideo;
   lessonTitle: string;
-  posterSrc?: string;
   theaterMode: boolean;
   onTheaterToggle: () => void;
   autoPlayOnMediaChange?: boolean;
+  onProgressChange?: (progress: number) => void;
 }
 
 export function VideoPlayer({
   media,
   lessonTitle,
-  posterSrc,
   theaterMode,
   onTheaterToggle,
   autoPlayOnMediaChange = false,
+  onProgressChange,
 }: VideoPlayerProps) {
   const shellRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const ambientCanvasRef = useRef<HTMLCanvasElement>(null);
+  const ambientShellCanvasRef = useRef<HTMLCanvasElement>(null);
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const settingsMenuRef = useRef<HTMLDivElement>(null);
   const suppressNextPlayerActionRef = useRef(false);
@@ -111,12 +118,13 @@ export function VideoPlayer({
   const hudTimerRef = useRef<number | undefined>(undefined);
   const lastResumePersistedAtRef = useRef<number | null>(null);
   const lastKnownPlaybackTimeRef = useRef(0);
-  const shortcutHandlerRef = useRef<(event: KeyboardEvent) => void>(() => { });
-  const shortcutUpHandlerRef = useRef<(event: KeyboardEvent) => void>(() => { });
-  const blurHandlerRef = useRef<() => void>(() => { });
+  const shortcutHandlerRef = useRef<(event: KeyboardEvent) => void>(() => {});
+  const shortcutUpHandlerRef = useRef<(event: KeyboardEvent) => void>(() => {});
+  const blurHandlerRef = useRef<() => void>(() => {});
   const lastClickTimeRef = useRef(0);
   const wasPausedBeforeSpeedBoostRef = useRef(false);
   const longPressTimerRef = useRef<number | undefined>(undefined);
+  const orientationLockRequestedRef = useRef(false);
 
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -135,6 +143,8 @@ export function VideoPlayer({
   // The server cannot read the saved device preference. Start from the same
   // deterministic value on both sides, then restore it after hydration.
   const [ambient, setAmbient] = useState(false);
+  const [ambientPortalHost, setAmbientPortalHost] =
+    useState<HTMLElement | null>(null);
   const [tempSpeedActive, setTempSpeedActive] = useState(false);
 
   const showHud = (message: string) => {
@@ -166,6 +176,14 @@ export function VideoPlayer({
     }
   };
 
+  const reportProgress = (position: number, mediaDuration: number) => {
+    const nextProgress = mediaDuration
+      ? Math.max(0, Math.min(100, (position / mediaDuration) * 100))
+      : 0;
+    onProgressChange?.(nextProgress);
+    return nextProgress;
+  };
+
   const skip = (amount: number, announce = true) => {
     const video = videoRef.current;
     if (!video) return;
@@ -176,11 +194,7 @@ export function VideoPlayer({
     video.currentTime = nextTime;
     lastKnownPlaybackTimeRef.current = nextTime;
     setCurrentTime(nextTime);
-    setProgress(
-      video.duration || duration
-        ? (nextTime / (video.duration || duration)) * 100
-        : 0,
-    );
+    setProgress(reportProgress(nextTime, video.duration || duration));
     if (announce)
       showHud(`${amount > 0 ? "+" : "−"}${Math.abs(amount)} seconds`);
   };
@@ -188,6 +202,7 @@ export function VideoPlayer({
   const seekToProgress = (next: number) => {
     const safeProgress = Math.max(0, Math.min(100, next));
     setProgress(safeProgress);
+    onProgressChange?.(safeProgress);
     if (videoRef.current?.duration) {
       const nextTime = (safeProgress / 100) * videoRef.current.duration;
       videoRef.current.currentTime = nextTime;
@@ -248,10 +263,30 @@ export function VideoPlayer({
     }
   };
 
+  const isPortraitViewport = () => {
+    const orientationType = window.screen?.orientation?.type;
+    return orientationType
+      ? orientationType.startsWith("portrait")
+      : window.innerHeight > window.innerWidth;
+  };
+
   const requestFullscreen = async () => {
-    if (document.fullscreenElement) await document.exitFullscreen();
-    else if (shellRef.current?.requestFullscreen)
-      await shellRef.current.requestFullscreen();
+    if (getDocumentFullscreenElement()) {
+      orientationLockRequestedRef.current = false;
+      unlockScreenOrientation();
+      await document.exitFullscreen?.();
+      return;
+    }
+
+    const shell = shellRef.current;
+    if (!shell?.requestFullscreen) return;
+
+    const shouldLockLandscape = isPortraitViewport();
+    await shell.requestFullscreen();
+
+    if (shouldLockLandscape) {
+      orientationLockRequestedRef.current = await lockScreenOrientation();
+    }
   };
 
   const persistResumePosition = useCallback(
@@ -281,14 +316,19 @@ export function VideoPlayer({
 
   const paintAmbientFrame = useCallback(() => {
     const video = videoRef.current;
-    const canvas = ambientCanvasRef.current;
-    if (!ambient || !video || !canvas || video.readyState < 2) return;
+    if (!ambient || !video || video.readyState < 2) return;
     try {
-      const context = canvas.getContext("2d", { alpha: false });
-      if (!context) return;
-      if (canvas.width !== 96) canvas.width = 96;
-      if (canvas.height !== 54) canvas.height = 54;
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      for (const canvas of [
+        ambientCanvasRef.current,
+        ambientShellCanvasRef.current,
+      ]) {
+        if (!canvas) continue;
+        const context = canvas.getContext("2d", { alpha: false });
+        if (!context) continue;
+        if (canvas.width !== 96) canvas.width = 96;
+        if (canvas.height !== 54) canvas.height = 54;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      }
     } catch {
       // Playback remains available when a cross-origin media response cannot be drawn to canvas.
     }
@@ -330,14 +370,15 @@ export function VideoPlayer({
       setTempSpeedActive(true);
       wasPausedBeforeSpeedBoostRef.current = videoRef.current?.paused ?? false;
       if (videoRef.current?.paused) {
-        void videoRef.current.play().catch(() => { });
+        void videoRef.current.play().catch(() => {});
       }
     } else {
       longPressTimerRef.current = window.setTimeout(() => {
         setTempSpeedActive(true);
-        wasPausedBeforeSpeedBoostRef.current = videoRef.current?.paused ?? false;
+        wasPausedBeforeSpeedBoostRef.current =
+          videoRef.current?.paused ?? false;
         if (videoRef.current?.paused) {
-          void videoRef.current.play().catch(() => { });
+          void videoRef.current.play().catch(() => {});
         }
       }, 500);
     }
@@ -381,10 +422,11 @@ export function VideoPlayer({
     return () => {
       active = false;
     };
-  }, [autoPlayOnMediaChange, media.duration, media.src]);
+  }, [autoPlayOnMediaChange, media.duration, media.src, onProgressChange]);
 
   useEffect(() => {
-    if (videoRef.current) videoRef.current.playbackRate = tempSpeedActive ? 2 : speed;
+    if (videoRef.current)
+      videoRef.current.playbackRate = tempSpeedActive ? 2 : speed;
   }, [speed, tempSpeedActive]);
 
   useEffect(() => {
@@ -394,6 +436,36 @@ export function VideoPlayer({
   useEffect(() => {
     setMuted(getInitialMuted());
     setMutedPreferenceReady(true);
+  }, []);
+
+  useEffect(() => {
+    const unlockOrientationAfterExit = () => {
+      if (getDocumentFullscreenElement()) return;
+      if (!orientationLockRequestedRef.current) return;
+      orientationLockRequestedRef.current = false;
+      unlockScreenOrientation();
+    };
+
+    document.addEventListener("fullscreenchange", unlockOrientationAfterExit);
+    document.addEventListener(
+      "webkitfullscreenchange",
+      unlockOrientationAfterExit,
+    );
+
+    return () => {
+      document.removeEventListener(
+        "fullscreenchange",
+        unlockOrientationAfterExit,
+      );
+      document.removeEventListener(
+        "webkitfullscreenchange",
+        unlockOrientationAfterExit,
+      );
+      if (orientationLockRequestedRef.current) {
+        orientationLockRequestedRef.current = false;
+        unlockScreenOrientation();
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -418,6 +490,55 @@ export function VideoPlayer({
   useEffect(() => {
     setAmbient(getAmbientDefault());
   }, []);
+
+  useEffect(() => {
+    setAmbientPortalHost(
+      shellRef.current?.closest<HTMLElement>(".courses-app") ?? null,
+    );
+  }, []);
+
+  useEffect(() => {
+    const shell = shellRef.current;
+    const canvas = ambientShellCanvasRef.current;
+    if (!ambientPortalHost || !shell || !canvas) return undefined;
+
+    let animationFrame = 0;
+    const syncProjectionBounds = () => {
+      window.cancelAnimationFrame(animationFrame);
+      animationFrame = window.requestAnimationFrame(() => {
+        const bounds = shell.getBoundingClientRect();
+        canvas.style.left = `${bounds.left}px`;
+        canvas.style.top = `${bounds.top}px`;
+        canvas.style.width = `${bounds.width}px`;
+        canvas.style.height = `${bounds.height}px`;
+      });
+    };
+
+    const resizeObserver =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(syncProjectionBounds);
+    const scrollport = shell.closest(".courses-main");
+
+    resizeObserver?.observe(shell);
+    scrollport?.addEventListener("scroll", syncProjectionBounds, {
+      passive: true,
+    });
+    window.addEventListener("resize", syncProjectionBounds, { passive: true });
+    window.visualViewport?.addEventListener("resize", syncProjectionBounds);
+    syncProjectionBounds();
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      resizeObserver?.disconnect();
+      scrollport?.removeEventListener("scroll", syncProjectionBounds);
+      window.removeEventListener("resize", syncProjectionBounds);
+      window.visualViewport?.removeEventListener(
+        "resize",
+        syncProjectionBounds,
+      );
+    };
+  }, [ambientPortalHost, theaterMode]);
 
   useEffect(
     () => () => {
@@ -477,7 +598,7 @@ export function VideoPlayer({
     };
     animationFrame = window.requestAnimationFrame(draw);
     return () => window.cancelAnimationFrame(animationFrame);
-  }, [ambient, paintAmbientFrame, playing]);
+  }, [ambient, ambientPortalHost, paintAmbientFrame, playing]);
 
   useEffect(
     () => () => {
@@ -556,9 +677,10 @@ export function VideoPlayer({
       if (event.repeat) {
         if (!tempSpeedActive) {
           setTempSpeedActive(true);
-          wasPausedBeforeSpeedBoostRef.current = videoRef.current?.paused ?? false;
+          wasPausedBeforeSpeedBoostRef.current =
+            videoRef.current?.paused ?? false;
           if (videoRef.current?.paused) {
-            void videoRef.current.play().catch(() => { });
+            void videoRef.current.play().catch(() => {});
           }
         }
       }
@@ -659,6 +781,17 @@ export function VideoPlayer({
       ref={shellRef}
       className={`video-shell relative isolate ${theaterMode ? "video-shell--theater" : ""}`}
     >
+      {ambientPortalHost
+        ? createPortal(
+            <canvas
+              ref={ambientShellCanvasRef}
+              aria-hidden="true"
+              data-ambient-shell-projection
+              className={`ambient-canvas ambient-canvas--shell ${ambient && !mediaError ? "ambient-canvas--visible" : ""}`}
+            />,
+            ambientPortalHost,
+          )
+        : null}
       <canvas
         ref={ambientCanvasRef}
         aria-hidden="true"
@@ -693,8 +826,7 @@ export function VideoPlayer({
         <video
           ref={videoRef}
           className="size-full object-contain"
-          preload="none"
-          poster={posterSrc}
+          preload="auto"
           src={media.src}
           muted={muted}
           onLoadedMetadata={(event) => {
@@ -710,11 +842,18 @@ export function VideoPlayer({
             event.currentTarget.currentTime =
               Number.isFinite(savedTime) && savedTime > 0
                 ? Math.min(
-                  savedTime,
-                  Math.max(0, event.currentTarget.duration - 1),
-                )
+                    savedTime,
+                    Math.max(0, event.currentTarget.duration - 1),
+                  )
                 : Math.min(0.01, event.currentTarget.duration || 0);
             lastKnownPlaybackTimeRef.current = event.currentTarget.currentTime;
+            setCurrentTime(event.currentTarget.currentTime);
+            setProgress(
+              reportProgress(
+                event.currentTarget.currentTime,
+                event.currentTarget.duration,
+              ),
+            );
             event.currentTarget.playbackRate = tempSpeedActive ? 2 : speed;
             event.currentTarget.volume = volume;
           }}
@@ -735,7 +874,7 @@ export function VideoPlayer({
             const nextTime = event.currentTarget.currentTime;
             const nextDuration = event.currentTarget.duration;
             setCurrentTime(nextTime);
-            setProgress(nextDuration ? (nextTime / nextDuration) * 100 : 0);
+            setProgress(reportProgress(nextTime, nextDuration));
             lastKnownPlaybackTimeRef.current = nextTime;
             persistResumePosition(nextTime);
           }}
@@ -743,6 +882,8 @@ export function VideoPlayer({
           onEnded={(event) => {
             lastKnownPlaybackTimeRef.current = event.currentTarget.currentTime;
             persistResumePosition(event.currentTarget.currentTime, true);
+            setProgress(100);
+            onProgressChange?.(100);
             setPlaying(false);
           }}
         >
@@ -897,6 +1038,7 @@ export function VideoPlayer({
                   <div
                     ref={settingsMenuRef}
                     data-player-menu
+                    data-control-radius-menu
                     role="group"
                     aria-label={
                       settingsPage === "speed"

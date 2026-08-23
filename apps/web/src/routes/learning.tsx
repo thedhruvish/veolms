@@ -83,6 +83,10 @@ export default function LearningRoute() {
         );
         void navigate(path, { preventScrollReset: true });
       }}
+      onOpenCourseOverview={() => {
+        if (!courseSlug) return;
+        navigateTo(`/courses/${encodeURIComponent(courseSlug)}/overview`);
+      }}
       onNavigateBack={() => {
         clearRememberedCoursePlayerDestination(origin);
         navigateTo(getCoursePlayerParentPath(origin));

@@ -16,7 +16,10 @@ import { Question } from "@phosphor-icons/react/Question";
 import { SealCheck } from "@phosphor-icons/react/SealCheck";
 import { UsersThree } from "@phosphor-icons/react/UsersThree";
 import type { CourseRole } from "../courses/catalogue";
-import { handleRovingTabKeyDown } from "../accessibility/rovingTabFocus";
+import {
+  handleRovingTabKeyDown,
+  scrollKeyboardFocusedTabIntoView,
+} from "../accessibility/rovingTabFocus";
 import type { NavigateTo } from "../routing/navigation";
 import {
   normalizeDiscussionTab,
@@ -25,6 +28,10 @@ import {
 import type { DiscussionTab } from "../routing/tabSessionState";
 import { ThemedSelect } from "../ThemedSelect";
 import { SwipeableTabPanel } from "../navigation/SwipeableTabPanel";
+import {
+  SEARCH_SHORTCUT_ARIA_KEYSHORTCUTS,
+  SearchShortcutHint,
+} from "../searchShortcut";
 
 type DiscussionStatus = "answered" | "mentioned" | "solved" | "open";
 
@@ -351,16 +358,12 @@ export function DiscussionsWorkspace({
             aria-controls="discussion-panel"
             data-page-tab-tone={tone}
             data-swipe-tab-id={id}
+            data-fixed-radius
             tabIndex={activeTab === id ? 0 : -1}
-            className={activeTab === id ? "is-active" : ""}
+            className={`!rounded-none ${activeTab === id ? "is-active" : ""}`}
             onClick={() => navigateTab(id)}
             onKeyDown={handleRovingTabKeyDown}
-            onFocus={(event) =>
-              event.currentTarget.scrollIntoView({
-                block: "nearest",
-                inline: "center",
-              })
-            }
+            onFocus={scrollKeyboardFocusedTabIntoView}
           >
             <Icon size={19} weight={activeTab === id ? "fill" : "regular"} />
             <span>{label}</span>
@@ -398,10 +401,14 @@ export function DiscussionsWorkspace({
                     <MagnifyingGlass size={19} aria-hidden="true" />
                     <span className="sr-only">Search discussions</span>
                     <input
+                      id="workspace-discussions-search-input"
                       value={query}
                       onChange={(event) => setQuery(event.target.value)}
                       placeholder="Search discussions by title or keyword..."
+                      data-search-shortcut-target
+                      aria-keyshortcuts={SEARCH_SHORTCUT_ARIA_KEYSHORTCUTS}
                     />
+                    <SearchShortcutHint />
                   </label>
                   <div className="discussion-hub__select">
                     <ThemedSelect
@@ -651,7 +658,7 @@ export function DiscussionsWorkspace({
                   </button>
                   <button
                     type="button"
-                    onClick={() => onNavigatePage("/explore-courses")}
+                    onClick={() => onNavigatePage("/courses")}
                   >
                     <span>
                       <BookmarkSimple size={19} weight="duotone" />

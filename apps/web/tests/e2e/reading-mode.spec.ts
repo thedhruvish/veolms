@@ -2,7 +2,7 @@ import { test, expect } from "./app.fixture.ts";
 import {
   installBaselineState,
   openApp,
-  revealDeferredAppearanceSettings,
+  expectAppearanceSettingsReady,
 } from "./support.ts";
 
 const READING_MODE_STORAGE_KEY = "veolms-reading-mode-v1";
@@ -13,7 +13,7 @@ test("reading mode persists, stays interactive, and covers viewport UI", async (
   test.setTimeout(60_000);
   await installBaselineState(page);
   await openApp(page, "/settings/appearance");
-  await revealDeferredAppearanceSettings(page);
+  await expectAppearanceSettingsReady(page);
 
   const toggle = page.getByRole("switch", {
     name: "Reading mode",
@@ -128,7 +128,7 @@ test("reading mode persists, stays interactive, and covers viewport UI", async (
   await expect(effects).toHaveCSS("user-select", "none");
   await expect(page.locator(".reading-mode-effects__texture")).toHaveCSS(
     "background-image",
-    /reading-mode-grain\.webp/,
+    /reading-mode-grain(?:@(?:2x|3x))?\.webp/,
   );
   const [effectBounds, viewport] = await Promise.all([
     effects.evaluate((element) => {
@@ -171,7 +171,7 @@ test("reading mode persists, stays interactive, and covers viewport UI", async (
   await page.keyboard.press("Escape");
 
   await page.reload();
-  await revealDeferredAppearanceSettings(page);
+  await expectAppearanceSettingsReady(page);
   await expect(page.locator("html")).toHaveAttribute(
     "data-reading-mode",
     "true",
@@ -202,7 +202,7 @@ test("reading mode persists, stays interactive, and covers viewport UI", async (
   );
   await page.keyboard.press("Escape");
   await openApp(page, "/settings/appearance");
-  await revealDeferredAppearanceSettings(page);
+  await expectAppearanceSettingsReady(page);
   await expect(page.getByRole("tabpanel")).toHaveAttribute(
     "data-settings-tab",
     "appearance",
@@ -218,7 +218,7 @@ test("neutral temperature and zero texture leave every effect layer inactive", a
   page,
 }) => {
   await installBaselineState(page);
-  await openApp(page, "/explore-courses");
+  await openApp(page, "/courses");
   const textureLayer = page.locator(".reading-mode-effects__texture");
   const temperatureLayer = page.locator(".reading-mode-effects__temperature");
   await expect(textureLayer).toHaveCSS("display", "none");
@@ -262,7 +262,7 @@ test("reading mode effects and preview are disabled for print", async ({
     },
   });
   await openApp(page, "/settings/appearance");
-  await revealDeferredAppearanceSettings(page);
+  await expectAppearanceSettingsReady(page);
   await expect(page.locator("[data-reading-mode-effects]")).toHaveCSS(
     "display",
     "block",

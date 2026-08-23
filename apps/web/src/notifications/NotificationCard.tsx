@@ -14,6 +14,7 @@ import { Trash } from "@phosphor-icons/react/Trash";
 import { Trophy } from "@phosphor-icons/react/Trophy";
 import { Wallet } from "@phosphor-icons/react/Wallet";
 import type { NotificationItem } from "./notificationsData";
+import { useBackDismiss } from "../navigation/useBackDismiss";
 
 export interface NotificationCardProps {
   notification: NotificationItem;
@@ -29,6 +30,8 @@ export function NotificationCard({
   setNotice,
 }: NotificationCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+
+  useBackDismiss({ open: menuOpen, onDismiss: () => setMenuOpen(false) });
 
   const getIcon = (type: NotificationItem["iconType"]) => {
     switch (type) {

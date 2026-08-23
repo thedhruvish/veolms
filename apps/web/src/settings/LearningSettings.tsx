@@ -44,6 +44,10 @@ export function LearningSettings() {
     } catch {
       // Preferences remain available for this session when storage is blocked.
     }
+    document.documentElement.dataset.lessonPageScrollbar =
+      preferences.showLessonPageScrollbar ? "visible" : "hidden";
+    document.documentElement.dataset.curriculumScrollbar =
+      preferences.showCurriculumScrollbar ? "visible" : "hidden";
   }, [preferences, storageReady]);
 
   return (
@@ -115,6 +119,22 @@ export function LearningSettings() {
               note="Open the learning workspace with an expanded player."
               checked={preferences.startInTheaterMode}
               onChange={(startInTheaterMode) => update({ startInTheaterMode })}
+            />
+            <LearningToggleRow
+              label="Show lesson page scrollbar"
+              note="Drag vertically to scroll or sideways to resize course content."
+              checked={preferences.showLessonPageScrollbar}
+              onChange={(showLessonPageScrollbar) =>
+                update({ showLessonPageScrollbar })
+              }
+            />
+            <LearningToggleRow
+              label="Show course content scrollbar"
+              note="Display the scrollbar inside the course content panel."
+              checked={preferences.showCurriculumScrollbar}
+              onChange={(showCurriculumScrollbar) =>
+                update({ showCurriculumScrollbar })
+              }
             />
           </div>
         </section>

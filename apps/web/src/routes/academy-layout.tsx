@@ -7,13 +7,14 @@ import {
 } from "react";
 import { Outlet, useLocation, useMatches, useNavigate } from "react-router";
 import { CoursesPage } from "../CoursesPage";
-import type { Course } from "../courses/catalogue";
+import type { Course, CourseOpenOptions } from "../courses/catalogue";
 import type { LearningCourse } from "../StudentPages";
 import {
   discardPendingCourseCommentDraft,
   getActiveCoursePlayerSession,
   getCoursePlayerOrigin,
   getCoursePlayerOriginFromPathname,
+  getCoursePlayerParentPath,
   getPendingCourseCommentDraft,
   getResumableCoursePlayerNavigationPath,
   getCoursePlayerSection,
@@ -55,6 +56,7 @@ export interface AcademyOutletContext {
 interface PendingCourseOpen {
   course: Course | LearningCourse;
   origin: CoursePlayerOrigin;
+  options?: CourseOpenOptions;
   draft: PendingCourseCommentDraft;
   currentCourseTitle: string;
 }
@@ -95,11 +97,11 @@ export default function AcademyLayout() {
   useEffect(() => {
     const pathname = normalizeNavigationPath(location.pathname);
     const destination =
-      pathname === "/my-learning"
-        ? "/my-courses"
-        : pathname === "/courses"
-          ? "/explore-courses"
-          : null;
+      pathname === "/my-learning" ||
+      pathname === "/my-courses" ||
+      pathname === "/explore-courses"
+        ? "/courses"
+        : null;
     if (destination)
       void navigate(`${destination}${location.search}`, { replace: true });
   }, [location.pathname, location.search, navigate]);
@@ -119,7 +121,15 @@ export default function AcademyLayout() {
   const navigateTo: NavigateTo = useCallback(
     (destination, options) => {
       const destinationPath = getDestinationPath(destination);
-      const path = getResumableCoursePlayerNavigationPath(destinationPath);
+      const exitsActiveCoursePlayer =
+        route.kind === "learning" &&
+        normalizeNavigationPath(destinationPath) ===
+          normalizeNavigationPath(
+            getCoursePlayerParentPath(coursePlayerOrigin),
+          );
+      const path = exitsActiveCoursePlayer
+        ? destinationPath
+        : getResumableCoursePlayerNavigationPath(destinationPath);
       if (isSettingsPath(path) && !isSettingsPath(locationPathRef.current)) {
         const currentScrollPosition = readApplicationScrollPosition();
         settingsReturnLocationRef.current = {
@@ -145,7 +155,7 @@ export default function AcademyLayout() {
         scrollApplicationTo({ top: 0, behavior: "auto" });
       }
     },
-    [navigate],
+    [coursePlayerOrigin, navigate, route.kind],
   );
   const navigateToRef = useRef(navigateTo);
   useLayoutEffect(() => {
@@ -206,17 +216,23 @@ export default function AcademyLayout() {
   }, []);
 
   const commitCourseOpen = useCallback(
-    (course: Course | LearningCourse, origin: CoursePlayerOrigin) => {
+    (
+      course: Course | LearningCourse,
+      origin: CoursePlayerOrigin,
+      options?: CourseOpenOptions,
+    ) => {
       localStorage.setItem("veolms-current-course-title", course.title);
       localStorage.setItem("veolms-current-course-id", course.id);
-      const path = rememberCoursePlayerDestination(course.id, origin);
+      const path = options?.preview
+        ? rememberCoursePlayerDestination(course.id, origin, 1)
+        : rememberCoursePlayerDestination(course.id, origin);
       navigateTo(path);
     },
     [navigateTo],
   );
 
   const openCourse = useCallback(
-    (course: Course | LearningCourse) => {
+    (course: Course | LearningCourse, options?: CourseOpenOptions) => {
       const origin = getCoursePlayerOriginFromPathname(location.pathname);
       const activeSession = getActiveCoursePlayerSession();
       if (activeSession && activeSession.courseId !== course.id) {
@@ -225,13 +241,14 @@ export default function AcademyLayout() {
           setPendingCourseOpen({
             course,
             origin,
+            options,
             draft,
             currentCourseTitle: getCourseTitle(activeSession.courseId),
           });
           return;
         }
       }
-      commitCourseOpen(course, origin);
+      commitCourseOpen(course, origin, options);
     },
     [commitCourseOpen, location.pathname],
   );
@@ -271,6 +288,7 @@ export default function AcademyLayout() {
             commitCourseOpen(
               pendingCourseOpen.course,
               pendingCourseOpen.origin,
+              pendingCourseOpen.options,
             );
             setPendingCourseOpen(null);
           }}
@@ -279,6 +297,7 @@ export default function AcademyLayout() {
             commitCourseOpen(
               pendingCourseOpen.course,
               pendingCourseOpen.origin,
+              pendingCourseOpen.options,
             );
             setPendingCourseOpen(null);
           }}

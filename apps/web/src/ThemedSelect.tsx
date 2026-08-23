@@ -10,6 +10,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
+import { useBackDismiss } from "./navigation/useBackDismiss";
 
 export type ThemedSelectOption<Value extends string = string> = readonly [
   value: Value,
@@ -117,6 +118,11 @@ export function ThemedSelect<Value extends string>({
     setPosition(null);
     if (restoreFocus) requestAnimationFrame(() => triggerRef.current?.focus());
   };
+
+  useBackDismiss({
+    open,
+    onDismiss: () => closeMenu(true),
+  });
 
   useLayoutEffect(() => {
     if (open) updatePosition();

@@ -95,7 +95,8 @@ export function NotificationsPage({
             </span>
           </div>
           <p className="mt-2 text-[0.92rem] text-[var(--muted)] leading-[1.5]">
-            Stay updated with course activity, replies, reminders, and announcements.
+            Stay updated with course activity, replies, reminders, and
+            announcements.
           </p>
         </div>
 
@@ -114,7 +115,7 @@ export function NotificationsPage({
       {/* Tab Navigation Bar with delicate thin bottom line and live count badges */}
       <nav
         aria-label="Notification categories"
-        className="mb-5 flex min-w-0 gap-1 md:gap-3 overflow-x-auto bg-transparent border-b border-[color-mix(in_srgb,var(--text)_9%,transparent)] scrollbar-none"
+        className="mb-5 flex min-w-0 gap-1 md:gap-3 overflow-x-auto bg-transparent border-b border-[color-mix(in_srgb,var(--text)_9%,transparent)]"
         role="tablist"
       >
         {tabsConfig.map((tab, idx) => {
