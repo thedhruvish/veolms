@@ -12,6 +12,7 @@ import {
   resolveCourseMediaBaseUrl,
   resolveCourseVideoSrc,
   sections,
+  totalCourseLectures,
 } from "../../src/learning/courseContent.js";
 import {
   getCourseBrandColor,
@@ -31,9 +32,11 @@ describe("learning course content", () => {
 
   it("preserves deterministic lesson order and duration tuple strings", () => {
     expect(lessonSequence).toEqual(
-      Array.from({ length: 41 }, (_, index) => index + 1),
+      Array.from({ length: totalCourseLectures }, (_, index) => index + 1),
     );
     expect([...lessonsById.keys()]).toEqual(lessonSequence);
+    expect(sections).toHaveLength(23);
+    expect(sections.flatMap(({ lessons }) => lessons)).toHaveLength(600);
     const lessonDurations = sections.flatMap(({ lessons }) =>
       lessons.map(([number, , duration]) => [number, duration]),
     );

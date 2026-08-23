@@ -6,7 +6,11 @@ import procodrrLogoMark from "./assets/procodrr-logo-mark.svg";
 import { AppLoadingScreen } from "./bootstrap/AppLoadingScreen";
 import { ReadingModeEffects } from "./reading-mode/ReadingModeEffects";
 import { getReadingModeBootstrapScript } from "./reading-mode/readingModePreferences";
-import { getSurfaceDepthBootstrapScript } from "./settings/settingsPreferences";
+import {
+  getControlRadiusBootstrapScript,
+  getScrollbarBootstrapScript,
+  getSurfaceDepthBootstrapScript,
+} from "./settings/settingsPreferences";
 import {
   ACADEMY_THEME_VERSION,
   DEFAULT_ACADEMY_THEME,
@@ -35,8 +39,12 @@ export function Layout({ children }: LayoutProps) {
       data-page-tab-colors="follow-sidebar"
       data-content-layout="framed"
       data-sidebar-header-layout="inline"
+      data-sidebar-glow="theme"
+      data-sidebar-glow-shape="circle"
       data-elevated-surfaces="true"
-      data-sidebar-menu-elevation="false"
+      data-hide-scrollbars="false"
+      data-sidebar-menu-elevation="true"
+      data-control-radius="balanced"
       suppressHydrationWarning
     >
       <head>
@@ -62,6 +70,14 @@ export function Layout({ children }: LayoutProps) {
         />
         <script
           dangerouslySetInnerHTML={{ __html: getSurfaceDepthBootstrapScript() }}
+        />
+        <script
+          dangerouslySetInnerHTML={{ __html: getScrollbarBootstrapScript() }}
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: getControlRadiusBootstrapScript(),
+          }}
         />
         <link rel="stylesheet" href={fullAppStylesheet} />
         <Meta />

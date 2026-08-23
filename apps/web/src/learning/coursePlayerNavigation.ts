@@ -1,9 +1,11 @@
 import { getLessonSlug, resolveLessonIdentifier } from "./courseContent";
 
-export type CoursePlayerOrigin =
-  "home" | "explore-courses" | "my-courses" | "wishlist";
+export type CoursePlayerOrigin = "home" | "courses" | "wishlist";
 
-type LegacyCoursePlayerOrigin = "courses" | "my-learning";
+type LegacyCoursePlayerOrigin =
+  | "explore-courses"
+  | "my-courses"
+  | "my-learning";
 
 type CoursePlayerStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
@@ -27,7 +29,7 @@ export const COURSE_PLAYER_SESSION_STORAGE_KEY = "veolms-active-course-player";
 export const COURSE_PLAYER_SESSION_CHANGE_EVENT =
   "veolms-course-player-session-change";
 
-const DEFAULT_COURSE_PLAYER_ORIGIN: CoursePlayerOrigin = "explore-courses";
+const DEFAULT_COURSE_PLAYER_ORIGIN: CoursePlayerOrigin = "courses";
 const LEGACY_COURSE_PLAYER_STORAGE_KEYS = [
   "veolms-resume-course-player-home",
   "veolms-resume-course-player-courses",
@@ -37,22 +39,19 @@ const LEGACY_COURSE_PLAYER_STORAGE_KEYS = [
 
 const COURSE_PLAYER_PARENT_PATHS: Record<CoursePlayerOrigin, string> = {
   home: "/",
-  "explore-courses": "/explore-courses",
-  "my-courses": "/my-courses",
+  courses: "/courses",
   wishlist: "/wishlist",
 };
 
 const COURSE_PLAYER_SECTIONS: Record<CoursePlayerOrigin, string> = {
   home: "Home",
-  "explore-courses": "Explore Courses",
-  "my-courses": "My Courses",
+  courses: "Courses",
   wishlist: "Wishlist",
 };
 
 const COURSE_PLAYER_BACK_LABELS: Record<CoursePlayerOrigin, string> = {
   home: "Return to Home",
-  "explore-courses": "Return to Explore Courses",
-  "my-courses": "Return to My Courses",
+  courses: "Return to Courses",
   wishlist: "Return to Wishlist",
 };
 
@@ -61,33 +60,25 @@ const COURSE_PLAYER_ORIGINS_BY_PATH: Readonly<
 > = {
   "/": "home",
   "/home": "home",
-  "/my-courses": "my-courses",
-  "/my-learning": "my-courses",
-  "/explore-courses": "explore-courses",
-  "/courses": "explore-courses",
+  "/courses": "courses",
   "/wishlist": "wishlist",
 };
 
 const isCoursePlayerOrigin = (value: unknown): value is CoursePlayerOrigin =>
   value === "home" ||
-  value === "explore-courses" ||
-  value === "my-courses" ||
+  value === "courses" ||
   value === "wishlist";
 
 const normalizeCoursePlayerOrigin = (
   value: unknown,
 ): CoursePlayerOrigin | null => {
   if (isCoursePlayerOrigin(value)) return value;
-  if (value === "courses") return "explore-courses";
-  if (value === "my-learning") return "my-courses";
-  return null;
-};
-
-const getLegacyCoursePlayerOrigin = (
-  origin: CoursePlayerOrigin,
-): LegacyCoursePlayerOrigin | null => {
-  if (origin === "explore-courses") return "courses";
-  if (origin === "my-courses") return "my-learning";
+  if (
+    value === "explore-courses" ||
+    value === "my-courses" ||
+    value === "my-learning"
+  )
+    return "courses";
   return null;
 };
 
@@ -169,11 +160,21 @@ const parseCoursePlayerSession = (
       origin,
       lessonId,
     );
-    const legacyOrigin = getLegacyCoursePlayerOrigin(origin);
-    const legacyPath = legacyOrigin
-      ? getCoursePlayerPath(candidate.courseId, legacyOrigin, lessonId)
-      : null;
-    if (candidate.path !== canonicalPath && candidate.path !== legacyPath)
+    const legacyPaths = [
+      "explore-courses",
+      "my-courses",
+      "my-learning",
+    ].map((legacyOrigin) =>
+      getCoursePlayerPath(
+        candidate.courseId!,
+        legacyOrigin as LegacyCoursePlayerOrigin,
+        lessonId,
+      ),
+    );
+    if (
+      candidate.path !== canonicalPath &&
+      !legacyPaths.includes(candidate.path)
+    )
       return null;
     return {
       courseId: candidate.courseId,

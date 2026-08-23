@@ -1,5 +1,4 @@
 import { Bell } from "@phosphor-icons/react/Bell";
-import { BookOpen } from "@phosphor-icons/react/BookOpen";
 import { ChartBar } from "@phosphor-icons/react/ChartBar";
 import { GearSix } from "@phosphor-icons/react/GearSix";
 import { GraduationCap } from "@phosphor-icons/react/GraduationCap";
@@ -22,8 +21,7 @@ export const MESSAGES_NAVIGATION_ENABLED = false;
 
 const studentNavigation: readonly NavigationItem[] = [
   ["Home", House],
-  ["My Courses", GraduationCap],
-  ["Explore Courses", BookOpen],
+  ["Courses", GraduationCap],
   ["Wishlist", Heart],
   ["Discussions", ChatCircleDots],
   ["Order History", Tote],
@@ -33,7 +31,7 @@ const studentNavigation: readonly NavigationItem[] = [
 
 const allCreatorNavigation: readonly NavigationItem[] = [
   ["Dashboard", SquaresFour],
-  ["Courses", BookOpen],
+  ["Courses", GraduationCap],
   ["Students", Users],
   ["Reviews", ChatTeardropDots],
   ["Wishlist", Heart],
@@ -56,8 +54,6 @@ const navigationByRole: Record<string, readonly NavigationItem[]> = {
 const navigationTones: Record<string, string> = {
   Home: "#5da9ff",
   Dashboard: "#5da9ff",
-  "My Courses": "#ad7cff",
-  "Explore Courses": "#8f70ff",
   Courses: "#8f70ff",
   Students: "#55d98b",
   Wishlist: "#ff6684",
@@ -75,14 +71,18 @@ const navigationTones: Record<string, string> = {
 };
 
 export function getNavigationDisplayLabel(label: string, page: string): string {
-  if (page !== "explore-courses" && label === "Notifications")
+  if (page !== "courses" && label === "Notifications")
     return "Notification";
   return label;
 }
 
 const migrateStudentNavigationLabel = (label: string) => {
-  if (label === "My Learning") return "My Courses";
-  if (label === "Courses") return "Explore Courses";
+  if (
+    label === "My Learning" ||
+    label === "My Courses" ||
+    label === "Explore Courses"
+  )
+    return "Courses";
   return label;
 };
 
@@ -136,9 +136,7 @@ export function getOrderedNavigation(
 export function getNavigationDestination(label: string): string {
   if (label === "Home") return "home";
   if (label === "Dashboard") return "dashboard";
-  if (label === "My Courses") return "my-courses";
-  if (label === "Explore Courses" || label === "Courses")
-    return "explore-courses";
+  if (label === "Courses") return "courses";
   if (label === "Wishlist") return "wishlist";
   return label;
 }

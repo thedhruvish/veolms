@@ -1,6 +1,10 @@
 import { MagnifyingGlass } from "@phosphor-icons/react/MagnifyingGlass";
 import { X } from "@phosphor-icons/react/X";
 import { ThemedSelect } from "../ThemedSelect";
+import {
+  SEARCH_SHORTCUT_ARIA_KEYSHORTCUTS,
+  SearchShortcutHint,
+} from "../searchShortcut";
 
 export interface NotificationFiltersBarProps {
   searchQuery: string;
@@ -64,8 +68,11 @@ export function NotificationFiltersBar({
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search notifications..."
             aria-label="Search notifications"
+            aria-keyshortcuts={SEARCH_SHORTCUT_ARIA_KEYSHORTCUTS}
+            data-search-shortcut-target
             className="w-full border-0 bg-transparent p-0 text-xs md:text-sm text-[var(--text-secondary)] placeholder-[var(--muted)] outline-none"
           />
+          <SearchShortcutHint />
           {searchQuery && (
             <button
               type="button"

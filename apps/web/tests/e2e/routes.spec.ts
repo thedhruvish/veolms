@@ -45,28 +45,28 @@ test("legacy student course URLs redirect to their renamed destinations", async 
   page,
 }) => {
   await openApp(page, "/my-learning");
-  await expect(page).toHaveURL(/\/my-courses$/);
+  await expect(page).toHaveURL(/\/courses$/);
   await expect(
-    page.getByRole("heading", { name: "My Courses", level: 1 }),
+    page.getByRole("heading", { name: "Courses", level: 1 }),
   ).toBeVisible();
 
   await page.goto("/courses");
-  await expect(page).toHaveURL(/\/explore-courses$/);
+  await expect(page).toHaveURL(/\/courses$/);
   await expect(
-    page.getByRole("heading", { name: "Explore Courses", level: 1 }),
+    page.getByRole("heading", { name: "Courses", level: 1 }),
   ).toBeVisible();
 
   await page.goto("/courses/typescript-course/overview?ref=legacy");
   await expect(page).toHaveURL(
-    /\/explore-courses\/typescript-course\/overview\?ref=legacy$/,
+    /\/courses\/typescript-course\/overview\?ref=legacy$/,
   );
 });
 
-test("My Courses overview metrics render as separate responsive cards", async ({
+test("Courses overview metrics render as separate responsive cards", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1160, height: 753 });
-  await openApp(page, "/my-courses");
+  await openApp(page, "/courses");
 
   const overview = page.getByRole("region", { name: "Learning overview" });
   const cards = overview.locator("article");
@@ -261,7 +261,7 @@ test("deferred workspace routes use the clean empty state", async ({
 
   for (const [path, title] of [
     ["/courses/create", "Create Course"],
-    ["/explore-courses/typescript-course/overview", "Course Overview"],
+    ["/courses/typescript-course/overview", "Course Overview"],
     ["/students", "Students"],
     ["/reviews", "Reviews"],
     ["/analytics", "Analytics"],
@@ -293,27 +293,24 @@ test("mobile workspace routes share the Home page gutter", async ({ page }) => {
     return { x: bounds.x, y: bounds.y };
   });
 
-  for (const [path, selector] of [
-    ["/settings/appearance", ".settings-page"],
-    ["/discussions/q-and-a", ".discussion-hub"],
-    ["/courses/create", ".courses-placeholder-page"],
-    ["/students", ".courses-placeholder-page"],
-    ["/reviews", ".courses-placeholder-page"],
-    ["/analytics", ".courses-placeholder-page"],
-    ["/orders", ".courses-placeholder-page"],
-    ["/messages", ".courses-placeholder-page"],
-    ["/order-history", ".courses-placeholder-page"],
-    ["/notifications", ".courses-placeholder-page"],
-    ["/logout", ".workspace-page"],
-  ] as const) {
+  for (const path of [
+    "/settings/appearance",
+    "/discussions/q-and-a",
+    "/courses/create",
+    "/students",
+    "/reviews",
+    "/analytics",
+    "/orders",
+    "/messages",
+    "/order-history",
+    "/notifications",
+    "/logout",
+  ]) {
     await test.step(path, async () => {
       await page.goto(path);
-      const wrapper = page.locator(selector);
-      const preservesVerticalSpacing = path === "/settings/appearance";
-      await expect(wrapper).toHaveCSS(
-        "padding-top",
-        preservesVerticalSpacing ? "22px" : "0px",
-      );
+      const wrapper = page.locator("#courses-main-scrollport > *").first();
+      await expect(wrapper).toBeVisible();
+      await expect(wrapper).toHaveCSS("padding-top", "0px");
       await expect(wrapper).toHaveCSS("padding-right", "0px");
       await expect(wrapper).toHaveCSS("padding-left", "0px");
 
@@ -327,7 +324,111 @@ test("mobile workspace routes share the Home page gutter", async ({ page }) => {
   }
 });
 
-test("every creator Create Course action opens the dedicated empty route", async ({
+test("desktop pages share the Home page main gutter", async ({ page }) => {
+  test.setTimeout(120_000);
+
+  await page.setViewportSize({ width: 1247, height: 779 });
+  await openApp(page, "/");
+
+  const readPageGeometry = async () => {
+    const main = page.locator("#courses-main-scrollport");
+    await expect(main.locator(":scope > *").first()).toBeVisible();
+    return main.evaluate((element) => {
+      const main = element as HTMLElement;
+      const child = main.firstElementChild as HTMLElement | null;
+      const mainStyle = getComputedStyle(main);
+      const mainBounds = main.getBoundingClientRect();
+      const childBounds = child?.getBoundingClientRect();
+      return {
+        childLeftInset: childBounds ? childBounds.left - mainBounds.left : null,
+        childTopInset: childBounds ? childBounds.top - mainBounds.top : null,
+        padding: [
+          mainStyle.paddingTop,
+          mainStyle.paddingRight,
+          mainStyle.paddingBottom,
+          mainStyle.paddingLeft,
+        ],
+      };
+    });
+  };
+
+  const homeGeometry = await readPageGeometry();
+  expect(homeGeometry.padding).toEqual(["22px", "25px", "28px", "25px"]);
+
+  for (const path of [
+    "/courses",
+    "/wishlist",
+    "/settings/appearance",
+    "/discussions/q-and-a",
+    "/courses/create",
+    "/students",
+    "/reviews",
+    "/orders",
+    "/notifications",
+    "/logout",
+  ]) {
+    await test.step(path, async () => {
+      await page.goto(path);
+      const geometry = await readPageGeometry();
+      expect(geometry.padding).toEqual(homeGeometry.padding);
+      expect(geometry.childLeftInset).toBeCloseTo(
+        homeGeometry.childLeftInset ?? 0,
+        1,
+      );
+      expect(geometry.childTopInset).toBeCloseTo(
+        homeGeometry.childTopInset ?? 0,
+        1,
+      );
+    });
+  }
+});
+
+test("compact pages keep primary headings within the shared top gutter", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+
+  await page.setViewportSize({ width: 424, height: 779 });
+  await installBaselineState(page);
+
+  const expectHeadingTop = async (path: string) => {
+    await openApp(page, path);
+    const main = page.locator("#courses-main-scrollport");
+    const heading = page.locator("h1").first();
+    await expect(heading).toBeVisible();
+    const headingOffset = await heading.evaluate((element) => {
+      const main = document.querySelector<HTMLElement>(
+        "#courses-main-scrollport",
+      )!;
+      return (
+        element.getBoundingClientRect().top -
+        main.getBoundingClientRect().top -
+        Number.parseFloat(getComputedStyle(main).paddingTop)
+      );
+    });
+    await expect(main).toHaveCSS("padding-top", "20px");
+    expect(headingOffset).toBeGreaterThanOrEqual(0);
+    expect(headingOffset).toBeLessThanOrEqual(4);
+  };
+
+  for (const path of [
+    "/",
+    "/courses",
+    "/wishlist",
+    "/discussions/q-and-a",
+    "/settings/appearance",
+    "/notifications",
+    "/order-history",
+  ]) {
+    await test.step(path, async () => expectHeadingTop(path));
+  }
+
+  await page.evaluate(() => localStorage.setItem("veolms-role", "creator"));
+  await test.step("creator home", async () => expectHeadingTop("/"));
+  await test.step("creator courses", async () => expectHeadingTop("/courses"));
+});
+
+test("every creator create action opens the dedicated course editor", async ({
   page,
 }) => {
   await openApp(page, "/");
@@ -339,61 +440,81 @@ test("every creator Create Course action opens the dedicated empty route", async
     .click();
   await page.getByRole("menuitemradio", { name: "Creator" }).click();
   await expect(
+    page.getByRole("complementary", { name: "Creator navigation" }),
+  ).toBeVisible();
+  await expect(
     page
       .getByRole("complementary", { name: "Creator navigation" })
       .getByRole("button", { name: "Messages", exact: true }),
   ).toHaveCount(0);
 
-  const expectEmptyCreateCourseRoute = async () => {
+  const expectCreateCourseEditor = async () => {
     await expect(page).toHaveURL(/\/courses\/create$/);
     await expect(
-      page.getByRole("heading", { name: "Create Course", level: 1 }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: "Nothing here yet", level: 2 }),
+      page.getByRole("heading", { name: "Create New Course", level: 1 }),
     ).toBeVisible();
   };
 
   await page
     .getByRole("button", { name: "Create Course", exact: true })
     .click();
-  await expectEmptyCreateCourseRoute();
+  await expectCreateCourseEditor();
 
   await page.goBack();
   await page
     .getByRole("button", { name: "Create Course Build a new course" })
     .click();
-  await expectEmptyCreateCourseRoute();
+  await expectCreateCourseEditor();
 
   await page.goBack();
-  await page
-    .getByRole("complementary", { name: "Creator navigation" })
-    .getByRole("button", { name: "Courses" })
-    .click();
-  await page
-    .getByRole("button", { name: "Create Course", exact: true })
-    .click();
-  await expectEmptyCreateCourseRoute();
+  await openApp(page, "/courses");
+  const catalogueCreate = page.getByRole("button", {
+    name: "Create",
+    exact: true,
+  });
+  const catalogueSearch = page.locator("#courses-search");
+  const catalogueHeader = page.locator("main#courses-main-scrollport header");
+  const [createBox, searchBox, headerBox] = await Promise.all([
+    catalogueCreate.boundingBox(),
+    catalogueSearch.boundingBox(),
+    catalogueHeader.boundingBox(),
+  ]);
+  expect(createBox).not.toBeNull();
+  expect(searchBox).not.toBeNull();
+  expect(headerBox).not.toBeNull();
+  expect(createBox?.height).toBe(44);
+  expect(searchBox?.height).toBe(44);
+  expect(
+    Math.abs((createBox?.y ?? 0) - (searchBox?.y ?? 0)),
+  ).toBeLessThanOrEqual(1);
+  expect(createBox?.x ?? 0).toBeGreaterThan(searchBox?.x ?? 0);
+  expect(
+    Math.abs(
+      (createBox?.x ?? 0) +
+        (createBox?.width ?? 0) -
+        ((headerBox?.x ?? 0) + (headerBox?.width ?? 0)),
+    ),
+  ).toBeLessThanOrEqual(1);
+  await catalogueCreate.click();
+  await expectCreateCourseEditor();
 });
 
 test("framework navigation keeps the academy shell and transient catalogue state mounted", async ({
   page,
 }) => {
-  await openApp(page, "/explore-courses");
+  await openApp(page, "/courses");
   const navigation = page.getByRole("complementary", {
     name: "Student navigation",
   });
   const search = page.getByPlaceholder("Search your courses...");
 
   const historyLength = await page.evaluate(() => window.history.length);
-  await navigation.getByRole("button", { name: "Explore Courses" }).click();
+  await navigation.getByRole("button", { name: "Courses" }).click();
   expect(await page.evaluate(() => window.history.length)).toBe(historyLength);
 
   await search.fill("Node.js");
   await expect(search).toHaveValue("Node.js");
-  await navigation
-    .getByRole("button", { name: "Explore Courses" })
-    .press("Control+,");
+  await navigation.getByRole("button", { name: "Courses" }).press("Control+,");
   await expect(page).toHaveURL(/\/settings\/appearance$/);
   await expect(page.getByRole("tabpanel")).toHaveAttribute(
     "data-settings-tab",
@@ -401,13 +522,13 @@ test("framework navigation keeps the academy shell and transient catalogue state
   );
 
   await page.goBack();
-  await expect(page).toHaveURL(/\/explore-courses$/);
+  await expect(page).toHaveURL(/\/courses$/);
   await expect(page.getByPlaceholder("Search your courses...")).toHaveValue(
     "Node.js",
   );
 });
 
-test("Explore Courses navigation resumes its player until explicit player back", async ({
+test("Courses navigation toggles its parent and resumable player until explicit player back", async ({
   page,
 }) => {
   await openApp(page, "/");
@@ -415,18 +536,18 @@ test("Explore Courses navigation resumes its player until explicit player back",
     name: "Student navigation",
   });
 
-  await navigation.getByRole("button", { name: "Explore Courses" }).click();
-  await expect(page).toHaveURL(/\/explore-courses$/);
+  await navigation.getByRole("button", { name: "Courses" }).click();
+  await expect(page).toHaveURL(/\/courses$/);
   await expect(
-    page.getByRole("heading", { name: "Explore Courses", level: 1 }),
+    page.getByRole("heading", { name: "Courses", level: 1 }),
   ).toBeVisible();
 
   await page.getByRole("article", { name: /UI\/UX Design Mastery/ }).click();
   await expect(page).toHaveURL(
-    /\/learn\/ui-ux-design-mastery\/[^/?]+\?from=explore-courses$/,
+    /\/learn\/ui-ux-design-mastery\/[^/?]+\?from=courses$/,
   );
   await expect(
-    navigation.getByRole("button", { name: "Explore Courses" }),
+    navigation.getByRole("button", { name: "Courses" }),
   ).toHaveAttribute("aria-current", "page");
   await expect(
     page.getByRole("heading", {
@@ -437,29 +558,50 @@ test("Explore Courses navigation resumes its player until explicit player back",
 
   await navigation.getByRole("button", { name: "Home" }).click();
   await expect(page).toHaveURL(/\/$/);
-  await navigation.getByRole("button", { name: "Explore Courses" }).click();
+  await navigation.getByRole("button", { name: "Courses" }).click();
   await expect(page).toHaveURL(
-    /\/learn\/ui-ux-design-mastery\/[^/?]+\?from=explore-courses$/,
+    /\/learn\/ui-ux-design-mastery\/[^/?]+\?from=courses$/,
   );
 
-  await clickLearningBack(page, "Return to Explore Courses");
-  await expect(page).toHaveURL(/\/explore-courses$/);
+  await page.setViewportSize({ width: 1079, height: 779 });
+  await expect(page.locator(".courses-app")).toHaveClass(
+    /courses-app--collapsed/,
+  );
+  await navigation.getByRole("button", { name: /Courses/ }).click();
+  await expect(page).toHaveURL(/\/courses$/);
   await expect(
-    page.getByRole("heading", { name: "Explore Courses", level: 1 }),
+    page.getByRole("region", { name: /Lesson video player/ }),
+  ).toHaveCount(0);
+  await expect(
+    navigation
+      .getByRole("button", { name: /Courses/ })
+      .locator(".courses-nav__resume-indicator"),
   ).toBeVisible();
 
   await navigation.getByRole("button", { name: "Home" }).click();
-  await navigation.getByRole("button", { name: "Explore Courses" }).click();
-  await expect(page).toHaveURL(/\/explore-courses$/);
+  await navigation.getByRole("button", { name: /Courses/ }).click();
+  await expect(page).toHaveURL(
+    /\/learn\/ui-ux-design-mastery\/[^/?]+\?from=courses$/,
+  );
+
+  await clickLearningBack(page, "Return to Courses");
+  await expect(page).toHaveURL(/\/courses$/);
   await expect(
-    navigation.getByRole("button", { name: "Explore Courses" }),
+    page.getByRole("heading", { name: "Courses", level: 1 }),
+  ).toBeVisible();
+
+  await navigation.getByRole("button", { name: "Home" }).click();
+  await navigation.getByRole("button", { name: "Courses" }).click();
+  await expect(page).toHaveURL(/\/courses$/);
+  await expect(
+    navigation.getByRole("button", { name: "Courses" }),
   ).toHaveAttribute("aria-current", "page");
 });
 
-test("My Courses resumes the same paused lesson until explicit player back", async ({
+test("Courses resumes the same paused lesson until explicit player back", async ({
   page,
 }) => {
-  await openApp(page, "/my-courses");
+  await openApp(page, "/courses");
   const navigation = page.getByRole("complementary", {
     name: "Student navigation",
   });
@@ -469,10 +611,10 @@ test("My Courses resumes the same paused lesson until explicit player back", asy
 
   await course.getByRole("button", { name: "Continue Learning" }).click();
   await expect(page).toHaveURL(
-    /\/learn\/typescript-course\/[^/?]+\?from=my-courses$/,
+    /\/learn\/typescript-course\/[^/?]+\?from=courses$/,
   );
   await expect(
-    navigation.getByRole("button", { name: "My Courses" }),
+    navigation.getByRole("button", { name: "Courses" }),
   ).toHaveAttribute("aria-current", "page");
 
   const curriculum = page.getByRole("complementary", {
@@ -501,9 +643,9 @@ test("My Courses resumes the same paused lesson until explicit player back", asy
     .toBe(true);
 
   await navigation.getByRole("button", { name: "Home" }).click();
-  await navigation.getByRole("button", { name: "My Courses" }).click();
+  await navigation.getByRole("button", { name: "Courses" }).click();
   await expect(page).toHaveURL(
-    /\/learn\/typescript-course\/usability-testing\?from=my-courses$/,
+    /\/learn\/typescript-course\/usability-testing\?from=courses$/,
   );
   await expect(
     page.getByRole("heading", { name: "Usability Testing", level: 1 }),
@@ -518,24 +660,24 @@ test("My Courses resumes the same paused lesson until explicit player back", asy
 
   await page.reload();
   await expect(
-    navigation.getByRole("button", { name: "My Courses" }),
+    navigation.getByRole("button", { name: "Courses" }),
   ).toHaveAttribute("aria-current", "page");
-  await clickLearningBack(page, "Return to My Courses");
+  await clickLearningBack(page, "Return to Courses");
 
-  await expect(page).toHaveURL(/\/my-courses$/);
+  await expect(page).toHaveURL(/\/courses$/);
   await expect(
-    page.getByRole("heading", { name: "My Courses", level: 1 }),
+    page.getByRole("heading", { name: "Courses", level: 1 }),
   ).toBeVisible();
 
   await navigation.getByRole("button", { name: "Home" }).click();
-  await navigation.getByRole("button", { name: "My Courses" }).click();
-  await expect(page).toHaveURL(/\/my-courses$/);
+  await navigation.getByRole("button", { name: "Courses" }).click();
+  await expect(page).toHaveURL(/\/courses$/);
 });
 
 test("switching the single learning session protects an unposted comment", async ({
   page,
 }) => {
-  await openApp(page, "/my-courses");
+  await openApp(page, "/courses");
   const navigation = page.getByRole("complementary", {
     name: "Student navigation",
   });
@@ -548,7 +690,7 @@ test("switching the single learning session protects an unposted comment", async
     .getByRole("textbox", { name: "Add a comment" })
     .fill("Please post this before switching courses.");
 
-  await navigation.getByRole("button", { name: "Explore Courses" }).click();
+  await navigation.getByRole("button", { name: "Courses" }).click();
   await page.getByRole("article", { name: /UI\/UX Design Mastery/ }).click();
 
   const dialog = page.getByRole("dialog", {
@@ -562,10 +704,10 @@ test("switching the single learning session protects an unposted comment", async
   );
   await dialog.getByRole("button", { name: "Keep learning" }).click();
   await expect(dialog).toHaveCount(0);
-  await expect(page).toHaveURL(/\/explore-courses$/);
+  await expect(page).toHaveURL(/\/courses$/);
   await expect(
     navigation
-      .getByRole("button", { name: /My Courses/ })
+      .getByRole("button", { name: /Courses/ })
       .locator(".courses-nav__resume-indicator"),
   ).toBeVisible();
 
@@ -575,20 +717,20 @@ test("switching the single learning session protects an unposted comment", async
     .getByRole("button", { name: "Post & switch" })
     .click();
   await expect(page).toHaveURL(
-    /\/learn\/ui-ux-design-mastery\/[^/?]+\?from=explore-courses$/,
+    /\/learn\/ui-ux-design-mastery\/[^/?]+\?from=courses$/,
   );
   await expect(
     navigation
-      .getByRole("button", { name: /My Courses/ })
+      .getByRole("button", { name: /Courses/ })
       .locator(".courses-nav__resume-indicator"),
   ).toHaveCount(0);
   await expect(
     navigation
-      .getByRole("button", { name: "Explore Courses" })
+      .getByRole("button", { name: "Courses" })
       .locator(".courses-nav__resume-indicator"),
   ).toBeVisible();
 
-  await navigation.getByRole("button", { name: /My Courses/ }).click();
+  await navigation.getByRole("button", { name: /Courses/ }).click();
   await page
     .getByRole("article")
     .filter({ hasText: "The Ultimate TypeScript Course" })
@@ -734,7 +876,7 @@ test("opening a new course moves the single resumable session and navigation ind
     .boundingBox())!.x;
   expect(collapsedIndicatorX).toBeCloseTo(expandedIndicatorX, 2);
 
-  await navigation.getByRole("button", { name: "Explore Courses" }).click();
+  await navigation.getByRole("button", { name: "Courses" }).click();
   await page
     .getByRole("button", { name: "Add UI/UX Design Mastery to wishlist" })
     .click();
@@ -770,7 +912,7 @@ test("opening a new course moves the single resumable session and navigation ind
 test("listing searches survive opening a player and returning explicitly", async ({
   page,
 }) => {
-  await openApp(page, "/my-courses");
+  await openApp(page, "/courses");
   const myLearningSearch = page.getByPlaceholder("Search my courses...");
   await myLearningSearch.fill("TypeScript");
   await page
@@ -778,7 +920,7 @@ test("listing searches survive opening a player and returning explicitly", async
     .filter({ hasText: "The Ultimate TypeScript Course" })
     .getByRole("button", { name: "Continue Learning" })
     .click();
-  await clickLearningBack(page, "Return to My Courses");
+  await clickLearningBack(page, "Return to Courses");
   await expect(page.getByPlaceholder("Search my courses...")).toHaveValue(
     "TypeScript",
   );
@@ -786,7 +928,7 @@ test("listing searches survive opening a player and returning explicitly", async
   const navigation = page.getByRole("complementary", {
     name: "Student navigation",
   });
-  await navigation.getByRole("button", { name: "Explore Courses" }).click();
+  await navigation.getByRole("button", { name: "Courses" }).click();
   await page
     .getByRole("button", { name: "Add UI/UX Design Mastery to wishlist" })
     .click();
@@ -800,7 +942,7 @@ test("listing searches survive opening a player and returning explicitly", async
   );
 });
 
-test("direct course player links return to Explore Courses by default", async ({
+test("direct course player links return to Courses by default", async ({
   page,
 }) => {
   await openApp(page, "/learn/ui-ux-design-mastery");
@@ -809,18 +951,18 @@ test("direct course player links return to Explore Courses by default", async ({
   });
 
   await expect(
-    navigation.getByRole("button", { name: "Explore Courses" }),
+    navigation.getByRole("button", { name: "Courses" }),
   ).toHaveAttribute("aria-current", "page");
-  await clickLearningBack(page, "Return to Explore Courses");
-  await expect(page).toHaveURL(/\/explore-courses$/);
+  await clickLearningBack(page, "Return to Courses");
+  await expect(page).toHaveURL(/\/courses$/);
 });
 
 test("lecture slugs are canonical and lecture IDs remain supported", async ({
   page,
 }) => {
-  await openApp(page, "/learn/typescript-course/3?from=my-courses");
+  await openApp(page, "/learn/typescript-course/3?from=courses");
   await expect(page).toHaveURL(
-    /\/learn\/typescript-course\/the-design-mindset\?from=my-courses$/,
+    /\/learn\/typescript-course\/the-design-mindset\?from=courses$/,
   );
   await expect(
     page.getByRole("heading", { name: "The Design Mindset", level: 1 }),
@@ -831,12 +973,12 @@ test("lecture slugs are canonical and lecture IDs remain supported", async ({
     .getByRole("button", { name: /10\.\s*Usability Testing/ })
     .click();
   await expect(page).toHaveURL(
-    /\/learn\/typescript-course\/usability-testing\?from=my-courses$/,
+    /\/learn\/typescript-course\/usability-testing\?from=courses$/,
   );
 
   await page.goBack();
   await expect(page).toHaveURL(
-    /\/learn\/typescript-course\/the-design-mindset\?from=my-courses$/,
+    /\/learn\/typescript-course\/the-design-mindset\?from=courses$/,
   );
   await expect(
     page.getByRole("heading", { name: "The Design Mindset", level: 1 }),

@@ -6,6 +6,7 @@ import { ShieldCheck } from "@phosphor-icons/react/ShieldCheck";
 import { Star } from "@phosphor-icons/react/Star";
 import { ThumbsUp } from "@phosphor-icons/react/ThumbsUp";
 import type { ReviewItem } from "./reviewsData";
+import { useBackDismiss } from "../navigation/useBackDismiss";
 
 export interface ReviewCardProps {
   review: ReviewItem;
@@ -21,6 +22,8 @@ export function ReviewCard({
   setNotice,
 }: ReviewCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+
+  useBackDismiss({ open: menuOpen, onDismiss: () => setMenuOpen(false) });
 
   const handleCopyLink = () => {
     setMenuOpen(false);

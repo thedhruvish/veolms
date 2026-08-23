@@ -1,4 +1,5 @@
 import { Check } from "@phosphor-icons/react/Check";
+import { ArrowCounterClockwise } from "@phosphor-icons/react/ArrowCounterClockwise";
 import { CircleHalf } from "@phosphor-icons/react/CircleHalf";
 import { CornersOut } from "@phosphor-icons/react/CornersOut";
 import { DotsSixVertical } from "@phosphor-icons/react/DotsSixVertical";
@@ -32,11 +33,25 @@ import {
   normalizeSidebarMaxWidth,
   normalizeSidebarDockItems,
   normalizeSidebarDockOrder,
+  normalizeSidebarGlow,
+  normalizeSidebarGlowBlur,
+  normalizeSidebarGlowShape,
+  normalizeSidebarGlowIntensity,
+  SIDEBAR_GLOW_BLUR_MAX,
+  SIDEBAR_GLOW_BLUR_MIN,
+  SIDEBAR_GLOW_BLUR_DEFAULT,
+  SIDEBAR_GLOW_DEFAULT,
+  SIDEBAR_GLOW_INTENSITY_MAX,
+  SIDEBAR_GLOW_INTENSITY_MIN,
+  SIDEBAR_GLOW_INTENSITY_DEFAULT,
+  SIDEBAR_GLOW_SHAPE_DEFAULT,
   SIDEBAR_MAX_WIDTH_LIMIT,
   SIDEBAR_MAX_WIDTH_MIN,
 } from "./settingsPreferences";
 import type {
   SidebarDockItem,
+  SidebarGlow,
+  SidebarGlowShape,
   SidebarMode,
   SidebarPreferences,
 } from "./settingsPreferences";
@@ -58,6 +73,60 @@ const SIDEBAR_ICON_COLORS: readonly SidebarIconColor[] = [
   { id: "red", label: "Red", color: "#cc3364" },
   { id: "orange", label: "Orange", color: "#ed8c00" },
   { id: "cyan", label: "Cyan", color: "#1bb4c7" },
+];
+
+interface SidebarGlowOption {
+  id: SidebarGlow;
+  label: string;
+  colors?: readonly [string, string];
+}
+
+const SIDEBAR_GLOW_OPTIONS: readonly SidebarGlowOption[] = [
+  {
+    id: "theme",
+    label: "Follow theme",
+    colors: ["var(--accent)", "var(--accent-hover)"],
+  },
+  {
+    id: "blue-yellow",
+    label: "Blue + yellow",
+    colors: ["#2397ff", "#ffc724"],
+  },
+  {
+    id: "green-cyan",
+    label: "Green + cyan",
+    colors: ["#35d77d", "#2bc8e8"],
+  },
+  {
+    id: "red-orange",
+    label: "Red + orange",
+    colors: ["#ff5069", "#ff9f32"],
+  },
+  {
+    id: "purple-blue",
+    label: "Purple + blue",
+    colors: ["#9a6cff", "#4d8fff"],
+  },
+  {
+    id: "magenta-rose",
+    label: "Magenta + rose",
+    colors: ["#f052d4", "#ff718f"],
+  },
+  {
+    id: "off",
+    label: "Off",
+  },
+];
+
+const SIDEBAR_GLOW_SHAPE_OPTIONS: readonly {
+  id: SidebarGlowShape;
+  label: string;
+}[] = [
+  { id: "circle", label: "Circle" },
+  { id: "triangle", label: "Triangle" },
+  { id: "star", label: "Star" },
+  { id: "diamond", label: "Diamond" },
+  { id: "hexagon", label: "Hexagon" },
 ];
 
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
@@ -157,7 +226,18 @@ export function SidebarSettings({
   const showLabels = preferences.showCollapsedLabels !== false;
   const showCollapsedLogo = preferences.showCollapsedLogo !== false;
   const highlightActive = preferences.highlightActive !== false;
-  const elevateMenus = preferences.elevateMenus === true;
+  const elevateMenus = preferences.elevateMenus !== false;
+  const glowPalette = normalizeSidebarGlow(preferences.glowPalette);
+  const glowShape = normalizeSidebarGlowShape(preferences.glowShape);
+  const glowBlur = normalizeSidebarGlowBlur(preferences.glowBlur);
+  const glowIntensity = normalizeSidebarGlowIntensity(
+    preferences.glowIntensity,
+  );
+  const glowIsDefault =
+    glowPalette === SIDEBAR_GLOW_DEFAULT &&
+    glowShape === SIDEBAR_GLOW_SHAPE_DEFAULT &&
+    glowBlur === SIDEBAR_GLOW_BLUR_DEFAULT &&
+    glowIntensity === SIDEBAR_GLOW_INTENSITY_DEFAULT;
   const shortcutPlatform = useShortcutPlatform();
   const sidebarHidden = sidebarMode === "hidden";
   const [colorDraft, setColorDraft] = useState(displayColor);
@@ -560,6 +640,192 @@ export function SidebarSettings({
           </div>
         </section>
 
+        <section className="settings-section settings-sidebar-glow-section">
+          <div className="settings-section__heading-row">
+            <div>
+              <h2>Sidebar glow</h2>
+              <p>
+                Follow the active theme or choose a separate color atmosphere.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="settings-sidebar-glow-reset"
+              disabled={glowIsDefault}
+              onClick={() =>
+                update({
+                  glowPalette: SIDEBAR_GLOW_DEFAULT,
+                  glowShape: SIDEBAR_GLOW_SHAPE_DEFAULT,
+                  glowBlur: SIDEBAR_GLOW_BLUR_DEFAULT,
+                  glowIntensity: SIDEBAR_GLOW_INTENSITY_DEFAULT,
+                })
+              }
+              aria-label="Reset sidebar glow to defaults"
+            >
+              <ArrowCounterClockwise size={16} weight="bold" />
+              Reset
+            </button>
+          </div>
+          <RadioGroup
+            label="Sidebar glow colors"
+            className="settings-sidebar-glow-options"
+          >
+            {SIDEBAR_GLOW_OPTIONS.map((option) => {
+              const selected = glowPalette === option.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  tabIndex={selected ? 0 : -1}
+                  className={`settings-sidebar-glow-option${selected ? " is-selected" : ""}`}
+                  onClick={() => update({ glowPalette: option.id })}
+                >
+                  <span
+                    className={`settings-sidebar-glow-option__preview${option.colors ? "" : " is-off"}${glowBlur === 0 ? " is-clear" : ""}`}
+                    style={
+                      option.colors
+                        ? ({
+                            "--settings-sidebar-glow-a": option.colors[0],
+                            "--settings-sidebar-glow-b": option.colors[1],
+                            "--settings-sidebar-preview-blur": `${glowBlur}px`,
+                            "--settings-sidebar-preview-intensity": String(
+                              glowIntensity / 100,
+                            ),
+                          } as React.CSSProperties)
+                        : undefined
+                    }
+                    aria-hidden="true"
+                  />
+                  <span className="settings-sidebar-glow-option__copy">
+                    <strong>{option.label}</strong>
+                  </span>
+                  <span className="settings-radio" aria-hidden="true">
+                    {selected && <Check size={11} weight="bold" />}
+                  </span>
+                </button>
+              );
+            })}
+          </RadioGroup>
+          <div className="settings-sidebar-glow-shape">
+            <h3>Bokeh shape</h3>
+            <RadioGroup
+              label="Bokeh shape"
+              className="settings-sidebar-glow-shape-options"
+            >
+              {SIDEBAR_GLOW_SHAPE_OPTIONS.map((option) => {
+                const selected = glowShape === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    tabIndex={selected ? 0 : -1}
+                    className={`settings-sidebar-glow-shape-option${selected ? " is-selected" : ""}`}
+                    onClick={() => update({ glowShape: option.id })}
+                  >
+                    <span
+                      className={`settings-sidebar-glow-shape-option__preview is-${option.id}`}
+                      aria-hidden="true"
+                    />
+                    <strong>{option.label}</strong>
+                    <span className="settings-radio" aria-hidden="true">
+                      {selected && <Check size={11} weight="bold" />}
+                    </span>
+                  </button>
+                );
+              })}
+            </RadioGroup>
+          </div>
+          <div className="settings-sidebar-glow-blur">
+            <div className="settings-sidebar-glow-blur__heading">
+              <div>
+                <h3>Additional bokeh blur</h3>
+                <p>
+                  Add blur above the shapes. The floating sidebar always keeps
+                  a 6px base blur.
+                </p>
+              </div>
+              <output
+                className="settings-sidebar-glow-blur__value"
+                htmlFor="sidebar-background-blur-range"
+              >
+                {glowBlur}px
+              </output>
+            </div>
+            <label
+              className="settings-sidebar-glow-blur__range"
+              htmlFor="sidebar-background-blur-range"
+            >
+              <AppSlider
+                id="sidebar-background-blur-range"
+                min={SIDEBAR_GLOW_BLUR_MIN}
+                max={SIDEBAR_GLOW_BLUR_MAX}
+                step="1"
+                value={glowBlur}
+                onChange={(event) =>
+                  update({
+                    glowBlur: normalizeSidebarGlowBlur(event.target.value),
+                  })
+                }
+                aria-label="Additional sidebar bokeh blur"
+                aria-valuetext={`${glowBlur} pixels`}
+              />
+              <span
+                className="settings-sidebar-glow-blur__labels"
+                aria-hidden="true"
+              >
+                <span>{SIDEBAR_GLOW_BLUR_MIN}px</span>
+                <span>{SIDEBAR_GLOW_BLUR_MAX}px</span>
+              </span>
+            </label>
+          </div>
+          <div className="settings-sidebar-glow-intensity">
+            <div className="settings-sidebar-glow-intensity__heading">
+              <div>
+                <h3>Glow intensity</h3>
+                <p>Control the strength of the sidebar atmosphere.</p>
+              </div>
+              <output
+                className="settings-sidebar-glow-intensity__value"
+                htmlFor="sidebar-glow-intensity-range"
+              >
+                {glowIntensity}%
+              </output>
+            </div>
+            <label
+              className="settings-sidebar-glow-intensity__range"
+              htmlFor="sidebar-glow-intensity-range"
+            >
+              <AppSlider
+                id="sidebar-glow-intensity-range"
+                min={SIDEBAR_GLOW_INTENSITY_MIN}
+                max={SIDEBAR_GLOW_INTENSITY_MAX}
+                step="1"
+                value={glowIntensity}
+                onChange={(event) =>
+                  update({
+                    glowIntensity: normalizeSidebarGlowIntensity(
+                      event.target.value,
+                    ),
+                  })
+                }
+                aria-label="Sidebar glow intensity"
+                aria-valuetext={`${glowIntensity} percent`}
+              />
+              <span
+                className="settings-sidebar-glow-intensity__labels"
+                aria-hidden="true"
+              >
+                <span>{SIDEBAR_GLOW_INTENSITY_MIN}%</span>
+                <span>{SIDEBAR_GLOW_INTENSITY_MAX}%</span>
+              </span>
+            </label>
+          </div>
+        </section>
+
         <section className="settings-section">
           <h2>Main content layout</h2>
           <RadioGroup
@@ -703,7 +969,9 @@ export function SidebarSettings({
                 <>
                   Bring it back with{" "}
                   <kbd>{shortcutPlatform === "mac" ? "⌘+B" : "Ctrl+B"}</kbd>, or
-                  move the cursor to the left edge of the screen.
+                  use the left screen edge. On touch screens, swipe right from
+                  the left side to preview it, then use the expand control to
+                  pin it.
                 </>
               }
             >

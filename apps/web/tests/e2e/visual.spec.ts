@@ -13,7 +13,7 @@ test.describe("@visual", () => {
 
   test("Courses desktop · dark Graphite", async ({ page }) => {
     await installBaselineState(page);
-    await openApp(page, "/explore-courses");
+    await openApp(page, "/courses");
     await prepareVisualPage(page);
     await expect(page).toHaveScreenshot("courses-dark.png", { fullPage: true });
   });
@@ -26,7 +26,7 @@ test.describe("@visual", () => {
         "veolms-academy-theme-version": "veo-onyx-default-v2",
       },
     });
-    await openApp(page, "/explore-courses");
+    await openApp(page, "/courses");
     await prepareVisualPage(page);
     await expect(page).toHaveScreenshot("courses-light-ocean.png", {
       fullPage: true,
@@ -158,11 +158,21 @@ test.describe("@visual", () => {
   test("Courses mobile · dark Graphite", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await installBaselineState(page);
-    await openApp(page, "/explore-courses");
+    await openApp(page, "/courses");
     await prepareVisualPage(page);
     await expect(page).toHaveScreenshot("courses-mobile-dark.png", {
       fullPage: true,
     });
+  });
+
+  test("More drawer mobile · dark Graphite", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await installBaselineState(page);
+    await openApp(page, "/courses");
+    await page.getByRole("button", { name: "More navigation options" }).click();
+    await expect(page.getByRole("dialog", { name: /More/ })).toBeVisible();
+    await prepareVisualPage(page);
+    await expect(page).toHaveScreenshot("more-drawer-mobile-dark.png");
   });
 
   test("learning drawer mobile · dark Graphite", async ({ page }) => {
@@ -174,8 +184,6 @@ test.describe("@visual", () => {
       page.getByRole("dialog", { name: "Course lessons" }),
     ).toBeVisible();
     await prepareVisualPage(page);
-    await expect(page).toHaveScreenshot("learning-drawer-mobile-dark.png", {
-      fullPage: true,
-    });
+    await expect(page).toHaveScreenshot("learning-drawer-mobile-dark.png");
   });
 });

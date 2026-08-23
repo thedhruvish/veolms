@@ -112,7 +112,7 @@ export function OrdersPage({ onNavigatePage, setNotice }: OrdersPageProps) {
       {/* Tab Navigation Bar with delicate thin bottom line and prominent active underline */}
       <nav
         aria-label="Order status categories"
-        className="mb-5 flex min-w-0 gap-1 md:gap-3 overflow-x-auto bg-transparent border-b border-[color-mix(in_srgb,var(--text)_9%,transparent)] scrollbar-none"
+        className="mb-5 flex min-w-0 gap-1 md:gap-3 overflow-x-auto bg-transparent border-b border-[color-mix(in_srgb,var(--text)_9%,transparent)]"
         role="tablist"
       >
         {tabsConfig.map((tab, idx) => {
@@ -213,7 +213,8 @@ export function OrdersPage({ onNavigatePage, setNotice }: OrdersPageProps) {
                 className="rounded-xl border border-[var(--border)] bg-[var(--card-surface)] px-5 py-2.5 text-xs md:text-sm font-medium text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--text)] transition-colors cursor-pointer"
                 style={{ boxShadow: "var(--card-shadow)" }}
               >
-                Showing {totalFilteredCount} of {orderSummary.totalOrders} orders
+                Showing {totalFilteredCount} of {orderSummary.totalOrders}{" "}
+                orders
               </button>
             </div>
           )}

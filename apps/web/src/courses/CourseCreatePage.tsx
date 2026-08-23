@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useLocation } from "react-router";
 import { createPortal } from "react-dom";
 import { RichTextEditor, RenderMarkdown } from "./RichTextEditor";
+import { useBackDismiss } from "../navigation/useBackDismiss";
 import {
   ArrowLeft,
   ArrowRight,
@@ -287,7 +288,12 @@ export function CourseCreatePage({
     return courses.find((c) => c.id === activeEditId) ?? null;
   }, [activeEditId]);
 
-  const [activeStep, setActiveStep] = useState<CourseWizardStepId>("basics");
+  const requestedStep = searchParams.get("step");
+  const initialStep = WIZARD_STEPS.some((step) => step.id === requestedStep)
+    ? (requestedStep as CourseWizardStepId)
+    : "basics";
+  const [activeStep, setActiveStep] =
+    useState<CourseWizardStepId>(initialStep);
   const [slideDirection, setSlideDirection] = useState<"right" | "left">(
     "right",
   );
@@ -631,6 +637,11 @@ export function CourseCreatePage({
 
   // Course Overview Live Full Preview Modal State
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState<boolean>(false);
+
+  useBackDismiss({
+    open: isPreviewModalOpen,
+    onDismiss: () => setIsPreviewModalOpen(false),
+  });
 
   // Footer Action Loading States
   const [actionLoading, setActionLoading] = useState<
@@ -1283,6 +1294,7 @@ export function CourseCreatePage({
     duration: computedDuration,
     students: 0,
     thumbnail: thumbnail || "/assets/instructor-poster.jpg",
+    lifecycleStatus: isPublished ? "published" : "draft",
   };
 
   const previewSections: CourseSection[] =
@@ -1623,7 +1635,7 @@ export function CourseCreatePage({
           onMouseUp={handleNavMouseUp}
           onMouseMove={handleNavMouseMove}
         >
-          {/* Standard page-tabs indicator — driven by --page-tab-indicator-* CSS vars */}
+          {/* Standard page-tabs indicator - driven by --page-tab-indicator-* CSS vars */}
           <span className="page-tabs__indicator" aria-hidden="true" />
           {WIZARD_STEPS.map((step, idx) => {
             const Icon = step.Icon;
@@ -3785,15 +3797,15 @@ export function CourseCreatePage({
                     options={[
                       [
                         "public",
-                        "Public — Anyone on the platform can discover and enroll in this course.",
+                        "Public - Anyone on the platform can discover and enroll in this course.",
                       ],
                       [
                         "private",
-                        "Private — Only invited students can access this course.",
+                        "Private - Only invited students can access this course.",
                       ],
                       [
                         "unlisted",
-                        "Unlisted — Only users with a direct link can view this course.",
+                        "Unlisted - Only users with a direct link can view this course.",
                       ],
                     ]}
                     ariaLabel="Select course visibility"

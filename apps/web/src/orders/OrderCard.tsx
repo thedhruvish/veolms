@@ -6,6 +6,7 @@ import { DownloadSimple } from "@phosphor-icons/react/DownloadSimple";
 import { FileText } from "@phosphor-icons/react/FileText";
 import { LinkSimple } from "@phosphor-icons/react/LinkSimple";
 import type { OrderItem, OrderStatus } from "./ordersData";
+import { useBackDismiss } from "../navigation/useBackDismiss";
 
 export interface OrderCardProps {
   order: OrderItem;
@@ -19,6 +20,8 @@ export function OrderCard({
   setNotice,
 }: OrderCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+
+  useBackDismiss({ open: menuOpen, onDismiss: () => setMenuOpen(false) });
 
   const getStatusBadgeStyle = (status: OrderStatus) => {
     switch (status) {

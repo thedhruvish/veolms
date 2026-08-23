@@ -8,6 +8,32 @@ export type SidebarMonochromeMode = "theme" | "neutral" | "custom";
 export type SidebarContentLayout = "framed" | "edge-to-edge";
 export type SidebarMode = "expanded" | "collapsed" | "hidden";
 export type SidebarHeaderLayout = "fixed" | "inline";
+export const SIDEBAR_GLOW_VALUES = [
+  "theme",
+  "off",
+  "blue-yellow",
+  "green-cyan",
+  "red-orange",
+  "purple-blue",
+  "magenta-rose",
+] as const;
+export type SidebarGlow = (typeof SIDEBAR_GLOW_VALUES)[number];
+export const SIDEBAR_GLOW_DEFAULT: SidebarGlow = "theme";
+export const SIDEBAR_GLOW_SHAPE_VALUES = [
+  "circle",
+  "triangle",
+  "star",
+  "diamond",
+  "hexagon",
+] as const;
+export type SidebarGlowShape = (typeof SIDEBAR_GLOW_SHAPE_VALUES)[number];
+export const SIDEBAR_GLOW_SHAPE_DEFAULT: SidebarGlowShape = "circle";
+export const SIDEBAR_GLOW_BLUR_MIN = 0;
+export const SIDEBAR_GLOW_BLUR_MAX = 32;
+export const SIDEBAR_GLOW_BLUR_DEFAULT = 8;
+export const SIDEBAR_GLOW_INTENSITY_MIN = 0;
+export const SIDEBAR_GLOW_INTENSITY_MAX = 100;
+export const SIDEBAR_GLOW_INTENSITY_DEFAULT = 50;
 export type SidebarDockItem =
   "appearance" | "theme" | "fullscreen" | "reading-mode" | "settings";
 
@@ -28,12 +54,108 @@ export const SIDEBAR_DOCK_DEFAULT_ITEMS: readonly SidebarDockItem[] = [
 export const PAGE_TAB_COLORS_KEY = "veolms-page-tab-colors";
 export const PAGE_TAB_COLORS_DEFAULT: PageTabColors = "follow-sidebar";
 export const ELEVATED_SURFACES_KEY = "veolms-elevated-surfaces";
+export const HIDE_SCROLLBARS_KEY = "veolms-hide-scrollbars";
+export const CONTROL_RADIUS_KEY = "veolms-control-radius";
+export const CONTROL_RADIUS_CUSTOM_KEY = "veolms-control-radius-custom";
 export const SIDEBAR_HEADER_DEFAULT_VERSION = "inline-v1";
+
+export type ControlRadiusPreset =
+  "square" | "subtle" | "balanced" | "rounded" | "pill" | "custom";
+
+export interface ControlRadiusPreference {
+  preset: ControlRadiusPreset;
+  customPx: number;
+}
+
+export const CONTROL_RADIUS_CUSTOM_MIN = 0;
+export const CONTROL_RADIUS_CUSTOM_MAX = 64;
+export const CONTROL_RADIUS_STRUCTURED_MAX = 14;
+export const CONTROL_RADIUS_DEFAULT: ControlRadiusPreference = {
+  preset: "balanced",
+  customPx: 8,
+};
+
+export const CONTROL_RADIUS_PRESETS: readonly {
+  id: Exclude<ControlRadiusPreset, "custom">;
+  label: string;
+  radius: number;
+}[] = [
+  { id: "square", label: "Square", radius: 0 },
+  { id: "subtle", label: "Subtle", radius: 4 },
+  { id: "balanced", label: "Balanced", radius: 8 },
+  { id: "rounded", label: "Rounded", radius: 14 },
+  { id: "pill", label: "Pill", radius: 999 },
+];
+
+const CONTROL_RADIUS_IDS = new Set<ControlRadiusPreset>([
+  ...CONTROL_RADIUS_PRESETS.map(({ id }) => id),
+  "custom",
+]);
+
+export const normalizeControlRadiusCustom = (value: unknown): number => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return CONTROL_RADIUS_DEFAULT.customPx;
+  return Math.min(
+    CONTROL_RADIUS_CUSTOM_MAX,
+    Math.max(CONTROL_RADIUS_CUSTOM_MIN, Math.round(numericValue)),
+  );
+};
+
+export const normalizeControlRadiusPreset = (
+  value: unknown,
+): ControlRadiusPreset =>
+  typeof value === "string" &&
+  CONTROL_RADIUS_IDS.has(value as ControlRadiusPreset)
+    ? (value as ControlRadiusPreset)
+    : CONTROL_RADIUS_DEFAULT.preset;
+
+export const resolveControlRadius = ({
+  preset,
+  customPx,
+}: ControlRadiusPreference): number => {
+  if (preset === "custom") return normalizeControlRadiusCustom(customPx);
+  return (
+    CONTROL_RADIUS_PRESETS.find(({ id }) => id === preset)?.radius ??
+    CONTROL_RADIUS_DEFAULT.customPx
+  );
+};
 
 export const normalizePageTabColors = (value: unknown): PageTabColors =>
   value === "multicolor" || value === "monochrome" || value === "follow-sidebar"
     ? value
     : PAGE_TAB_COLORS_DEFAULT;
+
+export const normalizeSidebarGlow = (value: unknown): SidebarGlow =>
+  typeof value === "string" &&
+  SIDEBAR_GLOW_VALUES.includes(value as SidebarGlow)
+    ? (value as SidebarGlow)
+    : SIDEBAR_GLOW_DEFAULT;
+
+export const normalizeSidebarGlowShape = (value: unknown): SidebarGlowShape =>
+  typeof value === "string" &&
+  SIDEBAR_GLOW_SHAPE_VALUES.includes(value as SidebarGlowShape)
+    ? (value as SidebarGlowShape)
+    : SIDEBAR_GLOW_SHAPE_DEFAULT;
+
+export const normalizeSidebarGlowBlur = (value: unknown): number => {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue)
+    ? Math.min(
+        SIDEBAR_GLOW_BLUR_MAX,
+        Math.max(SIDEBAR_GLOW_BLUR_MIN, Math.round(numericValue)),
+      )
+    : SIDEBAR_GLOW_BLUR_DEFAULT;
+};
+
+export const normalizeSidebarGlowIntensity = (value: unknown): number => {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue)
+    ? Math.min(
+        SIDEBAR_GLOW_INTENSITY_MAX,
+        Math.max(SIDEBAR_GLOW_INTENSITY_MIN, Math.round(numericValue)),
+      )
+    : SIDEBAR_GLOW_INTENSITY_DEFAULT;
+};
 
 const SIDEBAR_DOCK_ITEMS = new Set<SidebarDockItem>([
   "appearance",
@@ -85,6 +207,10 @@ export interface SidebarPreferences {
   showKeyboardShortcuts?: boolean;
   showCollapsedLabels?: boolean;
   showCollapsedLogo?: boolean;
+  glowPalette?: SidebarGlow;
+  glowShape?: SidebarGlowShape;
+  glowBlur?: number;
+  glowIntensity?: number;
   /** @deprecated Migrated to dockItems. */
   showThemeIcon?: boolean;
   highlightActive?: boolean;
@@ -98,6 +224,8 @@ export interface LearningPreferences {
   playbackSpeed: string;
   resumeFromLastPosition: boolean;
   startInTheaterMode: boolean;
+  showLessonPageScrollbar: boolean;
+  showCurriculumScrollbar: boolean;
   weeklyGoal: string;
   learningReminders: boolean;
   reminderDays: string[];
@@ -119,6 +247,8 @@ export const LEARNING_PREFERENCE_DEFAULTS: LearningPreferences = {
   playbackSpeed: "1",
   resumeFromLastPosition: true,
   startInTheaterMode: false,
+  showLessonPageScrollbar: true,
+  showCurriculumScrollbar: true,
   weeklyGoal: "5",
   learningReminders: true,
   reminderDays: ["mon", "tue", "wed", "thu", "fri"],
@@ -172,11 +302,97 @@ export const readStored = (key: string, fallback: string): string => {
 export const readStoredBoolean = (key: string, fallback: boolean): boolean =>
   readStored(key, String(fallback)) === "true";
 
+export const getScrollbarBootstrapScript = (): string =>
+  `(()=>{const root=document.documentElement;try{root.dataset.hideScrollbars=String(localStorage.getItem(${JSON.stringify(
+    HIDE_SCROLLBARS_KEY,
+  )})==="true")}catch{root.dataset.hideScrollbars="false"}try{const learning=JSON.parse(localStorage.getItem(${JSON.stringify(
+    LEARNING_PREFERENCES_KEY,
+  )})||"{}");root.dataset.lessonPageScrollbar=learning.showLessonPageScrollbar===false?"hidden":"visible";root.dataset.curriculumScrollbar=learning.showCurriculumScrollbar===false?"hidden":"visible"}catch{root.dataset.lessonPageScrollbar="visible";root.dataset.curriculumScrollbar="visible"}})();`;
+
 export const readElevatedSurfaces = (): boolean =>
   readStoredBoolean(ELEVATED_SURFACES_KEY, true);
 
+export const readControlRadiusPreference = (): ControlRadiusPreference => ({
+  preset: normalizeControlRadiusPreset(
+    readStored(CONTROL_RADIUS_KEY, CONTROL_RADIUS_DEFAULT.preset),
+  ),
+  customPx: normalizeControlRadiusCustom(
+    readStored(
+      CONTROL_RADIUS_CUSTOM_KEY,
+      String(CONTROL_RADIUS_DEFAULT.customPx),
+    ),
+  ),
+});
+
+export const applyControlRadiusPreference = (
+  preference: ControlRadiusPreference,
+): ControlRadiusPreference => {
+  const normalizedPreference = {
+    preset: normalizeControlRadiusPreset(preference.preset),
+    customPx: normalizeControlRadiusCustom(preference.customPx),
+  };
+  if (typeof document !== "undefined") {
+    const resolvedRadius = resolveControlRadius(normalizedPreference);
+    const structuredRadius = Math.min(
+      resolvedRadius,
+      CONTROL_RADIUS_STRUCTURED_MAX,
+    );
+    document.documentElement.dataset.controlRadius =
+      normalizedPreference.preset;
+    document.documentElement.style.setProperty(
+      "--control-radius",
+      `${resolvedRadius}px`,
+    );
+    document.documentElement.style.setProperty(
+      "--control-radius-action",
+      `${resolvedRadius}px`,
+    );
+    document.documentElement.style.setProperty(
+      "--control-radius-structured",
+      `${structuredRadius}px`,
+    );
+    document.documentElement.style.setProperty(
+      "--control-radius-menu",
+      `${structuredRadius}px`,
+    );
+  }
+  return normalizedPreference;
+};
+
+export const persistControlRadiusPreference = (
+  preference: ControlRadiusPreference,
+): ControlRadiusPreference => {
+  const normalizedPreference = applyControlRadiusPreference(preference);
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage.setItem(
+        CONTROL_RADIUS_KEY,
+        normalizedPreference.preset,
+      );
+      window.localStorage.setItem(
+        CONTROL_RADIUS_CUSTOM_KEY,
+        String(normalizedPreference.customPx),
+      );
+    } catch {
+      // Keep the preference active for this session when storage is blocked.
+    }
+  }
+  return normalizedPreference;
+};
+
+export const getControlRadiusBootstrapScript = (): string =>
+  `(()=>{const r=document.documentElement,p=${JSON.stringify(
+    CONTROL_RADIUS_PRESETS,
+  )},d=${JSON.stringify(CONTROL_RADIUS_DEFAULT)},min=${CONTROL_RADIUS_CUSTOM_MIN},max=${CONTROL_RADIUS_CUSTOM_MAX},structuredMax=${CONTROL_RADIUS_STRUCTURED_MAX};try{const s=localStorage.getItem(${JSON.stringify(
+    CONTROL_RADIUS_KEY,
+  )}),id=p.some(({id})=>id===s)||s==="custom"?s:d.preset,storedCustom=localStorage.getItem(${JSON.stringify(
+    CONTROL_RADIUS_CUSTOM_KEY,
+  )}),raw=storedCustom===null?Number.NaN:Number(storedCustom),custom=Number.isFinite(raw)?Math.min(max,Math.max(min,Math.round(raw))):d.customPx,value=id==="custom"?custom:(p.find(({id:preset})=>preset===id)?.radius??d.customPx),structured=Math.min(value,structuredMax);r.dataset.controlRadius=id;r.style.setProperty("--control-radius",value+"px");r.style.setProperty("--control-radius-action",value+"px");r.style.setProperty("--control-radius-structured",structured+"px");r.style.setProperty("--control-radius-menu",structured+"px")}catch{r.dataset.controlRadius=d.preset;r.style.setProperty("--control-radius",d.customPx+"px");r.style.setProperty("--control-radius-action",d.customPx+"px");r.style.setProperty("--control-radius-structured",d.customPx+"px");r.style.setProperty("--control-radius-menu",d.customPx+"px")}})();`;
+
 export const getSurfaceDepthBootstrapScript = (): string =>
-  `(()=>{const root=document.documentElement;try{root.dataset.elevatedSurfaces=localStorage.getItem(${JSON.stringify(
+  `(()=>{const root=document.documentElement,sidebarGlows=${JSON.stringify(
+    SIDEBAR_GLOW_VALUES,
+  )},sidebarGlowShapes=${JSON.stringify(SIDEBAR_GLOW_SHAPE_VALUES)},defaultSidebarGlow=${JSON.stringify(SIDEBAR_GLOW_DEFAULT)},defaultSidebarGlowShape=${JSON.stringify(SIDEBAR_GLOW_SHAPE_DEFAULT)},defaultSidebarGlowBlur=${SIDEBAR_GLOW_BLUR_DEFAULT},defaultSidebarGlowIntensity=${SIDEBAR_GLOW_INTENSITY_DEFAULT};try{root.dataset.elevatedSurfaces=localStorage.getItem(${JSON.stringify(
     ELEVATED_SURFACES_KEY,
   )})==="false"?"false":"true"}catch{}try{const pageTabs=localStorage.getItem(${JSON.stringify(
     PAGE_TAB_COLORS_KEY,
@@ -184,7 +400,7 @@ export const getSurfaceDepthBootstrapScript = (): string =>
     PAGE_TAB_COLORS_DEFAULT,
   )}}catch{root.dataset.pageTabColors=${JSON.stringify(
     PAGE_TAB_COLORS_DEFAULT,
-  )}}try{const sidebar=JSON.parse(localStorage.getItem("veolms-sidebar-preferences")||"{}");root.dataset.sidebarMenuElevation=String(sidebar.elevateMenus===true||(sidebar.elevateMenus===undefined&&sidebar.alwaysElevateMenus===true));root.dataset.sidebarIconStyle=sidebar.iconStyle==="multicolor"?"multicolor":"monochrome";root.dataset.contentLayout=sidebar.contentLayout==="edge-to-edge"?"edge-to-edge":"framed";root.dataset.sidebarHeaderLayout=sidebar.headerLayout==="fixed"?"fixed":"inline"}catch{root.dataset.sidebarIconStyle="monochrome";root.dataset.contentLayout="framed";root.dataset.sidebarHeaderLayout="inline"}})();`;
+  )}}try{const sidebar=JSON.parse(localStorage.getItem("veolms-sidebar-preferences")||"{}"),rawGlowBlur=Number(sidebar.glowBlur),glowBlur=Number.isFinite(rawGlowBlur)?Math.min(${SIDEBAR_GLOW_BLUR_MAX},Math.max(${SIDEBAR_GLOW_BLUR_MIN},Math.round(rawGlowBlur))):defaultSidebarGlowBlur,rawGlowIntensity=Number(sidebar.glowIntensity),glowIntensity=Number.isFinite(rawGlowIntensity)?Math.min(100,Math.max(0,Math.round(rawGlowIntensity))):defaultSidebarGlowIntensity;root.dataset.sidebarMenuElevation=String(typeof sidebar.elevateMenus==="boolean"?sidebar.elevateMenus:typeof sidebar.alwaysElevateMenus==="boolean"?sidebar.alwaysElevateMenus:true);root.dataset.sidebarIconStyle=sidebar.iconStyle==="multicolor"?"multicolor":"monochrome";root.dataset.contentLayout=sidebar.contentLayout==="edge-to-edge"?"edge-to-edge":"framed";root.dataset.sidebarHeaderLayout=sidebar.headerLayout==="fixed"?"fixed":"inline";root.dataset.sidebarGlow=sidebarGlows.includes(sidebar.glowPalette)?sidebar.glowPalette:defaultSidebarGlow;root.dataset.sidebarGlowShape=sidebarGlowShapes.includes(sidebar.glowShape)?sidebar.glowShape:defaultSidebarGlowShape;root.dataset.sidebarBackdropBlur=glowBlur===0?"off":"on";root.style.setProperty("--sidebar-backdrop-blur",glowBlur+"px");root.style.setProperty("--sidebar-glow-intensity",String(glowIntensity/100))}catch{root.dataset.sidebarMenuElevation="true";root.dataset.sidebarIconStyle="monochrome";root.dataset.contentLayout="framed";root.dataset.sidebarHeaderLayout="inline";root.dataset.sidebarGlow=defaultSidebarGlow;root.dataset.sidebarGlowShape=defaultSidebarGlowShape;root.dataset.sidebarBackdropBlur="on";root.style.setProperty("--sidebar-backdrop-blur",defaultSidebarGlowBlur+"px");root.style.setProperty("--sidebar-glow-intensity",String(defaultSidebarGlowIntensity/100))}})();`;
 
 export const readPageTabColors = (): PageTabColors =>
   normalizePageTabColors(

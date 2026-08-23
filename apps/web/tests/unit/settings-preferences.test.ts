@@ -1,15 +1,23 @@
 import { describe, expect, it } from "vitest";
 import {
+  CONTROL_RADIUS_CUSTOM_KEY,
+  CONTROL_RADIUS_DEFAULT,
+  CONTROL_RADIUS_KEY,
   ELEVATED_SURFACES_KEY,
+  getControlRadiusBootstrapScript,
   getSurfaceDepthBootstrapScript,
   LEARNING_PREFERENCE_DEFAULTS,
   LEARNING_PREFERENCES_KEY,
+  normalizeControlRadiusCustom,
+  normalizeControlRadiusPreset,
   normalizePageTabColors,
   normalizeSidebarDockItems,
   normalizeSidebarDockOrder,
   normalizeSidebarMaxWidth,
   PAGE_TAB_COLORS_DEFAULT,
   PAGE_TAB_COLORS_KEY,
+  persistControlRadiusPreference,
+  readControlRadiusPreference,
   readLearningPreferences,
   readElevatedSurfaces,
   readPageTabColors,
@@ -20,6 +28,54 @@ const runSurfaceDepthBootstrap = () => {
   window.eval(getSurfaceDepthBootstrapScript());
 };
 
+const runControlRadiusBootstrap = () => {
+  // biome-ignore lint/security/noGlobalEval: Execute the generated inline bootstrap in JSDOM.
+  window.eval(getControlRadiusBootstrapScript());
+};
+
+describe("control radius preference", () => {
+  it("uses the balanced default and clamps custom pixel values", () => {
+    expect(readControlRadiusPreference()).toEqual(CONTROL_RADIUS_DEFAULT);
+    expect(normalizeControlRadiusPreset("unsupported")).toBe("balanced");
+    expect(normalizeControlRadiusCustom(-4)).toBe(0);
+    expect(normalizeControlRadiusCustom(19.6)).toBe(20);
+    expect(normalizeControlRadiusCustom(100)).toBe(64);
+  });
+
+  it("persists a custom radius and applies it to the document root", () => {
+    persistControlRadiusPreference({ preset: "custom", customPx: 18 });
+
+    expect(localStorage.getItem(CONTROL_RADIUS_KEY)).toBe("custom");
+    expect(localStorage.getItem(CONTROL_RADIUS_CUSTOM_KEY)).toBe("18");
+    expect(document.documentElement.dataset.controlRadius).toBe("custom");
+    expect(
+      document.documentElement.style.getPropertyValue("--control-radius"),
+    ).toBe("18px");
+    expect(
+      document.documentElement.style.getPropertyValue(
+        "--control-radius-structured",
+      ),
+    ).toBe("14px");
+  });
+
+  it("hydrates the selected preset before React mounts", () => {
+    localStorage.setItem(CONTROL_RADIUS_KEY, "pill");
+    localStorage.setItem(CONTROL_RADIUS_CUSTOM_KEY, "22");
+
+    runControlRadiusBootstrap();
+
+    expect(document.documentElement.dataset.controlRadius).toBe("pill");
+    expect(
+      document.documentElement.style.getPropertyValue("--control-radius"),
+    ).toBe("999px");
+    expect(
+      document.documentElement.style.getPropertyValue(
+        "--control-radius-structured",
+      ),
+    ).toBe("14px");
+  });
+});
+
 describe("surface depth preference", () => {
   it("defaults to enabled and respects an explicit stored opt-out", () => {
     expect(readElevatedSurfaces()).toBe(true);
@@ -29,6 +85,18 @@ describe("surface depth preference", () => {
 
     localStorage.setItem(ELEVATED_SURFACES_KEY, "true");
     expect(readElevatedSurfaces()).toBe(true);
+  });
+
+  it("hydrates sidebar menu elevation on by default and preserves opt-out", () => {
+    runSurfaceDepthBootstrap();
+    expect(document.documentElement.dataset.sidebarMenuElevation).toBe("true");
+
+    localStorage.setItem(
+      "veolms-sidebar-preferences",
+      JSON.stringify({ elevateMenus: false }),
+    );
+    runSurfaceDepthBootstrap();
+    expect(document.documentElement.dataset.sidebarMenuElevation).toBe("false");
   });
 });
 

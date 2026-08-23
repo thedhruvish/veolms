@@ -6,7 +6,10 @@ import { ShieldCheck } from "@phosphor-icons/react/ShieldCheck";
 import { SidebarSimple } from "@phosphor-icons/react/SidebarSimple";
 import { UserCircle } from "@phosphor-icons/react/UserCircle";
 import { useEffect, useRef, type ComponentType } from "react";
-import { handleRovingTabKeyDown } from "./accessibility/rovingTabFocus";
+import {
+  handleRovingTabKeyDown,
+  scrollKeyboardFocusedTabIntoView,
+} from "./accessibility/rovingTabFocus";
 import type { DisplayMode } from "./settings/AppearanceSettings";
 import type { ThemeRevealOrigin } from "./shell/themeViewTransition";
 import type {
@@ -292,12 +295,7 @@ export function SettingsPage({
             className={activeTab === id ? "is-active" : ""}
             onClick={() => navigateTab(id)}
             onKeyDown={handleRovingTabKeyDown}
-            onFocus={(event) =>
-              event.currentTarget.scrollIntoView({
-                block: "nearest",
-                inline: "center",
-              })
-            }
+            onFocus={scrollKeyboardFocusedTabIntoView}
           >
             <Icon size={17} weight={activeTab === id ? "fill" : "regular"} />
             <span>{label}</span>

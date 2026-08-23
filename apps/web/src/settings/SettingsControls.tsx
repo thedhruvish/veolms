@@ -185,7 +185,7 @@ export function SettingRow({
         <strong>{label}</strong>
         <small>{note}</small>
       </span>
-      <span className="settings-row__control">{children}</span>
+      <div className="settings-row__control">{children}</div>
     </div>
   );
 }

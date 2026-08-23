@@ -2,6 +2,7 @@ import { CheckCircle } from "@phosphor-icons/react/CheckCircle";
 import { DownloadSimple } from "@phosphor-icons/react/DownloadSimple";
 import { Receipt } from "@phosphor-icons/react/Receipt";
 import { X } from "@phosphor-icons/react/X";
+import { useBackDismiss } from "../navigation/useBackDismiss";
 import type { OrderItem } from "./ordersData";
 
 export interface OrderReceiptModalProps {
@@ -17,6 +18,8 @@ export function OrderReceiptModal({
   onClose,
   onDownloadReceipt,
 }: OrderReceiptModalProps) {
+  useBackDismiss({ open: isOpen && order !== null, onDismiss: onClose });
+
   if (!isOpen || !order) return null;
 
   return (

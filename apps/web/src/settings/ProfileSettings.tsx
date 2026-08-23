@@ -12,6 +12,7 @@ import { Phone } from "@phosphor-icons/react/Phone";
 import { SealCheck } from "@phosphor-icons/react/SealCheck";
 import { ShieldWarning } from "@phosphor-icons/react/ShieldWarning";
 import { X } from "@phosphor-icons/react/X";
+import { useBackDismiss } from "../navigation/useBackDismiss";
 import {
   getDefaultProfileIdentity,
   getProfileIdentity,
@@ -144,6 +145,11 @@ export function ProfileSettings({
   const [verificationRequested, setVerificationRequested] = useState(false);
   const [mobileVisibilityPromptOpen, setMobileVisibilityPromptOpen] =
     useState(false);
+
+  useBackDismiss({
+    open: mobileVisibilityPromptOpen,
+    onDismiss: () => setMobileVisibilityPromptOpen(false),
+  });
   const [mobileVisibilityAcknowledged, setMobileVisibilityAcknowledged] =
     useState(false);
   const [avatarFailed, setAvatarFailed] = useState(false);
@@ -543,6 +549,7 @@ export function ProfileSettings({
               <textarea
                 id="profile-bio"
                 name="bio"
+                className="[touch-action:pan-y_pinch-zoom] focus:[touch-action:auto]"
                 value={draftProfile.bio}
                 maxLength={160}
                 rows={3}
@@ -772,62 +779,62 @@ export function ProfileSettings({
             closeMobileVisibilityPrompt();
           }}
         >
-        <button
-          type="button"
-          className="settings-profile__privacy-dialog-close"
-          aria-label="Close mobile visibility confirmation"
-          onClick={closeMobileVisibilityPrompt}
-        >
-          <X size={18} />
-        </button>
-        <div
-          className="settings-profile__privacy-dialog-icon"
-          aria-hidden="true"
-        >
-          <ShieldWarning size={25} weight="fill" />
-        </div>
-        <div className="settings-profile__privacy-dialog-copy">
-          <h2 id="mobile-visibility-dialog-title">
-            Show your mobile number publicly?
-          </h2>
-          <p id="mobile-visibility-dialog-description">
-            Anyone who can view your profile will be able to see this number.
-            They may call you directly or message you on WhatsApp. Publishing is
-            not connected yet, so this acknowledgement will keep your number
-            private and will not send a request.
-          </p>
-        </div>
-        <label className="settings-profile__privacy-consent">
-          <input
-            type="checkbox"
-            checked={mobileVisibilityAcknowledged}
-            onChange={(event) =>
-              setMobileVisibilityAcknowledged(event.target.checked)
-            }
-          />
-          <span
-            className="settings-profile__privacy-consent-mark"
-            aria-hidden="true"
-          >
-            <Check size={12} weight="bold" />
-          </span>
-          <span>
-            I understand that anyone can call or message me on WhatsApp using
-            this number.
-          </span>
-        </label>
-        <div className="settings-profile__privacy-dialog-actions">
-          <button type="button" onClick={closeMobileVisibilityPrompt}>
-            Cancel
-          </button>
           <button
             type="button"
-            disabled={!mobileVisibilityAcknowledged}
-            onClick={confirmMobileVisibility}
+            className="settings-profile__privacy-dialog-close"
+            aria-label="Close mobile visibility confirmation"
+            onClick={closeMobileVisibilityPrompt}
           >
-            I understand, keep private
+            <X size={18} />
           </button>
-        </div>
+          <div
+            className="settings-profile__privacy-dialog-icon"
+            aria-hidden="true"
+          >
+            <ShieldWarning size={25} weight="fill" />
+          </div>
+          <div className="settings-profile__privacy-dialog-copy">
+            <h2 id="mobile-visibility-dialog-title">
+              Show your mobile number publicly?
+            </h2>
+            <p id="mobile-visibility-dialog-description">
+              Anyone who can view your profile will be able to see this number.
+              They may call you directly or message you on WhatsApp. Publishing
+              is not connected yet, so this acknowledgement will keep your
+              number private and will not send a request.
+            </p>
+          </div>
+          <label className="settings-profile__privacy-consent">
+            <input
+              type="checkbox"
+              checked={mobileVisibilityAcknowledged}
+              onChange={(event) =>
+                setMobileVisibilityAcknowledged(event.target.checked)
+              }
+            />
+            <span
+              className="settings-profile__privacy-consent-mark"
+              aria-hidden="true"
+            >
+              <Check size={12} weight="bold" />
+            </span>
+            <span>
+              I understand that anyone can call or message me on WhatsApp using
+              this number.
+            </span>
+          </label>
+          <div className="settings-profile__privacy-dialog-actions">
+            <button type="button" onClick={closeMobileVisibilityPrompt}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={!mobileVisibilityAcknowledged}
+              onClick={confirmMobileVisibility}
+            >
+              I understand, keep private
+            </button>
+          </div>
         </dialog>
       )}
     </section>

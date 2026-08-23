@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { useBackDismiss } from "../navigation/useBackDismiss";
 import EmojiPicker, { Theme as EmojiTheme } from "emoji-picker-react";
 import {
   CaretDown,
@@ -18,7 +19,7 @@ import { Markdown } from "@tiptap/markdown";
 import { Link } from "@tiptap/extension-link";
 
 // ---------------------------------------------------------------------------
-// Singleton editor — used ONLY to convert Markdown → HTML for the preview card.
+// Singleton editor - used ONLY to convert Markdown → HTML for the preview card.
 // The editing surface is a plain <textarea>; no Tiptap in the editor itself.
 // ---------------------------------------------------------------------------
 let parserEditorInstance: Editor | null = null;
@@ -303,7 +304,7 @@ export function RichTextEditor({
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const appTheme = useAppTheme();
 
-  // Reactive selection state — used only for toolbar "is-active" indicators.
+  // Reactive selection state - used only for toolbar "is-active" indicators.
   const [sel, setSel] = useState({ start: 0, end: 0 });
 
   // One-time cleanup: normalize old Tiptap-serialized content (HTML entities,
@@ -325,6 +326,15 @@ export function RichTextEditor({
     left: number;
   } | null>(null);
   const [showLinkPopover, setShowLinkPopover] = useState(false);
+
+  useBackDismiss({
+    open: showLinkPopover,
+    onDismiss: () => setShowLinkPopover(false),
+  });
+  useBackDismiss({
+    open: showEmojiPicker,
+    onDismiss: () => setShowEmojiPicker(false),
+  });
   const [linkUrlInput, setLinkUrlInput] = useState("");
   const [linkPopoverPos, setLinkPopoverPos] = useState<{
     top: number;
@@ -388,7 +398,7 @@ export function RichTextEditor({
   const isOrderedList = /^\d+\.\s/.test(currentLine);
 
   // -------------------------------------------------------------------------
-  // Apply transform — always reads live selection from the DOM ref
+  // Apply transform - always reads live selection from the DOM ref
   // -------------------------------------------------------------------------
   const applyTransform = (fn: (v: string, s: number, e: number) => EditResult) => {
     const ta = textareaRef.current;
@@ -771,7 +781,7 @@ export function RichTextEditor({
         </div>
       </div>
 
-      {/* Plain Markdown textarea — the single source of truth */}
+      {/* Plain Markdown textarea - the single source of truth */}
       <textarea
         ref={textareaRef}
         className="course-wizard-editor__raw-markdown"

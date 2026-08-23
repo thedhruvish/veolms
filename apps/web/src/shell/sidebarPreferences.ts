@@ -1,8 +1,16 @@
 import {
   normalizeSidebarDockItems,
   normalizeSidebarDockOrder,
+  normalizeSidebarGlow,
+  normalizeSidebarGlowBlur,
+  normalizeSidebarGlowShape,
+  normalizeSidebarGlowIntensity,
   SIDEBAR_DOCK_DEFAULT_ITEMS,
   SIDEBAR_DOCK_DEFAULT_ORDER,
+  SIDEBAR_GLOW_BLUR_DEFAULT,
+  SIDEBAR_GLOW_DEFAULT,
+  SIDEBAR_GLOW_INTENSITY_DEFAULT,
+  SIDEBAR_GLOW_SHAPE_DEFAULT,
   SIDEBAR_HEADER_DEFAULT_VERSION,
 } from "../settings/settingsPreferences";
 import type {
@@ -76,8 +84,12 @@ export const getDefaultSidebarPreferences = (): SidebarPreferences => ({
   showKeyboardShortcuts: true,
   showCollapsedLabels: true,
   showCollapsedLogo: true,
+  glowPalette: SIDEBAR_GLOW_DEFAULT,
+  glowShape: SIDEBAR_GLOW_SHAPE_DEFAULT,
+  glowBlur: SIDEBAR_GLOW_BLUR_DEFAULT,
+  glowIntensity: SIDEBAR_GLOW_INTENSITY_DEFAULT,
   highlightActive: true,
-  elevateMenus: false,
+  elevateMenus: true,
 });
 
 export const getInitialSidebarPreferences = (): SidebarPreferences => {
@@ -107,10 +119,22 @@ export const getInitialSidebarPreferences = (): SidebarPreferences => {
       !hasCurrentHeaderDefault && storedPreferences.headerLayout === undefined;
     preferences.headerLayout =
       storedPreferences.headerLayout === "fixed" ? "fixed" : "inline";
+    preferences.glowPalette = normalizeSidebarGlow(
+      storedPreferences.glowPalette,
+    );
+    preferences.glowShape = normalizeSidebarGlowShape(
+      storedPreferences.glowShape,
+    );
+    preferences.glowBlur = normalizeSidebarGlowBlur(storedPreferences.glowBlur);
+    preferences.glowIntensity = normalizeSidebarGlowIntensity(
+      storedPreferences.glowIntensity,
+    );
     preferences.elevateMenus =
-      storedPreferences.elevateMenus === true ||
-      (storedPreferences.elevateMenus === undefined &&
-        storedPreferences.alwaysElevateMenus === true);
+      typeof storedPreferences.elevateMenus === "boolean"
+        ? storedPreferences.elevateMenus
+        : typeof storedPreferences.alwaysElevateMenus === "boolean"
+          ? storedPreferences.alwaysElevateMenus
+          : true;
     delete preferences.alwaysElevateMenus;
     const legacyDockItems: SidebarDockItem[] =
       storedPreferences.dockItems === undefined &&
