@@ -22,22 +22,22 @@ apps/media-worker/
   tsconfig.json
 
 packages/database/
-  src/jobs.ts
+  src/fleet/jobs.ts
 ```
 
 ## Source files
 
-| File                                                                         | Contains                                                                                                               |
-| ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| [`src/index.ts`](../../apps/media-worker/src/index.ts)                       | Application entry point, DB lifecycle, signal handling, and compatible-job reuse loop.                                 |
-| [`src/config.ts`](../../apps/media-worker/src/config.ts)                     | Zod environment schema, aliases, defaults, and upload-concurrency validation.                                          |
-| [`src/worker.ts`](../../apps/media-worker/src/worker.ts)                     | Worker initialization, event recording, heartbeats, and idle polling.                                                  |
-| [`src/processor.ts`](../../apps/media-worker/src/processor.ts)               | One-job orchestration: ownership, input acquisition, probing, FFmpeg, persistence, retries, cleanup, and cancellation. |
-| [`src/ffmpeg-builder.ts`](../../apps/media-worker/src/ffmpeg-builder.ts)     | Quality filtering, compression-cap calculation, FFmpeg arguments, and master playlist generation.                      |
-| [`src/progress.ts`](../../apps/media-worker/src/progress.ts)                 | Chunk-safe FFmpeg progress parser and callback throttling.                                                             |
-| [`src/s3.ts`](../../apps/media-worker/src/s3.ts)                             | S3 client creation, bounded downloads, streamed uploads, MIME/cache policy, and incremental HLS upload loop.           |
-| [`src/resource-monitor.ts`](../../apps/media-worker/src/resource-monitor.ts) | Whole-host CPU/memory sampling and default upload concurrency calculation.                                             |
-| [`packages/database/src/jobs.ts`](../../packages/database/src/jobs.ts)       | Shared atomic queue claim helper used by the fleet manager and reusable workers.                                       |
+| File                                                                               | Contains                                                                                                               |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| [`src/index.ts`](../../apps/media-worker/src/index.ts)                             | Application entry point, DB lifecycle, signal handling, and compatible-job reuse loop.                                 |
+| [`src/config.ts`](../../apps/media-worker/src/config.ts)                           | Zod environment schema, aliases, defaults, and upload-concurrency validation.                                          |
+| [`src/worker.ts`](../../apps/media-worker/src/worker.ts)                           | Worker initialization, event recording, heartbeats, and idle polling.                                                  |
+| [`src/processor.ts`](../../apps/media-worker/src/processor.ts)                     | One-job orchestration: ownership, input acquisition, probing, FFmpeg, persistence, retries, cleanup, and cancellation. |
+| [`src/ffmpeg-builder.ts`](../../apps/media-worker/src/ffmpeg-builder.ts)           | Quality filtering, compression-cap calculation, FFmpeg arguments, and master playlist generation.                      |
+| [`src/progress.ts`](../../apps/media-worker/src/progress.ts)                       | Chunk-safe FFmpeg progress parser and callback throttling.                                                             |
+| [`src/s3.ts`](../../apps/media-worker/src/s3.ts)                                   | S3 client creation, bounded downloads, streamed uploads, MIME/cache policy, and incremental HLS upload loop.           |
+| [`src/resource-monitor.ts`](../../apps/media-worker/src/resource-monitor.ts)       | Whole-host CPU/memory sampling and default upload concurrency calculation.                                             |
+| [`packages/database/src/fleet/jobs.ts`](../../packages/database/src/fleet/jobs.ts) | Shared atomic queue claim helper used by the fleet manager and reusable workers.                                       |
 
 ## Test files
 

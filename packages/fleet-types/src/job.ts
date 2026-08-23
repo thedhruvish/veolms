@@ -49,7 +49,7 @@ const BYTES_PER_GB = 1024 ** 3;
  * worker) and media-worker (re-checking a claimed job against its own
  * capacity) so there is exactly one formula, not two that can drift apart.
  *
- * jobs.ts's SQL pre-filter (claimNextQueuedJob) mirrors only the
+ * fleet/jobs.ts's SQL pre-filter (claimNextQueuedJob) mirrors only the
  * qualities-tier thresholds below in raw SQL, as a coarse pre-check — it
  * does not replicate the video-size scaling, which is re-checked here.
  * Keep the two in sync if the tier thresholds change.

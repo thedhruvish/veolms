@@ -1,9 +1,10 @@
 import { sql, type Kysely, type Selectable } from "kysely";
-import type { Database, JobTable } from "./schema.ts";
+import type { Database } from "../schema.ts";
+import type { JobTable } from "./schema.ts";
 
 /**
  * Atomically claims the oldest QUEUED job and marks it PROCESSING.
- * `FOR UPDATE SKIP LOCKED` lets multiple callers (the fleet-manager Lambda
+ * `FOR UPDATE SKIP LOCKED` lets multiple callers (the fleet-manager daemon
  * and any number of media-workers polling for their next job) race against
  * this query concurrently without ever double-claiming the same row. When a
  * worker ID is supplied, the claim and worker assignment happen in the same

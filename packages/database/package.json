@@ -2,7 +2,10 @@
   "name": "@veolms/database",
   "private": true,
   "type": "module",
-  "exports": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./fleet": "./src/fleet/index.ts"
+  },
   "scripts": {
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
@@ -13,7 +16,6 @@
   "dependencies": {
     "@veolms/config": "workspace:*",
     "@veolms/contracts": "workspace:*",
-    "@veolms/fleet-types": "workspace:*",
     "kysely": "catalog:",
     "pg": "^8.22.0"
   },

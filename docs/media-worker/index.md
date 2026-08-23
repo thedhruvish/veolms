@@ -46,4 +46,4 @@ Claim one more compatible job, or exit cleanly
 The worker implementation is in
 [`apps/media-worker`](../../apps/media-worker), and queue claiming is shared
 with the control plane in
-[`packages/database/src/jobs.ts`](../../packages/database/src/jobs.ts).
+[`packages/database/src/fleet/jobs.ts`](../../packages/database/src/fleet/jobs.ts).
