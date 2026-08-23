@@ -55,6 +55,11 @@ import type {
   SidebarMode,
   SidebarPreferences,
 } from "./settingsPreferences";
+import {
+  getDefaultNavigationVisibility,
+  getNavigationItems,
+} from "../shell/navigation";
+import type { ProfileRole } from "./profilePreferences";
 
 // Keep Settings in lockstep with the sidebar and mobile palette menus. This is
 // deliberately the shared registry rather than a display-only subset.
@@ -190,6 +195,9 @@ export interface SidebarSettingsProps {
   academyTheme: AcademyTheme["id"];
   sidebarMode: SidebarMode;
   onSidebarModeChange?: (mode: SidebarMode) => void;
+  role?: ProfileRole;
+  navigationVisibleItems?: readonly string[];
+  onNavigationVisibilityChange?: (visibleItems: string[]) => void;
 }
 
 export function SidebarSettings({
@@ -198,6 +206,9 @@ export function SidebarSettings({
   academyTheme,
   sidebarMode,
   onSidebarModeChange,
+  role = "student",
+  navigationVisibleItems,
+  onNavigationVisibilityChange,
 }: SidebarSettingsProps) {
   const preferences = sidebarPreferences || {};
   const iconStyle = preferences.iconStyle || "monochrome";
@@ -232,6 +243,10 @@ export function SidebarSettings({
   const glowBlur = normalizeSidebarGlowBlur(preferences.glowBlur);
   const glowIntensity = normalizeSidebarGlowIntensity(
     preferences.glowIntensity,
+  );
+  const navigationItems = getNavigationItems(role);
+  const visibleNavigationItems = new Set(
+    navigationVisibleItems ?? getDefaultNavigationVisibility(role),
   );
   const glowIsDefault =
     glowPalette === SIDEBAR_GLOW_DEFAULT &&
@@ -287,6 +302,16 @@ export function SidebarSettings({
       return;
     }
     update({ dockItems: [...dockItems, item] });
+  };
+
+  const toggleNavigationItem = (label: string, selected: boolean) => {
+    const current = navigationItems
+      .map(([currentLabel]) => currentLabel)
+      .filter((currentLabel) => visibleNavigationItems.has(currentLabel));
+    const next = selected
+      ? current.filter((currentLabel) => currentLabel !== label)
+      : [...current, label];
+    onNavigationVisibilityChange?.(next);
   };
 
   const reorderDockItem = (
@@ -485,6 +510,52 @@ export function SidebarSettings({
       </div>
 
       <>
+        <section className="settings-section settings-sidebar-navigation-section">
+          <div className="settings-section__heading-row">
+            <div>
+              <h2>Menu items</h2>
+              <p>
+                Choose which menu items appear in the sidebar. More items can be
+                added here later.
+              </p>
+            </div>
+            <output className="settings-section__count" aria-live="polite">
+              {
+                navigationItems.filter(([label]) =>
+                  visibleNavigationItems.has(label),
+                ).length
+              }{" "}
+              visible
+            </output>
+          </div>
+          <div
+            className="settings-row-list"
+            aria-label={`${role === "creator" ? "Creator" : "Student"} sidebar menu items`}
+          >
+            {navigationItems.map(([label, Icon]) => {
+              const selected = visibleNavigationItems.has(label);
+              return (
+                <SettingRow
+                  key={label}
+                  icon={Icon}
+                  label={label}
+                  note={
+                    label === "Settings"
+                      ? "Show Settings in the menu when it is not placed in the dock"
+                      : `Show ${label} in the sidebar menu`
+                  }
+                >
+                  <SettingsToggle
+                    checked={selected}
+                    onChange={() => toggleNavigationItem(label, selected)}
+                    label={`Show ${label} in sidebar menu`}
+                  />
+                </SettingRow>
+              );
+            })}
+          </div>
+        </section>
+
         <section className="settings-section">
           <div className="settings-section__heading-row">
             <div>
@@ -744,8 +815,8 @@ export function SidebarSettings({
               <div>
                 <h3>Additional bokeh blur</h3>
                 <p>
-                  Add blur above the shapes. The floating sidebar always keeps
-                  a 6px base blur.
+                  Add blur above the shapes. The floating sidebar always keeps a
+                  6px base blur.
                 </p>
               </div>
               <output

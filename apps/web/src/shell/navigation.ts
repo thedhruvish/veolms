@@ -51,6 +51,10 @@ const navigationByRole: Record<string, readonly NavigationItem[]> = {
   creator: creatorNavigation,
 };
 
+export function getNavigationItems(role: string): readonly NavigationItem[] {
+  return navigationByRole[role] || studentNavigation;
+}
+
 const navigationTones: Record<string, string> = {
   Home: "#5da9ff",
   Dashboard: "#5da9ff",
@@ -71,8 +75,7 @@ const navigationTones: Record<string, string> = {
 };
 
 export function getNavigationDisplayLabel(label: string, page: string): string {
-  if (page !== "courses" && label === "Notifications")
-    return "Notification";
+  if (page !== "courses" && label === "Notifications") return "Notification";
   return label;
 }
 
@@ -87,7 +90,11 @@ const migrateStudentNavigationLabel = (label: string) => {
 };
 
 export function getDefaultNavigationOrder(role: string): string[] {
-  return (navigationByRole[role] || studentNavigation).map(([label]) => label);
+  return getNavigationItems(role).map(([label]) => label);
+}
+
+export function getDefaultNavigationVisibility(role: string): string[] {
+  return getDefaultNavigationOrder(role);
 }
 
 export function getInitialNavigationOrder(role: string): string[] {
@@ -117,11 +124,33 @@ export function getInitialNavigationOrder(role: string): string[] {
   }
 }
 
+export function getInitialNavigationVisibility(role: string): string[] {
+  const defaultVisibility = getDefaultNavigationVisibility(role);
+  if (typeof window === "undefined") return defaultVisibility;
+
+  try {
+    const parsedVisibility: unknown = JSON.parse(
+      localStorage.getItem(`veolms-navigation-visibility-${role}`) || "null",
+    );
+    if (!Array.isArray(parsedVisibility)) return defaultVisibility;
+
+    const savedVisibility = parsedVisibility.filter(
+      (label, index): label is string =>
+        typeof label === "string" &&
+        defaultVisibility.includes(label) &&
+        parsedVisibility.indexOf(label) === index,
+    );
+    return defaultVisibility.filter((label) => savedVisibility.includes(label));
+  } catch {
+    return defaultVisibility;
+  }
+}
+
 export function getOrderedNavigation(
   role: string,
   order: readonly string[] | undefined,
 ): NavigationItem[] {
-  const navigationItems = navigationByRole[role] || studentNavigation;
+  const navigationItems = getNavigationItems(role);
   const itemByLabel = new Map(navigationItems.map((item) => [item[0], item]));
   const orderedLabels = [
     ...(order || []),
@@ -131,6 +160,19 @@ export function getOrderedNavigation(
       itemByLabel.has(label) && labels.indexOf(label) === index,
   );
   return orderedLabels.map((label) => itemByLabel.get(label)!);
+}
+
+export function getVisibleOrderedNavigation(
+  role: string,
+  order: readonly string[] | undefined,
+  visibleLabels: readonly string[] | undefined,
+): NavigationItem[] {
+  const visible = new Set(
+    visibleLabels ?? getDefaultNavigationVisibility(role),
+  );
+  return getOrderedNavigation(role, order).filter(([label]) =>
+    visible.has(label),
+  );
 }
 
 export function getNavigationDestination(label: string): string {

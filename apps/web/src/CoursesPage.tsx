@@ -60,10 +60,11 @@ import { AppLoadingScreen } from "./bootstrap/AppLoadingScreen";
 import {
   getDefaultNavigationOrder,
   getInitialNavigationOrder,
+  getInitialNavigationVisibility,
   getNavigationDestination,
   getNavigationDisplayLabel,
   getNavigationIconColor,
-  getOrderedNavigation,
+  getVisibleOrderedNavigation,
 } from "./shell/navigation";
 import {
   SIDEBAR_MIN_WIDTH,
@@ -575,6 +576,12 @@ export function CoursesPage({
     student: getDefaultNavigationOrder("student"),
     creator: getDefaultNavigationOrder("creator"),
   }));
+  const [navigationVisibility, setNavigationVisibility] = useState<
+    Record<CourseRole, string[]>
+  >(() => ({
+    student: getDefaultNavigationOrder("student"),
+    creator: getDefaultNavigationOrder("creator"),
+  }));
   const [draggedNavigationLabel, setDraggedNavigationLabel] = useState<
     string | null
   >(null);
@@ -801,6 +808,10 @@ export function CoursesPage({
       setNavigationOrders({
         student: getInitialNavigationOrder("student"),
         creator: getInitialNavigationOrder("creator"),
+      });
+      setNavigationVisibility({
+        student: getInitialNavigationVisibility("student"),
+        creator: getInitialNavigationVisibility("creator"),
       });
 
       const storedTheme = localStorage.getItem("veolms-theme");
@@ -1074,6 +1085,16 @@ export function CoursesPage({
       );
     });
   }, [navigationOrders, storedPreferencesReady]);
+
+  useEffect(() => {
+    if (!storedPreferencesReady) return;
+    Object.entries(navigationVisibility).forEach(([roleName, visibleItems]) => {
+      localStorage.setItem(
+        `veolms-navigation-visibility-${roleName}`,
+        JSON.stringify(visibleItems),
+      );
+    });
+  }, [navigationVisibility, storedPreferencesReady]);
 
   useEffect(() => {
     if (!storedPreferencesReady) return;
@@ -1385,9 +1406,11 @@ export function CoursesPage({
     return () => window.clearTimeout(timer);
   }, [notice]);
 
-  const navigation = getOrderedNavigation(role, navigationOrders[role]).filter(
-    ([label]) => label !== "Settings" || !settingsInSidebarDock,
-  );
+  const navigation = getVisibleOrderedNavigation(
+    role,
+    navigationOrders[role],
+    navigationVisibility[role],
+  ).filter(([label]) => label !== "Settings" || !settingsInSidebarDock);
   const updateNavigationScrollFade = () => {
     const nav = navigationRef.current;
     if (!nav) return;
@@ -1748,11 +1771,7 @@ export function CoursesPage({
 
     appearanceControlRectsRef.current = nextRects;
     appearanceLayoutRef.current = appearanceControlsHorizontal;
-  }, [
-    appearanceControlsHorizontal,
-    sidebarResizePreviewWidth,
-    sidebarWidth,
-  ]);
+  }, [appearanceControlsHorizontal, sidebarResizePreviewWidth, sidebarWidth]);
 
   useEffect(
     () => () => {
@@ -2540,8 +2559,7 @@ export function CoursesPage({
       const revealThreshold =
         (resize.expandedWidthAtStart + SIDEBAR_HIDDEN_OFFSET_EXTRA) *
         SIDEBAR_REVEAL_COMMIT_THRESHOLD;
-      const intentionalReveal =
-        !cancelled && revealDistance >= revealThreshold;
+      const intentionalReveal = !cancelled && revealDistance >= revealThreshold;
       setSidebarOverlaySwipeOffset(null);
       setEdgeSidebarOpen(intentionalReveal);
       window.setTimeout(() => {
@@ -3333,6 +3351,13 @@ export function CoursesPage({
               onSidebarPreferencesChange={setSidebarPreferences}
               sidebarMode={sidebarMode}
               onSidebarModeChange={setSidebarMode}
+              navigationVisibleItems={navigationVisibility[role]}
+              onNavigationVisibilityChange={(visibleItems) =>
+                setNavigationVisibility((current) => ({
+                  ...current,
+                  [role]: visibleItems,
+                }))
+              }
             />
           ) : page === "workspace" ? (
             <WorkspacePage

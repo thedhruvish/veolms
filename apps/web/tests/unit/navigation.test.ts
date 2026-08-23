@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   getInitialNavigationOrder,
+  getInitialNavigationVisibility,
   getNavigationDisplayLabel,
   getNavigationIconColor,
   getOrderedNavigation,
+  getVisibleOrderedNavigation,
 } from "../../src/shell/navigation.js";
 import type { NavigationItem } from "../../src/shell/navigation.ts";
 
@@ -36,6 +38,31 @@ describe("navigation order persistence", () => {
   it("uses the exact defaults for each role", () => {
     expect(getInitialNavigationOrder("student")).toEqual(studentDefault);
     expect(getInitialNavigationOrder("creator")).toEqual(creatorDefault);
+  });
+
+  it("defaults creator menu visibility to every existing creator item", () => {
+    expect(getInitialNavigationVisibility("creator")).toEqual(creatorDefault);
+    expect(getInitialNavigationVisibility("student")).toEqual(studentDefault);
+  });
+
+  it("persists creator visibility choices and restores new defaults", () => {
+    localStorage.setItem(
+      "veolms-navigation-visibility-creator",
+      JSON.stringify(["Dashboard", "Missing", "Dashboard", "Orders"]),
+    );
+
+    expect(getInitialNavigationVisibility("creator")).toEqual([
+      "Dashboard",
+      "Orders",
+    ]);
+    expect(
+      labels(
+        getVisibleOrderedNavigation("creator", creatorDefault, [
+          "Orders",
+          "Dashboard",
+        ]),
+      ),
+    ).toEqual(["Dashboard", "Orders"]);
   });
 
   it("falls back to defaults for invalid JSON and non-array saved values", () => {
@@ -141,9 +168,7 @@ describe("navigation display and icon color helpers", () => {
     expect(getNavigationDisplayLabel("Notifications", "home")).toBe(
       "Notification",
     );
-    expect(getNavigationDisplayLabel("Courses", "home")).toBe(
-      "Courses",
-    );
+    expect(getNavigationDisplayLabel("Courses", "home")).toBe("Courses");
   });
 
   it("uses tone, monochrome, and fallback colors exactly", () => {

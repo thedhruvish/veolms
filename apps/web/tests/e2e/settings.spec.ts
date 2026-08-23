@@ -177,6 +177,95 @@ test("settings tabs support roving arrow, Home, and End navigation", async ({
   await expect(profileTab).toBeFocused();
 });
 
+test("creator settings control which sidebar menu items are visible", async ({
+  page,
+}) => {
+  await openApp(page, "/settings/sidebar");
+
+  await page.getByRole("button", { name: /Ashi Singh, Student\./ }).click();
+  await page.getByRole("menuitemradio", { name: "Creator" }).click();
+
+  await expect(page.getByRole("heading", { name: "Menu items" })).toBeVisible();
+  await expect(page.getByText("9 visible")).toBeVisible();
+
+  const analyticsToggle = page.getByRole("switch", {
+    name: "Show Analytics in sidebar menu",
+  });
+  await expect(analyticsToggle).toHaveAttribute("aria-checked", "true");
+  await analyticsToggle.click();
+
+  await expect(analyticsToggle).toHaveAttribute("aria-checked", "false");
+  await expect(page.getByText("8 visible")).toBeVisible();
+  await expect(
+    page
+      .getByRole("complementary", { name: "Creator navigation" })
+      .getByRole("button", { name: "Analytics", exact: true }),
+  ).toHaveCount(0);
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const value = localStorage.getItem(
+          "veolms-navigation-visibility-creator",
+        );
+        return value ? JSON.parse(value) : null;
+      }),
+    )
+    .toEqual([
+      "Dashboard",
+      "Courses",
+      "Students",
+      "Reviews",
+      "Wishlist",
+      "Discussions",
+      "Orders",
+      "Settings",
+    ]);
+
+  await page.reload();
+  await expect(
+    page.getByRole("switch", { name: "Show Analytics in sidebar menu" }),
+  ).toHaveAttribute("aria-checked", "false");
+});
+
+test("student settings control which sidebar menu items are visible", async ({
+  page,
+}) => {
+  await openApp(page, "/settings/sidebar");
+
+  await expect(page.getByRole("heading", { name: "Menu items" })).toBeVisible();
+  await expect(page.getByText("7 visible")).toBeVisible();
+
+  const notificationsToggle = page.getByRole("switch", {
+    name: "Show Notifications in sidebar menu",
+  });
+  await notificationsToggle.click();
+
+  await expect(notificationsToggle).toHaveAttribute("aria-checked", "false");
+  await expect(page.getByText("6 visible")).toBeVisible();
+  await expect(
+    page
+      .getByRole("complementary", { name: "Student navigation" })
+      .getByRole("button", { name: "Notifications", exact: true }),
+  ).toHaveCount(0);
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const value = localStorage.getItem(
+          "veolms-navigation-visibility-student",
+        );
+        return value ? JSON.parse(value) : null;
+      }),
+    )
+    .toEqual([
+      "Home",
+      "Courses",
+      "Wishlist",
+      "Discussions",
+      "Order History",
+      "Settings",
+    ]);
+});
+
 test("Escape leaves Settings for the previous non-settings destination", async ({
   page,
 }) => {
