@@ -373,6 +373,8 @@ const SIDEBAR_GESTURE_ACTIVATION_DISTANCE = 12;
 const SIDEBAR_GESTURE_DIRECTION_RATIO = 1.2;
 const SIDEBAR_FLING_MIN_DISTANCE = 24;
 const SIDEBAR_FLING_VELOCITY = 0.3;
+const SIDEBAR_HIDDEN_OFFSET_EXTRA = 18;
+const SIDEBAR_REVEAL_COMMIT_THRESHOLD = 0.4;
 const APPEARANCE_LONG_PRESS_DURATION = 500;
 const APPEARANCE_LONG_PRESS_MOVE_TOLERANCE = 10;
 const NAVIGATION_LONG_PRESS_DURATION = 480;
@@ -2339,7 +2341,11 @@ export function CoursesPage({
     resize.active = true;
     dismissSidebarTooltipImmediately();
     if (resize.source === "screen" && resize.modeAtStart === "hidden") {
+      sidebarOverlaySwipeConsumedRef.current = true;
       setEdgeSidebarOpen(true);
+      setSidebarOverlaySwipeOffset(
+        -resize.expandedWidthAtStart - SIDEBAR_HIDDEN_OFFSET_EXTRA,
+      );
       try {
         resize.handle?.setPointerCapture?.(resize.pointerId);
       } catch {
@@ -2482,7 +2488,16 @@ export function CoursesPage({
     resize.lastX = event.clientX;
     resize.lastTimestamp = timestamp;
 
-    if (resize.source === "screen" && resize.modeAtStart === "hidden") return;
+    if (resize.source === "screen" && resize.modeAtStart === "hidden") {
+      const hiddenOffset =
+        -resize.expandedWidthAtStart - SIDEBAR_HIDDEN_OFFSET_EXTRA;
+      const revealOffset = Math.max(
+        hiddenOffset,
+        Math.min(0, hiddenOffset + Math.max(0, deltaX)),
+      );
+      setSidebarOverlaySwipeOffset(revealOffset);
+      return;
+    }
     if (resize.source === "overlay") {
       const offset =
         deltaX < 0
@@ -2522,15 +2537,16 @@ export function CoursesPage({
 
     if (resize.source === "screen" && resize.modeAtStart === "hidden") {
       const revealDistance = resize.lastX - resize.startX;
-      const finishedAt = event.timeStamp || performance.now();
-      const averageVelocity =
-        revealDistance / Math.max(1, finishedAt - resize.startedAt);
+      const revealThreshold =
+        (resize.expandedWidthAtStart + SIDEBAR_HIDDEN_OFFSET_EXTRA) *
+        SIDEBAR_REVEAL_COMMIT_THRESHOLD;
       const intentionalReveal =
-        !cancelled &&
-        (revealDistance >= SIDEBAR_FLING_MIN_DISTANCE ||
-          Math.max(resize.velocityX, averageVelocity) >=
-            SIDEBAR_FLING_VELOCITY);
+        !cancelled && revealDistance >= revealThreshold;
+      setSidebarOverlaySwipeOffset(null);
       setEdgeSidebarOpen(intentionalReveal);
+      window.setTimeout(() => {
+        sidebarOverlaySwipeConsumedRef.current = false;
+      }, 0);
       return;
     }
 

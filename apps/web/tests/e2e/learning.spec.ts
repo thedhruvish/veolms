@@ -1617,7 +1617,7 @@ test("mobile supplemental tabs clear sticky spacing in the natural layout", asyn
   const readContentSpacing = () =>
     page.locator("#learning-discussion-tab-panel").evaluate((panel) => {
       const content = panel.querySelector<HTMLElement>(
-        ".swipeable-tab-panel__layer.is-current > :first-child",
+        ".swiper-slide-active > :first-child",
       );
       const contentStart = content?.querySelector<HTMLElement>(
         ".learning-comment-composer__avatar, h3",

@@ -1100,19 +1100,12 @@
 }
 
 .learning-discussion__tab-panel {
-  margin-right: calc(-1 * var(--learning-panel-inline-end));
-  margin-left: calc(-1 * var(--learning-panel-inline-start));
-}
-
-.learning-discussion__tab-panel > .swipeable-tab-panel__layer {
-  padding-right: var(--learning-panel-inline-end);
-  padding-left: var(--learning-panel-inline-start);
+  --swipeable-tab-panel-inline-start: var(--learning-panel-inline-start);
+  --swipeable-tab-panel-inline-end: var(--learning-panel-inline-end);
 }
 
 .learning-comments-surface {
   margin-top: 12px;
-  margin-right: calc(-1 * var(--learning-panel-inline-end));
-  margin-left: calc(-1 * var(--learning-panel-inline-start));
 }
 
 .learning-supplemental-panel {
@@ -1412,13 +1405,6 @@
     background: color-mix(in srgb, var(--canvas) 94%, transparent);
     box-shadow: 0 8px 18px color-mix(in srgb, var(--canvas) 42%, transparent);
     backdrop-filter: blur(10px);
-  }
-
-  .learning-discussion__tab-panel {
-    min-height: max(
-      var(--tab-swipe-height, 0px),
-      calc(100dvh - var(--learning-mobile-player-height, 0px) - 48px)
-    );
   }
 
   .learning-supplemental-panel {

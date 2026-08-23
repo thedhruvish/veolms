@@ -7,7 +7,6 @@ import { Toolbox } from "@phosphor-icons/react/Toolbox";
 import { X } from "@phosphor-icons/react/X";
 import React, {
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -83,63 +82,7 @@ const tabs = [
 
 type Tab = (typeof tabs)[number][0];
 type SupplementalTab = Exclude<Tab, "Comments">;
-type TabPointerScrollSnapshot = {
-  tab: Tab;
-  target: Window | HTMLElement;
-  top: number;
-  capturedAt: number;
-};
-type LessonPinnedScrollSnapshot = Omit<
-  TabPointerScrollSnapshot,
-  "tab" | "capturedAt"
->;
 const tabIds = tabs.map(([label]) => label);
-const getLessonScrollTarget = (): Window | HTMLElement => {
-  const mainScrollport = document.querySelector<HTMLElement>(
-    "#courses-main-scrollport",
-  );
-  const mainScrollportStyle = mainScrollport
-    ? getComputedStyle(mainScrollport)
-    : null;
-  return mainScrollport &&
-    mainScrollportStyle &&
-    (mainScrollportStyle.overflowY === "auto" ||
-      mainScrollportStyle.overflowY === "scroll") &&
-    mainScrollport.scrollHeight > mainScrollport.clientHeight
-    ? mainScrollport
-    : window;
-};
-const getLessonScrollTop = (target: Window | HTMLElement) =>
-  target instanceof Window ? target.scrollY : target.scrollTop;
-const restoreLessonScrollTop = (target: Window | HTMLElement, top: number) => {
-  if (target instanceof Window) {
-    const scrollingElement = document.scrollingElement;
-    if (scrollingElement) scrollingElement.scrollTop = top;
-    else target.scrollTo(0, top);
-    return;
-  }
-  target.scrollTop = top;
-};
-const resolveLessonTabContentTop = ({ surface }: { surface: HTMLElement }) => {
-  const discussion = surface.closest<HTMLElement>(".learning-discussion");
-  const header = discussion?.querySelector<HTMLElement>(
-    ".learning-discussion__header",
-  );
-  const player = document.querySelector<HTMLElement>(
-    ".learning-workspace__player-wrap",
-  );
-  if (
-    !header ||
-    !player ||
-    getComputedStyle(header).position !== "sticky" ||
-    Math.abs(
-      header.getBoundingClientRect().top -
-        player.getBoundingClientRect().bottom,
-    ) > 2
-  )
-    return null;
-  return header.getBoundingClientRect().bottom + 12;
-};
 const getTabId = (tab: Tab) =>
   `lesson-tool-tab-${tab.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 
@@ -197,12 +140,6 @@ export function Discussion({ persistenceKey }: DiscussionProps) {
   );
   const [searchFocused, setSearchFocused] = useState(false);
   const tabListRef = useRef<HTMLDivElement>(null);
-  const tabPointerScrollRef = useRef<TabPointerScrollSnapshot | null>(null);
-  const lastPinnedScrollRef = useRef<LessonPinnedScrollSnapshot | null>(null);
-  const pendingTabChromeRestoreRef = useRef<LessonPinnedScrollSnapshot | null>(
-    null,
-  );
-  const userScrollIntentUntilRef = useRef(0);
   const composerSearchInputRef = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useSessionStorageState(
     `${storageBase}-comment-draft`,
@@ -237,101 +174,12 @@ export function Discussion({ persistenceKey }: DiscussionProps) {
   }, [postedComments]);
 
   useEffect(() => {
-    const mainScrollport = document.querySelector<HTMLElement>(
-      "#courses-main-scrollport",
-    );
-    const markUserScrollIntent = (event: Event) => {
-      if (
-        event instanceof KeyboardEvent &&
-        (![
-          "ArrowDown",
-          "ArrowUp",
-          "End",
-          "Home",
-          "PageDown",
-          "PageUp",
-          " ",
-        ].includes(event.key) ||
-          (event.target instanceof Element &&
-            Boolean(event.target.closest(".lesson-tool-tab"))))
-      ) {
-        return;
-      }
-      userScrollIntentUntilRef.current = performance.now() + 300;
-    };
-    const updatePinnedScroll = () => {
-      const player = document.querySelector<HTMLElement>(
-        ".learning-workspace__player-wrap",
-      );
-      const header = document.querySelector<HTMLElement>(
-        ".learning-discussion__header",
-      );
-      if (!player || !header) return;
-
-      const target = getLessonScrollTarget();
-      const top = getLessonScrollTop(target);
-      const pinned =
-        top > 1 &&
-        Math.abs(
-          header.getBoundingClientRect().top -
-            player.getBoundingClientRect().bottom,
-        ) <= 2;
-      if (pinned) {
-        lastPinnedScrollRef.current = { target, top };
-        return;
-      }
-      if (performance.now() < userScrollIntentUntilRef.current) {
-        lastPinnedScrollRef.current = null;
-        document
-          .querySelector<HTMLElement>("#learning-discussion-tab-panel")
-          ?.style.removeProperty("height");
-      }
-    };
-    const updateAfterResize = () => {
-      lastPinnedScrollRef.current = null;
-      updatePinnedScroll();
-    };
-
-    updatePinnedScroll();
-    window.addEventListener("wheel", markUserScrollIntent, { passive: true });
-    window.addEventListener("touchmove", markUserScrollIntent, {
-      passive: true,
-    });
-    window.addEventListener("keydown", markUserScrollIntent);
-    window.addEventListener("scroll", updatePinnedScroll, { passive: true });
-    window.addEventListener("resize", updateAfterResize);
-    mainScrollport?.addEventListener("scroll", updatePinnedScroll, {
-      passive: true,
-    });
-    return () => {
-      window.removeEventListener("wheel", markUserScrollIntent);
-      window.removeEventListener("touchmove", markUserScrollIntent);
-      window.removeEventListener("keydown", markUserScrollIntent);
-      window.removeEventListener("scroll", updatePinnedScroll);
-      window.removeEventListener("resize", updateAfterResize);
-      mainScrollport?.removeEventListener("scroll", updatePinnedScroll);
-    };
-  }, []);
-
-  useEffect(() => {
     if (!searchOpen) return undefined;
     const frame = window.requestAnimationFrame(() =>
       composerSearchInputRef.current?.focus({ preventScroll: true }),
     );
     return () => window.cancelAnimationFrame(frame);
   }, [searchOpen]);
-
-  useLayoutEffect(() => {
-    const snapshot = pendingTabChromeRestoreRef.current;
-    if (!snapshot) return undefined;
-    restoreLessonScrollTop(snapshot.target, snapshot.top);
-    const frame = window.requestAnimationFrame(() => {
-      if (pendingTabChromeRestoreRef.current !== snapshot) return;
-      restoreLessonScrollTop(snapshot.target, snapshot.top);
-      pendingTabChromeRestoreRef.current = null;
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [activeTab]);
 
   const visibleComments = useMemo(
     () =>
@@ -373,82 +221,7 @@ export function Discussion({ persistenceKey }: DiscussionProps) {
     );
   };
 
-  const preparePointerTabNavigation = (tab: Tab, button: HTMLButtonElement) => {
-    const target = getLessonScrollTarget();
-    tabPointerScrollRef.current = {
-      tab,
-      target,
-      top: getLessonScrollTop(target),
-      capturedAt: performance.now(),
-    };
-    button.focus({ preventScroll: true });
-  };
-
-  const navigateTab = (tab: Tab, preservePointerChrome = false) => {
-    const pointerSnapshot = tabPointerScrollRef.current;
-    const pinnedSnapshot = preservePointerChrome
-      ? lastPinnedScrollRef.current
-      : null;
-    const liveTarget = preservePointerChrome ? getLessonScrollTarget() : null;
-    const liveTop = liveTarget ? getLessonScrollTop(liveTarget) : 0;
-    const player = preservePointerChrome
-      ? document.querySelector<HTMLElement>(".learning-workspace__player-wrap")
-      : null;
-    const header = preservePointerChrome
-      ? document.querySelector<HTMLElement>(".learning-discussion__header")
-      : null;
-    const livePinnedSnapshot =
-      liveTarget &&
-      liveTop > 1 &&
-      player &&
-      header &&
-      Math.abs(
-        header.getBoundingClientRect().top -
-          player.getBoundingClientRect().bottom,
-      ) <= 2
-        ? {
-            tab,
-            target: liveTarget,
-            top: liveTop,
-            capturedAt: performance.now(),
-          }
-        : null;
-    tabPointerScrollRef.current = null;
-    const navigationSnapshot =
-      livePinnedSnapshot ??
-      (pointerSnapshot
-        ? pointerSnapshot
-        : pinnedSnapshot
-          ? {
-              tab,
-              ...pinnedSnapshot,
-              capturedAt: performance.now(),
-            }
-          : pointerSnapshot);
-    if (
-      navigationSnapshot?.tab === tab &&
-      performance.now() - navigationSnapshot.capturedAt < 1_500
-    ) {
-      if (preservePointerChrome) {
-        const panel = document.querySelector<HTMLElement>(
-          "#learning-discussion-tab-panel",
-        );
-        if (panel) {
-          panel.style.setProperty(
-            "height",
-            `${Math.ceil(panel.getBoundingClientRect().height)}px`,
-            "important",
-          );
-        }
-      }
-      restoreLessonScrollTop(navigationSnapshot.target, navigationSnapshot.top);
-      if (preservePointerChrome) {
-        pendingTabChromeRestoreRef.current = {
-          target: navigationSnapshot.target,
-          top: navigationSnapshot.top,
-        };
-      }
-    }
+  const navigateTab = (tab: Tab) => {
     setActiveTab(tab);
     setSearch("");
     setSearchOpen(false);
@@ -476,14 +249,7 @@ export function Discussion({ persistenceKey }: DiscussionProps) {
               data-swipe-tab-id={label}
               tabIndex={activeTab === label ? 0 : -1}
               key={label}
-              onPointerDown={(event) => {
-                if (!event.isPrimary || event.button !== 0) return;
-                preparePointerTabNavigation(label, event.currentTarget);
-              }}
-              onPointerCancel={() => {
-                tabPointerScrollRef.current = null;
-              }}
-              onClick={() => navigateTab(label, true)}
+              onClick={() => navigateTab(label)}
               onKeyDown={handleRovingTabKeyDown}
               className={`lesson-tool-tab relative inline-flex h-12 shrink-0 items-center gap-2 px-3 text-[15px] transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--accent)] ${activeTab === label ? "is-active font-semibold" : "text-[var(--muted)] hover:text-[var(--text)]"}`}
             >
@@ -506,8 +272,6 @@ export function Discussion({ persistenceKey }: DiscussionProps) {
         id="learning-discussion-tab-panel"
         labelledBy={getTabId(activeTab)}
         className="learning-discussion__tab-panel"
-        preserveScrollPosition
-        resolveDestinationContentTop={resolveLessonTabContentTop}
       >
         {(panelTab) =>
           panelTab === "Comments" ? (
