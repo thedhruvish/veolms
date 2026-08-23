@@ -62,6 +62,54 @@ function StatefulGlowSettings() {
   );
 }
 
+function StatefulCreatorSidebarSettings() {
+  const [visibleItems, setVisibleItems] = useState([
+    "Dashboard",
+    "Courses",
+    "Students",
+    "Reviews",
+    "Wishlist",
+    "Discussions",
+    "Analytics",
+    "Orders",
+    "Settings",
+  ]);
+  return (
+    <SidebarSettings
+      sidebarPreferences={preferences}
+      onSidebarPreferencesChange={vi.fn()}
+      academyTheme="veo-onyx"
+      sidebarMode="expanded"
+      role="creator"
+      navigationVisibleItems={visibleItems}
+      onNavigationVisibilityChange={setVisibleItems}
+    />
+  );
+}
+
+function StatefulStudentSidebarSettings() {
+  const [visibleItems, setVisibleItems] = useState([
+    "Home",
+    "Courses",
+    "Wishlist",
+    "Discussions",
+    "Order History",
+    "Notifications",
+    "Settings",
+  ]);
+  return (
+    <SidebarSettings
+      sidebarPreferences={preferences}
+      onSidebarPreferencesChange={vi.fn()}
+      academyTheme="veo-onyx"
+      sidebarMode="expanded"
+      role="student"
+      navigationVisibleItems={visibleItems}
+      onNavigationVisibilityChange={setVisibleItems}
+    />
+  );
+}
+
 describe("sidebar settings draft inputs", () => {
   it("uses the shared themed slider for sidebar width", () => {
     renderSettings(vi.fn());
@@ -353,5 +401,36 @@ describe("sidebar settings draft inputs", () => {
     );
     expect(readingMode).toHaveAttribute("aria-checked", "false");
     expect(screen.getByText("3 visible")).toBeVisible();
+  });
+
+  it("lets creators hide existing sidebar menu items", () => {
+    render(<StatefulCreatorSidebarSettings />);
+
+    expect(screen.getByRole("heading", { name: "Menu items" })).toBeVisible();
+    expect(screen.getByText("9 visible")).toBeVisible();
+
+    const dashboard = screen.getByRole("switch", {
+      name: "Show Dashboard in sidebar menu",
+    });
+    expect(dashboard).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(dashboard);
+
+    expect(dashboard).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByText("8 visible")).toBeVisible();
+  });
+
+  it("lets students hide existing sidebar menu items", () => {
+    render(<StatefulStudentSidebarSettings />);
+
+    expect(screen.getByRole("heading", { name: "Menu items" })).toBeVisible();
+    expect(screen.getByText("7 visible")).toBeVisible();
+
+    const notifications = screen.getByRole("switch", {
+      name: "Show Notifications in sidebar menu",
+    });
+    fireEvent.click(notifications);
+
+    expect(notifications).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByText("6 visible")).toBeVisible();
   });
 });

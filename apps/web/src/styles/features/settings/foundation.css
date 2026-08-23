@@ -1480,6 +1480,20 @@
   line-height: 1.45;
 }
 
+.settings-section__count {
+  display: inline-flex;
+  min-height: 30px;
+  flex: 0 0 auto;
+  align-items: center;
+  border-radius: 8px;
+  padding: 0 10px;
+  color: var(--accent-ink, var(--accent));
+  background: color-mix(in srgb, var(--accent) 11%, var(--surface));
+  font-size: 0.7rem;
+  font-weight: 720;
+  white-space: nowrap;
+}
+
 .settings-sidebar-glow-reset {
   display: inline-flex;
   min-height: 36px;

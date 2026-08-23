@@ -30,8 +30,9 @@ import { getCourseTitle } from "../learning/courseMetadata";
 import type { NavigateTo } from "../routing/navigation";
 import {
   getInitialNavigationOrder,
+  getInitialNavigationVisibility,
   getNavigationDestination,
-  getOrderedNavigation,
+  getVisibleOrderedNavigation,
 } from "../shell/navigation";
 import {
   readApplicationScrollPosition,
@@ -183,9 +184,10 @@ export default function AcademyLayout() {
       if (index === null) return;
 
       const role = localStorage.getItem("veolms-role") || "student";
-      const orderedNavigation = getOrderedNavigation(
+      const orderedNavigation = getVisibleOrderedNavigation(
         role,
         getInitialNavigationOrder(role),
+        getInitialNavigationVisibility(role),
       ).filter(
         ([label]) =>
           label !== "Settings" ||

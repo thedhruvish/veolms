@@ -101,6 +101,8 @@ export interface SettingsPageProps {
   onSidebarPreferencesChange: (preferences: SidebarPreferences) => void;
   sidebarMode: SidebarMode;
   onSidebarModeChange: (mode: SidebarMode) => void;
+  navigationVisibleItems?: readonly string[];
+  onNavigationVisibilityChange?: (visibleItems: string[]) => void;
 }
 
 function SettingsTabContent({
@@ -138,6 +140,9 @@ function SettingsTabContent({
           academyTheme={pageProps.academyTheme}
           sidebarMode={pageProps.sidebarMode}
           onSidebarModeChange={pageProps.onSidebarModeChange}
+          role={pageProps.role}
+          navigationVisibleItems={pageProps.navigationVisibleItems}
+          onNavigationVisibilityChange={pageProps.onNavigationVisibilityChange}
         />
       );
     case "learning":
@@ -172,6 +177,8 @@ export function SettingsPage({
   onSidebarPreferencesChange,
   sidebarMode,
   onSidebarModeChange,
+  navigationVisibleItems,
+  onNavigationVisibilityChange,
 }: SettingsPageProps) {
   const activeTab = normalizeSettingsTab(tab);
   const tabListRef = useRef<HTMLElement>(null);
@@ -191,6 +198,8 @@ export function SettingsPage({
     onSidebarPreferencesChange,
     sidebarMode,
     onSidebarModeChange,
+    navigationVisibleItems,
+    onNavigationVisibilityChange,
   };
   const navigateTab = (id: SettingsTab) => {
     rememberSettingsTab(id);
