@@ -98,7 +98,7 @@ describe("Curriculum", () => {
 
     expect(title).toHaveClass("text-[clamp(1rem,4.25cqi,1.1875rem)]");
     expect(title.closest(".learning-curriculum__title-row")).toHaveClass(
-      "[container-type:inline-size]",
+      "@container",
     );
   });
 

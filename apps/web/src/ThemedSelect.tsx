@@ -1,5 +1,5 @@
-import { CaretDown } from "@phosphor-icons/react/CaretDown";
-import { Check } from "@phosphor-icons/react/Check";
+import { CaretDownIcon as CaretDown } from "@phosphor-icons/react/CaretDown";
+import { CheckIcon as Check } from "@phosphor-icons/react/Check";
 import {
   useCallback,
   useEffect,

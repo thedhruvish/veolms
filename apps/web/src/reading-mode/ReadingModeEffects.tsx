@@ -18,9 +18,11 @@ export function ReadingModeEffects() {
 
     refresh();
     window.addEventListener(READING_MODE_CHANGE_EVENT, refresh);
+    window.addEventListener("resize", refresh);
     window.addEventListener("storage", handleStorage);
     return () => {
       window.removeEventListener(READING_MODE_CHANGE_EVENT, refresh);
+      window.removeEventListener("resize", refresh);
       window.removeEventListener("storage", handleStorage);
     };
   }, []);

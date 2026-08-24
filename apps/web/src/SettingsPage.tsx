@@ -1,10 +1,10 @@
-import { Bell } from "@phosphor-icons/react/Bell";
-import { GearSix } from "@phosphor-icons/react/GearSix";
-import { GraduationCap } from "@phosphor-icons/react/GraduationCap";
-import { Palette } from "@phosphor-icons/react/Palette";
-import { ShieldCheck } from "@phosphor-icons/react/ShieldCheck";
-import { SidebarSimple } from "@phosphor-icons/react/SidebarSimple";
-import { UserCircle } from "@phosphor-icons/react/UserCircle";
+import { BellIcon as Bell } from "@phosphor-icons/react/Bell";
+import { GearSixIcon as GearSix } from "@phosphor-icons/react/GearSix";
+import { GraduationCapIcon as GraduationCap } from "@phosphor-icons/react/GraduationCap";
+import { PaletteIcon as Palette } from "@phosphor-icons/react/Palette";
+import { ShieldCheckIcon as ShieldCheck } from "@phosphor-icons/react/ShieldCheck";
+import { SidebarSimpleIcon as SidebarSimple } from "@phosphor-icons/react/SidebarSimple";
+import { UserCircleIcon as UserCircle } from "@phosphor-icons/react/UserCircle";
 import { useEffect, useRef, type ComponentType } from "react";
 import {
   handleRovingTabKeyDown,

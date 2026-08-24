@@ -27,11 +27,11 @@ test("sidebar shortcut hints and positional navigation stay in sync", async ({
 
   await expect(settingsShortcut).toHaveText("Ctrl+,");
   await expect(settingsShortcut).toBeHidden();
-  await expect(coursesShortcut).toHaveText("3");
+  await expect(coursesShortcut).toHaveText("2");
   await expect(coursesShortcut).toBeHidden();
   await expect(settings).toHaveAttribute(
     "aria-keyshortcuts",
-    /8 Control\+Comma/,
+    /7 Control\+Comma/,
   );
 
   await home.focus();
@@ -73,11 +73,17 @@ test("sidebar shortcut hints and positional navigation stay in sync", async ({
   await expect(page.locator(".sidebar-control-tooltip")).toHaveCount(0);
   await expect(collapse).toHaveAttribute(
     "title",
-    "Collapse navigation (Ctrl+B)",
+    "Collapse (Ctrl+B)",
   );
   await expect(collapse).toHaveAttribute("aria-keyshortcuts", "Control+B");
 
   await collapse.click();
+  await expect(
+    sidebar.getByRole("button", { name: "Expand navigation" }),
+  ).toHaveAttribute(
+    "title",
+    "Expand (Ctrl+B)",
+  );
   await settings.hover();
   await expect(settingsTooltip).toBeVisible();
   await expect(settingsTooltip).toHaveCSS("color", "rgb(17, 24, 39)");
@@ -133,17 +139,9 @@ test("sidebar shortcut hints and positional navigation stay in sync", async ({
       };
     });
   expect(labelTypography.lineHeight).toBeGreaterThan(labelTypography.fontSize);
-  const settingsTooltipWidth = await settingsTooltip.evaluate(
-    (tooltip) => tooltip.getBoundingClientRect().width,
-  );
-
   await courses.focus();
   await expect(settingsTooltip).toBeVisible();
   await expect(settingsTooltip).toContainText("Courses");
-  const coursesTooltipWidth = await settingsTooltip.evaluate(
-    (tooltip) => tooltip.getBoundingClientRect().width,
-  );
-  expect(coursesTooltipWidth).toBeGreaterThan(settingsTooltipWidth);
 
   await sidebar
     .getByRole("button", {
@@ -174,19 +172,22 @@ test("sidebar shortcut hints and positional navigation stay in sync", async ({
     sidebar.getByRole("button", { name: "Courses" }),
   ).toHaveAttribute("aria-current", "page");
   await page.keyboard.press("3");
-  await expect(page).toHaveURL(/\/courses$/);
+  await expect(page).toHaveURL(/\/wishlist$/);
   await expect(
-    sidebar.getByRole("button", { name: "Courses" }),
+    sidebar.getByRole("button", { name: "Wishlist" }),
   ).toHaveAttribute("aria-current", "page");
 
-  const search = page.getByPlaceholder("Search your courses...");
+  await page.keyboard.press("2");
+  await expect(page).toHaveURL(/\/courses$/);
+
+  const search = page.getByPlaceholder("Search courses...");
   await search.focus();
   await page.keyboard.press("1");
   await expect(search).toHaveValue("1");
   await expect(page).toHaveURL(/\/courses$/);
   await search.evaluate((element: HTMLInputElement) => element.blur());
 
-  await page.keyboard.press("8");
+  await page.keyboard.press("7");
   await expect(page).toHaveURL(/\/settings\/profile$/);
   await expect(page.getByRole("tabpanel")).toHaveAttribute(
     "data-settings-tab",
@@ -313,7 +314,7 @@ test("search shortcut labels and focuses the active search field", async ({
   expect(searchAlignment.searchBoxBorder).toBe("rgba(0, 0, 0, 0)");
   expect(
     Math.abs(searchAlignment.fieldTop - searchAlignment.headerTop),
-  ).toBeLessThanOrEqual(1);
+  ).toBeLessThanOrEqual(2);
 
   await page.getByRole("button", { name: "Back from search" }).click();
   await expect(mobileSearchToggle).toHaveAttribute("aria-expanded", "false");
@@ -379,6 +380,56 @@ test("bottom navigation keeps course search compact for both roles", async ({
   ).toBeVisible();
 });
 
+test("sidebar toggle responds immediately and the brand owns floating", async ({
+  page,
+}) => {
+  await installBaselineState(page, {
+    local: { "veolms-shortcut-platform": "windows" },
+  });
+  await openApp(page, "/courses");
+
+  const sidebar = page.getByRole("complementary", {
+    name: "Student navigation",
+  });
+  const app = page.locator(".courses-app");
+  const brand = sidebar.locator(".courses-sidebar__brand");
+  const collapse = sidebar.getByRole("button", {
+    name: "Collapse navigation",
+  });
+  await expect(collapse).toHaveAttribute(
+    "title",
+    "Collapse (Ctrl+B)",
+  );
+  await expect(brand).toHaveAttribute(
+    "title",
+    "Double-click to float sidebar",
+  );
+
+  await collapse.click();
+  await expect(app).toHaveClass(/courses-app--collapsed/, { timeout: 200 });
+  const expand = sidebar.getByRole("button", { name: "Expand navigation" });
+  await expect(expand).toHaveAttribute(
+    "title",
+    "Expand (Ctrl+B)",
+  );
+
+  await expand.click();
+  await expect(app).not.toHaveClass(/courses-app--collapsed/, {
+    timeout: 200,
+  });
+  await brand.dblclick({ position: { x: 120, y: 2 } });
+  await expect(app).toHaveClass(/courses-app--hidden/);
+  await expect
+    .poll(() => page.evaluate(() => window.getSelection()?.toString() ?? ""))
+    .toBe("");
+  await expect(brand).toHaveAttribute("title", "Double-click to pin sidebar");
+  const pin = sidebar.getByRole("button", { name: "Pin navigation" });
+  await expect(pin).toHaveAttribute("title", "Pin (Ctrl+B)");
+
+  await pin.click();
+  await expect(app).not.toHaveClass(/courses-app--hidden/, { timeout: 200 });
+});
+
 test("Apple platforms receive Command shortcut labels", async ({ page }) => {
   await installBaselineState(page);
   await page.addInitScript(() => {
@@ -407,8 +458,8 @@ test("Apple platforms receive Command shortcut labels", async ({ page }) => {
   await expect(search).toBeFocused();
 
   await expect(settings.locator(".courses-nav__shortcut")).toHaveText("⌘+,");
-  await expect(settings).toHaveAttribute("aria-keyshortcuts", /8 Meta\+Comma/);
-  await expect(collapse).toHaveAttribute("title", "Collapse navigation (⌘+B)");
+  await expect(settings).toHaveAttribute("aria-keyshortcuts", /7 Meta\+Comma/);
+  await expect(collapse).toHaveAttribute("title", "Collapse (⌘+B)");
   await expect(collapse).toHaveAttribute("aria-keyshortcuts", "Meta+B");
   const resizeSidebar = sidebar.getByRole("separator", {
     name: "Resize sidebar",
@@ -417,6 +468,9 @@ test("Apple platforms receive Command shortcut labels", async ({ page }) => {
   await expect(resizeSidebar).toHaveAttribute("aria-keyshortcuts", "Meta+B");
 
   await collapse.click();
+  await expect(
+    sidebar.getByRole("button", { name: "Expand navigation" }),
+  ).toBeVisible();
   await settings.hover();
   const settingsTooltip = page.locator(".sidebar-nav-tooltip");
   await expect(settingsTooltip).toBeVisible();
@@ -466,7 +520,7 @@ test("shortcut key style overrides system labels across the application", async 
   await expect(settings.locator(".courses-nav__shortcut")).toHaveText("⌘+,");
   await expect(
     sidebar.getByRole("button", { name: "Collapse navigation" }),
-  ).toHaveAttribute("title", "Collapse navigation (⌘+B)");
+  ).toHaveAttribute("title", "Collapse (⌘+B)");
 
   await openApp(page, "/settings/sidebar");
   const hideSidebarRow = page

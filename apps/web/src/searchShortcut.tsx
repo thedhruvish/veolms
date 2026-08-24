@@ -40,7 +40,7 @@ export function SearchShortcutHint({ className = "" }: { className?: string }) {
   return (
     <kbd
       aria-hidden="true"
-      className={`inline-flex shrink-0 items-center rounded-md border border-[color-mix(in_srgb,var(--text)_14%,transparent)] bg-[color-mix(in_srgb,var(--surface-strong)_72%,transparent)] px-1.5 py-0.5 text-[0.64rem] font-semibold leading-4 tracking-[0.02em] text-[var(--muted)] shadow-[inset_0_1px_0_color-mix(in_srgb,var(--text)_7%,transparent)] ${className}`.trim()}
+      className={`inline-flex shrink-0 items-center rounded-md border border-[color-mix(in_srgb,var(--text)_14%,transparent)] bg-[color-mix(in_srgb,var(--surface-strong)_72%,transparent)] px-1.5 py-0.5 text-[0.64rem] font-semibold leading-4 tracking-[0.02em] text-(--muted) shadow-[inset_0_1px_0_color-mix(in_srgb,var(--text)_7%,transparent)] ${className}`.trim()}
     >
       {getSearchShortcutLabel(platform)}
     </kbd>

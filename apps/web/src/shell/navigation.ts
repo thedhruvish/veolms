@@ -1,19 +1,19 @@
-import { Bell } from "@phosphor-icons/react/Bell";
-import { ChartBar } from "@phosphor-icons/react/ChartBar";
-import { GearSix } from "@phosphor-icons/react/GearSix";
-import { GraduationCap } from "@phosphor-icons/react/GraduationCap";
-import { Heart } from "@phosphor-icons/react/Heart";
-import { House } from "@phosphor-icons/react/House";
-import { Star } from "@phosphor-icons/react/Star";
-import { Tote } from "@phosphor-icons/react/Tote";
-import { Users } from "@phosphor-icons/react/Users";
-import { ChatCircleDots } from "@phosphor-icons/react/ChatCircleDots";
-import { EnvelopeSimple } from "@phosphor-icons/react/EnvelopeSimple";
-import { SquaresFour } from "@phosphor-icons/react/SquaresFour";
+import { BellIcon as Bell } from "@phosphor-icons/react/Bell";
+import { ChartBarIcon as ChartBar } from "@phosphor-icons/react/ChartBar";
+import { GearSixIcon as GearSix } from "@phosphor-icons/react/GearSix";
+import { GraduationCapIcon as GraduationCap } from "@phosphor-icons/react/GraduationCap";
+import { HeartIcon as Heart } from "@phosphor-icons/react/Heart";
+import { HouseIcon as House } from "@phosphor-icons/react/House";
+import { StarIcon as Star } from "@phosphor-icons/react/Star";
+import { ToteIcon as Tote } from "@phosphor-icons/react/Tote";
+import { UsersIcon as Users } from "@phosphor-icons/react/Users";
+import { ChatCircleDotsIcon as ChatCircleDots } from "@phosphor-icons/react/ChatCircleDots";
+import { EnvelopeSimpleIcon as EnvelopeSimple } from "@phosphor-icons/react/EnvelopeSimple";
+import { SquaresFourIcon as SquaresFour } from "@phosphor-icons/react/SquaresFour";
 import type { Icon } from "@phosphor-icons/react";
 import type { SidebarPreferences } from "../settings/settingsPreferences";
 
-import { ChatTeardropDots } from "@phosphor-icons/react/ChatTeardropDots";
+import { ChatTeardropDotsIcon as ChatTeardropDots } from "@phosphor-icons/react/ChatTeardropDots";
 
 export type NavigationItem = readonly [label: string, icon: Icon];
 

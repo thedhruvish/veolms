@@ -6,7 +6,7 @@ import type {
   MouseEvent,
   ReactNode,
 } from "react";
-import { Check } from "@phosphor-icons/react/Check";
+import { CheckIcon as Check } from "@phosphor-icons/react/Check";
 import { ThemedSelect } from "../ThemedSelect";
 import type { ThemedSelectOption } from "../ThemedSelect";
 

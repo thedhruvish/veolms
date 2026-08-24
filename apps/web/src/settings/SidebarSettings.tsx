@@ -1,18 +1,18 @@
-import { Check } from "@phosphor-icons/react/Check";
-import { ArrowCounterClockwise } from "@phosphor-icons/react/ArrowCounterClockwise";
-import { CircleHalf } from "@phosphor-icons/react/CircleHalf";
-import { CornersOut } from "@phosphor-icons/react/CornersOut";
-import { DotsSixVertical } from "@phosphor-icons/react/DotsSixVertical";
-import { Eye } from "@phosphor-icons/react/Eye";
-import { GearSix } from "@phosphor-icons/react/GearSix";
-import { Info } from "@phosphor-icons/react/Info";
-import { Keyboard } from "@phosphor-icons/react/Keyboard";
-import { Moon } from "@phosphor-icons/react/Moon";
-import { Palette } from "@phosphor-icons/react/Palette";
-import { Plus } from "@phosphor-icons/react/Plus";
-import { SidebarSimple } from "@phosphor-icons/react/SidebarSimple";
-import { Stack } from "@phosphor-icons/react/Stack";
-import { TextT } from "@phosphor-icons/react/TextT";
+import { CheckIcon as Check } from "@phosphor-icons/react/Check";
+import { ArrowCounterClockwiseIcon as ArrowCounterClockwise } from "@phosphor-icons/react/ArrowCounterClockwise";
+import { CircleHalfIcon as CircleHalf } from "@phosphor-icons/react/CircleHalf";
+import { CornersOutIcon as CornersOut } from "@phosphor-icons/react/CornersOut";
+import { DotsSixVerticalIcon as DotsSixVertical } from "@phosphor-icons/react/DotsSixVertical";
+import { EyeIcon as Eye } from "@phosphor-icons/react/Eye";
+import { GearSixIcon as GearSix } from "@phosphor-icons/react/GearSix";
+import { InfoIcon as Info } from "@phosphor-icons/react/Info";
+import { KeyboardIcon as Keyboard } from "@phosphor-icons/react/Keyboard";
+import { MoonIcon as Moon } from "@phosphor-icons/react/Moon";
+import { PaletteIcon as Palette } from "@phosphor-icons/react/Palette";
+import { PlusIcon as Plus } from "@phosphor-icons/react/Plus";
+import { SidebarSimpleIcon as SidebarSimple } from "@phosphor-icons/react/SidebarSimple";
+import { StackIcon as Stack } from "@phosphor-icons/react/Stack";
+import { TextTIcon as TextT } from "@phosphor-icons/react/TextT";
 import { useEffect, useRef, useState } from "react";
 import type {
   KeyboardEvent as ReactKeyboardEvent,
@@ -36,6 +36,7 @@ import {
   normalizeSidebarGlow,
   normalizeSidebarGlowBlur,
   normalizeSidebarGlowShape,
+  normalizeSidebarGlowShapeSize,
   normalizeSidebarGlowIntensity,
   SIDEBAR_GLOW_BLUR_MAX,
   SIDEBAR_GLOW_BLUR_MIN,
@@ -45,6 +46,9 @@ import {
   SIDEBAR_GLOW_INTENSITY_MIN,
   SIDEBAR_GLOW_INTENSITY_DEFAULT,
   SIDEBAR_GLOW_SHAPE_DEFAULT,
+  SIDEBAR_GLOW_SHAPE_SIZE_DEFAULT,
+  SIDEBAR_GLOW_SHAPE_SIZE_MAX,
+  SIDEBAR_GLOW_SHAPE_SIZE_MIN,
   SIDEBAR_MAX_WIDTH_LIMIT,
   SIDEBAR_MAX_WIDTH_MIN,
 } from "./settingsPreferences";
@@ -240,6 +244,9 @@ export function SidebarSettings({
   const elevateMenus = preferences.elevateMenus !== false;
   const glowPalette = normalizeSidebarGlow(preferences.glowPalette);
   const glowShape = normalizeSidebarGlowShape(preferences.glowShape);
+  const glowShapeSize = normalizeSidebarGlowShapeSize(
+    preferences.glowShapeSize,
+  );
   const glowBlur = normalizeSidebarGlowBlur(preferences.glowBlur);
   const glowIntensity = normalizeSidebarGlowIntensity(
     preferences.glowIntensity,
@@ -251,6 +258,7 @@ export function SidebarSettings({
   const glowIsDefault =
     glowPalette === SIDEBAR_GLOW_DEFAULT &&
     glowShape === SIDEBAR_GLOW_SHAPE_DEFAULT &&
+    glowShapeSize === SIDEBAR_GLOW_SHAPE_SIZE_DEFAULT &&
     glowBlur === SIDEBAR_GLOW_BLUR_DEFAULT &&
     glowIntensity === SIDEBAR_GLOW_INTENSITY_DEFAULT;
   const shortcutPlatform = useShortcutPlatform();
@@ -727,6 +735,7 @@ export function SidebarSettings({
                 update({
                   glowPalette: SIDEBAR_GLOW_DEFAULT,
                   glowShape: SIDEBAR_GLOW_SHAPE_DEFAULT,
+                  glowShapeSize: SIDEBAR_GLOW_SHAPE_SIZE_DEFAULT,
                   glowBlur: SIDEBAR_GLOW_BLUR_DEFAULT,
                   glowIntensity: SIDEBAR_GLOW_INTENSITY_DEFAULT,
                 })
@@ -810,10 +819,53 @@ export function SidebarSettings({
               })}
             </RadioGroup>
           </div>
+          <div className="settings-sidebar-glow-size">
+            <div className="settings-sidebar-glow-size__heading">
+              <div>
+                <h3>Size</h3>
+                <p>Scale the bokeh shapes and their ambient glow area.</p>
+              </div>
+              <output
+                className="settings-sidebar-glow-size__value"
+                htmlFor="sidebar-glow-shape-size-range"
+              >
+                {glowShapeSize}%
+              </output>
+            </div>
+            <label
+              className="settings-sidebar-glow-size__range"
+              htmlFor="sidebar-glow-shape-size-range"
+            >
+              <AppSlider
+                id="sidebar-glow-shape-size-range"
+                min={SIDEBAR_GLOW_SHAPE_SIZE_MIN}
+                max={SIDEBAR_GLOW_SHAPE_SIZE_MAX}
+                step="1"
+                value={glowShapeSize}
+                onChange={(event) =>
+                  update({
+                    glowShapeSize: normalizeSidebarGlowShapeSize(
+                      event.target.value,
+                    ),
+                  })
+                }
+                aria-label="Sidebar glow shape size"
+                aria-valuetext={`${glowShapeSize} percent`}
+              />
+              <span
+                className="settings-sidebar-glow-size__labels"
+                aria-hidden="true"
+              >
+                <span>Smaller</span>
+                <span>Default</span>
+                <span>Larger</span>
+              </span>
+            </label>
+          </div>
           <div className="settings-sidebar-glow-blur">
             <div className="settings-sidebar-glow-blur__heading">
               <div>
-                <h3>Additional bokeh blur</h3>
+                <h3>Bokeh blur</h3>
                 <p>
                   Add blur above the shapes. The floating sidebar always keeps a
                   6px base blur.

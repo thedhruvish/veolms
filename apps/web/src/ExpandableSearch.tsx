@@ -1,4 +1,4 @@
-import { ArrowLeft, MagnifyingGlass, X } from "@phosphor-icons/react";
+import { ArrowLeftIcon as ArrowLeft, MagnifyingGlassIcon as MagnifyingGlass, XIcon as X } from "@phosphor-icons/react";
 import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import { flushSync } from "react-dom";
@@ -60,17 +60,17 @@ export function ExpandableSearch({
     : "";
   const persistentBackClass = persistentDesktop ? "min-[821px]:hidden" : "";
   const persistentFieldClass = persistentDesktop
-    ? "min-[821px]:h-11 min-[821px]:rounded-[var(--control-radius-structured)] min-[821px]:border-[color-mix(in_srgb,var(--text)_20%,transparent)] min-[821px]:bg-[var(--surface)] min-[821px]:shadow-[0_8px_22px_color-mix(in_srgb,var(--accent-shadow)_18%,transparent)] min-[821px]:hover:border-[color-mix(in_srgb,var(--text)_32%,transparent)] min-[821px]:focus-within:border-[var(--accent)] min-[821px]:focus-within:shadow-[0_8px_24px_color-mix(in_srgb,var(--accent-shadow)_28%,transparent)]"
+    ? "min-[821px]:h-11 min-[821px]:rounded-(--control-radius-structured) min-[821px]:border-[color-mix(in_srgb,var(--text)_20%,transparent)] min-[821px]:bg-(--surface) min-[821px]:shadow-[0_8px_22px_color-mix(in_srgb,var(--accent-shadow)_18%,transparent)] min-[821px]:hover:border-[color-mix(in_srgb,var(--text)_32%,transparent)] min-[821px]:focus-within:border-(--accent) min-[821px]:focus-within:shadow-[0_8px_24px_color-mix(in_srgb,var(--accent-shadow)_28%,transparent)]"
     : "";
   const foregroundClass = overlay
     ? "text-white/80 hover:text-white active:text-white"
-    : "text-[var(--text)] hover:text-[var(--accent)] active:text-[var(--accent-hover)]";
+    : "text-(--text) hover:text-(--accent) active:text-(--accent-hover)";
   const fieldClass = overlay
     ? "bg-[rgba(5,10,20,0.58)] text-white focus-within:bg-[rgba(5,10,20,0.76)]"
-    : "bg-[color-mix(in_srgb,var(--surface)_72%,transparent)] text-[var(--muted)] focus-within:bg-[var(--surface-strong)]";
+    : "bg-[color-mix(in_srgb,var(--surface)_72%,transparent)] text-(--muted) focus-within:bg-(--surface-strong)";
   const inputClass = overlay
     ? "text-white caret-white placeholder:text-white/60"
-    : "text-[var(--text)] caret-[var(--text)] placeholder:text-[var(--muted)]";
+    : "text-(--text) caret-(--text) placeholder:text-(--muted)";
   const inputVisibilityClass = open
     ? "visible"
     : persistentDesktop
@@ -138,7 +138,7 @@ export function ExpandableSearch({
         {children}
         <button
           type="button"
-          className={`flex size-11 shrink-0 items-center justify-center !border-0 !bg-transparent !shadow-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--accent)] ${foregroundClass} ${persistentTriggerClass} ${triggerClassName}`.trim()}
+          className={`flex size-11 shrink-0 items-center justify-center border-0! bg-transparent! shadow-none! transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-(--accent) ${foregroundClass} ${persistentTriggerClass} ${triggerClassName}`.trim()}
           aria-label={label}
           aria-expanded={open}
           aria-controls={inputId}
@@ -160,7 +160,7 @@ export function ExpandableSearch({
       >
         <button
           type="button"
-          className={`flex size-10 shrink-0 items-center justify-center rounded-full !border-0 !bg-transparent !shadow-none transition-colors hover:bg-[color-mix(in_srgb,currentColor_10%,transparent)] active:bg-[color-mix(in_srgb,currentColor_18%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--accent)] ${foregroundClass} ${persistentBackClass} ${backButtonClassName}`.trim()}
+          className={`flex size-10 shrink-0 items-center justify-center rounded-full border-0! bg-transparent! shadow-none! transition-colors hover:bg-[color-mix(in_srgb,currentColor_10%,transparent)] active:bg-[color-mix(in_srgb,currentColor_18%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-(--accent) ${foregroundClass} ${persistentBackClass} ${backButtonClassName}`.trim()}
           aria-label={backLabel}
           title="Back"
           onClick={closeSearch}
@@ -190,7 +190,7 @@ export function ExpandableSearch({
             type="search"
             autoFocus={open}
             tabIndex={open || persistentDesktop ? 0 : -1}
-            className={`native-search-clear-hidden h-6 min-w-0 flex-1 appearance-none rounded-none bg-transparent !text-[15px] !leading-6 outline-none focus-visible:!outline-none ${inputClass} ${inputVisibilityClass} ${persistentDesktop ? "min-[821px]:h-auto min-[821px]:!text-[0.8rem] min-[821px]:!leading-5" : ""}`.trim()}
+            className={`native-search-clear-hidden h-6 min-w-0 flex-1 appearance-none rounded-none bg-transparent text-[15px]! leading-6! outline-none focus-visible:outline-none! ${inputClass} ${inputVisibilityClass} ${persistentDesktop ? "min-[821px]:h-auto min-[821px]:text-[0.8rem]! min-[821px]:leading-5!" : ""}`.trim()}
             data-fixed-radius
             value={value}
             onChange={(event) => onValueChange(event.target.value)}
@@ -210,7 +210,7 @@ export function ExpandableSearch({
           {value ? (
             <button
               type="button"
-              className={`flex size-10 shrink-0 items-center justify-center rounded-full border-0 bg-transparent transition-colors hover:bg-[color-mix(in_srgb,currentColor_10%,transparent)] active:bg-[color-mix(in_srgb,currentColor_18%,transparent)] focus-visible:outline-2 focus-visible:outline-[var(--accent)] ${overlay ? "text-white/72 hover:text-white" : "text-[var(--muted)] hover:text-[var(--text)]"} ${persistentDesktop ? "min-[821px]:size-auto min-[821px]:min-h-8 min-[821px]:min-w-8 min-[821px]:rounded-[var(--control-radius-structured)]" : ""}`.trim()}
+              className={`flex size-10 shrink-0 items-center justify-center rounded-full border-0 bg-transparent transition-colors hover:bg-[color-mix(in_srgb,currentColor_10%,transparent)] active:bg-[color-mix(in_srgb,currentColor_18%,transparent)] focus-visible:outline-2 focus-visible:outline-(--accent) ${overlay ? "text-white/72 hover:text-white" : "text-(--muted) hover:text-(--text)"} ${persistentDesktop ? "min-[821px]:size-auto min-[821px]:min-h-8 min-[821px]:min-w-8 min-[821px]:rounded-(--control-radius-structured)" : ""}`.trim()}
               aria-label="Clear search"
               title="Clear search"
               onClick={() => {

@@ -1,10 +1,10 @@
-import { ChatCenteredDots } from "@phosphor-icons/react/ChatCenteredDots";
-import { MagnifyingGlass } from "@phosphor-icons/react/MagnifyingGlass";
-import { Notepad } from "@phosphor-icons/react/Notepad";
-import { PaperPlaneTilt } from "@phosphor-icons/react/PaperPlaneTilt";
-import { Question } from "@phosphor-icons/react/Question";
-import { Toolbox } from "@phosphor-icons/react/Toolbox";
-import { X } from "@phosphor-icons/react/X";
+import { ChatCenteredDotsIcon as ChatCenteredDots } from "@phosphor-icons/react/ChatCenteredDots";
+import { MagnifyingGlassIcon as MagnifyingGlass } from "@phosphor-icons/react/MagnifyingGlass";
+import { NotepadIcon as Notepad } from "@phosphor-icons/react/Notepad";
+import { PaperPlaneTiltIcon as PaperPlaneTilt } from "@phosphor-icons/react/PaperPlaneTilt";
+import { QuestionIcon as Question } from "@phosphor-icons/react/Question";
+import { ToolboxIcon as Toolbox } from "@phosphor-icons/react/Toolbox";
+import { XIcon as X } from "@phosphor-icons/react/X";
 import React, {
   useEffect,
   useMemo,
@@ -229,7 +229,7 @@ export function Discussion({ persistenceKey }: DiscussionProps) {
 
   return (
     <section className="learning-discussion">
-      <div className="learning-discussion__header min-w-0 border-b border-[var(--border)]">
+      <div className="learning-discussion__header min-w-0 border-b border-(--border)">
         <div
           ref={tabListRef}
           className="page-tabs flex min-w-0 gap-1 overflow-x-auto"
@@ -251,7 +251,7 @@ export function Discussion({ persistenceKey }: DiscussionProps) {
               key={label}
               onClick={() => navigateTab(label)}
               onKeyDown={handleRovingTabKeyDown}
-              className={`lesson-tool-tab relative inline-flex h-12 shrink-0 items-center gap-2 px-3 text-[15px] transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--accent)] ${activeTab === label ? "is-active font-semibold" : "text-[var(--muted)] hover:text-[var(--text)]"}`}
+              className={`lesson-tool-tab relative inline-flex h-12 shrink-0 items-center gap-2 px-3 text-[15px] transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-(--accent) ${activeTab === label ? "is-active font-semibold" : "text-(--muted) hover:text-(--text)"}`}
             >
               <Icon
                 size={20}
@@ -297,7 +297,7 @@ export function Discussion({ persistenceKey }: DiscussionProps) {
                         if (event.key === "Enter") addComment();
                       }}
                       placeholder="Add a comment..."
-                      className="learning-comment-composer__input h-11 w-full bg-transparent px-1 outline-none placeholder:text-[var(--muted)]"
+                      className="learning-comment-composer__input h-11 w-full bg-transparent px-1 outline-none placeholder:text-(--muted)"
                     />
                   </label>
                   <button
@@ -363,7 +363,7 @@ export function Discussion({ persistenceKey }: DiscussionProps) {
               {notice && (
                 <p
                   role="status"
-                  className={`learning-comment-notice text-xs ${notice.includes("posted") ? "text-[var(--success)]" : "text-[var(--danger)]"}`}
+                  className={`learning-comment-notice text-xs ${notice.includes("posted") ? "text-(--success)" : "text-(--danger)"}`}
                 >
                   {notice}
                 </p>
@@ -382,7 +382,7 @@ export function Discussion({ persistenceKey }: DiscussionProps) {
                     <p className="font-semibold">
                       No comments match that search
                     </p>
-                    <p className="mt-1 text-sm text-[var(--muted)]">
+                    <p className="mt-1 text-sm text-(--muted)">
                       Try a name, topic, or phrase from the discussion.
                     </p>
                   </div>
@@ -391,13 +391,13 @@ export function Discussion({ persistenceKey }: DiscussionProps) {
             </div>
           ) : (
             <div
-              className="learning-supplemental-panel rounded-xl border border-[var(--border)] bg-[var(--surface)] px-6 text-center"
+              className="learning-supplemental-panel rounded-xl border border-(--border) bg-(--surface) px-6 text-center"
               data-learning-radius-surface
             >
               <h3 className="text-base font-semibold">
                 {supplementalContent[panelTab].title}
               </h3>
-              <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-[var(--muted)]">
+              <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-(--muted)">
                 {supplementalContent[panelTab].body}
               </p>
               <button
@@ -406,7 +406,7 @@ export function Discussion({ persistenceKey }: DiscussionProps) {
                 onClick={() =>
                   setNotice(`${supplementalContent[panelTab].action} selected.`)
                 }
-                className="mt-5 rounded-[9px] bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-[var(--on-accent)] transition hover:bg-[var(--accent-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+                className="mt-5 rounded-[9px] bg-(--accent) px-4 py-2.5 text-sm font-semibold text-(--on-accent) transition hover:bg-(--accent-hover) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent)"
               >
                 {supplementalContent[panelTab].action}
               </button>

@@ -17,22 +17,22 @@ import type {
   PointerEvent as ReactPointerEvent,
   ReactNode,
 } from "react";
-import { CaretDown } from "@phosphor-icons/react/CaretDown";
-import { Check } from "@phosphor-icons/react/Check";
-import { CornersIn } from "@phosphor-icons/react/CornersIn";
-import { CornersOut } from "@phosphor-icons/react/CornersOut";
-import { DotsThreeCircle } from "@phosphor-icons/react/DotsThreeCircle";
-import { Eye } from "@phosphor-icons/react/Eye";
-import { GearSix } from "@phosphor-icons/react/GearSix";
-import { Moon } from "@phosphor-icons/react/Moon";
-import { Palette } from "@phosphor-icons/react/Palette";
-import { Play } from "@phosphor-icons/react/Play";
-import { Question } from "@phosphor-icons/react/Question";
-import { SignOut } from "@phosphor-icons/react/SignOut";
-import { SidebarSimple } from "@phosphor-icons/react/SidebarSimple";
-import { Student } from "@phosphor-icons/react/Student";
-import { Sun } from "@phosphor-icons/react/Sun";
-import { Users } from "@phosphor-icons/react/Users";
+import { CaretDownIcon as CaretDown } from "@phosphor-icons/react/CaretDown";
+import { CheckIcon as Check } from "@phosphor-icons/react/Check";
+import { CornersInIcon as CornersIn } from "@phosphor-icons/react/CornersIn";
+import { CornersOutIcon as CornersOut } from "@phosphor-icons/react/CornersOut";
+import { DotsThreeCircleIcon as DotsThreeCircle } from "@phosphor-icons/react/DotsThreeCircle";
+import { EyeIcon as Eye } from "@phosphor-icons/react/Eye";
+import { GearSixIcon as GearSix } from "@phosphor-icons/react/GearSix";
+import { MoonIcon as Moon } from "@phosphor-icons/react/Moon";
+import { PaletteIcon as Palette } from "@phosphor-icons/react/Palette";
+import { PlayIcon as Play } from "@phosphor-icons/react/Play";
+import { QuestionIcon as Question } from "@phosphor-icons/react/Question";
+import { SignOutIcon as SignOut } from "@phosphor-icons/react/SignOut";
+import { SidebarSimpleIcon as SidebarSimple } from "@phosphor-icons/react/SidebarSimple";
+import { StudentIcon as Student } from "@phosphor-icons/react/Student";
+import { SunIcon as Sun } from "@phosphor-icons/react/Sun";
+import { UsersIcon as Users } from "@phosphor-icons/react/Users";
 import logoDarkSvg from "./assets/procodrr-logo-dark.svg?raw";
 import { StudentHome } from "./StudentHome";
 import type { LearningCourse } from "./StudentPages";
@@ -103,6 +103,7 @@ import type {
   SidebarPreferences,
 } from "./settings/settingsPreferences";
 import {
+  applySidebarGlowShapeSize,
   normalizeSidebarDockItems,
   normalizeSidebarDockOrder,
   normalizeSidebarGlow,
@@ -380,7 +381,6 @@ const APPEARANCE_LONG_PRESS_DURATION = 500;
 const APPEARANCE_LONG_PRESS_MOVE_TOLERANCE = 10;
 const NAVIGATION_LONG_PRESS_DURATION = 480;
 const NAVIGATION_LONG_PRESS_MOVE_TOLERANCE = 10;
-const SIDEBAR_COLLAPSE_DOUBLE_CLICK_DELAY = 280;
 const MOBILE_NAV_HIDE_SCROLL_THRESHOLD = 56;
 const MOBILE_NAV_SHOW_SCROLL_THRESHOLD = 18;
 const MOBILE_NAV_TOP_GUARD = 12;
@@ -768,7 +768,6 @@ export function CoursesPage({
   const dockLongPressRef = useRef<DockLongPress | null>(null);
   const dockLongPressConsumedUntilRef = useRef(0);
   const longPressAudioContextRef = useRef<AudioContext | null>(null);
-  const sidebarCollapseClickTimerRef = useRef<number | null>(null);
   const sidebarTooltipTimerRef = useRef<number | null>(null);
   const usesMacShortcutStyle = shortcutPlatform === "mac";
   const primaryShortcutModifier = usesMacShortcutStyle ? "Meta" : "Control";
@@ -858,9 +857,6 @@ export function CoursesPage({
       const navigationDrag = navigationDragRef.current;
       if (navigationDrag?.timer != null) {
         window.clearTimeout(navigationDrag.timer);
-      }
-      if (sidebarCollapseClickTimerRef.current !== null) {
-        window.clearTimeout(sidebarCollapseClickTimerRef.current);
       }
       void longPressAudioContextRef.current?.close();
     },
@@ -991,6 +987,7 @@ export function CoursesPage({
       next.headerLayout === "fixed" ? "fixed" : "inline";
     root.dataset.sidebarGlow = normalizeSidebarGlow(next.glowPalette);
     root.dataset.sidebarGlowShape = normalizeSidebarGlowShape(next.glowShape);
+    applySidebarGlowShapeSize(next.glowShapeSize, root);
     const nextSidebarBackdropBlur = normalizeSidebarGlowBlur(next.glowBlur);
     root.dataset.sidebarBackdropBlur =
       nextSidebarBackdropBlur === 0 ? "off" : "on";
@@ -1707,6 +1704,22 @@ export function CoursesPage({
     compactNavigation || coarseNavigationInput;
   const { collapsed: sidebarCollapsed, hidden: sidebarHidden } =
     getSidebarPresentation(sidebarMode);
+  const sidebarControlAction = sidebarHidden
+    ? "Pin navigation"
+    : sidebarCollapsed
+      ? "Expand navigation"
+      : "Collapse navigation";
+  const sidebarControlTooltipAction = sidebarHidden
+    ? "Pin"
+    : sidebarCollapsed
+      ? "Expand"
+      : "Collapse";
+  const sidebarControlTitle = showKeyboardShortcuts
+    ? `${sidebarControlTooltipAction} (${sidebarShortcutTitle})`
+    : sidebarControlTooltipAction;
+  const sidebarBrandTitle = sidebarHidden
+    ? "Double-click to pin sidebar"
+    : "Double-click to float sidebar";
   const appearanceControlsHorizontal =
     !sidebarCollapsed ||
     (sidebarResizing &&
@@ -2718,47 +2731,25 @@ export function CoursesPage({
     setEdgeSidebarOpen(false);
   };
 
-  const floatSidebarFromCollapseControl = () => {
-    if (sidebarCollapseClickTimerRef.current !== null) {
-      window.clearTimeout(sidebarCollapseClickTimerRef.current);
-      sidebarCollapseClickTimerRef.current = null;
-    }
-    setSidebarMode("hidden");
-    setPaletteMenu(false);
-    setEdgeSidebarOpen(true);
-  };
-
-  const pinSidebarFromCollapseControl = () => {
-    if (sidebarCollapseClickTimerRef.current !== null) {
-      window.clearTimeout(sidebarCollapseClickTimerRef.current);
-      sidebarCollapseClickTimerRef.current = null;
-    }
-    setSidebarMode("expanded");
-    setPaletteMenu(false);
-    setEdgeSidebarOpen(false);
-  };
-
-  const handleSidebarCollapseClick = (
-    event: ReactMouseEvent<HTMLButtonElement>,
+  const handleSidebarBrandDoubleClick = (
+    event: ReactMouseEvent<HTMLDivElement>,
   ) => {
-    if (event.detail === 0) {
-      toggleSidebarWidth();
-      return;
-    }
+    if ((event.target as Element).closest(".sidebar-collapse")) return;
+    const shouldFloat = !sidebarHidden;
+    setSidebarMode(shouldFloat ? "hidden" : "expanded");
+    setPaletteMenu(false);
+    setEdgeSidebarOpen(shouldFloat);
+  };
 
-    if (sidebarCollapseClickTimerRef.current !== null) {
-      if (sidebarHidden) {
-        pinSidebarFromCollapseControl();
-      } else {
-        floatSidebarFromCollapseControl();
-      }
-      return;
+  const preventSidebarBrandTextSelection = (
+    event: ReactMouseEvent<HTMLDivElement>,
+  ) => {
+    if (
+      event.detail > 1 &&
+      !(event.target as Element).closest(".sidebar-collapse")
+    ) {
+      event.preventDefault();
     }
-
-    sidebarCollapseClickTimerRef.current = window.setTimeout(() => {
-      sidebarCollapseClickTimerRef.current = null;
-      toggleSidebarWidth();
-    }, SIDEBAR_COLLAPSE_DOUBLE_CLICK_DELAY);
   };
 
   const mobileNavigation = navigation.slice(0, 4);
@@ -2855,7 +2846,12 @@ export function CoursesPage({
                 }}
               />
             )}
-            <div className="courses-sidebar__brand">
+            <div
+              className="courses-sidebar__brand"
+              title={sidebarBrandTitle}
+              onMouseDown={preventSidebarBrandTextSelection}
+              onDoubleClick={handleSidebarBrandDoubleClick}
+            >
               <span
                 className="courses-logo-clip"
                 role="img"
@@ -2865,23 +2861,11 @@ export function CoursesPage({
               <button
                 type="button"
                 className="sidebar-collapse"
-                aria-label={
-                  sidebarHidden
-                    ? "Pin navigation"
-                    : sidebarCollapsed
-                      ? "Expand navigation"
-                      : "Collapse navigation"
-                }
+                aria-label={sidebarControlAction}
                 aria-pressed={sidebarCollapsed}
                 aria-keyshortcuts={`${primaryShortcutModifier}+B`}
-                title={
-                  sidebarHidden
-                    ? "Pin navigation"
-                    : showKeyboardShortcuts
-                      ? `${sidebarCollapsed ? "Expand" : "Collapse"} navigation (${sidebarShortcutTitle})`
-                      : `${sidebarCollapsed ? "Expand" : "Collapse"} navigation`
-                }
-                onClick={handleSidebarCollapseClick}
+                title={sidebarControlTitle}
+                onClick={toggleSidebarWidth}
               >
                 <span className="sidebar-collapse__asset" aria-hidden="true">
                   <SidebarToggleIcon

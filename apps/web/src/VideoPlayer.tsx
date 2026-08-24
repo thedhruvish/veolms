@@ -1,21 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
-import { CaretLeft } from "@phosphor-icons/react/CaretLeft";
-import { CaretRight } from "@phosphor-icons/react/CaretRight";
-import { Check } from "@phosphor-icons/react/Check";
-import { ClosedCaptioning } from "@phosphor-icons/react/ClosedCaptioning";
-import { CornersOut } from "@phosphor-icons/react/CornersOut";
-import { Gauge } from "@phosphor-icons/react/Gauge";
-import { GearSix } from "@phosphor-icons/react/GearSix";
-import { Monitor } from "@phosphor-icons/react/Monitor";
-import { Pause } from "@phosphor-icons/react/Pause";
-import { PictureInPicture } from "@phosphor-icons/react/PictureInPicture";
-import { Play } from "@phosphor-icons/react/Play";
-import { Rectangle } from "@phosphor-icons/react/Rectangle";
-import { Sparkle } from "@phosphor-icons/react/Sparkle";
-import { SpeakerHigh } from "@phosphor-icons/react/SpeakerHigh";
-import { SpeakerSlash } from "@phosphor-icons/react/SpeakerSlash";
+import { CaretLeftIcon as CaretLeft } from "@phosphor-icons/react/CaretLeft";
+import { CaretRightIcon as CaretRight } from "@phosphor-icons/react/CaretRight";
+import { CheckIcon as Check } from "@phosphor-icons/react/Check";
+import { ClosedCaptioningIcon as ClosedCaptioning } from "@phosphor-icons/react/ClosedCaptioning";
+import { CornersOutIcon as CornersOut } from "@phosphor-icons/react/CornersOut";
+import { GaugeIcon as Gauge } from "@phosphor-icons/react/Gauge";
+import { GearSixIcon as GearSix } from "@phosphor-icons/react/GearSix";
+import { MonitorIcon as Monitor } from "@phosphor-icons/react/Monitor";
+import { PauseIcon as Pause } from "@phosphor-icons/react/Pause";
+import { PictureInPictureIcon as PictureInPicture } from "@phosphor-icons/react/PictureInPicture";
+import { PlayIcon as Play } from "@phosphor-icons/react/Play";
+import { RectangleIcon as Rectangle } from "@phosphor-icons/react/Rectangle";
+import { SparkleIcon as Sparkle } from "@phosphor-icons/react/Sparkle";
+import { SpeakerHighIcon as SpeakerHigh } from "@phosphor-icons/react/SpeakerHigh";
+import { SpeakerSlashIcon as SpeakerSlash } from "@phosphor-icons/react/SpeakerSlash";
 import { AppSlider } from "./AppSlider";
 import {
   getDocumentFullscreenElement,
@@ -821,7 +821,7 @@ export function VideoPlayer({
           event.currentTarget.focus({ preventScroll: true });
           runPlayerAction(togglePlay);
         }}
-        className={`youtube-player group relative z-10 w-full overflow-hidden rounded-[13px] border border-[var(--learning-panel-border)] bg-black shadow-[0_18px_50px_rgba(0,0,0,.2)] focus-visible:outline-4 focus-visible:outline-[var(--accent)] focus-visible:outline-offset-2 ${theaterMode ? "lg:h-[calc(100vh-94px)] lg:min-h-[420px]" : ""} ${playing && !controlsAreVisible ? "cursor-none" : ""}`}
+        className={`youtube-player group relative z-10 w-full overflow-hidden rounded-[13px] border border-(--learning-panel-border) bg-black shadow-[0_18px_50px_rgba(0,0,0,.2)] focus-visible:outline-4 focus-visible:outline-(--accent) focus-visible:outline-offset-2 ${theaterMode ? "lg:h-[calc(100vh-94px)] lg:min-h-105" : ""} ${playing && !controlsAreVisible ? "cursor-none" : ""}`}
       >
         <video
           ref={videoRef}
@@ -921,7 +921,7 @@ export function VideoPlayer({
             frameRef.current?.focus({ preventScroll: true });
             runPlayerAction(togglePlay);
           }}
-          className={`absolute left-1/2 top-1/2 z-10 flex size-[68px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/65 text-white shadow-2xl transition duration-200 hover:bg-black/80 focus-visible:outline-4 focus-visible:outline-white/80 ${playing ? "pointer-events-none scale-90 opacity-0" : "opacity-100"}`}
+          className={`absolute left-1/2 top-1/2 z-10 flex size-17 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/65 text-white shadow-2xl transition duration-200 hover:bg-black/80 focus-visible:outline-4 focus-visible:outline-white/80 ${playing ? "pointer-events-none scale-90 opacity-0" : "opacity-100"}`}
         >
           <Play size={34} weight="fill" className="translate-x-0.5" />
         </button>

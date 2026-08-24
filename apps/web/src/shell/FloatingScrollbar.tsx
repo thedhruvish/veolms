@@ -390,14 +390,22 @@ export function FloatingScrollbar({
     );
   };
 
-  const endDrag = (event: ReactPointerEvent<HTMLSpanElement>) => {
+  const endDrag = (
+    event: ReactPointerEvent<HTMLSpanElement>,
+    cancelled = false,
+  ) => {
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     const scrollport = scrollportRef.current;
-    if (drag.mode === "pending" && !drag.clickedThumb && scrollport) {
+    if (
+      !cancelled &&
+      drag.mode === "pending" &&
+      !drag.clickedThumb &&
+      scrollport
+    ) {
       scrollport.scrollTop = getTrackScrollTop(drag, drag.startClientY);
     } else if (drag.mode === "resize") {
-      dispatchHorizontalDrag("end", event);
+      dispatchHorizontalDrag(cancelled ? "cancel" : "end", event);
     }
     dragRef.current = null;
     event.currentTarget.classList.remove("is-dragging");
@@ -452,7 +460,7 @@ export function FloatingScrollbar({
       onPointerDown={beginDrag}
       onPointerMove={dragThumb}
       onPointerUp={endDrag}
-      onPointerCancel={endDrag}
+      onPointerCancel={(event) => endDrag(event, true)}
       onLostPointerCapture={(event) => {
         if (dragRef.current?.mode === "resize") {
           dispatchHorizontalDrag("cancel", event);

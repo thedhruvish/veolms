@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { BookOpen } from "@phosphor-icons/react/BookOpen";
-import { CheckCircle } from "@phosphor-icons/react/CheckCircle";
-import { ClosedCaptioning } from "@phosphor-icons/react/ClosedCaptioning";
-import { PlayCircle } from "@phosphor-icons/react/PlayCircle";
-import { Target } from "@phosphor-icons/react/Target";
+import { BookOpenIcon as BookOpen } from "@phosphor-icons/react/BookOpen";
+import { CheckCircleIcon as CheckCircle } from "@phosphor-icons/react/CheckCircle";
+import { ClosedCaptioningIcon as ClosedCaptioning } from "@phosphor-icons/react/ClosedCaptioning";
+import { PlayCircleIcon as PlayCircle } from "@phosphor-icons/react/PlayCircle";
+import { TargetIcon as Target } from "@phosphor-icons/react/Target";
 import { ThemedSelect } from "../ThemedSelect";
 import { LearningSelectRow, LearningToggleRow } from "./SettingsControls";
 import {
