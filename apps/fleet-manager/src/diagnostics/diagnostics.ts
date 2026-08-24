@@ -1,16 +1,15 @@
-import type { Kysely } from "kysely";
-import type { Database } from "@veolms/database";
+import type { Kysely, Selectable } from "kysely";
+import type { Database, VideoJobTable } from "@veolms/database";
 import type {
   FleetEvent,
   FleetProvider,
-  Job,
+  ProviderType,
   WorkerHandle,
-  WorkerSpec,
   WorkerStatus,
 } from "@veolms/fleet-types";
 
 export interface JobDiagnostics {
-  readonly job: Job;
+  readonly job: Selectable<VideoJobTable>;
   readonly worker: WorkerHandle | null;
   readonly events: readonly FleetEvent[];
   readonly progressHistory: readonly {
@@ -35,47 +34,30 @@ export async function getJobDiagnostics(
   db: Kysely<Database>,
   jobId: string,
 ): Promise<JobDiagnostics | null> {
-  const jobRow = await db
-    .selectFrom("jobs")
+  const job = await db
+    .selectFrom("video_jobs")
     .selectAll()
     .where("id", "=", jobId)
     .executeTakeFirst();
 
-  if (!jobRow) {
+  if (!job) {
     return null;
   }
 
-  const job: Job = {
-    id: jobRow.id,
-    status: jobRow.status,
-    videoKey: jobRow.video_key,
-    outputPrefix: jobRow.output_prefix,
-    videoSize: jobRow.video_size,
-    qualities: jobRow.qualities,
-    workerId: jobRow.worker_id,
-    attempts: jobRow.attempts,
-    maxAttempts: jobRow.max_attempts,
-    errorMessage: jobRow.error_message,
-    createdAt: new Date(jobRow.created_at),
-    startedAt: jobRow.started_at ? new Date(jobRow.started_at) : null,
-    completedAt: jobRow.completed_at ? new Date(jobRow.completed_at) : null,
-    failedAt: jobRow.failed_at ? new Date(jobRow.failed_at) : null,
-    updatedAt: new Date(jobRow.updated_at),
-  };
 
   let worker: WorkerHandle | null = null;
-  if (job.workerId) {
+  if (job.worker_id) {
     const workerRow = await db
       .selectFrom("workers")
       .selectAll()
-      .where("id", "=", job.workerId)
+      .where("id", "=", job.worker_id)
       .executeTakeFirst();
 
     if (workerRow) {
       worker = {
         id: workerRow.id,
         providerWorkerId: workerRow.provider_worker_id,
-        provider: workerRow.provider as "local" | "aws",
+        provider: workerRow.provider as ProviderType,
         status: workerRow.status as WorkerStatus,
         privateIp: null,
         publicIp: null,
@@ -111,11 +93,11 @@ export async function getJobDiagnostics(
     updatedAt: Date;
   }[] = [];
 
-  if (job.workerId) {
+  if (job.worker_id) {
     const monitorRows = await db
       .selectFrom("worker_monitoring")
       .selectAll()
-      .where("worker_id", "=", job.workerId)
+      .where("worker_id", "=", job.worker_id)
       .orderBy("updated_at", "asc")
       .execute();
 
@@ -140,7 +122,7 @@ export async function getFleetHealthSummary(
   db: Kysely<Database>,
   heartbeatTimeoutMs: number = 90000,
 ): Promise<FleetHealthSummary> {
-  const jobs = await db.selectFrom("jobs").select(["status"]).execute();
+  const jobs = await db.selectFrom("video_jobs").select(["status"]).execute();
 
   const queuedJobsCount = jobs.filter((j) => j.status === "QUEUED").length;
   const processingJobsCount = jobs.filter(

@@ -1,19 +1,12 @@
 import { z } from "zod";
+import {
+  VIDEO_QUALITY_LEVELS,
+  videoQualityLevelSchema,
+  type VideoQualityLevel,
+} from "@veolms/contracts";
 
-export const VIDEO_QUALITY_LEVELS = [
-  "2160p",
-  "1440p",
-  "1080p",
-  "720p",
-  "480p",
-  "360p",
-  "240p",
-  "144p",
-] as const;
-
-export type VideoQualityLevel = (typeof VIDEO_QUALITY_LEVELS)[number];
-
-export const videoQualityLevelSchema = z.enum(VIDEO_QUALITY_LEVELS);
+export { VIDEO_QUALITY_LEVELS, videoQualityLevelSchema };
+export type { VideoQualityLevel };
 
 export const VIDEO_CODECS = ["h264", "h265", "av1"] as const;
 export type VideoCodec = (typeof VIDEO_CODECS)[number];

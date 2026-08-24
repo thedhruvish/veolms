@@ -1,11 +1,10 @@
 import { randomUUID } from "node:crypto";
-import type { Kysely } from "kysely";
-import type { Database } from "@veolms/database";
+import type { Kysely, Selectable } from "kysely";
+import type { Database, VideoJobTable } from "@veolms/database";
 import {
   estimateJobHardware,
   type FleetEventType,
   type FleetProvider,
-  type Job,
   type VideoQualityLevel,
   type WorkerHandle,
   type WorkerSpec,
@@ -25,9 +24,9 @@ const ACTIVE_WORKER_STATUSES = [
 ] as const;
 
 export interface WorkerManager {
-  calculateWorkerSpec(job: Job): WorkerSpec;
+  calculateWorkerSpec(job: Selectable<VideoJobTable>): WorkerSpec;
   countActiveWorkers(): Promise<number>;
-  provisionWorker(job: Job): Promise<WorkerHandle>;
+  provisionWorker(job: Selectable<VideoJobTable>): Promise<WorkerHandle>;
   terminateWorker(workerId: string): Promise<void>;
   recordEvent(
     event: FleetEventType,
@@ -38,10 +37,10 @@ export interface WorkerManager {
 }
 
 export function calculateWorkerSpec(
-  job: { videoSize: number; qualities: readonly VideoQualityLevel[] },
+  job: { id?: string; video_size: number; qualities: readonly VideoQualityLevel[] },
   options: { databaseUrl?: string; jobId?: string } = {},
 ): WorkerSpec {
-  const hw = estimateJobHardware(job.videoSize, job.qualities);
+  const hw = estimateJobHardware(job.video_size, job.qualities);
 
   return {
     cpu: hw.minCpu,
@@ -50,7 +49,7 @@ export function calculateWorkerSpec(
     storageGb: hw.storageGb,
     region: "local",
     environmentVariables: {
-      ...(options.jobId ? { JOB_ID: options.jobId } : {}),
+      ...(options.jobId ?? job.id ? { JOB_ID: options.jobId ?? job.id } : {}),
       ...(options.databaseUrl ? { DATABASE_URL: options.databaseUrl } : {}),
     },
   };
@@ -90,7 +89,7 @@ export function createWorkerManager(options: {
   return {
     recordEvent,
 
-    calculateWorkerSpec(job: Job): WorkerSpec {
+    calculateWorkerSpec(job: Selectable<VideoJobTable>): WorkerSpec {
       return calculateWorkerSpec(job, {
         databaseUrl: config.DATABASE_URL,
         jobId: job.id,
@@ -106,16 +105,16 @@ export function createWorkerManager(options: {
       return Number(result?.count ?? 0);
     },
 
-    async provisionWorker(job: Job): Promise<WorkerHandle> {
+    async provisionWorker(job: Selectable<VideoJobTable>): Promise<WorkerHandle> {
       const workerId = randomUUID();
 
-      if (job.videoSize <= 0) {
+      if (job.video_size <= 0) {
         // Falls back to baseline (qualities-only) sizing in
         // estimateJobHardware() — worth surfacing here since a large video
         // queued without a real size would otherwise be silently
         // under-provisioned instead of failing loudly.
         console.warn(
-          `[fleet-manager] Job ${job.id} has no video_size (${job.videoSize}) — sizing worker from qualities alone.`,
+          `[fleet-manager] Job ${job.id} has no video_size (${job.video_size}) — sizing worker from qualities alone.`,
         );
       }
 
@@ -170,7 +169,7 @@ export function createWorkerManager(options: {
 
       // 4. Initialize worker_monitoring schedule
       const estimatedDuration = estimateJobHardware(
-        job.videoSize,
+        job.video_size,
         job.qualities,
       ).estimatedDurationSeconds;
       const initialCheck = scheduler.calculateNextCheck({

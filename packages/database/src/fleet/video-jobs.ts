@@ -1,6 +1,6 @@
 import { sql, type Kysely, type Selectable } from "kysely";
 import type { Database } from "../schema.ts";
-import type { JobTable } from "./schema.ts";
+import type { VideoJobTable } from "./schema.ts";
 
 /**
  * Atomically claims the oldest QUEUED job and marks it PROCESSING.
@@ -11,10 +11,10 @@ import type { JobTable } from "./schema.ts";
  * transaction and only jobs that fit that worker's recorded capabilities are
  * considered.
  */
-export async function claimNextQueuedJob(
+export async function claimNextQueuedVideoJob(
   db: Kysely<Database>,
   workerId?: string,
-): Promise<Selectable<JobTable> | null> {
+): Promise<Selectable<VideoJobTable> | null> {
   return await db.transaction().execute(async (trx) => {
     const worker = workerId
       ? await trx
@@ -34,7 +34,7 @@ export async function claimNextQueuedJob(
     }
 
     let query = trx
-      .selectFrom("jobs")
+      .selectFrom("video_jobs")
       .selectAll()
       .where("status", "=", "QUEUED")
       .orderBy("created_at", "asc");
@@ -68,7 +68,7 @@ export async function claimNextQueuedJob(
             END <= ${worker.storage_gb}
           `,
         )
-        .where(sql<boolean>`${worker.architecture} in ('arm64', 'x86_64')`);
+        .where(sql<boolean>`${worker.architecture} in ('ARM64', 'X86_64')`);
     }
 
     const row = await query
@@ -82,7 +82,7 @@ export async function claimNextQueuedJob(
     }
 
     await trx
-      .updateTable("jobs")
+      .updateTable("video_jobs")
       .set({
         status: "PROCESSING",
         ...(worker ? { worker_id: worker.id } : {}),
@@ -107,3 +107,4 @@ export async function claimNextQueuedJob(
     return row;
   });
 }
+

@@ -103,7 +103,7 @@ function buildFakeDb(options: {
         throw new Error(`trx: unexpected selectFrom table ${table}`);
       },
       updateTable(table: string) {
-        if (table === "jobs") {
+        if (table === "video_jobs") {
           return makeChain(
             () => ({ numUpdatedRows: 1n }),
             (payload) => jobsSetCalls.push(payload),
@@ -122,7 +122,7 @@ function buildFakeDb(options: {
 
   return {
     selectFrom(table: string) {
-      if (table === "jobs") return makeChain(() => jobRow);
+      if (table === "video_jobs") return makeChain(() => jobRow);
       throw new Error(`db: unexpected selectFrom ${table}`);
     },
     updateTable(table: string) {
@@ -191,7 +191,7 @@ describe("executeTranscodeJob — claim and retry logic", () => {
         cpu: 1,
         memory_mb: 1024,
         storage_gb: 10,
-        architecture: "arm64",
+        architecture: "ARM64",
       },
       jobsSetCalls,
       workersSetCalls,
@@ -238,7 +238,7 @@ describe("executeTranscodeJob — claim and retry logic", () => {
         cpu: 8,
         memory_mb: 16384,
         storage_gb: 200,
-        architecture: "arm64",
+        architecture: "ARM64",
       },
       workerMonitoringThrows: true,
       jobsSetCalls,
@@ -296,7 +296,7 @@ describe("executeTranscodeJob — claim and retry logic", () => {
         cpu: 8,
         memory_mb: 16384,
         storage_gb: 200,
-        architecture: "arm64",
+        architecture: "ARM64",
       },
       workerMonitoringThrows: true,
       jobsSetCalls,
@@ -346,7 +346,7 @@ describe("executeTranscodeJob — claim and retry logic", () => {
         cpu: 4,
         memory_mb: 8192,
         storage_gb: 50,
-        architecture: "x86_64",
+        architecture: "X86_64",
       },
       workerMonitoringThrows: true,
       jobsSetCalls,

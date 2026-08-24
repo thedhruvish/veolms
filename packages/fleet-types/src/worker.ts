@@ -1,27 +1,25 @@
 import { z } from "zod";
+import {
+  ARCHITECTURES,
+  architectureSchema,
+  PROVIDER_TYPES,
+  providerTypeSchema,
+  WORKER_STATUSES,
+  workerStatusSchema,
+  type Architecture,
+  type ProviderType,
+  type WorkerStatus,
+} from "@veolms/contracts";
 
-export const WORKER_STATUSES = [
-  "PENDING",
-  "PROVISIONING",
-  "STARTING",
-  "READY",
-  "PROCESSING",
-  "COMPLETED",
-  "FAILED",
-  "TERMINATING",
-  "TERMINATED",
-] as const;
-
-export type WorkerStatus = (typeof WORKER_STATUSES)[number];
-export const workerStatusSchema = z.enum(WORKER_STATUSES);
-
-export const ARCHITECTURES = ["arm64", "x86_64"] as const;
-export type Architecture = (typeof ARCHITECTURES)[number];
-export const architectureSchema = z.enum(ARCHITECTURES);
-
-export const PROVIDER_TYPES = ["local", "aws"] as const;
-export type ProviderType = (typeof PROVIDER_TYPES)[number];
-export const providerTypeSchema = z.enum(PROVIDER_TYPES);
+export {
+  ARCHITECTURES,
+  architectureSchema,
+  PROVIDER_TYPES,
+  providerTypeSchema,
+  WORKER_STATUSES,
+  workerStatusSchema,
+};
+export type { Architecture, ProviderType, WorkerStatus };
 
 export interface WorkerSpec {
   cpu: number;

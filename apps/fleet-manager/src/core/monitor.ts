@@ -2,7 +2,7 @@ import { sql, type Kysely } from "kysely";
 import type { Database } from "@veolms/database";
 import type { FleetProvider } from "@veolms/fleet-types";
 import type { FleetManagerConfig } from "@veolms/config";
-import type { JobManager } from "./job-manager.ts";
+import type { JobManager } from "./video-job-manager.ts";
 import type { Scheduler } from "./scheduler.ts";
 import type { WorkerManager } from "./worker-manager.ts";
 
@@ -28,7 +28,7 @@ export function createMonitor(options: {
       const cutoff = new Date(Date.now() - timeoutMs);
 
       const orphanedJobs = await db
-        .selectFrom("jobs")
+        .selectFrom("video_jobs")
         .select(["id", "video_key", "started_at"])
         .where("status", "=", "PROCESSING")
         .where("worker_id", "is", null)
@@ -125,7 +125,7 @@ export function createMonitor(options: {
       const dueMonitoring = await db
         .selectFrom("worker_monitoring")
         .innerJoin("workers", "workers.id", "worker_monitoring.worker_id")
-        .leftJoin("jobs", "jobs.id", "workers.job_id")
+        .leftJoin("video_jobs", "video_jobs.id", "workers.job_id")
         .select([
           "worker_monitoring.worker_id",
           "worker_monitoring.estimated_duration_sec",
@@ -134,7 +134,7 @@ export function createMonitor(options: {
           "worker_monitoring.check_interval_sec",
           "workers.status as worker_status",
           "workers.job_id",
-          "jobs.status as job_status",
+          "video_jobs.status as job_status",
         ])
         .where("worker_monitoring.next_check_at", "<=", now)
         .where("workers.status", "not in", ["TERMINATING", "TERMINATED"])

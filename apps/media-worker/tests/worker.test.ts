@@ -213,7 +213,7 @@ describe("pollForNextJob", () => {
       cpu: 4,
       memory_mb: 8192,
       storage_gb: 100,
-      architecture: "arm64",
+      architecture: "ARM64",
     };
     const jobRow = { id: "job-1", status: "QUEUED" };
 
@@ -224,7 +224,7 @@ describe("pollForNextJob", () => {
             const trx = {
               selectFrom(table: string) {
                 if (table === "workers") return makeChain(() => workerRow);
-                if (table === "jobs") return makeChain(() => jobRow);
+                if (table === "video_jobs") return makeChain(() => jobRow);
                 throw new Error(`unexpected table ${table}`);
               },
               updateTable() {
@@ -259,7 +259,7 @@ describe("pollForNextJob", () => {
       cpu: 4,
       memory_mb: 8192,
       storage_gb: 100,
-      architecture: "arm64",
+      architecture: "ARM64",
     };
 
     const db = {
@@ -270,7 +270,7 @@ describe("pollForNextJob", () => {
             const trx = {
               selectFrom(table: string) {
                 if (table === "workers") return makeChain(() => workerRow);
-                if (table === "jobs") return makeChain(() => undefined);
+                if (table === "video_jobs") return makeChain(() => undefined);
                 throw new Error(`unexpected table ${table}`);
               },
               updateTable() {
@@ -311,7 +311,7 @@ describe("pollForNextJob", () => {
       cpu: 4,
       memory_mb: 8192,
       storage_gb: 100,
-      architecture: "arm64",
+      architecture: "ARM64",
     };
 
     const db = {
@@ -322,7 +322,7 @@ describe("pollForNextJob", () => {
             const trx = {
               selectFrom(table: string) {
                 if (table === "workers") return makeChain(() => workerRow);
-                if (table === "jobs") return makeChain(() => undefined);
+                if (table === "video_jobs") return makeChain(() => undefined);
                 throw new Error(`unexpected table ${table}`);
               },
               updateTable() {
@@ -374,7 +374,7 @@ describe("pollForNextJob", () => {
             const trx = {
               selectFrom(table: string) {
                 if (table === "workers") return makeChain(() => undefined); // claimNextQueuedJob fails because worker is not READY
-                if (table === "jobs") return makeChain(() => undefined);
+                if (table === "video_jobs") return makeChain(() => undefined);
                 throw new Error(`unexpected table ${table}`);
               },
             };

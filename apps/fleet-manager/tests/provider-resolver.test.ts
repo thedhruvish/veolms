@@ -28,7 +28,7 @@ describe("Pluggable Provider Resolver", () => {
     const config = loadFleetManagerConfig({
       FLEET_PROVIDER: "aws",
     });
-    assert.equal(config.PROVIDER, "aws");
+    assert.equal(config.PROVIDER, "AWS");
   });
 
   it("should prioritize explicit PROVIDER over FLEET_PROVIDER", () => {
@@ -36,6 +36,6 @@ describe("Pluggable Provider Resolver", () => {
       PROVIDER: "aws",
       FLEET_PROVIDER: "local",
     });
-    assert.equal(config.PROVIDER, "aws");
+    assert.equal(config.PROVIDER, "AWS");
   });
 });

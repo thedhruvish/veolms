@@ -2,7 +2,7 @@ import { runCli } from "./cli.ts";
 
 export * from "./cli.ts";
 export * from "./core/fleet-manager.ts";
-export * from "./core/job-manager.ts";
+export * from "./core/video-job-manager.ts";
 export * from "./core/monitor.ts";
 export * from "./core/scheduler.ts";
 export * from "./core/worker-manager.ts";

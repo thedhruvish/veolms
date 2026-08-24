@@ -1,21 +1,15 @@
+import type {
+  VideoJobEvent,
+  LambdaResponse,
+} from "@veolms/contracts";
 import { createDatabase } from "../../database/src/index.ts";
 import { createFleetManager } from "../../../apps/fleet-manager/src/core/fleet-manager.ts";
 import { loadFleetManagerConfig } from "@veolms/config";
 import { loadAwsProviderConfig } from "./config.ts";
 import { createAwsProvider } from "./provider.ts";
 
-export interface LambdaEvent {
-  action?: "tick" | "claim" | "monitor" | "queue";
-  [key: string]: unknown;
-}
-
-export interface LambdaResponse {
-  statusCode: number;
-  body: string;
-}
-
 export async function handler(
-  event: LambdaEvent = {},
+  event: VideoJobEvent = {},
 ): Promise<LambdaResponse> {
   console.info(
     "[lambda] VeoLMS Fleet Manager Lambda invoked with event:",
@@ -64,8 +58,36 @@ export async function handler(
   });
 
   try {
+    // If action is queue and video parameters are provided, ensure job is queued (idempotent)
+    if (event.action === "QUEUE" && event.videoKey) {
+      const videoKey = event.videoKey;
+      const videoId = event.videoId ?? event.jobId ?? videoKey;
+      const outputPrefix = event.outputPrefix ?? `transcoded/${videoId}`;
+      const qualities = event.qualities ?? ["1080p", "720p", "480p", "360p"];
+
+      await fleet.queueJob({
+        jobId: event.jobId,
+        videoId,
+        videoKey,
+        outputPrefix,
+        qualities,
+        videoSize: event.videoSize ? Number(event.videoSize) : undefined,
+      });
+    }
+
     // 1. Run monitoring cycle first to clean up stale/timed-out workers and free capacity
     const monitorResult = await fleet.runMonitoringCycle();
+
+    if (event.action === "MONITOR") {
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          success: true,
+          monitorResult,
+          timestamp: new Date().toISOString(),
+        }),
+      };
+    }
 
     // 2. Claim and provision next queued job
     const claimed = await fleet.processNextJob();

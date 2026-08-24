@@ -1,5 +1,5 @@
 export * from "./quality.ts";
-export * from "./job.ts";
+export * from "./video-job.ts";
 export * from "./worker.ts";
 export * from "./monitoring.ts";
 export * from "./provider.ts";

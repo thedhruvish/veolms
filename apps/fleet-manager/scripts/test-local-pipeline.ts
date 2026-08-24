@@ -68,19 +68,20 @@ async function main() {
 
   // Cancel any stale pending jobs from prior runs
   await db
-    .updateTable("jobs")
+    .updateTable("video_jobs")
     .set({ status: "CANCELLED", updated_at: new Date() })
     .where("status", "in", ["QUEUED", "PROCESSING"])
     .execute();
 
   // Step 1: Insert job into PostgreSQL
   console.info(
-    "[1/4] User queues a new transcode task directly into PostgreSQL `jobs` table...",
+    "[1/4] User queues a new transcode task directly into PostgreSQL `video_jobs` table...",
   );
   await db
-    .insertInto("jobs")
+    .insertInto("video_jobs")
     .values({
       id: jobId,
+      video_id: jobId,
       status: "QUEUED",
       video_key: videoKey,
       output_prefix: outputPrefix,
@@ -115,7 +116,7 @@ async function main() {
     await new Promise((res) => setTimeout(res, 2000));
 
     const currentJob = await db
-      .selectFrom("jobs")
+      .selectFrom("video_jobs")
       .select(["status", "worker_id", "error_message"])
       .where("id", "=", jobId)
       .executeTakeFirst();

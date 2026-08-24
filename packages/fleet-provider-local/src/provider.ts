@@ -55,7 +55,7 @@ export function createLocalProvider(
   const gracePeriodMs = config.gracePeriodMs ?? 5000;
 
   return {
-    name: "local",
+    name: "LOCAL",
 
     async createWorker(id: string, spec: WorkerSpec): Promise<WorkerHandle> {
       const args: string[] = [];
@@ -67,7 +67,7 @@ export function createLocalProvider(
         ...config.defaultEnv,
         ...spec.environmentVariables,
         WORKER_ID: id,
-        PROVIDER: "local",
+        PROVIDER: "LOCAL",
       };
 
       const managed = registry.spawnProcess({
@@ -81,7 +81,7 @@ export function createLocalProvider(
       return {
         id,
         providerWorkerId: `local-proc-${managed.pid}`,
-        provider: "local",
+        provider: "LOCAL",
         status: "STARTING",
         privateIp: "127.0.0.1",
         publicIp: null,
@@ -115,7 +115,7 @@ export function createLocalProvider(
       return {
         id: managed.workerId,
         providerWorkerId,
-        provider: "local",
+        provider: "LOCAL",
         status,
         privateIp: "127.0.0.1",
         publicIp: null,

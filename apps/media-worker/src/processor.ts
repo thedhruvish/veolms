@@ -4,6 +4,7 @@ import { copyFile, cp, mkdir, rm, stat, writeFile } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { promisify } from "node:util";
 import {
+    ARCHITECTURES,
   DEFAULT_SEGMENT_DURATION_SECONDS,
   estimateJobHardware,
   type JobHardwareRequirements,
@@ -219,7 +220,7 @@ export async function executeTranscodeJob(
 
   // 1. Fetch Job from DB
   const job = await db
-    .selectFrom("jobs")
+    .selectFrom("video_jobs")
     .selectAll()
     .where("id", "=", jobId)
     .executeTakeFirst();
@@ -255,7 +256,7 @@ export async function executeTranscodeJob(
     // Claim ownership before doing any work. The worker-ID guard prevents a
     // stale process from overwriting a job that has been reassigned. The
     // hardware check re-validates compatibility even when the caller
-    // supplied JOB_ID directly (bypassing pollForNextJob/claimNextQueuedJob,
+    // supplied JOB_ID directly (bypassing pollForNextJob/claimNextQueuedVideoJob,
     // the only other place this check normally runs), so a worker can never
     // end up running a job whose requirements exceed its own capacity.
     await db.transaction().execute(async (trx) => {
@@ -270,20 +271,19 @@ export async function executeTranscodeJob(
         throw new Error(`Worker ${workerId} not found`);
       }
 
-      const supportedArchitectures = ["arm64", "x86_64"];
       if (
         claimHardware.minCpu > worker.cpu ||
         claimHardware.minMemoryMb > worker.memory_mb ||
         claimHardware.storageGb > worker.storage_gb ||
-        !supportedArchitectures.includes(worker.architecture)
+        !ARCHITECTURES.includes(worker.architecture)
       ) {
         throw new Error(
-          `Job ${jobId} requires ${claimHardware.minCpu} vCPU / ${claimHardware.minMemoryMb}MB / ${claimHardware.storageGb}GB / (arm64|x86_64), which worker ${workerId} (${worker.cpu} vCPU / ${worker.memory_mb}MB / ${worker.storage_gb}GB / ${worker.architecture}) does not meet`,
+          `Job ${jobId} requires ${claimHardware.minCpu} vCPU / ${claimHardware.minMemoryMb}MB / ${claimHardware.storageGb}GB / (ARM64|X86_64), which worker ${workerId} (${worker.cpu} vCPU / ${worker.memory_mb}MB / ${worker.storage_gb}GB / ${worker.architecture}) does not meet`,
         );
       }
 
       const claimResult = await trx
-        .updateTable("jobs")
+        .updateTable("video_jobs")
         .set({
           status: "PROCESSING",
           worker_id: workerId,
@@ -540,7 +540,7 @@ export async function executeTranscodeJob(
     // against the just-completed job while the worker waits for more work.
     await db.transaction().execute(async (trx) => {
       await trx
-        .updateTable("jobs")
+        .updateTable("video_jobs")
         .set({
           status: "COMPLETED",
           completed_at: new Date(),
@@ -595,7 +595,7 @@ export async function executeTranscodeJob(
     const shouldRetry = nextAttempts < job.max_attempts;
     await db.transaction().execute(async (trx) => {
       await trx
-        .updateTable("jobs")
+        .updateTable("video_jobs")
         .set({
           attempts: nextAttempts,
           status: shouldRetry ? "QUEUED" : "FAILED",

@@ -4,13 +4,11 @@ import type { Kysely } from "kysely";
 import type { Database } from "@veolms/database";
 import type {
   FleetProvider,
-  Job,
   WorkerHandle,
   WorkerSpec,
   WorkerStatus,
 } from "@veolms/fleet-types";
 import { createScheduler } from "../src/core/scheduler.ts";
-import { createJobManager } from "../src/core/job-manager.ts";
 import { createWorkerManager } from "../src/core/worker-manager.ts";
 import { loadFleetManagerConfig } from "@veolms/config";
 
@@ -72,7 +70,7 @@ describe("Fleet Manager End-to-End Core Integration", () => {
     const spec = workerManager.calculateWorkerSpec(job);
     assert.equal(spec.cpu, 2);
     assert.equal(spec.memoryMb, 4096);
-    assert.equal(spec.architecture, "arm64");
+    assert.equal(spec.architecture, "ARM64");
     assert.equal(spec.environmentVariables["JOB_ID"], job.id);
   });
 });

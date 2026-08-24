@@ -145,9 +145,10 @@ async function main(): Promise<void> {
     console.info(`  Video Size:    ${videoSize} bytes`);
 
     await db
-      .insertInto("jobs")
+      .insertInto("video_jobs")
       .values({
         id: jobId,
+        video_id: jobId,
         status: "QUEUED",
         video_key: VIDEO_KEY,
         output_prefix: outputPrefix,
@@ -177,7 +178,15 @@ async function main(): Promise<void> {
       "--function-name",
       LAMBDA_NAME,
       "--payload",
-      JSON.stringify({ action: "claim", jobId }),
+      JSON.stringify({
+        action: "CLAIM",
+        jobId,
+        videoId: jobId,
+        videoKey: VIDEO_KEY,
+        outputPrefix,
+        qualities: QUALITIES,
+        videoSize,
+      }),
       "--cli-binary-format",
       "raw-in-base64-out",
       "--region",
@@ -264,7 +273,7 @@ async function main(): Promise<void> {
     const maxPollAttempts = 15;
     for (let attempt = 0; attempt < maxPollAttempts; attempt++) {
       updatedJob = await db
-        .selectFrom("jobs")
+        .selectFrom("video_jobs")
         .select(["id", "status", "worker_id", "error_message"])
         .where("id", "=", jobId)
         .executeTakeFirst();

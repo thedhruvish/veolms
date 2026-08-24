@@ -7,7 +7,7 @@ describe("Fleet Manager Diagnostics and Health Metrics", () => {
   it("should calculate fleet health summary correctly from query results", async () => {
     const mockDb = {
       selectFrom(table: string) {
-        if (table === "jobs") {
+        if (table === "video_jobs") {
           return {
             select() {
               return {

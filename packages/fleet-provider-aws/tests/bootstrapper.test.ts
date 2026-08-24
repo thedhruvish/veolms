@@ -12,7 +12,7 @@ describe("EC2 UserData Bootstrapper Generator", () => {
       spec: {
         cpu: 2,
         memoryMb: 4096,
-        architecture: "arm64",
+        architecture: "ARM64",
         storageGb: 30,
         region: "us-east-1",
         environmentVariables: {
@@ -39,7 +39,7 @@ describe("EC2 UserData Bootstrapper Generator", () => {
       spec: {
         cpu: 4,
         memoryMb: 8192,
-        architecture: "arm64",
+        architecture: "ARM64",
         storageGb: 50,
         region: "us-east-1",
         environmentVariables: {
@@ -62,7 +62,7 @@ describe("EC2 UserData Bootstrapper Generator", () => {
       spec: {
         cpu: 2,
         memoryMb: 2048,
-        architecture: "arm64",
+        architecture: "ARM64",
         storageGb: 10,
         region: "us-east-1",
         environmentVariables: {},

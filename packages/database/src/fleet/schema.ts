@@ -1,49 +1,32 @@
 import type { Generated, JSONColumnType } from "kysely";
+import type {
+  Architecture,
+  FleetEventType,
+  ProviderType,
+  VideoJobStatus,
+  VideoQualityLevel,
+  WorkerStatus,
+} from "@veolms/contracts";
 
-export type JobStatus =
-  "QUEUED" | "PROCESSING" | "COMPLETED" | "FAILED" | "CANCELLED";
+export type {
+  Architecture,
+  FleetEventType,
+  ProviderType,
+  VideoJobStatus,
+  VideoQualityLevel,
+  WorkerStatus,
+};
 
-export type VideoQualityLevel =
-  "2160p" | "1440p" | "1080p" | "720p" | "480p" | "360p" | "240p" | "144p";
-
-export type ProviderType = "local" | "aws";
-
-export type WorkerStatus =
-  | "PENDING"
-  | "PROVISIONING"
-  | "STARTING"
-  | "READY"
-  | "PROCESSING"
-  | "COMPLETED"
-  | "FAILED"
-  | "TERMINATING"
-  | "TERMINATED";
-
-export type Architecture = "arm64" | "x86_64";
-
-export type FleetEventType =
-  | "WORKER_CREATED"
-  | "WORKER_PROVISIONING"
-  | "WORKER_READY"
-  | "JOB_ASSIGNED"
-  | "JOB_STARTED"
-  | "PROGRESS_UPDATED"
-  | "HEARTBEAT_RECORDED"
-  | "HEARTBEAT_TIMEOUT"
-  | "JOB_COMPLETED"
-  | "JOB_FAILED"
-  | "WORKER_TERMINATION_REQUESTED"
-  | "WORKER_TERMINATED"
-  | "WORKER_ERROR";
-
-export interface JobTable {
+export interface VideoJobTable {
   id: string;
-  status: JobStatus;
+  video_id: string;
+  status: VideoJobStatus;
   video_key: string;
   output_prefix: string;
   video_size: number;
   qualities: VideoQualityLevel[];
   worker_id: string | null;
+  progress_percent: Generated<number>;
   attempts: Generated<number>;
   max_attempts: Generated<number>;
   error_message: string | null;
@@ -103,7 +86,7 @@ export interface WorkerEventTable {
 }
 
 export interface FleetTables {
-  jobs: JobTable;
+  video_jobs: VideoJobTable;
   workers: WorkerTable;
   worker_monitoring: WorkerMonitoringTable;
   worker_events: WorkerEventTable;

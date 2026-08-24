@@ -1,12 +1,12 @@
-import type { Kysely } from "kysely";
-import type { Database } from "@veolms/database";
-import type { FleetProvider,Job, WorkerHandle } from "@veolms/fleet-types";
+import type { Kysely, Selectable } from "kysely";
+import type { Database, VideoJobTable } from "@veolms/database";
+import type { FleetProvider, WorkerHandle } from "@veolms/fleet-types";
 import type { FleetManagerConfig } from "@veolms/config";
 import {
   createJobManager,
   type JobManager,
   type QueueJobParams,
-} from "./job-manager.ts";
+} from "./video-job-manager.ts";
 import { createMonitor, type Monitor } from "./monitor.ts";
 import { createScheduler, type Scheduler } from "./scheduler.ts";
 import { createWorkerManager, type WorkerManager } from "./worker-manager.ts";
@@ -30,7 +30,7 @@ export interface FleetManager {
     orphansProcessed: number;
   }>;
   runTick(): Promise<void>;
-  queueJob(params: QueueJobParams): Promise<Job>;
+  queueJob(params: QueueJobParams): Promise<Selectable<VideoJobTable>>;
   startServerfulLoop(signal?: AbortSignal): Promise<void>;
 }
 
@@ -62,7 +62,7 @@ export function createFleetManager(
     scheduler,
     monitor,
 
-    async queueJob(params: QueueJobParams): Promise<Job> {
+    async queueJob(params: QueueJobParams): Promise<Selectable<VideoJobTable>> {
       return await jobManager.queueJob(params);
     },
 

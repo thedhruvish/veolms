@@ -1,2 +1,2 @@
 export * from "./schema.ts";
-export * from "./jobs.ts";
+export * from "./video-jobs.ts";

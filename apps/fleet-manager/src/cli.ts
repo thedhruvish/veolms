@@ -10,7 +10,7 @@ import {
 import { bold, cyan, dim, red } from "@veolms/fleet-types/terminal";
 import { loadFleetManagerConfig, resolveProviderName } from "@veolms/config";
 import { loadModuleFunction } from "./core/dynamic-module.ts";
-import { createJobManager } from "./core/job-manager.ts";
+import { createJobManager } from "./core/video-job-manager.ts";
 import { resolveFleetProvider } from "./core/provider-resolver.ts";
 import {
   getFleetHealthSummary,
@@ -167,8 +167,11 @@ export async function runCli(
         process.exit(1);
       }
 
+      const videoId = (flags["video-id"] as string) || (flags["videoId"] as string);
+
       const jobManager = createJobManager({ db: getDb(), config });
       const job = await jobManager.queueJob({
+        videoId,
         videoKey,
         outputPrefix,
         qualities,
@@ -177,8 +180,9 @@ export async function runCli(
 
       console.info(`✓ Job queued successfully!`);
       console.info(`  Job ID:        ${job.id}`);
-      console.info(`  Video Key:     ${job.videoKey}`);
-      console.info(`  Output Prefix: ${job.outputPrefix}`);
+      console.info(`  Video ID:      ${job.video_id}`);
+      console.info(`  Video Key:     ${job.video_key}`);
+      console.info(`  Output Prefix: ${job.output_prefix}`);
       console.info(`  Qualities:     ${job.qualities.join(", ")}`);
       break;
     }
@@ -198,14 +202,15 @@ export async function runCli(
 
       console.info(`\n=== JOB DIAGNOSTICS [${diagnostics.job.id}] ===`);
       console.info(`Status:        ${diagnostics.job.status}`);
-      console.info(`Video Key:     ${diagnostics.job.videoKey}`);
-      console.info(`Output Prefix: ${diagnostics.job.outputPrefix}`);
+      console.info(`Video ID:      ${diagnostics.job.video_id}`);
+      console.info(`Video Key:     ${diagnostics.job.video_key}`);
+      console.info(`Output Prefix: ${diagnostics.job.output_prefix}`);
       console.info(`Qualities:     ${diagnostics.job.qualities.join(", ")}`);
       console.info(
-        `Attempts:      ${diagnostics.job.attempts} / ${diagnostics.job.maxAttempts}`,
+        `Attempts:      ${diagnostics.job.attempts} / ${diagnostics.job.max_attempts}`,
       );
       console.info(
-        `Worker ID:     ${diagnostics.job.workerId ?? "Unassigned"}`,
+        `Worker ID:     ${diagnostics.job.worker_id ?? "Unassigned"}`,
       );
 
       if (diagnostics.worker) {
@@ -254,7 +259,7 @@ export async function runCli(
 
     case "jobs": {
       const jobs = await getDb()
-        .selectFrom("jobs")
+        .selectFrom("video_jobs")
         .selectAll()
         .orderBy("created_at", "desc")
         .limit(20)

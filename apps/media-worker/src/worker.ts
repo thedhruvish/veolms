@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Kysely } from "kysely";
-import { claimNextQueuedJob, type Database } from "@veolms/database";
+import { claimNextQueuedVideoJob, type Database } from "@veolms/database";
 import type { FleetEventType } from "@veolms/fleet-types";
 import type { MediaWorkerConfig } from "@veolms/config";
 
@@ -154,7 +154,7 @@ export async function pollForNextJob(
     return null;
   }
 
-  const claimed = await claimNextQueuedJob(ctx.db, ctx.workerId);
+  const claimed = await claimNextQueuedVideoJob(ctx.db, ctx.workerId);
   if (claimed) {
     return claimed.id;
   }
@@ -196,6 +196,6 @@ export async function pollForNextJob(
     return null;
   }
 
-  const claimedAfterWait = await claimNextQueuedJob(ctx.db, ctx.workerId);
+  const claimedAfterWait = await claimNextQueuedVideoJob(ctx.db, ctx.workerId);
   return claimedAfterWait?.id ?? null;
 }

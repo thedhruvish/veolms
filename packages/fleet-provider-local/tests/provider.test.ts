@@ -36,7 +36,7 @@ describe("Local Fleet Provider", () => {
     const handle = await provider.createWorker(workerId, {
       cpu: 1,
       memoryMb: 512,
-      architecture: "arm64",
+      architecture: "ARM64",
       storageGb: 10,
       region: "local",
       environmentVariables: {
@@ -45,7 +45,7 @@ describe("Local Fleet Provider", () => {
     });
 
     assert.equal(handle.id, workerId);
-    assert.equal(handle.provider, "local");
+    assert.equal(handle.provider, "LOCAL");
     assert.ok(handle.providerWorkerId.startsWith("local-proc-"));
 
     // Check health while running
@@ -93,7 +93,7 @@ describe("Local Fleet Provider", () => {
       const handle = await provider.createWorker(workerId, {
         cpu: 1,
         memoryMb: 512,
-        architecture: "arm64",
+        architecture: "ARM64",
         storageGb: 10,
         region: "local",
         environmentVariables: {},

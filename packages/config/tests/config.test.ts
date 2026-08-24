@@ -34,17 +34,17 @@ describe("packages/config", () => {
 
   describe("Fleet Manager Config", () => {
     it("should resolve provider name with proper precedence", () => {
-      assert.equal(resolveProviderName("aws", { PROVIDER: "local" }), "aws");
+      assert.equal(resolveProviderName("aws", { PROVIDER: "local" }), "AWS");
       assert.equal(
         resolveProviderName(undefined, {
           PROVIDER: "aws",
           FLEET_PROVIDER: "local",
         }),
-        "aws",
+        "AWS",
       );
       assert.equal(
         resolveProviderName(undefined, { FLEET_PROVIDER: "aws" }),
-        "aws",
+        "AWS",
       );
       assert.equal(
         resolveProviderName(undefined, { FLEET_PROVIDER: "   " }),
@@ -54,7 +54,7 @@ describe("packages/config", () => {
 
     it("should load default fleet manager config", () => {
       const config = loadFleetManagerConfig({});
-      assert.equal(config.PROVIDER, "local");
+      assert.equal(config.PROVIDER, "LOCAL");
       assert.equal(config.POLL_INTERVAL_MS, 2000);
       assert.equal(config.MAX_WORKERS, 8);
       assert.equal(config.MAX_RETRIES, 3);
@@ -65,7 +65,7 @@ describe("packages/config", () => {
         FLEET_PROVIDER: "aws",
         MAX_WORKERS: "16",
       });
-      assert.equal(config.PROVIDER, "aws");
+      assert.equal(config.PROVIDER, "AWS");
       assert.equal(config.MAX_WORKERS, 16);
     });
   });

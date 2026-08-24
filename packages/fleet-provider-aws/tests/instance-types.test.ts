@@ -8,7 +8,7 @@ describe("AWS Instance Type Selector", () => {
     const instance1 = selectOptimalInstanceType({
       cpu: 2,
       memoryMb: 4096,
-      architecture: "arm64",
+      architecture: "ARM64",
       storageGb: 30,
       region: "us-east-1",
       environmentVariables: {},
@@ -19,7 +19,7 @@ describe("AWS Instance Type Selector", () => {
     const instance2 = selectOptimalInstanceType({
       cpu: 4,
       memoryMb: 8192,
-      architecture: "arm64",
+      architecture: "ARM64",
       storageGb: 50,
       region: "us-east-1",
       environmentVariables: {},
@@ -30,7 +30,7 @@ describe("AWS Instance Type Selector", () => {
     const instance3 = selectOptimalInstanceType({
       cpu: 8,
       memoryMb: 16384,
-      architecture: "arm64",
+      architecture: "ARM64",
       storageGb: 80,
       region: "us-east-1",
       environmentVariables: {},
@@ -42,7 +42,7 @@ describe("AWS Instance Type Selector", () => {
     const instance = selectOptimalInstanceType({
       cpu: 4,
       memoryMb: 8192,
-      architecture: "x86_64",
+      architecture: "X86_64",
       storageGb: 50,
       region: "us-east-1",
       environmentVariables: {},

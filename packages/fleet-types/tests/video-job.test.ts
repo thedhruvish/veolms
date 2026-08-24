@@ -2,9 +2,9 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   estimateJobHardware,
-  jobStatusSchema,
+  videoJobStatusSchema,
   JOB_STATUSES,
-} from "../src/job.ts";
+} from "../src/video-job.ts";
 import {
   workerStatusSchema,
   workerSpecSchema,
@@ -15,7 +15,7 @@ import { progressUpdateSchema } from "../src/monitoring.ts";
 describe("Job & Worker Schemas and Contracts", () => {
   it("should validate all job statuses", () => {
     for (const status of JOB_STATUSES) {
-      assert.equal(jobStatusSchema.parse(status), status);
+      assert.equal(videoJobStatusSchema.parse(status), status);
     }
   });
 
@@ -30,7 +30,7 @@ describe("Job & Worker Schemas and Contracts", () => {
     assert.equal(hw.minCpu, 2);
     assert.equal(hw.minMemoryMb, 4096);
     assert.equal(hw.storageGb, 30);
-    assert.equal(hw.architecture, "arm64");
+    assert.equal(hw.architecture, "ARM64");
   });
 
   it("scales cpu/memory/storage up for 2160p regardless of size", () => {
@@ -63,7 +63,7 @@ describe("Job & Worker Schemas and Contracts", () => {
     const spec = {
       cpu: 2,
       memoryMb: 4096,
-      architecture: "arm64",
+      architecture: "ARM64",
       storageGb: 30,
       region: "us-east-1",
       environmentVariables: {
@@ -74,7 +74,7 @@ describe("Job & Worker Schemas and Contracts", () => {
 
     const parsed = workerSpecSchema.parse(spec);
     assert.equal(parsed.cpu, 2);
-    assert.equal(parsed.architecture, "arm64");
+    assert.equal(parsed.architecture, "ARM64");
     assert.equal(
       parsed.environmentVariables["WORKER_ID"],
       "11111111-1111-1111-1111-111111111111",

@@ -114,7 +114,7 @@ export function createAwsProvider(
   const defaultLocalStackAmi = "ami-df5de72bdb3b3";
 
   return {
-    name: "aws",
+    name: "AWS",
 
     async createWorker(id: string, spec: WorkerSpec): Promise<WorkerHandle> {
       const instanceType = selectOptimalInstanceType(spec);
@@ -184,7 +184,7 @@ export function createAwsProvider(
       return {
         id,
         providerWorkerId: instance.InstanceId,
-        provider: "aws",
+        provider: "AWS",
         status: "STARTING",
         privateIp: instance.PrivateIpAddress ?? null,
         publicIp: instance.PublicIpAddress ?? null,
@@ -217,7 +217,7 @@ export function createAwsProvider(
         return {
           id: workerId,
           providerWorkerId: instance.InstanceId,
-          provider: "aws",
+          provider: "AWS",
           status: mapEc2StateToWorkerStatus(instance.State?.Name),
           privateIp: instance.PrivateIpAddress ?? null,
           publicIp: instance.PublicIpAddress ?? null,
