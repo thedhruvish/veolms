@@ -7,6 +7,7 @@ import {
 } from "@veolms/contracts";
 import {
   DEFAULT_QUALITIES,
+  getQualityProfile,
   videoQualityLevelSchema,
   type VideoQualityLevel,
 } from "./quality.ts";
@@ -40,22 +41,20 @@ const BASE_HARDWARE: JobHardwareRequirements = {
 };
 
 const BYTES_PER_GB = 1024 ** 3;
+const SAFETY_MARGIN_GB = 10;
 
 /**
- * Derives how much hardware a job needs from what the backend actually
- * provides (video_size, qualities) instead of trusting a per-job hardware
- * object nothing ever wrote. Shared by fleet-manager (sizing a new EC2
- * worker) and media-worker (re-checking a claimed job against its own
- * capacity) so there is exactly one formula, not two that can drift apart.
- *
- * fleet/jobs.ts's SQL pre-filter (claimNextQueuedVideoJob) mirrors only the
- * qualities-tier thresholds below in raw SQL, as a coarse pre-check — it
- * does not replicate the video-size scaling, which is re-checked here.
- * Keep the two in sync if the tier thresholds change.
+ * Derives how much hardware a job needs from video size, requested qualities,
+ * and duration:
+ * - CPU/Memory: Scaled based on target resolution and parallel rendition count.
+ * - Storage: Estimated using:
+ *     (video duration x total output bitrate) + source size + safety margin
+ * - Duration: Explicit duration in seconds if provided, or estimated from source size.
  */
 export function estimateJobHardware(
   videoSizeBytes: number,
   qualities: readonly VideoQualityLevel[],
+  options?: { durationSeconds?: number } | number,
 ): JobHardwareRequirements {
   let { minCpu, minMemoryMb, storageGb, estimatedDurationSeconds } =
     BASE_HARDWARE;
@@ -75,22 +74,45 @@ export function estimateJobHardware(
     storageGb = Math.max(storageGb, 50);
   }
 
-  const videoSizeGb = Math.max(videoSizeBytes, 0) / BYTES_PER_GB;
+  const explicitDuration =
+    typeof options === "number"
+      ? options
+      : typeof options?.durationSeconds === "number"
+        ? options.durationSeconds
+        : undefined;
 
-  // Scratch storage needs the source plus one full-size encode per
-  // requested quality, with headroom. Starting-point heuristic — tune
-  // against real job data once it's available.
-  const estimatedStorageGb =
-    Math.ceil(videoSizeGb * (numQualities + 1) * 1.5) + 5;
-  storageGb = Math.max(storageGb, estimatedStorageGb);
+  // 1. Calculate total output bitrate across all requested quality renditions (bits/sec)
+  const totalBitrateBps = qualities.reduce((sum, q) => {
+    const profile = getQualityProfile(q);
+    if (!profile) return sum;
+    return sum + (profile.videoBitrateKbps + profile.audioBitrateKbps) * 1000;
+  }, 0);
+  const totalOutputBytesPerSec = totalBitrateBps / 8;
 
-  // ~15 CPU-minutes per source GB, scaled by however many renditions are
-  // being produced in parallel. Same caveat as above — a first pass.
-  const estimatedSecondsForSize = Math.ceil(videoSizeGb * 900) + 120;
+  // 2. Video duration (use explicit duration if provided, otherwise estimate from size)
+  // Default estimate assumes ~5 Mbps average source bitrate if duration is not known
+  const estimatedDuration =
+    typeof explicitDuration === "number" && explicitDuration > 0
+      ? explicitDuration
+      : Math.max(
+          600,
+          videoSizeBytes > 0
+            ? Math.ceil(videoSizeBytes / (5 * 1000 * 1000 / 8))
+            : 600,
+        );
   estimatedDurationSeconds = Math.max(
     estimatedDurationSeconds,
-    estimatedSecondsForSize,
+    estimatedDuration,
   );
+
+  // 3. Storage formula: (video duration x total output bitrate) + source size + safety margin
+  const sourceSizeGb = Math.max(videoSizeBytes, 0) / BYTES_PER_GB;
+  const estimatedOutputGb =
+    (estimatedDurationSeconds * totalOutputBytesPerSec) / BYTES_PER_GB;
+  const calculatedStorageGb =
+    Math.ceil(sourceSizeGb + estimatedOutputGb + SAFETY_MARGIN_GB);
+
+  storageGb = Math.max(storageGb, calculatedStorageGb);
 
   return {
     minCpu,

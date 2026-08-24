@@ -59,6 +59,37 @@ describe("Job & Worker Schemas and Contracts", () => {
     assert.ok(large.estimatedDurationSeconds > small.estimatedDurationSeconds);
   });
 
+  it("calculates storage correctly for a 1GB, 2-hour video producing multiple HLS qualities", () => {
+    // 1 GB file, 2 hours (7200 seconds) duration, qualities: 1080p, 720p, 480p, 360p
+    const oneGb = 1024 ** 3;
+    const durationSeconds = 7200; // 2 hours
+    const qualities = ["1080p", "720p", "480p", "360p"] as const;
+
+    const hw = estimateJobHardware(oneGb, qualities, durationSeconds);
+
+    // 1080p (4628kbps) + 720p (2528kbps) + 480p (1296kbps) + 360p (896kbps) = 9348 kbps
+    // Output = 7200s * (9348000 / 8) bytes = ~7.83 GB
+    // Source = 1 GB
+    // Safety margin = 10 GB
+    // Total = ceil(1 + 7.83 + 10) = 19 GB (clamped to baseline 30 GB)
+    assert.equal(hw.storageGb, 30);
+    assert.equal(hw.estimatedDurationSeconds, 7200);
+
+    // If requesting 2160p (4K), 1440p, 1080p, 720p for a 4-hour video (14400s)
+    const long4kDuration = 14400; // 4 hours
+    const highQualities = ["2160p", "1440p", "1080p", "720p"] as const;
+    const hw4k = estimateJobHardware(5 * 1024 ** 3, highQualities, long4kDuration);
+
+    // Total bitrate = 14192 + 8192 + 4628 + 2528 = 29540 kbps = 3.6925 MB/s
+    // Output = 14400 * 3.6925 MB = ~53.17 GB
+    // Source = 5 GB
+    // Margin = 10 GB
+    // Total = ceil(5 + 53.17 + 10) = 69 GB (clamped to 4K baseline min 80 GB)
+    assert.ok(hw4k.storageGb >= 80);
+    assert.equal(hw4k.minCpu, 8);
+    assert.equal(hw4k.minMemoryMb, 16384);
+  });
+
   it("should validate worker spec schema", () => {
     const spec = {
       cpu: 2,
