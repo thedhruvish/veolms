@@ -31,4 +31,76 @@ describe("Job Manager — queueJob insert values", () => {
 
     assert.deepEqual(insertedValues?.["qualities"], ["1080p", "720p"]);
   });
+
+  it("does not fail a job if it has already been COMPLETED", async () => {
+    let updateExecuted = false;
+    const mockDb = {
+      selectFrom: () => ({
+        select: () => ({
+          where: () => ({
+            where: () => ({
+              where: () => ({
+                executeTakeFirst: async () => ({
+                  id: "job-1",
+                  attempts: 1,
+                  max_attempts: 3,
+                  status: "COMPLETED",
+                  worker_id: "worker-1",
+                }),
+              }),
+              executeTakeFirst: async () => ({
+                id: "job-1",
+                attempts: 1,
+                max_attempts: 3,
+                status: "COMPLETED",
+                worker_id: "worker-1",
+              }),
+            }),
+            executeTakeFirst: async () => ({
+              id: "job-1",
+              attempts: 1,
+              max_attempts: 3,
+              status: "COMPLETED",
+              worker_id: "worker-1",
+            }),
+          }),
+        }),
+      }),
+      updateTable: () => ({
+        set: () => ({
+          where: () => ({
+            where: () => ({
+              where: () => ({
+                executeTakeFirst: async () => {
+                  updateExecuted = true;
+                  return { numUpdatedRows: 1n };
+                },
+              }),
+              executeTakeFirst: async () => {
+                updateExecuted = true;
+                return { numUpdatedRows: 1n };
+              },
+            }),
+            executeTakeFirst: async () => {
+              updateExecuted = true;
+              return { numUpdatedRows: 1n };
+            },
+          }),
+        }),
+      }),
+    } as unknown as Kysely<Database>;
+
+    const jobManager = createJobManager({
+      db: mockDb,
+      config: loadFleetManagerConfig(),
+    });
+
+    const result = await jobManager.markJobFailed(
+      "job-1",
+      "Worker timed out",
+      "worker-1",
+    );
+    assert.equal(result, false);
+    assert.equal(updateExecuted, false);
+  });
 });

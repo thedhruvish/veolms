@@ -103,11 +103,12 @@ export function createMonitor(options: {
           .where("id", "=", worker.id)
           .execute();
 
-        // Mark associated job failed / retryable
+        // Mark associated job failed / retryable only if still assigned to this worker
         if (worker.job_id) {
           await jobManager.markJobFailed(
             worker.job_id,
             `Worker ${worker.id} missed heartbeat timeout (${config.HEARTBEAT_TIMEOUT_SECONDS}s)`,
+            worker.id,
           );
         }
 

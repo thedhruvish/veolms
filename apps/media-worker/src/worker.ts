@@ -159,6 +159,20 @@ export async function pollForNextJob(
     return claimed.id;
   }
 
+  // If the worker is no longer in READY status (e.g. FAILED, TERMINATING, TERMINATED),
+  // do not wait idle — exit immediately.
+  if (typeof ctx.db?.selectFrom === "function") {
+    const worker = await ctx.db
+      .selectFrom("workers")
+      .select("status")
+      .where("id", "=", ctx.workerId)
+      .executeTakeFirst();
+
+    if (worker && worker.status !== "READY") {
+      return null;
+    }
+  }
+
   console.info(
     `[media-worker] Queue empty — waiting ${ctx.config.WORKER_IDLE_POLL_SECONDS}s for one more check before shutting down...`,
   );

@@ -271,14 +271,15 @@ export async function executeTranscodeJob(
         throw new Error(`Worker ${workerId} not found`);
       }
 
+      const supportedArchitectures = ["arm64", "x86_64"];
       if (
         claimHardware.minCpu > worker.cpu ||
         claimHardware.minMemoryMb > worker.memory_mb ||
         claimHardware.storageGb > worker.storage_gb ||
-        claimHardware.architecture !== worker.architecture
+        !supportedArchitectures.includes(worker.architecture)
       ) {
         throw new Error(
-          `Job ${jobId} requires ${claimHardware.minCpu} vCPU / ${claimHardware.minMemoryMb}MB / ${claimHardware.storageGb}GB / ${claimHardware.architecture}, which worker ${workerId} (${worker.cpu} vCPU / ${worker.memory_mb}MB / ${worker.storage_gb}GB / ${worker.architecture}) does not meet`,
+          `Job ${jobId} requires ${claimHardware.minCpu} vCPU / ${claimHardware.minMemoryMb}MB / ${claimHardware.storageGb}GB / (arm64|x86_64), which worker ${workerId} (${worker.cpu} vCPU / ${worker.memory_mb}MB / ${worker.storage_gb}GB / ${worker.architecture}) does not meet`,
         );
       }
 
@@ -345,11 +346,12 @@ export async function executeTranscodeJob(
         signal,
       });
     } else {
+      const cleanVideoKey = job.video_key.replace(/^[/\\]+/, "");
       const workspaceDir = process.cwd();
       const localCandidates = [
-        resolveWithin(workspaceDir, job.video_key),
-        resolveWithin(join(workspaceDir, "s3-bucket"), job.video_key),
-        resolveWithin(join(workspaceDir, "scratch"), job.video_key),
+        resolveWithin(workspaceDir, cleanVideoKey),
+        resolveWithin(join(workspaceDir, "s3-bucket"), cleanVideoKey),
+        resolveWithin(join(workspaceDir, "scratch"), cleanVideoKey),
       ];
       let isLocalFile = false;
       for (const candidate of localCandidates) {
@@ -383,7 +385,7 @@ export async function executeTranscodeJob(
         await downloadS3File(
           s3Client,
           config.S3_BUCKET,
-          job.video_key,
+          cleanVideoKey,
           inputVideoPath,
           {
             maxBytes: config.HTTP_DOWNLOAD_MAX_BYTES,
@@ -435,11 +437,6 @@ export async function executeTranscodeJob(
       ? await probeVideoMetadata(optimizedVideoPath, config.FFPROBE_PATH)
       : sourceMetadata;
 
-    // Ensure quality subdirectories exist
-    for (const q of targetQualities) {
-      await mkdir(join(outputHlsDir, q), { recursive: true });
-    }
-
     const { args, masterPlaylistContent, applicableQualities } =
       buildFfmpegHlsArgs({
         inputPath: transcodeInputPath,
@@ -448,6 +445,11 @@ export async function executeTranscodeJob(
         metadata,
         segmentDurationSeconds: DEFAULT_SEGMENT_DURATION_SECONDS,
       });
+
+    // Ensure quality subdirectories exist for applicable qualities
+    for (const q of applicableQualities) {
+      await mkdir(join(outputHlsDir, q), { recursive: true });
+    }
 
     // 6. Setup progress tracking directly to PostgreSQL
     const progressParser = new FfmpegProgressParser({

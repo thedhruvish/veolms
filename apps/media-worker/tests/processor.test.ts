@@ -318,4 +318,90 @@ describe("executeTranscodeJob — claim and retry logic", () => {
     const jobFailedEvent = recordedEvents.find((e) => e.event === "JOB_FAILED");
     assert.equal(jobFailedEvent?.metadata?.["willRetry"], false);
   });
+
+  it("successfully claims a job on an x86_64 worker", async () => {
+    const jobsSetCalls: any[] = [];
+    const workersSetCalls: any[] = [];
+    const recordedEvents: Array<{
+      event: FleetEventType;
+      jobId?: string | null;
+      metadata?: Readonly<Record<string, unknown>>;
+    }> = [];
+
+    const db = buildFakeDb({
+      jobRow: {
+        id: JOB_ID,
+        status: "QUEUED",
+        worker_id: null,
+        video_key: "raw/video.mp4",
+        output_prefix: "out/job-1",
+        video_size: 0,
+        qualities: STANDARD_QUALITIES,
+        attempts: 0,
+        max_attempts: 3,
+        started_at: null,
+      },
+      workerRow: {
+        id: WORKER_ID,
+        cpu: 4,
+        memory_mb: 8192,
+        storage_gb: 50,
+        architecture: "x86_64",
+      },
+      workerMonitoringThrows: true,
+      jobsSetCalls,
+      workersSetCalls,
+    });
+
+    const ctx = buildCtx(db, recordedEvents);
+
+    // It passes the hardware and architecture check, claims ownership, and then throws on worker_monitoring
+    await assert.rejects(
+      () => executeTranscodeJob(ctx, JOB_ID),
+      /worker_monitoring update failed/,
+    );
+
+    assert.equal(jobsSetCalls.length, 2);
+    assert.equal(jobsSetCalls[0].status, "PROCESSING");
+    assert.equal(jobsSetCalls[0].worker_id, WORKER_ID);
+  });
+
+  it("rejects claiming a job when the worker has an unsupported architecture", async () => {
+    const jobsSetCalls: unknown[] = [];
+    const workersSetCalls: unknown[] = [];
+    const recordedEvents: Array<{ event: FleetEventType }> = [];
+
+    const db = buildFakeDb({
+      jobRow: {
+        id: JOB_ID,
+        status: "QUEUED",
+        worker_id: null,
+        video_key: "raw/video.mp4",
+        output_prefix: "out/job-1",
+        video_size: 0,
+        qualities: STANDARD_QUALITIES,
+        attempts: 0,
+        max_attempts: 3,
+        started_at: null,
+      },
+      workerRow: {
+        id: WORKER_ID,
+        cpu: 4,
+        memory_mb: 8192,
+        storage_gb: 50,
+        architecture: "mips" as any,
+      },
+      jobsSetCalls,
+      workersSetCalls,
+    });
+
+    const ctx = buildCtx(db, recordedEvents);
+
+    await assert.rejects(
+      () => executeTranscodeJob(ctx, JOB_ID),
+      /does not meet/,
+    );
+
+    assert.equal(jobsSetCalls.length, 0);
+  });
 });

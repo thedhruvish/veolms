@@ -15,7 +15,11 @@ export interface JobManager {
   claimNextJob(): Promise<Job | null>;
   assignWorkerToJob(jobId: string, workerId: string): Promise<void>;
   markJobCompleted(jobId: string): Promise<void>;
-  markJobFailed(jobId: string, errorMessage: string): Promise<boolean>;
+  markJobFailed(
+    jobId: string,
+    errorMessage: string,
+    expectedWorkerId?: string,
+  ): Promise<boolean>;
   queueJob(params: QueueJobParams): Promise<Job>;
   getJob(jobId: string): Promise<Job | null>;
 }
@@ -75,21 +79,32 @@ export function createJobManager(options: {
         .execute();
     },
 
-    async markJobFailed(jobId: string, errorMessage: string): Promise<boolean> {
-      const job = await db
+    async markJobFailed(
+      jobId: string,
+      errorMessage: string,
+      expectedWorkerId?: string,
+    ): Promise<boolean> {
+      let query = db
         .selectFrom("jobs")
-        .select(["id", "attempts", "max_attempts"])
-        .where("id", "=", jobId)
-        .executeTakeFirst();
+        .select(["id", "attempts", "max_attempts", "status", "worker_id"])
+        .where("id", "=", jobId);
 
-      if (!job) {
+      if (expectedWorkerId) {
+        query = query
+          .where("status", "=", "PROCESSING")
+          .where("worker_id", "=", expectedWorkerId);
+      }
+
+      const job = await query.executeTakeFirst();
+
+      if (!job || job.status === "COMPLETED") {
         return false;
       }
 
       const nextAttempts = job.attempts + 1;
       const shouldRetry = nextAttempts < job.max_attempts;
 
-      await db
+      let updateQuery = db
         .updateTable("jobs")
         .set({
           attempts: nextAttempts,
@@ -99,10 +114,16 @@ export function createJobManager(options: {
           failed_at: shouldRetry ? null : new Date(),
           updated_at: new Date(),
         })
-        .where("id", "=", jobId)
-        .execute();
+        .where("id", "=", jobId);
 
-      return shouldRetry;
+      if (expectedWorkerId) {
+        updateQuery = updateQuery
+          .where("status", "=", "PROCESSING")
+          .where("worker_id", "=", expectedWorkerId);
+      }
+
+      const result = await updateQuery.executeTakeFirst();
+      return result.numUpdatedRows === 1n ? shouldRetry : false;
     },
 
     async queueJob(params: QueueJobParams): Promise<Job> {

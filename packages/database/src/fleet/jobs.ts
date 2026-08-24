@@ -68,7 +68,7 @@ export async function claimNextQueuedJob(
             END <= ${worker.storage_gb}
           `,
         )
-        .where(sql<boolean>`'arm64' = ${worker.architecture}`);
+        .where(sql<boolean>`${worker.architecture} in ('arm64', 'x86_64')`);
     }
 
     const row = await query

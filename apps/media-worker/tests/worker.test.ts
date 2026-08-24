@@ -354,4 +354,47 @@ describe("pollForNextJob", () => {
     assert.equal(result, null);
     assert.equal(attempts, 1, "never attempts the second claim once aborted");
   });
+
+  it("exits immediately without idle waiting when worker status is FAILED", async () => {
+    let attempts = 0;
+    const workerRow = {
+      id: WORKER_ID,
+      status: "FAILED",
+    };
+
+    const db = {
+      selectFrom(table: string) {
+        if (table === "workers") return makeChain(() => workerRow);
+        throw new Error(`unexpected table ${table}`);
+      },
+      transaction() {
+        return {
+          execute: async (cb: (trx: unknown) => Promise<unknown>) => {
+            attempts++;
+            const trx = {
+              selectFrom(table: string) {
+                if (table === "workers") return makeChain(() => undefined); // claimNextQueuedJob fails because worker is not READY
+                if (table === "jobs") return makeChain(() => undefined);
+                throw new Error(`unexpected table ${table}`);
+              },
+            };
+            return cb(trx);
+          },
+        };
+      },
+    } as unknown as Kysely<Database>;
+
+    const ctx = {
+      db,
+      workerId: WORKER_ID,
+      config: loadMediaWorkerConfig({
+        WORKER_ID,
+        WORKER_IDLE_POLL_SECONDS: "30",
+      }),
+    } as any;
+
+    const result = await pollForNextJob(ctx);
+    assert.equal(result, null);
+    assert.equal(attempts, 1, "only tries once and does not wait idle");
+  });
 });

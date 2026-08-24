@@ -27,6 +27,7 @@ export interface FleetManager {
   runMonitoringCycle(): Promise<{
     dueProcessed: number;
     timeoutsProcessed: number;
+    orphansProcessed: number;
   }>;
   runTick(): Promise<void>;
   queueJob(params: QueueJobParams): Promise<Job>;
