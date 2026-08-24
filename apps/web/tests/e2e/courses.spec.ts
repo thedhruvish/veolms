@@ -416,20 +416,20 @@ test("learning progress follows the selected application theme", async ({
       .toBe(await themeAccent());
   };
 
-  await expectThemeProgress(".course-progress__track > span");
+  await expectThemeProgress("[data-course-card-progress-fill]");
 
   await openApp(page, "/courses");
 
-  await expectThemeProgress(".learning-progress-track > span");
+  await expectThemeProgress("[data-course-card-progress-fill]");
 
   await page
     .getByRole("button", { name: /mode active\. Switch to .* mode/ })
     .click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await expectThemeProgress(".learning-progress-track > span");
+  await expectThemeProgress("[data-course-card-progress-fill]");
 
   await openApp(page, "/courses");
-  await expectThemeProgress(".course-progress__track > span");
+  await expectThemeProgress("[data-course-card-progress-fill]");
 });
 
 test("course enrollment, search, status, and sort controls derive the visible catalogue", async ({
@@ -500,15 +500,45 @@ test("course enrollment, search, status, and sort controls derive the visible ca
   ]);
 });
 
+test("retired course summary and compact catalogue controls stay absent", async ({
+  page,
+}) => {
+  await expect(
+    page.getByRole("region", { name: "Learning overview" }),
+  ).toHaveCount(0);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(
+    page.getByRole("button", { name: /^Filter course status:/ }),
+  ).toBeHidden();
+  await expect(
+    page.getByRole("button", { name: /^Sort courses:/ }),
+  ).toBeHidden();
+});
+
+test("View Curriculum reveals the overview curriculum section", async ({
+  page,
+}) => {
+  const figmaCourse = page.getByRole("article", {
+    name: /Figma UI Essentials/,
+  });
+
+  await figmaCourse.getByRole("button", { name: "View Curriculum" }).click();
+  await expect(page).toHaveURL(
+    /\/courses\/figma-ui-essentials\/overview#cov-curriculum-heading$/,
+  );
+  await expect(page.locator("#cov-curriculum-heading")).toBeInViewport();
+});
+
 test("wishlist state is shared across catalogue routes and survives reload", async ({
   page,
 }) => {
   await page
     .getByRole("button", {
-      name: "Add The Ultimate TypeScript Course to wishlist",
+      name: "Add Figma UI Essentials to wishlist",
     })
     .click();
-  await expectStoredValue(page, "veolms-wishlist", '["typescript-course"]');
+  await expectStoredValue(page, "veolms-wishlist", '["figma-ui-essentials"]');
 
   const navigation = page.getByRole("complementary", {
     name: "Student navigation",
@@ -522,18 +552,18 @@ test("wishlist state is shared across catalogue routes and survives reload", asy
   const wishlist = page.getByRole("region", { name: "Wishlist" });
   await expect(wishlist.getByRole("article")).toHaveCount(1);
   await expect(
-    wishlist.getByRole("article", { name: /The Ultimate TypeScript Course/ }),
+    wishlist.getByRole("article", { name: /Figma UI Essentials/ }),
   ).toBeVisible();
 
   await page.reload();
   await expect(
     page.getByRole("button", {
-      name: "Remove The Ultimate TypeScript Course from wishlist",
+      name: "Remove Figma UI Essentials from wishlist",
     }),
   ).toHaveAttribute("aria-pressed", "true");
   await page
     .getByRole("button", {
-      name: "Remove The Ultimate TypeScript Course from wishlist",
+      name: "Remove Figma UI Essentials from wishlist",
     })
     .click();
   await expect(

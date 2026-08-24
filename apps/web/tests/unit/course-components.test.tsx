@@ -157,7 +157,7 @@ describe("CourseCard", () => {
     expect(onOpen).toHaveBeenCalledWith(nonEnrolledCourse);
     expect(onNavigatePage).toHaveBeenCalledTimes(2);
     expect(onNavigatePage).toHaveBeenLastCalledWith(
-      "/courses/figma-ui-essentials/overview#curriculum",
+      "/courses/figma-ui-essentials/overview#cov-curriculum-heading",
     );
     expect(onExplore).not.toHaveBeenCalled();
   });

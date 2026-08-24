@@ -4,6 +4,7 @@ import {
   CONTROL_RADIUS_DEFAULT,
   CONTROL_RADIUS_KEY,
   ELEVATED_SURFACES_KEY,
+  applySidebarGlowShapeSize,
   getControlRadiusBootstrapScript,
   getSurfaceDepthBootstrapScript,
   LEARNING_PREFERENCE_DEFAULTS,
@@ -14,6 +15,7 @@ import {
   normalizeSidebarDockItems,
   normalizeSidebarDockOrder,
   normalizeSidebarMaxWidth,
+  normalizeSidebarGlowShapeSize,
   PAGE_TAB_COLORS_DEFAULT,
   PAGE_TAB_COLORS_KEY,
   persistControlRadiusPreference,
@@ -97,6 +99,34 @@ describe("surface depth preference", () => {
     );
     runSurfaceDepthBootstrap();
     expect(document.documentElement.dataset.sidebarMenuElevation).toBe("false");
+  });
+
+  it("hydrates and applies the sidebar glow shape scale before React mounts", () => {
+    localStorage.setItem(
+      "veolms-sidebar-preferences",
+      JSON.stringify({ glowShapeSize: 150 }),
+    );
+
+    runSurfaceDepthBootstrap();
+
+    expect(normalizeSidebarGlowShapeSize(150)).toBe(150);
+    expect(
+      document.documentElement.style.getPropertyValue(
+        "--sidebar-glow-field-width",
+      ),
+    ).toBe("1080.00px");
+    expect(
+      document.documentElement.style.getPropertyValue(
+        "--sidebar-bokeh-top-size",
+      ),
+    ).toBe("177.00px");
+
+    expect(applySidebarGlowShapeSize(50)).toBe(50);
+    expect(
+      document.documentElement.style.getPropertyValue(
+        "--sidebar-bokeh-top-size",
+      ),
+    ).toBe("59.00px");
   });
 });
 

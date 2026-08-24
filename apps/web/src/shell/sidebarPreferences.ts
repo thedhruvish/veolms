@@ -4,6 +4,7 @@ import {
   normalizeSidebarGlow,
   normalizeSidebarGlowBlur,
   normalizeSidebarGlowShape,
+  normalizeSidebarGlowShapeSize,
   normalizeSidebarGlowIntensity,
   SIDEBAR_DOCK_DEFAULT_ITEMS,
   SIDEBAR_DOCK_DEFAULT_ORDER,
@@ -11,6 +12,7 @@ import {
   SIDEBAR_GLOW_DEFAULT,
   SIDEBAR_GLOW_INTENSITY_DEFAULT,
   SIDEBAR_GLOW_SHAPE_DEFAULT,
+  SIDEBAR_GLOW_SHAPE_SIZE_DEFAULT,
   SIDEBAR_HEADER_DEFAULT_VERSION,
 } from "../settings/settingsPreferences";
 import type {
@@ -86,6 +88,7 @@ export const getDefaultSidebarPreferences = (): SidebarPreferences => ({
   showCollapsedLogo: true,
   glowPalette: SIDEBAR_GLOW_DEFAULT,
   glowShape: SIDEBAR_GLOW_SHAPE_DEFAULT,
+  glowShapeSize: SIDEBAR_GLOW_SHAPE_SIZE_DEFAULT,
   glowBlur: SIDEBAR_GLOW_BLUR_DEFAULT,
   glowIntensity: SIDEBAR_GLOW_INTENSITY_DEFAULT,
   highlightActive: true,
@@ -124,6 +127,9 @@ export const getInitialSidebarPreferences = (): SidebarPreferences => {
     );
     preferences.glowShape = normalizeSidebarGlowShape(
       storedPreferences.glowShape,
+    );
+    preferences.glowShapeSize = normalizeSidebarGlowShapeSize(
+      storedPreferences.glowShapeSize,
     );
     preferences.glowBlur = normalizeSidebarGlowBlur(storedPreferences.glowBlur);
     preferences.glowIntensity = normalizeSidebarGlowIntensity(

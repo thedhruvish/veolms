@@ -124,7 +124,7 @@ describe("CourseCatalogue", () => {
     fireEvent.click(screen.getByRole("button", { name: "View Curriculum" }));
 
     expect(onNavigatePage).toHaveBeenCalledWith(
-      `/courses/${encodeURIComponent(unenrolledCourse!.id)}/overview`,
+      `/courses/${encodeURIComponent(unenrolledCourse!.id)}/overview#cov-curriculum-heading`,
     );
     expect(setNotice).not.toHaveBeenCalled();
   });

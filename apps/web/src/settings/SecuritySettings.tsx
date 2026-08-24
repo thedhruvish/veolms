@@ -1,9 +1,9 @@
-import { DeviceMobile } from "@phosphor-icons/react/DeviceMobile";
-import { Laptop } from "@phosphor-icons/react/Laptop";
-import { LockKey } from "@phosphor-icons/react/LockKey";
-import { ShieldCheck } from "@phosphor-icons/react/ShieldCheck";
-import { SignOut } from "@phosphor-icons/react/SignOut";
-import { WarningCircle } from "@phosphor-icons/react/WarningCircle";
+import { DeviceMobileIcon as DeviceMobile } from "@phosphor-icons/react/DeviceMobile";
+import { LaptopIcon as Laptop } from "@phosphor-icons/react/Laptop";
+import { LockKeyIcon as LockKey } from "@phosphor-icons/react/LockKey";
+import { ShieldCheckIcon as ShieldCheck } from "@phosphor-icons/react/ShieldCheck";
+import { SignOutIcon as SignOut } from "@phosphor-icons/react/SignOut";
+import { WarningCircleIcon as WarningCircle } from "@phosphor-icons/react/WarningCircle";
 import { SettingRow, SettingsToggle } from "./SettingsControls";
 
 export function SecuritySettings() {

@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Archive } from "@phosphor-icons/react/Archive";
-import { CreditCard } from "@phosphor-icons/react/CreditCard";
-import { DownloadSimple } from "@phosphor-icons/react/DownloadSimple";
-import { WarningCircle } from "@phosphor-icons/react/WarningCircle";
+import { ArchiveIcon as Archive } from "@phosphor-icons/react/Archive";
+import { CreditCardIcon as CreditCard } from "@phosphor-icons/react/CreditCard";
+import { DownloadSimpleIcon as DownloadSimple } from "@phosphor-icons/react/DownloadSimple";
+import { WarningCircleIcon as WarningCircle } from "@phosphor-icons/react/WarningCircle";
 import type { ProfileRole } from "./profilePreferences";
 
 export interface AccountSettingsProps {

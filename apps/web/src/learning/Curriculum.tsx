@@ -1,13 +1,13 @@
-import { ArrowUp } from "@phosphor-icons/react/ArrowUp";
-import { ArrowsInLineVertical } from "@phosphor-icons/react/ArrowsInLineVertical";
-import { ArrowsOutLineVertical } from "@phosphor-icons/react/ArrowsOutLineVertical";
-import { CaretDown } from "@phosphor-icons/react/CaretDown";
-import { Check } from "@phosphor-icons/react/Check";
-import { Circle } from "@phosphor-icons/react/Circle";
-import { CrosshairSimple } from "@phosphor-icons/react/CrosshairSimple";
-import { Eye } from "@phosphor-icons/react/Eye";
-import { ListMagnifyingGlass } from "@phosphor-icons/react/ListMagnifyingGlass";
-import { Play } from "@phosphor-icons/react/Play";
+import { ArrowUpIcon as ArrowUp } from "@phosphor-icons/react/ArrowUp";
+import { ArrowsInLineVerticalIcon as ArrowsInLineVertical } from "@phosphor-icons/react/ArrowsInLineVertical";
+import { ArrowsOutLineVerticalIcon as ArrowsOutLineVertical } from "@phosphor-icons/react/ArrowsOutLineVertical";
+import { CaretDownIcon as CaretDown } from "@phosphor-icons/react/CaretDown";
+import { CheckIcon as Check } from "@phosphor-icons/react/Check";
+import { CircleIcon as Circle } from "@phosphor-icons/react/Circle";
+import { CrosshairSimpleIcon as CrosshairSimple } from "@phosphor-icons/react/CrosshairSimple";
+import { EyeIcon as Eye } from "@phosphor-icons/react/Eye";
+import { ListMagnifyingGlassIcon as ListMagnifyingGlass } from "@phosphor-icons/react/ListMagnifyingGlass";
+import { PlayIcon as Play } from "@phosphor-icons/react/Play";
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { ExpandableSearch } from "../ExpandableSearch";
@@ -756,7 +756,7 @@ export function Curriculum({
           />
           <header className="learning-curriculum__overview">
             <div className="learning-curriculum__overview-content">
-              <div className="learning-curriculum__title-row [container-type:inline-size]">
+              <div className="learning-curriculum__title-row @container">
                 <ExpandableSearch
                   inputId={lessonSearchInputId}
                   label="Search lessons"

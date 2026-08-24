@@ -122,11 +122,19 @@ export default function AcademyLayout() {
   const navigateTo: NavigateTo = useCallback(
     (destination, options) => {
       const destinationPath = getDestinationPath(destination);
+      const activeLocationPath = locationPathRef.current;
+      const activePathname = normalizeNavigationPath(
+        activeLocationPath.split(/[?#]/, 1)[0] || "/",
+      );
+      const queryStart = activeLocationPath.indexOf("?");
+      const activeSearch =
+        queryStart < 0 ? "" : activeLocationPath.slice(queryStart);
+      const activeCoursePlayerOrigin = getCoursePlayerOrigin(activeSearch);
       const exitsActiveCoursePlayer =
-        route.kind === "learning" &&
+        activePathname.startsWith("/learn/") &&
         normalizeNavigationPath(destinationPath) ===
           normalizeNavigationPath(
-            getCoursePlayerParentPath(coursePlayerOrigin),
+            getCoursePlayerParentPath(activeCoursePlayerOrigin),
           );
       const path = exitsActiveCoursePlayer
         ? destinationPath
@@ -156,7 +164,7 @@ export default function AcademyLayout() {
         scrollApplicationTo({ top: 0, behavior: "auto" });
       }
     },
-    [coursePlayerOrigin, navigate, route.kind],
+    [navigate],
   );
   const navigateToRef = useRef(navigateTo);
   useLayoutEffect(() => {

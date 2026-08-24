@@ -1,4 +1,4 @@
-import { Heart, Plus } from "@phosphor-icons/react";
+import { HeartIcon as Heart, PlusIcon as Plus } from "@phosphor-icons/react";
 import { useState } from "react";
 import { ConfirmDeleteModal } from "../ConfirmDeleteModal";
 import { ExpandableSearch } from "../ExpandableSearch";
@@ -151,7 +151,7 @@ export function CourseCatalogue({
       aria-label={activeSection}
       className="mx-auto w-full max-w-[1800px]"
     >
-      <header className="relative flex flex-col gap-4 border-b border-[var(--border)] pb-0 min-[640px]:pb-4 min-[900px]:flex-row min-[900px]:items-center min-[900px]:gap-3">
+      <header className="relative flex flex-col gap-4 border-b border-(--border) pb-0 min-[640px]:pb-4 min-[900px]:flex-row min-[900px]:items-center min-[900px]:gap-3">
         <ExpandableSearch
           inputId="courses-search-input"
           fieldId="courses-search"
@@ -165,10 +165,10 @@ export function CourseCatalogue({
           clearOnBack
         >
           <div className="min-w-0 min-[900px]:order-1 min-[900px]:flex-1">
-            <h1 className="text-[clamp(1.8rem,2.4vw,2.15rem)] font-bold leading-tight tracking-[-0.035em] text-[var(--text)]">
+            <h1 className="text-[clamp(1.8rem,2.4vw,2.15rem)] font-bold leading-tight tracking-[-0.035em] text-(--text)">
               {activeSection}
             </h1>
-            <p className="mt-1.5 hidden text-[0.88rem] leading-6 text-[var(--muted)] min-[640px]:block">
+            <p className="mt-1.5 hidden text-[0.88rem] leading-6 text-(--muted) min-[640px]:block">
               {activeSection === "Wishlist"
                 ? `${wishlisted.size} saved ${wishlisted.size === 1 ? "course" : "courses"}.`
                 : role === "creator"
@@ -182,7 +182,7 @@ export function CourseCatalogue({
               <button
                 type="button"
                 aria-label="Create"
-                className="flex h-11 shrink-0 items-center gap-2 rounded-[var(--control-radius-action)] border border-[color-mix(in_srgb,var(--accent)_70%,transparent)] bg-[var(--accent)] px-4 !text-[14px] !font-[650] text-[var(--on-accent)] shadow-[0_8px_22px_color-mix(in_srgb,var(--accent-shadow)_62%,transparent)] transition-colors hover:bg-[var(--accent-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+                className="flex h-11 shrink-0 items-center gap-2 rounded-(--control-radius-action) border border-[color-mix(in_srgb,var(--accent)_70%,transparent)] bg-(--accent) px-4 text-[14px]! font-[650]! text-(--on-accent) shadow-[0_8px_22px_color-mix(in_srgb,var(--accent-shadow)_62%,transparent)] transition-colors hover:bg-(--accent-hover) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent)"
                 data-control-radius-action
                 onClick={() => onNavigatePage("Create Course")}
               >
@@ -213,7 +213,7 @@ export function CourseCatalogue({
                 aria-selected={enrollmentFilter === value}
                 tabIndex={enrollmentFilter === value ? 0 : -1}
                 key={value}
-                className="min-h-9 shrink-0 rounded-[var(--control-radius-structured)] border border-[color-mix(in_srgb,var(--text)_12%,transparent)] bg-[color-mix(in_srgb,var(--surface-strong)_84%,var(--canvas))] px-3.5 !text-xs !leading-5 font-semibold text-[var(--text-secondary)] shadow-[0_5px_14px_color-mix(in_srgb,var(--accent-shadow)_16%,transparent)] transition-[background-color,border-color,color,box-shadow] hover:border-[color-mix(in_srgb,var(--text)_24%,transparent)] hover:bg-[var(--hover)] hover:text-[var(--text)] aria-selected:border-[var(--text)] aria-selected:bg-[var(--text)] aria-selected:text-[var(--canvas)] aria-selected:shadow-[0_7px_18px_color-mix(in_srgb,var(--accent-shadow)_28%,transparent)] aria-selected:hover:bg-[var(--text)] sm:min-h-9 sm:px-4 sm:!text-[0.8rem]"
+                className="min-h-9 shrink-0 rounded-(--control-radius-structured) border border-[color-mix(in_srgb,var(--text)_12%,transparent)] bg-[color-mix(in_srgb,var(--surface-strong)_84%,var(--canvas))] px-3.5 text-xs! leading-5! font-semibold text-(--text-secondary) shadow-[0_5px_14px_color-mix(in_srgb,var(--accent-shadow)_16%,transparent)] transition-[background-color,border-color,color,box-shadow] hover:border-[color-mix(in_srgb,var(--text)_24%,transparent)] hover:bg-(--hover) hover:text-(--text) aria-selected:border-(--text) aria-selected:bg-(--text) aria-selected:text-(--canvas) aria-selected:shadow-[0_7px_18px_color-mix(in_srgb,var(--accent-shadow)_28%,transparent)] aria-selected:hover:bg-(--text) sm:min-h-9 sm:px-4 sm:text-[0.8rem]!"
                 onClick={() => onEnrollmentFilterChange(value)}
                 onKeyDown={handleRovingTabKeyDown}
               >
@@ -229,14 +229,14 @@ export function CourseCatalogue({
             onValueChange={onSortChange}
             ariaLabel="Sort courses"
             options={sortOptions}
-            triggerClassName="!h-11 !w-full !min-w-0 !rounded-[var(--control-radius-structured)] !border !border-[var(--border)] !bg-[color-mix(in_srgb,var(--surface)_76%,transparent)] !px-3 !text-[0.78rem] !text-[var(--text-secondary)] min-[1080px]:!h-10 min-[1080px]:!w-[170px]"
+            triggerClassName="h-11! w-full! min-w-0! rounded-(--control-radius-structured)! border! border-(--border)! bg-[color-mix(in_srgb,var(--surface)_76%,transparent)]! px-3! text-[0.78rem]! text-(--text-secondary)! min-[1080px]:h-10! min-[1080px]:w-42.5!"
           />
           <ThemedSelect
             value={statusFilter}
             onValueChange={onStatusFilterChange}
             ariaLabel="Filter course status"
             options={statusOptions}
-            triggerClassName="!h-11 !w-full !min-w-0 !rounded-[var(--control-radius-structured)] !border !border-[var(--border)] !bg-[color-mix(in_srgb,var(--surface)_76%,transparent)] !px-3 !text-[0.78rem] !text-[var(--text-secondary)] min-[1080px]:!h-10 min-[1080px]:!w-[140px]"
+            triggerClassName="h-11! w-full! min-w-0! rounded-(--control-radius-structured)! border! border-(--border)! bg-[color-mix(in_srgb,var(--surface)_76%,transparent)]! px-3! text-[0.78rem]! text-(--text-secondary)! min-[1080px]:h-10! min-[1080px]:w-35!"
           />
         </div>
       </div>
@@ -248,21 +248,21 @@ export function CourseCatalogue({
           </div>
         </div>
       ) : (
-        <div className="mt-6 grid min-h-[360px] place-items-center content-center rounded-xl border border-dashed border-[var(--border-strong)] px-6 text-center">
-          <Heart size={34} className="text-[var(--accent)]" />
-          <h2 className="mt-3 text-base font-semibold text-[var(--text)]">
+        <div className="mt-6 grid min-h-90 place-items-center content-center rounded-xl border border-dashed border-(--border-strong) px-6 text-center">
+          <Heart size={34} className="text-(--accent)" />
+          <h2 className="mt-3 text-base font-semibold text-(--text)">
             {activeSection === "Wishlist"
               ? "Your wishlist is empty"
               : "No courses found"}
           </h2>
-          <p className="mt-1.5 max-w-sm text-[0.82rem] leading-6 text-[var(--muted)]">
+          <p className="mt-1.5 max-w-sm text-[0.82rem] leading-6 text-(--muted)">
             {activeSection === "Wishlist"
               ? "Save a not-enrolled course with its heart button and it will appear here."
               : "Try a different search or filter."}
           </p>
           <button
             type="button"
-            className="mt-4 min-h-10 rounded-[var(--control-radius-action)] bg-[var(--accent)] px-4 text-[0.8rem] font-semibold text-[var(--on-accent)] hover:bg-[var(--accent-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+            className="mt-4 min-h-10 rounded-(--control-radius-action) bg-(--accent) px-4 text-[0.8rem] font-semibold text-(--on-accent) hover:bg-(--accent-hover) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent)"
             data-control-radius-action
             onClick={onResetCatalogue}
           >

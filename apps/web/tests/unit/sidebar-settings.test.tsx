@@ -49,6 +49,7 @@ function StatefulGlowSettings() {
     ...preferences,
     glowPalette: "theme",
     glowShape: "circle",
+    glowShapeSize: 100,
     glowBlur: 8,
     glowIntensity: 50,
   });
@@ -145,6 +146,9 @@ describe("sidebar settings draft inputs", () => {
   it("updates the additional bokeh blur through the shared slider", () => {
     const onChange = vi.fn();
     renderSettings(onChange);
+    expect(
+      screen.getByRole("heading", { name: "Bokeh blur" }),
+    ).toBeInTheDocument();
     const slider = screen.getByRole("slider", {
       name: "Additional sidebar bokeh blur",
     });
@@ -178,12 +182,35 @@ describe("sidebar settings draft inputs", () => {
     });
   });
 
+  it("updates the sidebar glow shape size through the shared slider", () => {
+    const onChange = vi.fn();
+    renderSettings(onChange);
+    expect(
+      screen.getByRole("heading", { name: "Size" }),
+    ).toBeInTheDocument();
+    const slider = screen.getByRole("slider", {
+      name: "Sidebar glow shape size",
+    });
+
+    expect(slider).toHaveValue("100");
+    expect(slider).toHaveAttribute("min", "50");
+    expect(slider).toHaveAttribute("max", "180");
+    expect(slider).toHaveAttribute("aria-valuetext", "100 percent");
+
+    fireEvent.change(slider, { target: { value: "150" } });
+    expect(onChange).toHaveBeenLastCalledWith({
+      ...preferences,
+      glowShapeSize: 150,
+    });
+  });
+
   it("resets every sidebar glow control to the shared defaults", () => {
     const onChange = vi.fn();
     const customPreferences: SidebarPreferences = {
       ...preferences,
       glowPalette: "purple-blue",
       glowShape: "star",
+      glowShapeSize: 165,
       glowBlur: 27,
       glowIntensity: 75,
     };
@@ -206,6 +233,7 @@ describe("sidebar settings draft inputs", () => {
       ...customPreferences,
       glowPalette: "theme",
       glowShape: "circle",
+      glowShapeSize: 100,
       glowBlur: 8,
       glowIntensity: 50,
     });

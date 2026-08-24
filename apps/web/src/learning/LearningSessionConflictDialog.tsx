@@ -1,5 +1,5 @@
-import { WarningCircle } from "@phosphor-icons/react/WarningCircle";
-import { X } from "@phosphor-icons/react/X";
+import { WarningCircleIcon as WarningCircle } from "@phosphor-icons/react/WarningCircle";
+import { XIcon as X } from "@phosphor-icons/react/X";
 import { useEffect, useRef } from "react";
 import { useBackDismiss } from "../navigation/useBackDismiss";
 

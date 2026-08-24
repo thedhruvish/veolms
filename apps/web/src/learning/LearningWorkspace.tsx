@@ -1,4 +1,4 @@
-import { ArrowLeft } from "@phosphor-icons/react/ArrowLeft";
+import { ArrowLeftIcon as ArrowLeft } from "@phosphor-icons/react/ArrowLeft";
 import {
   useCallback,
   useEffect,
@@ -1103,7 +1103,7 @@ export function LearningWorkspace({
                 : {}),
             } as CSSProperties
           }
-          className="learning-course-content-drawer overflow-hidden data-expanded:rounded-none data-[swipe-axis=y]:[--drawer-content-max-height:100dvh] [--drawer-bleed-background:var(--canvas)] bg-[var(--canvas)] shadow-[0_-18px_48px_rgba(0,0,0,0.32)]"
+          className="learning-course-content-drawer overflow-hidden data-expanded:rounded-none data-[swipe-axis=y]:[--drawer-content-max-height:100dvh] [--drawer-bleed-background:var(--canvas)] bg-(--canvas) shadow-[0_-18px_48px_rgba(0,0,0,0.32)]"
         >
           <DrawerTitle className="sr-only">Course lessons</DrawerTitle>
           <DrawerDescription className="sr-only">

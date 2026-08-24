@@ -23,10 +23,12 @@ test("reading mode persists, stays interactive, and covers viewport UI", async (
     name: "Color temperature",
   });
   const texture = page.getByRole("slider", { name: "Texture" });
+  const grainSize = page.getByRole("slider", { name: "Grain size" });
 
   await expect(toggle).toHaveAttribute("aria-checked", "false");
   await expect(temperature).toHaveValue("50");
   await expect(texture).toHaveValue("90");
+  await expect(grainSize).toHaveValue("50");
   await expect(texture).toHaveCSS("--app-slider-track-height", "10px");
 
   await page.getByRole("switch", { name: "Turn reading mode on" }).click();
@@ -119,6 +121,7 @@ test("reading mode persists, stays interactive, and covers viewport UI", async (
       enabled: true,
       colorTemperature: 85,
       texture: 75,
+      textureGrainSize: 50,
       colors: "full",
     });
 
@@ -150,6 +153,7 @@ test("reading mode persists, stays interactive, and covers viewport UI", async (
       toggle,
       temperature,
       texture,
+      grainSize,
       page.getByRole("switch", { name: "Turn reading mode off" }),
       page.getByRole("button", { name: "Restore defaults" }),
     ].map(async (control) => {
@@ -177,6 +181,7 @@ test("reading mode persists, stays interactive, and covers viewport UI", async (
     "true",
   );
   await expect(texture).toHaveValue("75");
+  await expect(grainSize).toHaveValue("50");
 
   await openApp(page, "/settings/learning");
   await expect(page.getByRole("tabpanel")).toHaveAttribute(
@@ -212,6 +217,52 @@ test("reading mode persists, stays interactive, and covers viewport UI", async (
   await expect(toggle).toHaveAttribute("aria-checked", "true");
   await expect(temperature).toHaveValue("50");
   await expect(texture).toHaveValue("90");
+  await expect(grainSize).toHaveValue("50");
+});
+
+test("grain size control persists and scales the paper texture", async ({
+  page,
+}) => {
+  await installBaselineState(page);
+  await openApp(page, "/settings/appearance");
+  await expectAppearanceSettingsReady(page);
+
+  const grainSize = page.getByRole("slider", { name: "Grain size" });
+  const textureLayer = page.locator(".reading-mode-effects__texture");
+  const previewTexture = page.locator(
+    ".settings-reading-mode__preview-texture",
+  );
+
+  await expect(grainSize).toHaveValue("50");
+  await expect(grainSize).toHaveAttribute("aria-valuetext", "50% grain size");
+  await grainSize.fill("75");
+
+  await expect(grainSize).toHaveValue("75");
+  await expect(page.locator("html")).toHaveCSS(
+    "--reading-mode-texture-tile-size",
+    "384.00px",
+  );
+  await expect(textureLayer).toHaveCSS("background-size", "384px 384px");
+  await expect(previewTexture).toHaveCSS("background-size", "384px 384px");
+  await expect
+    .poll(() =>
+      page.evaluate((key) => {
+        const value = localStorage.getItem(key);
+        return value ? JSON.parse(value).textureGrainSize : null;
+      }, READING_MODE_STORAGE_KEY),
+    )
+    .toBe(75);
+
+  await page.reload();
+  await expectAppearanceSettingsReady(page);
+  await expect(grainSize).toHaveValue("75");
+
+  await page.getByRole("button", { name: "Restore defaults" }).click();
+  await expect(grainSize).toHaveValue("50");
+  await expect(page.locator("html")).toHaveCSS(
+    "--reading-mode-texture-tile-size",
+    "256.00px",
+  );
 });
 
 test("neutral temperature and zero texture leave every effect layer inactive", async ({

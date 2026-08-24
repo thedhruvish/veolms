@@ -12,6 +12,8 @@ import "swiper/css";
 import "./SwipeableTabPanel.css";
 
 const TAB_VISIBILITY_INSET = 12;
+const TAB_SWIPE_MAX_COMPLETION_DISTANCE = 116;
+const TAB_SWIPE_MAX_COMPLETION_RATIO = 0.24;
 
 const TAB_SWIPE_NO_SWIPING_SELECTOR = [
   ".swiper-no-swiping",
@@ -57,6 +59,19 @@ const syncAdjacentSlideSpacing = (swiper: SwiperInstance) => {
   swiper.params.spaceBetween = spaceBetween;
   swiper.originalParams.spaceBetween = spaceBetween;
   return changed;
+};
+
+const syncSwipeCompletionRatio = (swiper: SwiperInstance) => {
+  const width = swiper.size || swiper.el.clientWidth;
+  const ratio =
+    width > 0
+      ? Math.min(
+          TAB_SWIPE_MAX_COMPLETION_RATIO,
+          TAB_SWIPE_MAX_COMPLETION_DISTANCE / width,
+        )
+      : TAB_SWIPE_MAX_COMPLETION_RATIO;
+  swiper.params.longSwipesRatio = ratio;
+  swiper.originalParams.longSwipesRatio = ratio;
 };
 
 interface SwipeableTabPanelProps<T extends string> {
@@ -170,15 +185,6 @@ const writeIndicatorGeometry = (
   tabList.style.setProperty("--page-tab-indicator-color", geometry.color);
 };
 
-const getTabButtonId = (
-  tabList: HTMLElement | null,
-  tab: string,
-  fallback: string,
-) =>
-  Array.from(
-    tabList?.querySelectorAll<HTMLElement>("[data-swipe-tab-id]") ?? [],
-  ).find((button) => button.dataset.swipeTabId === tab)?.id ?? fallback;
-
 export function SwipeableTabPanel<T extends string>({
   tabs,
   activeTab,
@@ -194,6 +200,7 @@ export function SwipeableTabPanel<T extends string>({
   const onTabChangeRef = useRef(onTabChange);
   const activeTabRef = useRef(activeTab);
   const headerClickIndexRef = useRef<number | null>(null);
+  const touchActiveRef = useRef(false);
 
   onTabChangeRef.current = onTabChange;
   activeTabRef.current = activeTab;
@@ -219,6 +226,7 @@ export function SwipeableTabPanel<T extends string>({
   const handleSwiperReady = useCallback(
     (swiper: SwiperInstance) => {
       const spacingChanged = syncAdjacentSlideSpacing(swiper);
+      syncSwipeCompletionRatio(swiper);
       swiperRef.current = swiper;
       if (spacingChanged) swiper.updateSlides();
       const activeIndex = tabs.indexOf(activeTabRef.current);
@@ -232,6 +240,7 @@ export function SwipeableTabPanel<T extends string>({
 
   const handleSlideChange = useCallback(
     (swiper: SwiperInstance) => {
+      if (touchActiveRef.current) return;
       const destination = tabs[swiper.activeIndex];
       if (!destination) return;
 
@@ -247,6 +256,17 @@ export function SwipeableTabPanel<T extends string>({
     },
     [revealTab, tabs, updateIndicatorForTab],
   );
+
+  const handleTouchStart = useCallback((swiper: SwiperInstance) => {
+    touchActiveRef.current = true;
+    syncSwipeCompletionRatio(swiper);
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    // Swiper emits touchEnd before selecting the destination slide. The
+    // following slideChange can therefore commit without updating mid-drag.
+    touchActiveRef.current = false;
+  }, []);
 
   useLayoutEffect(() => {
     updateIndicatorForTab(activeTab);
@@ -337,22 +357,20 @@ export function SwipeableTabPanel<T extends string>({
         className="swipeable-tab-panel__swiper"
         slidesPerView={1}
         autoHeight
+        longSwipesRatio={TAB_SWIPE_MAX_COMPLETION_RATIO}
         noSwiping
         noSwipingSelector={TAB_SWIPE_NO_SWIPING_SELECTOR}
+        threshold={0}
         onBeforeInit={syncAdjacentSlideSpacing}
         onBeforeResize={syncAdjacentSlideSpacing}
         onSwiper={handleSwiperReady}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
         onSlideChange={handleSlideChange}
       >
         {tabs.map((tab) => (
           <SwiperSlide
             key={tab}
-            role="tabpanel"
-            aria-labelledby={getTabButtonId(
-              tabListRef.current,
-              tab,
-              labelledBy,
-            )}
             aria-hidden={tab === activeTab ? undefined : true}
             inert={tab === activeTab ? undefined : true}
           >

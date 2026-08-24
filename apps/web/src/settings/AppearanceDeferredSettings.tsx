@@ -1,14 +1,14 @@
-import { ArrowsClockwise } from "@phosphor-icons/react/ArrowsClockwise";
-import { ArrowsInLineHorizontal } from "@phosphor-icons/react/ArrowsInLineHorizontal";
-import { Check } from "@phosphor-icons/react/Check";
-import { CircleHalf } from "@phosphor-icons/react/CircleHalf";
-import { CornersOut } from "@phosphor-icons/react/CornersOut";
-import { EyeSlash } from "@phosphor-icons/react/EyeSlash";
-import { Keyboard } from "@phosphor-icons/react/Keyboard";
-import { Sparkle } from "@phosphor-icons/react/Sparkle";
-import { Stack } from "@phosphor-icons/react/Stack";
-import { Tabs } from "@phosphor-icons/react/Tabs";
-import { TextAa } from "@phosphor-icons/react/TextAa";
+import { ArrowsClockwiseIcon as ArrowsClockwise } from "@phosphor-icons/react/ArrowsClockwise";
+import { ArrowsInLineHorizontalIcon as ArrowsInLineHorizontal } from "@phosphor-icons/react/ArrowsInLineHorizontal";
+import { CheckIcon as Check } from "@phosphor-icons/react/Check";
+import { CircleHalfIcon as CircleHalf } from "@phosphor-icons/react/CircleHalf";
+import { CornersOutIcon as CornersOut } from "@phosphor-icons/react/CornersOut";
+import { EyeSlashIcon as EyeSlash } from "@phosphor-icons/react/EyeSlash";
+import { KeyboardIcon as Keyboard } from "@phosphor-icons/react/Keyboard";
+import { SparkleIcon as Sparkle } from "@phosphor-icons/react/Sparkle";
+import { StackIcon as Stack } from "@phosphor-icons/react/Stack";
+import { TabsIcon as Tabs } from "@phosphor-icons/react/Tabs";
+import { TextAaIcon as TextAa } from "@phosphor-icons/react/TextAa";
 import { useEffect, useState } from "react";
 import {
   academyThemes,

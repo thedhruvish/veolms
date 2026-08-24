@@ -86,7 +86,7 @@ function ContextMenuContent({
   return (
     <ContextMenuPrimitive.Portal>
       <ContextMenuPrimitive.Positioner
-        className="isolate z-[220] outline-none"
+        className="isolate z-220 outline-none"
         align={align}
         alignOffset={alignOffset}
         side={side}
@@ -95,7 +95,7 @@ function ContextMenuContent({
         <ContextMenuPrimitive.Popup
           data-slot="context-menu-content"
           className={cn(
-            "z-[220] max-h-(--available-height) min-w-52 max-w-[min(19rem,calc(100vw-1rem))] origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_94%,transparent)] p-1.5 text-[var(--text)] shadow-[0_18px_48px_rgb(0_0_0/0.3)] backdrop-blur-xl transition-[transform,opacity] duration-100 ease-out outline-none data-ending-style:scale-[0.98] data-ending-style:opacity-0 data-starting-style:scale-[0.98] data-starting-style:opacity-0",
+            "z-220 max-h-(--available-height) min-w-52 max-w-[min(19rem,calc(100vw-1rem))] origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-xl border border-(--border) bg-[color-mix(in_srgb,var(--surface)_94%,transparent)] p-1.5 text-(--text) shadow-[0_18px_48px_rgb(0_0_0/0.3)] backdrop-blur-xl transition-[transform,opacity] duration-100 ease-out outline-none data-ending-style:scale-[0.98] data-ending-style:opacity-0 data-starting-style:scale-[0.98] data-starting-style:opacity-0",
             className,
           )}
           {...props}
@@ -113,7 +113,7 @@ function ContextMenuLabel({
     <ContextMenuPrimitive.GroupLabel
       data-slot="context-menu-label"
       className={cn(
-        "px-2.5 py-1.5 text-xs font-semibold text-[var(--muted)]",
+        "px-2.5 py-1.5 text-xs font-semibold text-(--muted)",
         className,
       )}
       {...props}
@@ -135,7 +135,7 @@ function ContextMenuItem({
     <ContextMenuPrimitive.Item
       data-slot="context-menu-item"
       className={cn(
-        "relative flex cursor-default items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-[var(--text-secondary)] outline-none select-none data-highlighted:bg-[var(--hover)] data-highlighted:text-[var(--text)] data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+        "relative flex cursor-default items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-(--text-secondary) outline-none select-none data-highlighted:bg-(--hover) data-highlighted:text-(--text) data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
         className,
       )}
       {...props}
@@ -150,7 +150,7 @@ function ContextMenuSeparator({
   return (
     <ContextMenuPrimitive.Separator
       data-slot="context-menu-separator"
-      className={cn("mx-1 my-1 h-px bg-[var(--border)]", className)}
+      className={cn("mx-1 my-1 h-px bg-(--border)", className)}
       {...props}
     />
   );

@@ -1,4 +1,4 @@
-import { Trash, X } from "@phosphor-icons/react";
+import { TrashIcon as Trash, XIcon as X } from "@phosphor-icons/react";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useBackDismiss } from "./navigation/useBackDismiss";
@@ -152,7 +152,7 @@ export function ConfirmDeleteModal({
         {/* Header with Icon and Text */}
         <div className="flex items-start gap-3.5 pr-8 mb-5">
           <div
-            className="flex w-10 h-10 items-center justify-center rounded-xl text-red-400 bg-red-500/[0.12] border border-red-500/20 shadow-[0_2px_8px_rgba(239,68,68,0.12)] shrink-0"
+            className="flex w-10 h-10 items-center justify-center rounded-xl text-red-400 bg-red-500/12 border border-red-500/20 shadow-[0_2px_8px_rgba(239,68,68,0.12)] shrink-0"
             aria-hidden="true"
           >
             <Trash size={18} weight="duotone" />
@@ -160,13 +160,13 @@ export function ConfirmDeleteModal({
           <div className="flex-1 min-w-0 pt-0.5">
             <h3
               id="delete-modal-title"
-              className="m-0 mb-1 text-[var(--text)] text-[1.05rem] font-bold tracking-[-0.015em] leading-tight"
+              className="m-0 mb-1 text-(--text) text-[1.05rem] font-bold tracking-[-0.015em] leading-tight"
             >
               {title}
             </h3>
             <p
               id="delete-modal-description"
-              className="m-0 text-[var(--muted)] text-[0.82rem] leading-[1.45]"
+              className="m-0 text-(--muted) text-[0.82rem] leading-[1.45]"
             >
               {message}
             </p>
@@ -195,7 +195,7 @@ export function ConfirmDeleteModal({
               paddingLeft: "16px",
               paddingRight: "16px",
             }}
-            className="relative inline-flex items-center justify-center border border-red-500/40 text-white bg-red-600 hover:bg-red-700 hover:border-red-500/60 active:scale-[0.98] cursor-pointer overflow-hidden shadow-[0_3px_10px_rgba(220,38,38,0.35)] hover:shadow-[0_4px_14px_rgba(220,38,38,0.45)] transition-all duration-150 ease-out select-none box-border w-[155px] min-w-[155px] max-w-[155px] max-[480px]:w-full max-[480px]:min-w-full max-[480px]:max-w-full max-[480px]:h-[38px]"
+            className="relative inline-flex items-center justify-center border border-red-500/40 text-white bg-red-600 hover:bg-red-700 hover:border-red-500/60 active:scale-[0.98] cursor-pointer overflow-hidden shadow-[0_3px_10px_rgba(220,38,38,0.35)] hover:shadow-[0_4px_14px_rgba(220,38,38,0.45)] transition-all duration-150 ease-out select-none box-border w-38.75 min-w-38.75 max-w-38.75 max-[480px]:w-full max-[480px]:min-w-full max-[480px]:max-w-full max-[480px]:h-9.5"
             onMouseDown={startHold}
             onMouseUp={resetHold}
             onMouseLeave={resetHold}

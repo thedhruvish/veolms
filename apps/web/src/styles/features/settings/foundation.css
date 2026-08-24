@@ -700,6 +700,7 @@
 }
 
 .settings-sidebar-width__value,
+.settings-sidebar-glow-size__value,
 .settings-sidebar-glow-intensity__value,
 .settings-sidebar-glow-blur__value {
   display: inline-flex;
@@ -733,6 +734,7 @@
 }
 
 .settings-sidebar-width__range-labels,
+.settings-sidebar-glow-size__labels,
 .settings-sidebar-glow-intensity__labels,
 .settings-sidebar-glow-blur__labels {
   display: flex;
@@ -1942,6 +1944,7 @@
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 13%, transparent);
 }
 
+.settings-sidebar-glow-size,
 .settings-sidebar-glow-intensity,
 .settings-sidebar-glow-blur {
   display: grid;
@@ -1952,6 +1955,7 @@
     color-mix(in srgb, var(--surface-strong) 64%, transparent);
 }
 
+.settings-sidebar-glow-size__heading,
 .settings-sidebar-glow-intensity__heading,
 .settings-sidebar-glow-blur__heading {
   display: flex;
@@ -1960,6 +1964,7 @@
   gap: 18px;
 }
 
+.settings-sidebar-glow-size__heading h3,
 .settings-sidebar-glow-intensity__heading h3,
 .settings-sidebar-glow-blur__heading h3 {
   margin: 0;
@@ -1969,6 +1974,7 @@
   line-height: 1.25;
 }
 
+.settings-sidebar-glow-size__heading p,
 .settings-sidebar-glow-intensity__heading p,
 .settings-sidebar-glow-blur__heading p {
   margin: 4px 0 0;
@@ -1977,6 +1983,7 @@
   line-height: 1.4;
 }
 
+.settings-sidebar-glow-size__range,
 .settings-sidebar-glow-intensity__range,
 .settings-sidebar-glow-blur__range {
   display: grid;

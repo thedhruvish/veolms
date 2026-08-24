@@ -1,24 +1,24 @@
 import {
-  Archive,
-  ArrowCounterClockwise,
-  Certificate,
-  ChartBar,
-  CopySimple,
-  DotsThreeVertical,
-  Eye,
-  Flag,
-  GraduationCap,
-  Heart,
-  LinkSimple,
-  ListBullets,
-  PaperPlaneTilt,
-  PencilSimple,
-  Play,
-  Plus,
-  ShareNetwork,
-  Trash,
-  UploadSimple,
-  UsersThree,
+  ArchiveIcon as Archive,
+  ArrowCounterClockwiseIcon as ArrowCounterClockwise,
+  CertificateIcon as Certificate,
+  ChartBarIcon as ChartBar,
+  CopySimpleIcon as CopySimple,
+  DotsThreeVerticalIcon as DotsThreeVertical,
+  EyeIcon as Eye,
+  FlagIcon as Flag,
+  GraduationCapIcon as GraduationCap,
+  HeartIcon as Heart,
+  LinkSimpleIcon as LinkSimple,
+  ListBulletsIcon as ListBullets,
+  PaperPlaneTiltIcon as PaperPlaneTilt,
+  PencilSimpleIcon as PencilSimple,
+  PlayIcon as Play,
+  PlusIcon as Plus,
+  ShareNetworkIcon as ShareNetwork,
+  TrashIcon as Trash,
+  UploadSimpleIcon as UploadSimple,
+  UsersThreeIcon as UsersThree,
 } from "@phosphor-icons/react";
 import type { Icon } from "@phosphor-icons/react";
 import { useLayoutEffect, useRef, useState } from "react";
@@ -117,10 +117,10 @@ function MenuAction({
     <button
       type="button"
       role="menuitem"
-      className={`flex min-h-10 w-full items-center gap-2.5 rounded-lg px-3 text-left text-[0.78rem] transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--accent)] ${
+      className={`flex min-h-10 w-full items-center gap-2.5 rounded-lg px-3 text-left text-[0.78rem] transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-(--accent) ${
         destructive
           ? "text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
-          : "text-[var(--text-secondary)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
+          : "text-(--text-secondary) hover:bg-(--hover) hover:text-(--text)"
       }`}
       onClick={onClick}
     >
@@ -132,7 +132,7 @@ function MenuAction({
 }
 
 function MenuDivider() {
-  return <div className="my-1 h-px bg-[var(--border)]" aria-hidden="true" />;
+  return <div className="my-1 h-px bg-(--border)" aria-hidden="true" />;
 }
 
 export interface CourseCardProps {
@@ -317,12 +317,12 @@ export function CourseCard({
 
   return (
     <article
-      className="group relative min-w-0 overflow-visible rounded-xl border border-[var(--border)] bg-[var(--card-surface,var(--surface))] shadow-[var(--card-shadow)] transition-[background-color,box-shadow] duration-200 hover:bg-[var(--card-surface-hover,var(--hover))] hover:shadow-[var(--card-hover-shadow)]"
+      className="group relative min-w-0 overflow-visible rounded-xl border border-(--border) bg-(--card-surface,var(--surface)) shadow-(--card-shadow) transition-[background-color,box-shadow] duration-200 hover:bg-(--card-surface-hover,var(--hover)) hover:shadow-(--card-hover-shadow)"
       aria-label={`${course.title}${role === "creator" ? `, ${course.lifecycleStatus}` : course.enrolled ? `, ${progress}% complete` : ", not enrolled"}`}
       data-course-card
     >
       <div
-        className="relative aspect-video overflow-hidden rounded-t-[11px] bg-[var(--track)]"
+        className="relative aspect-video overflow-hidden rounded-t-[11px] bg-(--track)"
         data-course-card-media
       >
         <img
@@ -338,7 +338,7 @@ export function CourseCard({
 
         <button
           type="button"
-          className="group/media absolute inset-0 z-10 flex items-center justify-center focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-[var(--accent)]"
+          className="group/media absolute inset-0 z-10 flex items-center justify-center focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-(--accent)"
           aria-label={thumbnailActionLabel}
           title={thumbnailActionTooltip}
           onClick={openThumbnail}
@@ -389,12 +389,12 @@ export function CourseCard({
       </div>
 
       <div
-        className="relative flex min-h-[184px] flex-col p-4"
+        className="relative flex min-h-46 flex-col p-4"
         data-course-card-details
       >
         <a
           href={overviewPath}
-          className="absolute inset-0 z-10 cursor-pointer rounded-b-[11px] outline-none transition-colors duration-150 hover:bg-[color-mix(in_srgb,var(--accent)_4%,transparent)] focus-visible:bg-[color-mix(in_srgb,var(--accent)_4%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--accent)]"
+          className="absolute inset-0 z-10 cursor-pointer rounded-b-[11px] outline-none transition-colors duration-150 hover:bg-[color-mix(in_srgb,var(--accent)_4%,transparent)] focus-visible:bg-[color-mix(in_srgb,var(--accent)_4%,transparent)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-(--accent)"
           aria-label={`View curriculum for ${course.title}`}
           title="View Curriculum"
           data-course-card-curriculum
@@ -417,10 +417,10 @@ export function CourseCard({
           data-course-card-info-row
         >
           <div className="min-w-0 flex-1 px-2 py-1.5 text-left">
-            <h2 className="truncate text-[0.92rem] font-semibold leading-8 tracking-[-0.015em] text-[var(--text)] lg:text-[0.98rem]">
+            <h2 className="truncate text-[0.92rem] font-semibold leading-8 tracking-[-0.015em] text-(--text) lg:text-[0.98rem]">
               {course.title}
             </h2>
-            <p className="mt-0.5 truncate text-[0.75rem] leading-6 text-[var(--muted)]">
+            <p className="mt-0.5 truncate text-[0.75rem] leading-6 text-(--muted)">
               {course.sections} Sections{" "}
               <span className="mx-px inline-block" aria-hidden="true">
                 •
@@ -437,7 +437,7 @@ export function CourseCard({
             <button
               type="button"
               ref={menuButtonRef}
-              className="group/action relative isolate flex size-10 items-center justify-center overflow-visible rounded-full text-[var(--text-secondary)] focus-visible:!outline-none"
+              className="group/action relative isolate flex size-10 items-center justify-center overflow-visible rounded-full text-(--text-secondary) focus-visible:outline-none!"
               aria-label={`Actions for ${course.title}`}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
@@ -476,7 +476,7 @@ export function CourseCard({
               onClick={toggleCourseMenu}
             >
               <span
-                className={`relative z-10 flex size-9 items-center justify-center rounded-full text-[var(--text-secondary)] transition-colors duration-150 group-hover/action:text-[var(--text)] ${menuKeyboardFocus ? "text-[var(--text)]" : ""}`}
+                className={`relative z-10 flex size-9 items-center justify-center rounded-full text-(--text-secondary) transition-colors duration-150 group-hover/action:text-(--text) ${menuKeyboardFocus ? "text-(--text)" : ""}`}
               >
                 <span
                   key={menuPressPulse}
@@ -495,7 +495,7 @@ export function CourseCard({
             {menuOpen && (
               <div
                 ref={menuRef}
-                className={`absolute z-50 w-[238px] rounded-xl border border-[var(--border-strong)] bg-[var(--surface)] p-1.5 shadow-[0_20px_48px_rgba(0,0,0,0.38)] ${
+                className={`absolute z-50 w-59.5 rounded-xl border border-(--border-strong) bg-(--surface) p-1.5 shadow-[0_20px_48px_rgba(0,0,0,0.38)] ${
                   menuHorizontalPlacement === "right"
                     ? "left-full"
                     : menuHorizontalPlacement === "left"
@@ -669,12 +669,12 @@ export function CourseCard({
                     <MenuAction
                       icon={
                         <span
-                          className="relative inline-flex size-[17px] shrink-0"
+                          className="relative inline-flex size-4.25 shrink-0"
                           aria-hidden="true"
                         >
                           <GraduationCap size={17} weight="regular" />
                           <Plus
-                            className="absolute -right-1 -bottom-0.5 rounded-full bg-[var(--surface)]"
+                            className="absolute -right-1 -bottom-0.5 rounded-full bg-(--surface)"
                             size={8}
                             weight="bold"
                           />
@@ -724,10 +724,10 @@ export function CourseCard({
               data-course-card-pricing
               aria-label={`Course price ${course.pricing?.price ?? DEFAULT_NOT_ENROLLED_PRICING.price}`}
             >
-              <strong className="text-[1.55rem] font-extrabold leading-none tracking-[-0.035em] text-[var(--text)]">
+              <strong className="text-[1.55rem] font-extrabold leading-none tracking-[-0.035em] text-(--text)">
                 {(course.pricing ?? DEFAULT_NOT_ENROLLED_PRICING).price}
               </strong>
-              <span className="text-[0.95rem] font-medium leading-none text-[var(--muted)] line-through">
+              <span className="text-[0.95rem] font-medium leading-none text-(--muted) line-through">
                 {(course.pricing ?? DEFAULT_NOT_ENROLLED_PRICING).originalPrice}
               </span>
               <span className="inline-flex items-center rounded-md bg-emerald-500/20 px-2 py-1 text-[0.72rem] font-bold leading-none text-emerald-300">
@@ -738,20 +738,20 @@ export function CourseCard({
 
           {role === "student" && course.enrolled && (
             <div
-              className="mb-4 flex items-center gap-2.5 text-[0.72rem] text-[var(--muted)]"
+              className="mb-4 flex items-center gap-2.5 text-[0.72rem] text-(--muted)"
               aria-label={`${progress}% complete`}
             >
               <span
-                className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--track)]"
+                className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-(--track)"
                 data-course-card-progress
               >
                 <span
-                  className="block h-full rounded-full bg-[var(--accent)]"
+                  className="block h-full rounded-full bg-(--accent)"
                   style={{ width: `${progress}%` }}
                   data-course-card-progress-fill
                 />
               </span>
-              <strong className="min-w-8 text-right font-semibold text-[var(--text-secondary)]">
+              <strong className="min-w-8 text-right font-semibold text-(--text-secondary)">
                 {progress}%
               </strong>
             </div>
@@ -759,10 +759,10 @@ export function CourseCard({
 
           <button
             type="button"
-            className={`relative z-20 min-h-11 w-full items-center rounded-[var(--control-radius-action)] border border-[color-mix(in_srgb,var(--accent)_70%,transparent)] bg-[var(--accent)] px-[13px] !text-[14px] !font-[650] text-[var(--on-accent)] shadow-[0_10px_22px_color-mix(in_srgb,var(--accent-shadow)_48%,transparent)] transition-[color,background-color,box-shadow] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${
+            className={`relative z-20 min-h-11 w-full items-center rounded-(--control-radius-action) border border-[color-mix(in_srgb,var(--accent)_70%,transparent)] bg-(--accent) px-3.25 text-[14px]! font-[650]! text-(--on-accent) shadow-[0_10px_22px_color-mix(in_srgb,var(--accent-shadow)_48%,transparent)] transition-[color,background-color,box-shadow] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) ${
               role === "creator"
-                ? "flex justify-center gap-2 hover:bg-[var(--accent-hover)]"
-                : "flex justify-center gap-3 hover:bg-[var(--accent)]"
+                ? "flex justify-center gap-2 hover:bg-(--accent-hover)"
+                : "flex justify-center gap-3 hover:bg-(--accent)"
             }`}
             data-control-radius-action
             onClick={() => {
@@ -776,7 +776,7 @@ export function CourseCard({
                 return;
               }
 
-              onNavigatePage(`${overviewPath}#curriculum`);
+              onNavigatePage(`${overviewPath}#cov-curriculum-heading`);
             }}
           >
             {role === "creator" ? (

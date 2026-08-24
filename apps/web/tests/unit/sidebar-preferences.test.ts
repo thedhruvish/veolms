@@ -9,6 +9,7 @@ import {
   normalizeSidebarGlowBlur,
   normalizeSidebarGlowIntensity,
   normalizeSidebarGlowShape,
+  normalizeSidebarGlowShapeSize,
 } from "../../src/settings/settingsPreferences.js";
 
 const defaultPreferences = {
@@ -25,6 +26,7 @@ const defaultPreferences = {
   showCollapsedLogo: true,
   glowPalette: "theme",
   glowShape: "circle",
+  glowShapeSize: 100,
   glowBlur: 8,
   glowIntensity: 50,
   highlightActive: true,
@@ -95,6 +97,17 @@ describe("sidebar glow shape", () => {
     expect(normalizeSidebarGlowShape("hexagon")).toBe("hexagon");
     expect(normalizeSidebarGlowShape("square")).toBe("circle");
     expect(normalizeSidebarGlowShape(undefined)).toBe("circle");
+  });
+});
+
+describe("sidebar glow shape size", () => {
+  it("uses a 100 percent default and clamps the adjustable scale", () => {
+    expect(normalizeSidebarGlowShapeSize(50)).toBe(50);
+    expect(normalizeSidebarGlowShapeSize(100)).toBe(100);
+    expect(normalizeSidebarGlowShapeSize(180)).toBe(180);
+    expect(normalizeSidebarGlowShapeSize(20)).toBe(50);
+    expect(normalizeSidebarGlowShapeSize(220)).toBe(180);
+    expect(normalizeSidebarGlowShapeSize("invalid")).toBe(100);
   });
 });
 

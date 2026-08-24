@@ -120,7 +120,7 @@
 
   .courses-sidebar__brand {
     align-items: flex-end;
-    margin-top: 12px;
+    margin-top: 0;
   }
 
   .courses-app--collapsed .courses-sidebar__brand {
@@ -155,11 +155,14 @@
      covering the labels instead of shrinking the artwork and text. */
   .courses-sidebar__brand {
     position: relative;
-    min-height: 38px;
+    box-sizing: border-box;
+    min-height: 50px;
     flex-direction: row;
     justify-content: flex-start;
     gap: 8px;
     min-width: 0;
+    padding-top: 12px;
+    user-select: none;
     /* Matches the navigation label anchor: button inset + icon + row gap. */
     padding-left: 50.5px;
     overflow: visible;
@@ -167,7 +170,7 @@
 
   .sidebar-collapse {
     position: absolute;
-    top: 0;
+    top: 12px;
     right: auto;
     left: 6px;
     z-index: 2;
@@ -262,7 +265,7 @@
   }
 
   .courses-app--collapsed .courses-sidebar__brand {
-    min-height: 36px;
+    min-height: 48px;
     flex-direction: row;
     justify-content: flex-start;
     gap: 0;
@@ -340,6 +343,7 @@
   :root[data-collapsed-sidebar-logo="true"]
     .courses-app--collapsed
     .sidebar-collapse {
+    top: 12px;
     right: auto;
     left: 10px;
     transform: none;
@@ -348,6 +352,7 @@
   :root[data-collapsed-sidebar-logo="true"]
     .courses-app--collapsed
     .courses-logo-clip {
+    top: 15px;
     left: 19.375px;
     transform: none;
   }
@@ -358,7 +363,7 @@
   :root
     .courses-app--resize-content-visible.courses-app--collapsed
     .courses-sidebar__brand {
-    min-height: 38px;
+    min-height: 50px;
     align-items: flex-end;
     flex-direction: row;
     justify-content: flex-start;
@@ -468,7 +473,7 @@
     .courses-app--collapsed
     .sidebar-collapse {
     position: absolute;
-    top: 0;
+    top: 12px;
     right: auto;
     left: 10px;
     opacity: 1;

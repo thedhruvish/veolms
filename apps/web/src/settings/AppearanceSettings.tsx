@@ -1,6 +1,6 @@
-import { DeviceMobile } from "@phosphor-icons/react/DeviceMobile";
-import { Moon } from "@phosphor-icons/react/Moon";
-import { Sun } from "@phosphor-icons/react/Sun";
+import { DeviceMobileIcon as DeviceMobile } from "@phosphor-icons/react/DeviceMobile";
+import { MoonIcon as Moon } from "@phosphor-icons/react/Moon";
+import { SunIcon as Sun } from "@phosphor-icons/react/Sun";
 import { academyThemes } from "../themes";
 import type { AcademyTheme } from "../themes";
 import { themeRevealOriginFromClick } from "../shell/themeViewTransition";

@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
-import { At } from "@phosphor-icons/react/At";
-import { Camera } from "@phosphor-icons/react/Camera";
-import { Check } from "@phosphor-icons/react/Check";
-import { CheckCircle } from "@phosphor-icons/react/CheckCircle";
-import { EnvelopeSimple } from "@phosphor-icons/react/EnvelopeSimple";
-import { GithubLogo } from "@phosphor-icons/react/GithubLogo";
-import { Globe } from "@phosphor-icons/react/Globe";
-import { LinkedinLogo } from "@phosphor-icons/react/LinkedinLogo";
-import { Phone } from "@phosphor-icons/react/Phone";
-import { SealCheck } from "@phosphor-icons/react/SealCheck";
-import { ShieldWarning } from "@phosphor-icons/react/ShieldWarning";
-import { X } from "@phosphor-icons/react/X";
+import { AtIcon as At } from "@phosphor-icons/react/At";
+import { CameraIcon as Camera } from "@phosphor-icons/react/Camera";
+import { CheckIcon as Check } from "@phosphor-icons/react/Check";
+import { CheckCircleIcon as CheckCircle } from "@phosphor-icons/react/CheckCircle";
+import { EnvelopeSimpleIcon as EnvelopeSimple } from "@phosphor-icons/react/EnvelopeSimple";
+import { GithubLogoIcon as GithubLogo } from "@phosphor-icons/react/GithubLogo";
+import { GlobeIcon as Globe } from "@phosphor-icons/react/Globe";
+import { LinkedinLogoIcon as LinkedinLogo } from "@phosphor-icons/react/LinkedinLogo";
+import { PhoneIcon as Phone } from "@phosphor-icons/react/Phone";
+import { SealCheckIcon as SealCheck } from "@phosphor-icons/react/SealCheck";
+import { ShieldWarningIcon as ShieldWarning } from "@phosphor-icons/react/ShieldWarning";
+import { XIcon as X } from "@phosphor-icons/react/X";
 import { useBackDismiss } from "../navigation/useBackDismiss";
 import {
   getDefaultProfileIdentity,
@@ -549,7 +549,7 @@ export function ProfileSettings({
               <textarea
                 id="profile-bio"
                 name="bio"
-                className="[touch-action:pan-y_pinch-zoom] focus:[touch-action:auto]"
+                className="[touch-action:pan-y_pinch-zoom] focus:touch-auto"
                 value={draftProfile.bio}
                 maxLength={160}
                 rows={3}

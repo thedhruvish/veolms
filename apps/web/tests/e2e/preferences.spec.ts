@@ -928,6 +928,58 @@ test("theme menus use the available height before introducing overflow", async (
   expect(lightPaletteMaterial.boxShadow).not.toBe("none");
 });
 
+test("theme menu background follows the active palette and appearance", async ({
+  page,
+}) => {
+  await openApp(page, "/courses");
+
+  const root = page.locator("html");
+  const modeControl = page
+    .getByRole("complementary", { name: "Student navigation" })
+    .getByRole("group", { name: "Appearance controls" })
+    .getByRole("button")
+    .nth(0);
+  const menu = page.getByRole("menu", { name: "Choose a color theme" });
+  const readMaterial = () =>
+    menu.evaluate((element) => {
+      const styles = getComputedStyle(element);
+      return {
+        backgroundBlendMode: styles.backgroundBlendMode,
+        backgroundColor: styles.backgroundColor,
+        backgroundImage: styles.backgroundImage,
+      };
+    });
+
+  await modeControl.click({ button: "right" });
+  await expect(menu).toBeVisible();
+  await menu.getByRole("menuitemradio", { name: /Ocean Blue/ }).click();
+  await expect(root).toHaveAttribute("data-palette", "ocean");
+  const oceanMaterial = await readMaterial();
+
+  await menu.getByRole("menuitemradio", { name: /Barbie Pink/ }).click();
+  await expect(root).toHaveAttribute("data-palette", "barbie");
+  const barbieMaterial = await readMaterial();
+
+  expect(oceanMaterial.backgroundColor).not.toBe(
+    barbieMaterial.backgroundColor,
+  );
+  expect(barbieMaterial.backgroundBlendMode).toBe("soft-light");
+  expect(barbieMaterial.backgroundImage).toContain("theme-menu-grain.webp");
+
+  await page.keyboard.press("Escape");
+  await modeControl.click();
+  await expect(root).toHaveAttribute("data-theme", "light");
+  await modeControl.click({ button: "right" });
+  await expect(menu).toBeVisible();
+  const lightMaterial = await readMaterial();
+
+  expect(lightMaterial.backgroundColor).not.toBe(
+    barbieMaterial.backgroundColor,
+  );
+  expect(lightMaterial.backgroundBlendMode).toBe("normal");
+  expect(lightMaterial.backgroundImage).toBe("none");
+});
+
 test("sidebar keyboard shortcut hints can be hidden without disabling shortcuts", async ({
   page,
 }) => {
@@ -1625,6 +1677,8 @@ test("theme picker keeps pointer choices open and makes keyboard previews revers
       selectedBorderColor: buttonStyles.borderTopColor,
       selectedBorderStyle: buttonStyles.borderTopStyle,
       selectedBackgroundImage: buttonStyles.backgroundImage,
+      menuBackgroundBlendMode: menuStyles.backgroundBlendMode,
+      menuBackgroundImage: menuStyles.backgroundImage,
       selectedBorderWidth: Number.parseFloat(buttonStyles.borderTopWidth),
       selectedTransitionProperty: buttonStyles.transitionProperty,
       swatchDepthLayers: countShadowLayers(swatchStyles.boxShadow),
@@ -1645,6 +1699,10 @@ test("theme picker keeps pointer choices open and makes keyboard previews revers
   expect(paletteMaterial.selectedBorderColor).not.toBe("rgba(0, 0, 0, 0)");
   expect(paletteMaterial.selectedBorderStyle).toBe("solid");
   expect(paletteMaterial.selectedBackgroundImage).toBe("none");
+  expect(paletteMaterial.menuBackgroundBlendMode).toBe("soft-light");
+  expect(paletteMaterial.menuBackgroundImage).toContain(
+    "theme-menu-grain.webp",
+  );
   expect(paletteMaterial.selectedBorderWidth).toBe(3);
   expect(paletteMaterial.selectedTransitionProperty).toContain("transform");
   expect(paletteMaterial.swatchDepthLayers).toBe(2);
@@ -1762,7 +1820,7 @@ test("theme picker keeps pointer choices open and makes keyboard previews revers
     });
 });
 
-test("double-clicking the collapse control opens temporary floating navigation until pointer leave", async ({
+test("double-clicking the brand header opens temporary floating navigation until pointer leave", async ({
   page,
 }) => {
   await openApp(
@@ -1772,15 +1830,26 @@ test("double-clicking the collapse control opens temporary floating navigation u
 
   const app = page.locator(".courses-app");
   const sidebar = page.locator(".courses-sidebar");
-  await sidebar.getByRole("button", { name: "Collapse navigation" }).dblclick();
+  const brand = sidebar.locator(".courses-sidebar__brand");
+  await expect(brand).toHaveAttribute(
+    "title",
+    "Double-click to float sidebar",
+  );
+  await brand.dblclick({ position: { x: 120, y: 2 } });
 
   await expect(app).toHaveClass(/courses-app--hidden/);
   await expect(app).toHaveClass(/courses-app--edge-open/);
   await expect(sidebar).toBeVisible();
   await expect(sidebar).not.toHaveAttribute("inert", "");
-  await expect(
-    sidebar.getByRole("button", { name: "Pin navigation" }),
-  ).toBeVisible();
+  const pinNavigation = sidebar.getByRole("button", {
+    name: "Pin navigation",
+  });
+  await expect(pinNavigation).toBeVisible();
+  await expect(pinNavigation).toHaveAttribute(
+    "title",
+    "Pin (Ctrl+B)",
+  );
+  await expect(brand).toHaveAttribute("title", "Double-click to pin sidebar");
   await expectStoredValue(page, "veolms-sidebar-mode", "hidden");
 
   const sidebarBox = await sidebar.boundingBox();
@@ -1796,7 +1865,7 @@ test("double-clicking the collapse control opens temporary floating navigation u
   await expect(sidebar).toHaveAttribute("inert", "");
 });
 
-test("double-clicking the floating pin control restores the fixed sidebar", async ({
+test("single-clicking the floating pin control restores the fixed sidebar", async ({
   page,
 }) => {
   await openApp(
@@ -1806,12 +1875,14 @@ test("double-clicking the floating pin control restores the fixed sidebar", asyn
 
   const app = page.locator(".courses-app");
   const sidebar = page.locator(".courses-sidebar");
-  await sidebar.getByRole("button", { name: "Collapse navigation" }).dblclick();
+  await sidebar
+    .locator(".courses-sidebar__brand")
+    .dblclick({ position: { x: 120, y: 2 } });
   await expect(app).toHaveClass(/courses-app--hidden/);
   await expect(app).toHaveClass(/courses-app--edge-open/);
 
-  await sidebar.getByRole("button", { name: "Pin navigation" }).dblclick();
-  await expect(app).not.toHaveClass(/courses-app--hidden/);
+  await sidebar.getByRole("button", { name: "Pin navigation" }).click();
+  await expect(app).not.toHaveClass(/courses-app--hidden/, { timeout: 200 });
   await expect(app).not.toHaveClass(/courses-app--edge-open/);
   await expect(sidebar).not.toHaveAttribute("inert", "");
   await expect(
@@ -3172,6 +3243,9 @@ test("sidebar glow follows the theme, accepts overrides or off, and persists", a
   const shapeGroup = page.getByRole("radiogroup", { name: "Bokeh shape" });
   const circleShape = shapeGroup.getByRole("radio", { name: "Circle" });
   const starShape = shapeGroup.getByRole("radio", { name: "Star" });
+  const shapeSize = page.getByRole("slider", {
+    name: "Sidebar glow shape size",
+  });
   const blur = page.getByRole("slider", {
     name: "Additional sidebar bokeh blur",
   });
@@ -3186,6 +3260,10 @@ test("sidebar glow follows the theme, accepts overrides or off, and persists", a
   await expect(root).toHaveAttribute("data-sidebar-glow", "theme");
   await expect(circleShape).toHaveAttribute("aria-checked", "true");
   await expect(root).toHaveAttribute("data-sidebar-glow-shape", "circle");
+  await expect(shapeSize).toHaveValue("100");
+  await expect(shapeSize).toHaveAttribute("min", "50");
+  await expect(shapeSize).toHaveAttribute("max", "180");
+  await expect(shapeSize).toHaveAttribute("aria-valuetext", "100 percent");
   const compactOptionGeometry = await followTheme.evaluate((element) => {
     const preview = element.querySelector<HTMLElement>(
       ".settings-sidebar-glow-option__preview",
@@ -3337,6 +3415,41 @@ test("sidebar glow follows the theme, accepts overrides or off, and persists", a
     )
     .not.toBe(circleMask);
 
+  await shapeSize.evaluate((input: HTMLInputElement) => {
+    const setValue = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "value",
+    )?.set;
+    setValue?.call(input, "150");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await expect(shapeSize).toHaveValue("150");
+  await expect(shapeSize).toHaveAttribute("aria-valuetext", "150 percent");
+  await expect
+    .poll(() =>
+      root.evaluate((element) =>
+        getComputedStyle(element)
+          .getPropertyValue("--sidebar-bokeh-top-size")
+          .trim(),
+      ),
+    )
+    .toBe("177.00px");
+  await expect
+    .poll(() =>
+      sidebar.evaluate(
+        (element) => getComputedStyle(element, "::before").maskSize,
+      ),
+    )
+    .toContain("177px 177px");
+  await expect
+    .poll(() =>
+      app.evaluate(
+        (element) => getComputedStyle(element, "::before").backgroundImage,
+      ),
+    )
+    .toContain("1080px 630px");
+
   await intensity.evaluate((input: HTMLInputElement) => {
     const setValue = Object.getOwnPropertyDescriptor(
       HTMLInputElement.prototype,
@@ -3438,12 +3551,14 @@ test("sidebar glow follows the theme, accepts overrides or off, and persists", a
         ) as {
           glowPalette?: string;
           glowShape?: string;
+          glowShapeSize?: number;
           glowBlur?: number;
           glowIntensity?: number;
         };
         return {
           glowPalette: stored.glowPalette,
           glowShape: stored.glowShape,
+          glowShapeSize: stored.glowShapeSize,
           glowBlur: stored.glowBlur,
           glowIntensity: stored.glowIntensity,
         };
@@ -3452,6 +3567,7 @@ test("sidebar glow follows the theme, accepts overrides or off, and persists", a
     .toEqual({
       glowPalette: "off",
       glowShape: "star",
+      glowShapeSize: 150,
       glowBlur: 27,
       glowIntensity: 35,
     });
@@ -3461,6 +3577,7 @@ test("sidebar glow follows the theme, accepts overrides or off, and persists", a
   await expect(root).toHaveAttribute("data-sidebar-glow-shape", "star");
   await expect(off).toHaveAttribute("aria-checked", "true");
   await expect(starShape).toHaveAttribute("aria-checked", "true");
+  await expect(shapeSize).toHaveValue("150");
   await expect(blur).toHaveValue("27");
   await expect(intensity).toHaveValue("35");
   await expect(resetGlow).toBeEnabled();
@@ -3486,11 +3603,21 @@ test("sidebar glow follows the theme, accepts overrides or off, and persists", a
   await resetGlow.click();
   await expect(followTheme).toHaveAttribute("aria-checked", "true");
   await expect(circleShape).toHaveAttribute("aria-checked", "true");
+  await expect(shapeSize).toHaveValue("100");
   await expect(blur).toHaveValue("8");
   await expect(intensity).toHaveValue("50");
   await expect(resetGlow).toBeDisabled();
   await expect(root).toHaveAttribute("data-sidebar-glow", "theme");
   await expect(root).toHaveAttribute("data-sidebar-glow-shape", "circle");
+  await expect
+    .poll(() =>
+      root.evaluate((element) =>
+        getComputedStyle(element)
+          .getPropertyValue("--sidebar-bokeh-top-size")
+          .trim(),
+      ),
+    )
+    .toBe("118.00px");
 });
 
 test("floating sidebar keeps fixed glass beneath bokeh at every additional blur value", async ({

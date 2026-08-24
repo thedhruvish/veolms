@@ -34,6 +34,21 @@ export const SIDEBAR_GLOW_BLUR_DEFAULT = 8;
 export const SIDEBAR_GLOW_INTENSITY_MIN = 0;
 export const SIDEBAR_GLOW_INTENSITY_MAX = 100;
 export const SIDEBAR_GLOW_INTENSITY_DEFAULT = 50;
+export const SIDEBAR_GLOW_SHAPE_SIZE_MIN = 50;
+export const SIDEBAR_GLOW_SHAPE_SIZE_MAX = 180;
+export const SIDEBAR_GLOW_SHAPE_SIZE_DEFAULT = 100;
+
+const SIDEBAR_GLOW_SHAPE_BASE_LENGTHS = [
+  ["--sidebar-glow-field-width", 720],
+  ["--sidebar-glow-field-top-height", 420],
+  ["--sidebar-glow-field-bottom-height", 440],
+  ["--sidebar-bokeh-top-size", 118],
+  ["--sidebar-bokeh-top-half-size", 59],
+  ["--sidebar-bokeh-center-size", 102],
+  ["--sidebar-bokeh-center-half-size", 51],
+  ["--sidebar-bokeh-bottom-size", 126],
+  ["--sidebar-bokeh-bottom-half-size", 63],
+] as const;
 export type SidebarDockItem =
   "appearance" | "theme" | "fullscreen" | "reading-mode" | "settings";
 
@@ -157,6 +172,32 @@ export const normalizeSidebarGlowIntensity = (value: unknown): number => {
     : SIDEBAR_GLOW_INTENSITY_DEFAULT;
 };
 
+export const normalizeSidebarGlowShapeSize = (value: unknown): number => {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue)
+    ? Math.min(
+        SIDEBAR_GLOW_SHAPE_SIZE_MAX,
+        Math.max(SIDEBAR_GLOW_SHAPE_SIZE_MIN, Math.round(numericValue)),
+      )
+    : SIDEBAR_GLOW_SHAPE_SIZE_DEFAULT;
+};
+
+export const applySidebarGlowShapeSize = (
+  value: unknown,
+  root: HTMLElement | undefined = typeof document === "undefined"
+    ? undefined
+    : document.documentElement,
+): number => {
+  const normalizedSize = normalizeSidebarGlowShapeSize(value);
+  if (!root) return normalizedSize;
+
+  const scale = normalizedSize / SIDEBAR_GLOW_SHAPE_SIZE_DEFAULT;
+  for (const [property, baseLength] of SIDEBAR_GLOW_SHAPE_BASE_LENGTHS) {
+    root.style.setProperty(property, `${(baseLength * scale).toFixed(2)}px`);
+  }
+  return normalizedSize;
+};
+
 const SIDEBAR_DOCK_ITEMS = new Set<SidebarDockItem>([
   "appearance",
   "theme",
@@ -209,6 +250,7 @@ export interface SidebarPreferences {
   showCollapsedLogo?: boolean;
   glowPalette?: SidebarGlow;
   glowShape?: SidebarGlowShape;
+  glowShapeSize?: number;
   glowBlur?: number;
   glowIntensity?: number;
   /** @deprecated Migrated to dockItems. */
@@ -389,10 +431,13 @@ export const getControlRadiusBootstrapScript = (): string =>
     CONTROL_RADIUS_CUSTOM_KEY,
   )}),raw=storedCustom===null?Number.NaN:Number(storedCustom),custom=Number.isFinite(raw)?Math.min(max,Math.max(min,Math.round(raw))):d.customPx,value=id==="custom"?custom:(p.find(({id:preset})=>preset===id)?.radius??d.customPx),structured=Math.min(value,structuredMax);r.dataset.controlRadius=id;r.style.setProperty("--control-radius",value+"px");r.style.setProperty("--control-radius-action",value+"px");r.style.setProperty("--control-radius-structured",structured+"px");r.style.setProperty("--control-radius-menu",structured+"px")}catch{r.dataset.controlRadius=d.preset;r.style.setProperty("--control-radius",d.customPx+"px");r.style.setProperty("--control-radius-action",d.customPx+"px");r.style.setProperty("--control-radius-structured",d.customPx+"px");r.style.setProperty("--control-radius-menu",d.customPx+"px")}})();`;
 
-export const getSurfaceDepthBootstrapScript = (): string =>
-  `(()=>{const root=document.documentElement,sidebarGlows=${JSON.stringify(
+export const getSurfaceDepthBootstrapScript = (): string => {
+  const sidebarGlowShapeLengths = JSON.stringify(
+    SIDEBAR_GLOW_SHAPE_BASE_LENGTHS,
+  );
+  return `(()=>{const root=document.documentElement,sidebarGlows=${JSON.stringify(
     SIDEBAR_GLOW_VALUES,
-  )},sidebarGlowShapes=${JSON.stringify(SIDEBAR_GLOW_SHAPE_VALUES)},defaultSidebarGlow=${JSON.stringify(SIDEBAR_GLOW_DEFAULT)},defaultSidebarGlowShape=${JSON.stringify(SIDEBAR_GLOW_SHAPE_DEFAULT)},defaultSidebarGlowBlur=${SIDEBAR_GLOW_BLUR_DEFAULT},defaultSidebarGlowIntensity=${SIDEBAR_GLOW_INTENSITY_DEFAULT};try{root.dataset.elevatedSurfaces=localStorage.getItem(${JSON.stringify(
+  )},sidebarGlowShapes=${JSON.stringify(SIDEBAR_GLOW_SHAPE_VALUES)},defaultSidebarGlow=${JSON.stringify(SIDEBAR_GLOW_DEFAULT)},defaultSidebarGlowShape=${JSON.stringify(SIDEBAR_GLOW_SHAPE_DEFAULT)},defaultSidebarGlowBlur=${SIDEBAR_GLOW_BLUR_DEFAULT},defaultSidebarGlowIntensity=${SIDEBAR_GLOW_INTENSITY_DEFAULT},defaultSidebarGlowShapeSize=${SIDEBAR_GLOW_SHAPE_SIZE_DEFAULT},sidebarGlowShapeSizeMin=${SIDEBAR_GLOW_SHAPE_SIZE_MIN},sidebarGlowShapeSizeMax=${SIDEBAR_GLOW_SHAPE_SIZE_MAX},sidebarGlowShapeLengths=${sidebarGlowShapeLengths},applyGlowShapeSize=value=>{const scale=value/defaultSidebarGlowShapeSize;for(const [property,length] of sidebarGlowShapeLengths)root.style.setProperty(property,(length*scale).toFixed(2)+"px")};try{root.dataset.elevatedSurfaces=localStorage.getItem(${JSON.stringify(
     ELEVATED_SURFACES_KEY,
   )})==="false"?"false":"true"}catch{}try{const pageTabs=localStorage.getItem(${JSON.stringify(
     PAGE_TAB_COLORS_KEY,
@@ -400,7 +445,8 @@ export const getSurfaceDepthBootstrapScript = (): string =>
     PAGE_TAB_COLORS_DEFAULT,
   )}}catch{root.dataset.pageTabColors=${JSON.stringify(
     PAGE_TAB_COLORS_DEFAULT,
-  )}}try{const sidebar=JSON.parse(localStorage.getItem("veolms-sidebar-preferences")||"{}"),rawGlowBlur=Number(sidebar.glowBlur),glowBlur=Number.isFinite(rawGlowBlur)?Math.min(${SIDEBAR_GLOW_BLUR_MAX},Math.max(${SIDEBAR_GLOW_BLUR_MIN},Math.round(rawGlowBlur))):defaultSidebarGlowBlur,rawGlowIntensity=Number(sidebar.glowIntensity),glowIntensity=Number.isFinite(rawGlowIntensity)?Math.min(100,Math.max(0,Math.round(rawGlowIntensity))):defaultSidebarGlowIntensity;root.dataset.sidebarMenuElevation=String(typeof sidebar.elevateMenus==="boolean"?sidebar.elevateMenus:typeof sidebar.alwaysElevateMenus==="boolean"?sidebar.alwaysElevateMenus:true);root.dataset.sidebarIconStyle=sidebar.iconStyle==="multicolor"?"multicolor":"monochrome";root.dataset.contentLayout=sidebar.contentLayout==="edge-to-edge"?"edge-to-edge":"framed";root.dataset.sidebarHeaderLayout=sidebar.headerLayout==="fixed"?"fixed":"inline";root.dataset.sidebarGlow=sidebarGlows.includes(sidebar.glowPalette)?sidebar.glowPalette:defaultSidebarGlow;root.dataset.sidebarGlowShape=sidebarGlowShapes.includes(sidebar.glowShape)?sidebar.glowShape:defaultSidebarGlowShape;root.dataset.sidebarBackdropBlur=glowBlur===0?"off":"on";root.style.setProperty("--sidebar-backdrop-blur",glowBlur+"px");root.style.setProperty("--sidebar-glow-intensity",String(glowIntensity/100))}catch{root.dataset.sidebarMenuElevation="true";root.dataset.sidebarIconStyle="monochrome";root.dataset.contentLayout="framed";root.dataset.sidebarHeaderLayout="inline";root.dataset.sidebarGlow=defaultSidebarGlow;root.dataset.sidebarGlowShape=defaultSidebarGlowShape;root.dataset.sidebarBackdropBlur="on";root.style.setProperty("--sidebar-backdrop-blur",defaultSidebarGlowBlur+"px");root.style.setProperty("--sidebar-glow-intensity",String(defaultSidebarGlowIntensity/100))}})();`;
+  )}}try{const sidebar=JSON.parse(localStorage.getItem("veolms-sidebar-preferences")||"{}"),rawGlowBlur=Number(sidebar.glowBlur),glowBlur=Number.isFinite(rawGlowBlur)?Math.min(${SIDEBAR_GLOW_BLUR_MAX},Math.max(${SIDEBAR_GLOW_BLUR_MIN},Math.round(rawGlowBlur))):defaultSidebarGlowBlur,rawGlowIntensity=Number(sidebar.glowIntensity),glowIntensity=Number.isFinite(rawGlowIntensity)?Math.min(100,Math.max(0,Math.round(rawGlowIntensity))):defaultSidebarGlowIntensity,rawGlowShapeSize=Number(sidebar.glowShapeSize),glowShapeSize=Number.isFinite(rawGlowShapeSize)?Math.min(sidebarGlowShapeSizeMax,Math.max(sidebarGlowShapeSizeMin,Math.round(rawGlowShapeSize))):defaultSidebarGlowShapeSize;root.dataset.sidebarMenuElevation=String(typeof sidebar.elevateMenus==="boolean"?sidebar.elevateMenus:typeof sidebar.alwaysElevateMenus==="boolean"?sidebar.alwaysElevateMenus:true);root.dataset.sidebarIconStyle=sidebar.iconStyle==="multicolor"?"multicolor":"monochrome";root.dataset.contentLayout=sidebar.contentLayout==="edge-to-edge"?"edge-to-edge":"framed";root.dataset.sidebarHeaderLayout=sidebar.headerLayout==="fixed"?"fixed":"inline";root.dataset.sidebarGlow=sidebarGlows.includes(sidebar.glowPalette)?sidebar.glowPalette:defaultSidebarGlow;root.dataset.sidebarGlowShape=sidebarGlowShapes.includes(sidebar.glowShape)?sidebar.glowShape:defaultSidebarGlowShape;root.dataset.sidebarBackdropBlur=glowBlur===0?"off":"on";root.style.setProperty("--sidebar-backdrop-blur",glowBlur+"px");root.style.setProperty("--sidebar-glow-intensity",String(glowIntensity/100));applyGlowShapeSize(glowShapeSize)}catch{root.dataset.sidebarMenuElevation="true";root.dataset.sidebarIconStyle="monochrome";root.dataset.contentLayout="framed";root.dataset.sidebarHeaderLayout="inline";root.dataset.sidebarGlow=defaultSidebarGlow;root.dataset.sidebarGlowShape=defaultSidebarGlowShape;root.dataset.sidebarBackdropBlur="on";root.style.setProperty("--sidebar-backdrop-blur",defaultSidebarGlowBlur+"px");root.style.setProperty("--sidebar-glow-intensity",String(defaultSidebarGlowIntensity/100));applyGlowShapeSize(defaultSidebarGlowShapeSize)}})();`;
+};
 
 export const readPageTabColors = (): PageTabColors =>
   normalizePageTabColors(

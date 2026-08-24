@@ -26,7 +26,7 @@ export function IconButton({
       aria-controls={ariaControls}
       onClick={onClick}
       data-learning-radius-compact
-      className={`inline-flex size-10 shrink-0 items-center justify-center rounded-[10px] text-[var(--muted)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${className}`}
+      className={`inline-flex size-10 shrink-0 items-center justify-center rounded-[10px] text-(--muted) transition-colors hover:bg-(--hover) hover:text-(--text) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) ${className}`}
     >
       {children}
     </button>
