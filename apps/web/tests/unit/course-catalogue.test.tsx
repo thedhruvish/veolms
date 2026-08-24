@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { CourseCatalogue } from "../../src/courses/CourseCatalogue.tsx";
@@ -129,7 +129,7 @@ describe("CourseCatalogue", () => {
     expect(setNotice).not.toHaveBeenCalled();
   });
 
-  it("navigates to course edit page when edit course action is selected", () => {
+  it("navigates to course edit page when edit course action is selected", async () => {
     const target = courses[0]!;
     const { onNavigatePage } = renderCatalogue({
       role: "creator",
@@ -139,8 +139,10 @@ describe("CourseCatalogue", () => {
 
     fireEvent.click(screen.getByRole("menuitem", { name: /Edit course/i }));
 
-    expect(onNavigatePage).toHaveBeenCalledWith(
-      `/courses/create?edit=${encodeURIComponent(target.id)}`,
+    await waitFor(() =>
+      expect(onNavigatePage).toHaveBeenCalledWith(
+        `/courses/create?edit=${encodeURIComponent(target.id)}`,
+      ),
     );
   });
 

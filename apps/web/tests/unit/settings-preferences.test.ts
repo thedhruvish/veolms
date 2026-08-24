@@ -6,12 +6,14 @@ import {
   ELEVATED_SURFACES_KEY,
   applySidebarGlowShapeSize,
   getControlRadiusBootstrapScript,
+  getScrollbarBootstrapScript,
   getSurfaceDepthBootstrapScript,
   LEARNING_PREFERENCE_DEFAULTS,
   LEARNING_PREFERENCES_KEY,
   normalizeControlRadiusCustom,
   normalizeControlRadiusPreset,
   normalizePageTabColors,
+  normalizeScrollbarStyle,
   normalizeSidebarDockItems,
   normalizeSidebarDockOrder,
   normalizeSidebarMaxWidth,
@@ -23,6 +25,9 @@ import {
   readLearningPreferences,
   readElevatedSurfaces,
   readPageTabColors,
+  readScrollbarStyle,
+  SCROLLBAR_STYLE_DEFAULT,
+  SCROLLBAR_STYLE_KEY,
 } from "../../src/settings/settingsPreferences.js";
 
 const runSurfaceDepthBootstrap = () => {
@@ -34,6 +39,39 @@ const runControlRadiusBootstrap = () => {
   // biome-ignore lint/security/noGlobalEval: Execute the generated inline bootstrap in JSDOM.
   window.eval(getControlRadiusBootstrapScript());
 };
+
+const runScrollbarBootstrap = () => {
+  // biome-ignore lint/security/noGlobalEval: Execute the generated inline bootstrap in JSDOM.
+  window.eval(getScrollbarBootstrapScript());
+};
+
+describe("scrollbar style preference", () => {
+  it("uses the themed default and normalizes unsupported values", () => {
+    expect(readScrollbarStyle()).toBe(SCROLLBAR_STYLE_DEFAULT);
+    expect(normalizeScrollbarStyle("custom")).toBe("custom");
+    expect(normalizeScrollbarStyle("unsupported")).toBe(
+      SCROLLBAR_STYLE_DEFAULT,
+    );
+  });
+
+  it("hydrates visibility and style before React mounts", () => {
+    localStorage.setItem("veolms-hide-scrollbars", "true");
+    localStorage.setItem(SCROLLBAR_STYLE_KEY, "thick");
+
+    runScrollbarBootstrap();
+
+    expect(document.documentElement.dataset.hideScrollbars).toBe("true");
+    expect(document.documentElement.dataset.scrollbarStyle).toBe("thick");
+  });
+
+  it("falls back to theme when the stored style is unsupported", () => {
+    localStorage.setItem(SCROLLBAR_STYLE_KEY, "unsupported");
+
+    runScrollbarBootstrap();
+
+    expect(document.documentElement.dataset.scrollbarStyle).toBe("theme");
+  });
+});
 
 describe("control radius preference", () => {
   it("uses the balanced default and clamps custom pixel values", () => {

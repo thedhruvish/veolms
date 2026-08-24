@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { CourseCard } from "../../src/courses/CourseCard.tsx";
@@ -199,7 +199,7 @@ describe("CourseCard", () => {
     expect(onOpen).not.toHaveBeenCalled();
   });
 
-  it("keeps creator course actions and notices within the card menu", () => {
+  it("keeps creator course actions and notices within the card menu", async () => {
     const { onOpen, setMenuOpen, rerender } = renderCard({
       role: "creator",
     });
@@ -231,7 +231,7 @@ describe("CourseCard", () => {
     fireEvent.click(screen.getByRole("menuitem", { name: "Edit Course" }));
 
     expect(setMenuOpen).toHaveBeenLastCalledWith(null);
-    expect(onEdit).toHaveBeenCalledWith(enrolledCourse);
+    await waitFor(() => expect(onEdit).toHaveBeenCalledWith(enrolledCourse));
     expect(onOpen).not.toHaveBeenCalled();
   });
 
@@ -254,12 +254,17 @@ describe("CourseCard", () => {
     ["student", nonEnrolledCourse],
   ] as const)(
     "opens course preview from the %s course menu",
-    (role, course) => {
-      const { onExplore } = renderCard({ role, course, menuOpen: true });
+    async (role, course) => {
+      const { onExplore, setMenuOpen } = renderCard({
+        role,
+        course,
+        menuOpen: true,
+      });
 
       fireEvent.click(screen.getByRole("menuitem", { name: "Course Preview" }));
 
-      expect(onExplore).toHaveBeenCalledWith(course);
+      expect(setMenuOpen).toHaveBeenCalledWith(null);
+      await waitFor(() => expect(onExplore).toHaveBeenCalledWith(course));
     },
   );
 
@@ -316,11 +321,11 @@ describe("CourseCard", () => {
     try {
       renderCard({ menuOpen: true });
 
-      expect(screen.getByRole("menu")).toHaveAttribute(
-        "data-placement",
-        "above-right",
-      );
-      expect(screen.getByRole("menu")).toHaveClass("bottom-full");
+      const menu = screen.getByRole("menu");
+      expect(menu).toHaveAttribute("data-placement", "above-right");
+      expect(menu).toHaveClass("fixed", "z-[1000000]");
+      expect(menu).toHaveStyle({ top: "320px" });
+      expect(menu.parentElement).toBe(document.body);
     } finally {
       boundsSpy.mockRestore();
       Object.defineProperty(window, "innerHeight", {
@@ -328,6 +333,19 @@ describe("CourseCard", () => {
         value: originalInnerHeight,
       });
     }
+  });
+
+  it("dismisses the portalled course menu on an outside pointer press", () => {
+    const { setMenuOpen } = renderCard({ menuOpen: true });
+
+    const menu = screen.getByRole("menu", {
+      name: "Actions for The Ultimate TypeScript Course",
+    });
+    expect(menu.parentElement).toBe(document.body);
+
+    fireEvent.pointerDown(document.body);
+
+    expect(setMenuOpen).toHaveBeenCalledWith(null);
   });
 });
 

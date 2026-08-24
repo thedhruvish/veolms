@@ -316,6 +316,42 @@ describe("video playback consent", () => {
     expect(resumeWrites()).toHaveLength(4);
   });
 
+  it("uses a caller-provided resume key to isolate otherwise shared media", () => {
+    window.localStorage.setItem("veolms-watch-course-a-lesson-7", "42");
+    window.localStorage.setItem("veolms-watch-shared.mp4", "17");
+    const setItem = vi.spyOn(Storage.prototype, "setItem");
+    const { container } = render(
+      <VideoPlayer
+        media={{ fileName: "shared.mp4", duration: 90, src: "/shared.mp4" }}
+        lessonTitle="Course-scoped resume lesson"
+        theaterMode={false}
+        onTheaterToggle={() => {}}
+        resumePersistenceKey="course-a-lesson-7"
+      />,
+    );
+    const video = container.querySelector("video");
+    expect(video).not.toBeNull();
+    if (!video) throw new Error("Expected a video element");
+
+    Object.defineProperty(video, "duration", {
+      configurable: true,
+      value: 90,
+    });
+    fireEvent.loadedMetadata(video);
+    expect(video.currentTime).toBe(42);
+
+    Object.defineProperty(video, "currentTime", {
+      configurable: true,
+      value: 48,
+    });
+    fireEvent.pause(video);
+    expect(setItem).toHaveBeenCalledWith(
+      "veolms-watch-course-a-lesson-7",
+      "48",
+    );
+    expect(setItem).not.toHaveBeenCalledWith("veolms-watch-shared.mp4", "48");
+  });
+
   it("reports lecture progress while watching and completion when playback ends", () => {
     const onProgressChange = vi.fn();
     const { container } = render(

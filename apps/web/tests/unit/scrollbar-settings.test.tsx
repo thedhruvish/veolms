@@ -1,0 +1,34 @@
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import React from "react";
+import { describe, expect, it } from "vitest";
+import { ScrollbarSettings } from "../../src/settings/scrollbars/ScrollbarSettings.tsx";
+
+describe("scrollbar appearance settings", () => {
+  it("persists a selected style and applies it to the document", async () => {
+    render(<ScrollbarSettings />);
+
+    fireEvent.click(screen.getByRole("radio", { name: /Thick/i }));
+
+    await waitFor(() => {
+      expect(document.documentElement.dataset.scrollbarStyle).toBe("thick");
+    });
+    expect(localStorage.getItem("veolms-scrollbar-style")).toBe("thick");
+  });
+
+  it("hides every style control when scrollbars are turned off", async () => {
+    render(<ScrollbarSettings />);
+
+    fireEvent.click(screen.getByRole("switch", { name: "Show scrollbars" }));
+
+    await waitFor(() => {
+      expect(document.documentElement.dataset.hideScrollbars).toBe("true");
+    });
+    expect(localStorage.getItem("veolms-hide-scrollbars")).toBe("true");
+    expect(screen.getByText("Hidden")).toBeInTheDocument();
+    for (const style of ["Default", "Custom", "Theme", "Thick"]) {
+      expect(
+        screen.getByRole("radio", { name: new RegExp(style, "i") }),
+      ).toBeDisabled();
+    }
+  });
+});

@@ -148,9 +148,7 @@ export function LearningWorkspace({
     {},
   );
   const [autoPlayOnLessonChange, setAutoPlayOnLessonChange] = useState(false);
-  const [courseTitle, setCourseTitle] = useState(() =>
-    getCourseTitle(courseSlug),
-  );
+  const courseTitle = getCourseTitle(courseSlug);
   const coursePersistenceKey = encodeURIComponent(courseSlug || "default");
   const discussionPersistenceKey = `${coursePersistenceKey}-lesson-${selectedLesson}`;
   const [lessonDrawer, setLessonDrawer] = useState(false);
@@ -169,20 +167,6 @@ export function LearningWorkspace({
   const [curriculumWidth, setCurriculumWidth] = useState(
     getInitialCurriculumWidth,
   );
-  useEffect(() => {
-    if (courseSlug) {
-      setCourseTitle(getCourseTitle(courseSlug));
-      return;
-    }
-    try {
-      const storedTitle = window.localStorage.getItem(
-        "veolms-current-course-title",
-      );
-      if (storedTitle) setCourseTitle(storedTitle);
-    } catch {
-      // Keep the deterministic title when storage is unavailable.
-    }
-  }, [courseSlug]);
   const [curriculumCollapsed, setCurriculumCollapsed] = useState(false);
   const [curriculumResizing, setCurriculumResizing] = useState(false);
   const [curriculumResizePreviewWidth, setCurriculumResizePreviewWidth] =
@@ -216,8 +200,7 @@ export function LearningWorkspace({
   );
   const currentLesson = lessonsById.get(selectedLesson) || lessonsById.get(9)!;
   const courseThumbnail = getCourseThumbnail(courseSlug);
-  const curriculumShortcutLabel =
-    shortcutPlatform === "mac" ? "⌘+⌥+C" : "Ctrl+Alt+C";
+  const curriculumShortcutLabel = shortcutPlatform === "mac" ? "⌥+C" : "Alt+C";
 
   useLayoutEffect(() => {
     const main = mainRef.current;
@@ -619,8 +602,9 @@ export function LearningWorkspace({
       if (
         event.defaultPrevented ||
         event.isComposing ||
-        !(event.ctrlKey || event.metaKey) ||
         !event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
         event.shiftKey ||
         (event.code !== "KeyC" && event.key.toLowerCase() !== "c") ||
         isEditingShortcutTarget(event.target)
@@ -868,7 +852,6 @@ export function LearningWorkspace({
   useEffect(() => {
     try {
       localStorage.setItem(lessonStorageKey, String(selectedLesson));
-      localStorage.setItem("veolms-last-lesson", String(selectedLesson));
     } catch {
       // Lesson selection remains usable when browser storage is unavailable.
     }
@@ -935,8 +918,8 @@ export function LearningWorkspace({
               }
               aria-expanded={!curriculumCollapsed}
               aria-controls="learning-course-content"
-              aria-keyshortcuts="Control+Alt+C Meta+Alt+C"
-              aria-describedby="learning-curriculum-toggle-tooltip"
+              aria-keyshortcuts="Alt+C"
+              title={`${curriculumCollapsed ? "Expand" : "Collapse"} (${curriculumShortcutLabel})`}
               onClick={toggleCurriculumFromPlayer}
             >
               <span
@@ -947,19 +930,6 @@ export function LearningWorkspace({
                   direction={curriculumCollapsed ? "left" : "right"}
                 />
               </span>
-              <span
-                id="learning-curriculum-toggle-tooltip"
-                className="learning-workspace__curriculum-toggle-tooltip"
-                role="tooltip"
-              >
-                <span>
-                  {curriculumCollapsed
-                    ? "Expand course content"
-                    : "Collapse course content"}
-                </span>
-                <span aria-hidden="true">|</span>
-                <kbd>{curriculumShortcutLabel}</kbd>
-              </span>
             </button>
             <YouTubeVideoPlayer
               media={lessonVideoMap[selectedLesson] || courseVideos[0]!}
@@ -968,6 +938,7 @@ export function LearningWorkspace({
               onTheaterToggle={toggleTheaterMode}
               autoPlayOnMediaChange={autoPlayOnLessonChange}
               onProgressChange={updateSelectedLessonProgress}
+              resumePersistenceKey={`${coursePersistenceKey}-lesson-${selectedLesson}`}
             />
           </div>
 
@@ -1005,7 +976,7 @@ export function LearningWorkspace({
             role="separator"
             aria-orientation="vertical"
             aria-label="Resize course curriculum"
-            aria-keyshortcuts="Control+Alt+C Meta+Alt+C"
+            aria-keyshortcuts="Alt+C"
             title={`Resize course content | ${curriculumShortcutLabel}`}
             aria-valuemin={CURRICULUM_MIN_WIDTH}
             aria-valuemax={CURRICULUM_MAX_WIDTH}

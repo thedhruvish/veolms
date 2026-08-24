@@ -190,6 +190,9 @@
   color: var(--text);
   background: color-mix(in srgb, var(--surface) 48%, transparent);
 }
+.settings-page > .settings-tabs button:hover {
+  background: transparent;
+}
 .settings-tabs button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
@@ -200,7 +203,7 @@
 }
 
 .settings-tab-content {
-  --settings-tab-swipe-bleed: clamp(16px, 2.25vw, 25px);
+  --settings-tab-swipe-bleed: calc(clamp(16px, 2.25vw, 25px) + 5px);
   --swipeable-tab-panel-inline-start: var(--settings-tab-swipe-bleed);
   --swipeable-tab-panel-inline-end: var(--settings-tab-swipe-bleed);
   min-width: 0;

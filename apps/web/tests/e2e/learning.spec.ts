@@ -394,7 +394,7 @@ test("lesson choice, curriculum width, and player preferences persist", async ({
   await expect(
     page.getByRole("heading", { name: "Usability Testing", level: 1 }),
   ).toBeVisible();
-  await expectStoredValue(page, "veolms-last-lesson", "10");
+  await expectStoredValue(page, "veolms-last-lesson-typescript-course", "10");
 
   const resize = page.getByRole("separator", {
     name: "Resize course curriculum",
@@ -634,14 +634,8 @@ test("curriculum rail double-click expands and its shortcut toggles the content 
   const rail = page.getByRole("separator", {
     name: "Resize course curriculum",
   });
-  await expect(rail).toHaveAttribute(
-    "aria-keyshortcuts",
-    "Control+Alt+C Meta+Alt+C",
-  );
-  await expect(rail).toHaveAttribute(
-    "title",
-    "Resize course content | Ctrl+Alt+C",
-  );
+  await expect(rail).toHaveAttribute("aria-keyshortcuts", "Alt+C");
+  await expect(rail).toHaveAttribute("title", "Resize course content | Alt+C");
   const expandedWidth = await rail.getAttribute("aria-valuenow");
   expect(expandedWidth).not.toBeNull();
 
@@ -661,21 +655,21 @@ test("curriculum rail double-click expands and its shortcut toggles the content 
   await rail.dblclick();
   await expect(rail).toHaveAttribute("aria-valuenow", expandedWidth!);
 
-  await page.keyboard.press("Control+Alt+C");
+  await page.keyboard.press("Alt+C");
   await expect(rail).toHaveAttribute(
     "aria-valuetext",
     "Course curriculum collapsed",
   );
-  await page.keyboard.press("Control+Alt+C");
+  await page.keyboard.press("Alt+C");
   await expect(rail).toHaveAttribute("aria-valuenow", expandedWidth!);
 
   const commentInput = page.getByPlaceholder("Add a comment...");
   await commentInput.focus();
-  await page.keyboard.press("Control+Alt+C");
+  await page.keyboard.press("Alt+C");
   await expect(rail).toHaveAttribute("aria-valuenow", expandedWidth!);
 });
 
-test("player edge control collapses and expands course content with shortcut help", async ({
+test("player edge control uses a native title and the short content shortcut", async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -688,20 +682,17 @@ test("player edge control collapses and expands course content with shortcut hel
   const collapse = page.getByRole("button", {
     name: "Collapse course content",
   });
-  const tooltip = page.getByRole("tooltip");
   const curriculumColumn = page.locator(
     ".learning-workspace__curriculum-column",
   );
 
   await expect(collapse).toHaveAttribute("aria-expanded", "true");
-  await expect(collapse).toHaveAttribute(
-    "aria-keyshortcuts",
-    "Control+Alt+C Meta+Alt+C",
-  );
+  await expect(collapse).toHaveAttribute("aria-keyshortcuts", "Alt+C");
+  await expect(collapse).toHaveAttribute("title", "Collapse (Alt+C)");
   await expect(
     collapse.locator("[data-sidebar-toggle-direction]"),
   ).toHaveAttribute("data-sidebar-toggle-direction", "right");
-  await expect(tooltip).toBeHidden();
+  await expect(page.getByRole("tooltip")).toHaveCount(0);
   await expect(collapse).toHaveCSS("opacity", "0");
   await expect(collapse).toHaveCSS("pointer-events", "none");
   await playerWrap.hover();
@@ -722,21 +713,14 @@ test("player edge control collapses and expands course content with shortcut hel
     wrapBox!.x + wrapBox!.width - collapseBox!.x - collapseBox!.width,
   ).toBe(0);
 
-  await collapse.hover();
-  await expect(tooltip).toBeVisible();
-  await expect(tooltip).toContainText("Collapse course content");
-  await expect(tooltip.locator("kbd")).toHaveText("Ctrl+Alt+C");
-
   await collapse.click();
   const expand = page.getByRole("button", { name: "Expand course content" });
   await expect(expand).toHaveAttribute("aria-expanded", "false");
+  await expect(expand).toHaveAttribute("title", "Expand (Alt+C)");
   await expect(
     expand.locator("[data-sidebar-toggle-direction]"),
   ).toHaveAttribute("data-sidebar-toggle-direction", "left");
   await expect(curriculumColumn).toHaveClass(/is-collapsed/);
-  await expand.hover();
-  await expect(tooltip).toContainText("Expand course content");
-
   await expand.click();
   await expect(collapse).toHaveAttribute("aria-expanded", "true");
   await expect(curriculumColumn).not.toHaveClass(/is-collapsed/);
@@ -843,9 +827,9 @@ test("course content shortcut opens and closes the mobile lesson drawer", async 
   const trigger = page.getByRole("button", { name: "Open course lessons" });
   const dialog = page.getByRole("dialog", { name: "Course lessons" });
   await trigger.focus();
-  await page.keyboard.press("Control+Alt+C");
+  await page.keyboard.press("Alt+C");
   await expect(dialog).toBeVisible();
-  await page.keyboard.press("Control+Alt+C");
+  await page.keyboard.press("Alt+C");
   await expect(dialog).toBeHidden();
   await expect(trigger).toBeFocused();
 });
@@ -1837,7 +1821,7 @@ test("mobile More sheet anchors below lesson video and scrolls its navigation co
   });
   const heading = dialog.locator(".mobile-menu-sheet__heading");
   const profile = dialog.locator(".mobile-menu-sheet__profile");
-  const activeNavigationItem = list.locator(":scope > button.is-active");
+  const navigationItem = list.locator(":scope > button").first();
   const swipeHandle = dialog.locator('[data-slot="drawer-swipe-handle"]');
   await expect(appearance).toBeVisible();
   const [
@@ -1845,26 +1829,27 @@ test("mobile More sheet anchors below lesson video and scrolls its navigation co
     listBounds,
     appearanceBounds,
     profileBounds,
-    activeNavigationBounds,
+    navigationItemBounds,
   ] = await Promise.all([
     dialog.boundingBox(),
     list.boundingBox(),
     appearance.boundingBox(),
     profile.boundingBox(),
-    activeNavigationItem.boundingBox(),
+    navigationItem.boundingBox(),
   ]);
   expect(dialogBounds).not.toBeNull();
   expect(listBounds).not.toBeNull();
   expect(appearanceBounds).not.toBeNull();
   expect(profileBounds).not.toBeNull();
-  expect(activeNavigationBounds).not.toBeNull();
+  expect(navigationItemBounds).not.toBeNull();
+  await expect(list.locator(":scope > button.is-active")).toHaveCount(0);
   expect(listBounds!.x).toBeCloseTo(dialogBounds!.x, 0);
   expect(listBounds!.x + listBounds!.width).toBeCloseTo(
     dialogBounds!.x + dialogBounds!.width,
     0,
   );
-  expect(activeNavigationBounds!.x).toBeCloseTo(profileBounds!.x, 0);
-  expect(activeNavigationBounds!.width).toBeCloseTo(profileBounds!.width, 0);
+  expect(navigationItemBounds!.x).toBeCloseTo(profileBounds!.x, 0);
+  expect(navigationItemBounds!.width).toBeCloseTo(profileBounds!.width, 0);
   expect(appearanceBounds!.y + appearanceBounds!.height).toBeLessThanOrEqual(
     page.viewportSize()!.height,
   );
@@ -2297,7 +2282,7 @@ test("mobile lesson drawer closes with Escape and returns focus", async ({
   await expect(
     page.getByRole("heading", { name: "Usability Testing", level: 1 }),
   ).toBeVisible();
-  await expectStoredValue(page, "veolms-last-lesson", "10");
+  await expectStoredValue(page, "veolms-last-lesson-typescript-course", "10");
 });
 
 test("mobile lesson drawer exposes its full curriculum without expanding", async ({
@@ -2740,7 +2725,7 @@ test("curriculum search, section expansion, and lesson selection retain their cu
   await expect(
     page.getByRole("heading", { name: "Usability Testing", level: 1 }),
   ).toBeVisible();
-  await expectStoredValue(page, "veolms-last-lesson", "10");
+  await expectStoredValue(page, "veolms-last-lesson-typescript-course", "10");
 });
 
 test("curriculum overview, section, and chapter zones keep their actions separate", async ({
@@ -3135,7 +3120,7 @@ test("core player controls, shortcuts, seek state, and ambient preference remain
   });
   await expectStoredValue(
     page,
-    "veolms-watch-01 introduction to veolms.mp4",
+    "veolms-watch-typescript-course-lesson-1",
     "15",
   );
 

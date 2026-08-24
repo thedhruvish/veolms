@@ -122,9 +122,7 @@ describe("session tab routing", () => {
 
 describe("framework route descriptors", () => {
   it("normalizes same-route comparisons without changing leading path syntax", () => {
-    expect(normalizeNavigationPath("/courses///")).toBe(
-      "/courses",
-    );
+    expect(normalizeNavigationPath("/courses///")).toBe("/courses");
     expect(normalizeNavigationPath("///")).toBe("/");
     expect(normalizeNavigationPath("")).toBe("/");
     expect(normalizeNavigationPath("//home")).toBe("//home");
@@ -171,7 +169,7 @@ describe("framework route descriptors", () => {
     expect(getRouteDescriptor("learning")).toEqual({
       kind: "learning",
       page: "learning",
-      section: "Courses",
+      section: "Learning Space",
     });
     expect(getRouteDescriptor("course-overview")).toMatchObject({
       kind: "course-overview",
@@ -181,15 +179,9 @@ describe("framework route descriptors", () => {
   });
 
   it("preserves case-sensitive route behavior around framework hydration", () => {
-    expect(getEffectiveRouteId("courses", "/courses")).toBe(
-      "courses",
-    );
-    expect(getEffectiveRouteId("courses", "/courses/")).toBe(
-      "courses",
-    );
-    expect(getEffectiveRouteId("courses", "/COURSES")).toBe(
-      "home-fallback",
-    );
+    expect(getEffectiveRouteId("courses", "/courses")).toBe("courses");
+    expect(getEffectiveRouteId("courses", "/courses/")).toBe("courses");
+    expect(getEffectiveRouteId("courses", "/COURSES")).toBe("home-fallback");
     expect(getEffectiveRouteId("dashboard", "/DASHBOARD")).toBe(
       "home-fallback",
     );
@@ -249,10 +241,7 @@ describe("framework route descriptors", () => {
       ),
     ).toBe("course-overview");
     expect(
-      getEffectiveRouteId(
-        "course-overview",
-        "/courses/%E0%A4%A/overview",
-      ),
+      getEffectiveRouteId("course-overview", "/courses/%E0%A4%A/overview"),
     ).toBe("home-fallback");
   });
 
@@ -277,7 +266,8 @@ describe("framework route descriptors", () => {
   it("generates the existing static and course metadata", () => {
     expect(getRouteMeta("courses")).toEqual({
       title: "Courses \u00B7 ProCodrr",
-      description: "Browse available courses and continue learning in ProCodrr.",
+      description:
+        "Browse available courses and continue learning in ProCodrr.",
     });
     expect(
       getRouteMeta("learning", { courseSlug: "typescript-course" }),

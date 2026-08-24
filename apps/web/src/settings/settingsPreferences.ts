@@ -70,6 +70,15 @@ export const PAGE_TAB_COLORS_KEY = "veolms-page-tab-colors";
 export const PAGE_TAB_COLORS_DEFAULT: PageTabColors = "follow-sidebar";
 export const ELEVATED_SURFACES_KEY = "veolms-elevated-surfaces";
 export const HIDE_SCROLLBARS_KEY = "veolms-hide-scrollbars";
+export const SCROLLBAR_STYLE_KEY = "veolms-scrollbar-style";
+export const SCROLLBAR_STYLE_VALUES = [
+  "default",
+  "custom",
+  "theme",
+  "thick",
+] as const;
+export type ScrollbarStyle = (typeof SCROLLBAR_STYLE_VALUES)[number];
+export const SCROLLBAR_STYLE_DEFAULT: ScrollbarStyle = "theme";
 export const CONTROL_RADIUS_KEY = "veolms-control-radius";
 export const CONTROL_RADIUS_CUSTOM_KEY = "veolms-control-radius-custom";
 export const SIDEBAR_HEADER_DEFAULT_VERSION = "inline-v1";
@@ -344,10 +353,26 @@ export const readStored = (key: string, fallback: string): string => {
 export const readStoredBoolean = (key: string, fallback: boolean): boolean =>
   readStored(key, String(fallback)) === "true";
 
+export const normalizeScrollbarStyle = (value: unknown): ScrollbarStyle =>
+  SCROLLBAR_STYLE_VALUES.includes(value as ScrollbarStyle)
+    ? (value as ScrollbarStyle)
+    : SCROLLBAR_STYLE_DEFAULT;
+
+export const readScrollbarStyle = (): ScrollbarStyle =>
+  normalizeScrollbarStyle(
+    readStored(SCROLLBAR_STYLE_KEY, SCROLLBAR_STYLE_DEFAULT),
+  );
+
 export const getScrollbarBootstrapScript = (): string =>
   `(()=>{const root=document.documentElement;try{root.dataset.hideScrollbars=String(localStorage.getItem(${JSON.stringify(
     HIDE_SCROLLBARS_KEY,
-  )})==="true")}catch{root.dataset.hideScrollbars="false"}try{const learning=JSON.parse(localStorage.getItem(${JSON.stringify(
+  )})==="true")}catch{root.dataset.hideScrollbars="false"}try{const styles=${JSON.stringify(SCROLLBAR_STYLE_VALUES)},stored=localStorage.getItem(${JSON.stringify(
+    SCROLLBAR_STYLE_KEY,
+  )});root.dataset.scrollbarStyle=styles.includes(stored)?stored:${JSON.stringify(
+    SCROLLBAR_STYLE_DEFAULT,
+  )}}catch{root.dataset.scrollbarStyle=${JSON.stringify(
+    SCROLLBAR_STYLE_DEFAULT,
+  )}}try{const learning=JSON.parse(localStorage.getItem(${JSON.stringify(
     LEARNING_PREFERENCES_KEY,
   )})||"{}");root.dataset.lessonPageScrollbar=learning.showLessonPageScrollbar===false?"hidden":"visible";root.dataset.curriculumScrollbar=learning.showCurriculumScrollbar===false?"hidden":"visible"}catch{root.dataset.lessonPageScrollbar="visible";root.dataset.curriculumScrollbar="visible"}})();`;
 

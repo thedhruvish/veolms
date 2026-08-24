@@ -71,19 +71,13 @@ test("sidebar shortcut hints and positional navigation stay in sync", async ({
 
   await collapse.hover();
   await expect(page.locator(".sidebar-control-tooltip")).toHaveCount(0);
-  await expect(collapse).toHaveAttribute(
-    "title",
-    "Collapse (Ctrl+B)",
-  );
+  await expect(collapse).toHaveAttribute("title", "Collapse (Ctrl+B)");
   await expect(collapse).toHaveAttribute("aria-keyshortcuts", "Control+B");
 
   await collapse.click();
   await expect(
     sidebar.getByRole("button", { name: "Expand navigation" }),
-  ).toHaveAttribute(
-    "title",
-    "Expand (Ctrl+B)",
-  );
+  ).toHaveAttribute("title", "Expand (Ctrl+B)");
   await settings.hover();
   await expect(settingsTooltip).toBeVisible();
   await expect(settingsTooltip).toHaveCSS("color", "rgb(17, 24, 39)");
@@ -396,22 +390,13 @@ test("sidebar toggle responds immediately and the brand owns floating", async ({
   const collapse = sidebar.getByRole("button", {
     name: "Collapse navigation",
   });
-  await expect(collapse).toHaveAttribute(
-    "title",
-    "Collapse (Ctrl+B)",
-  );
-  await expect(brand).toHaveAttribute(
-    "title",
-    "Double-click to float sidebar",
-  );
+  await expect(collapse).toHaveAttribute("title", "Collapse (Ctrl+B)");
+  await expect(brand).toHaveAttribute("title", "Double-click to float sidebar");
 
   await collapse.click();
   await expect(app).toHaveClass(/courses-app--collapsed/, { timeout: 200 });
   const expand = sidebar.getByRole("button", { name: "Expand navigation" });
-  await expect(expand).toHaveAttribute(
-    "title",
-    "Expand (Ctrl+B)",
-  );
+  await expect(expand).toHaveAttribute("title", "Expand (Ctrl+B)");
 
   await expand.click();
   await expect(app).not.toHaveClass(/courses-app--collapsed/, {
@@ -533,7 +518,7 @@ test("shortcut key style overrides system labels across the application", async 
   await openApp(page, "/learn/typescript-course");
   await expect(
     page.getByRole("separator", { name: "Resize course curriculum" }),
-  ).toHaveAttribute("title", "Resize course content | ⌘+⌥+C");
+  ).toHaveAttribute("title", "Resize course content | ⌥+C");
 
   await openApp(page, "/settings/appearance");
   await expectAppearanceSettingsReady(page);

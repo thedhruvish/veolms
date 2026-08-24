@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useRef } from "react";
+import { useCallback, useId, useLayoutEffect, useRef } from "react";
 
 const OVERLAY_HISTORY_STATE_KEY = "__veolmsOverlayHistoryEntry";
 
@@ -198,4 +198,47 @@ export function useBackDismiss({
       });
     };
   }, [enabled, open, reactId]);
+
+  return useCallback((afterDismiss: () => void) => {
+    if (typeof window === "undefined") {
+      onDismissRef.current();
+      afterDismiss();
+      return;
+    }
+
+    const entryId = entryIdRef.current;
+    if (entryId === null) {
+      onDismissRef.current();
+      afterDismiss();
+      return;
+    }
+
+    if (deferredUnmountFrameRef.current !== null) {
+      window.cancelAnimationFrame(deferredUnmountFrameRef.current);
+      deferredUnmountFrameRef.current = null;
+    }
+
+    entryIdRef.current = null;
+    activeLayers.delete(entryId);
+    onDismissRef.current();
+
+    if (getOverlayHistoryEntryId(window.history.state) !== entryId) {
+      afterDismiss();
+      return;
+    }
+
+    let completed = false;
+    let fallbackTimer = 0;
+    const finish = () => {
+      if (completed) return;
+      completed = true;
+      window.removeEventListener("popstate", finish);
+      window.clearTimeout(fallbackTimer);
+      window.setTimeout(afterDismiss, 0);
+    };
+
+    window.addEventListener("popstate", finish, { once: true });
+    window.history.back();
+    fallbackTimer = window.setTimeout(finish, 1000);
+  }, []);
 }

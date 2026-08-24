@@ -3,7 +3,6 @@ import { ArrowsInLineHorizontalIcon as ArrowsInLineHorizontal } from "@phosphor-
 import { CheckIcon as Check } from "@phosphor-icons/react/Check";
 import { CircleHalfIcon as CircleHalf } from "@phosphor-icons/react/CircleHalf";
 import { CornersOutIcon as CornersOut } from "@phosphor-icons/react/CornersOut";
-import { EyeSlashIcon as EyeSlash } from "@phosphor-icons/react/EyeSlash";
 import { KeyboardIcon as Keyboard } from "@phosphor-icons/react/Keyboard";
 import { SparkleIcon as Sparkle } from "@phosphor-icons/react/Sparkle";
 import { StackIcon as Stack } from "@phosphor-icons/react/Stack";
@@ -24,7 +23,6 @@ import {
   CONTROL_RADIUS_DEFAULT,
   CONTROL_RADIUS_PRESETS,
   ELEVATED_SURFACES_KEY,
-  HIDE_SCROLLBARS_KEY,
   normalizeControlRadiusCustom,
   persistControlRadiusPreference,
   readControlRadiusPreference,
@@ -35,6 +33,7 @@ import {
 import type { PageTabColors } from "./settingsPreferences";
 import { RadioGroup, SettingRow, SettingsToggle } from "./SettingsControls";
 import { ReadingModeSettings } from "./ReadingModeSettings";
+import { ScrollbarSettings } from "./scrollbars/ScrollbarSettings";
 
 interface AppearanceAdditionalSettingsProps {
   pageTabColors: PageTabColors;
@@ -46,7 +45,6 @@ export default function AppearanceAdditionalSettings({
   onPageTabColorsChange,
 }: AppearanceAdditionalSettingsProps) {
   const [reduceAnimations, setReduceAnimations] = useState(false);
-  const [hideScrollbars, setHideScrollbars] = useState(false);
   const [highContrast, setHighContrast] = useState(false);
   const [compactLayout, setCompactLayout] = useState(false);
   const [elevatedSurfaces, setElevatedSurfaces] = useState(true);
@@ -78,7 +76,6 @@ export default function AppearanceAdditionalSettings({
 
   useEffect(() => {
     setReduceAnimations(readStoredBoolean("veolms-reduce-animations", false));
-    setHideScrollbars(readStoredBoolean(HIDE_SCROLLBARS_KEY, false));
     setHighContrast(readStoredBoolean("veolms-high-contrast", false));
     setCompactLayout(readStoredBoolean("veolms-compact-layout", false));
     setElevatedSurfaces(readElevatedSurfaces());
@@ -94,11 +91,6 @@ export default function AppearanceAdditionalSettings({
       String(reduceAnimations);
     localStorage.setItem("veolms-reduce-animations", String(reduceAnimations));
   }, [reduceAnimations, storageReady]);
-  useEffect(() => {
-    if (!storageReady) return;
-    document.documentElement.dataset.hideScrollbars = String(hideScrollbars);
-    localStorage.setItem(HIDE_SCROLLBARS_KEY, String(hideScrollbars));
-  }, [hideScrollbars, storageReady]);
   useEffect(() => {
     if (!storageReady) return;
     document.documentElement.dataset.highContrast = String(highContrast);
@@ -128,6 +120,8 @@ export default function AppearanceAdditionalSettings({
   return (
     <>
       <ReadingModeSettings />
+
+      <ScrollbarSettings />
 
       <section className="settings-section settings-theme-rotation">
         <h2>Theme rotation</h2>
@@ -292,17 +286,6 @@ export default function AppearanceAdditionalSettings({
               checked={reduceAnimations}
               onChange={setReduceAnimations}
               label="Reduce animations"
-            />
-          </SettingRow>
-          <SettingRow
-            icon={EyeSlash}
-            label="Hide scrollbars"
-            note="Hide scrollbar tracks while keeping keyboard and wheel scrolling"
-          >
-            <SettingsToggle
-              checked={hideScrollbars}
-              onChange={setHideScrollbars}
-              label="Hide scrollbars"
             />
           </SettingRow>
           <SettingRow
