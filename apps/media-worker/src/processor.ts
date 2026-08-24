@@ -16,14 +16,13 @@ import {
 } from "./ffmpeg-builder.ts";
 import { FfmpegProgressParser } from "./progress.ts";
 import { sampleResourceUsage } from "./resource-monitor.ts";
+import { S3StorageService } from "@veolms/storage";
+import { downloadHttpFile } from "./http-download.ts";
 import {
-  createS3ClientFromConfig,
-  downloadHttpFile,
-  downloadS3File,
   startIncrementalHlsUpload,
   type IncrementalUploadHandle,
-} from "./s3.ts";
-import type { MediaWorkerConfig } from "./config.ts";
+} from "./incremental-upload.ts";
+import type { MediaWorkerConfig } from "@veolms/config";
 import type { MediaWorkerContext } from "./worker.ts";
 
 const execFileAsync = promisify(execFile);
@@ -332,7 +331,12 @@ export async function executeTranscodeJob(
       qualities: job.qualities,
     });
 
-    const s3Client = createS3ClientFromConfig(config);
+    const storage = new S3StorageService({
+      bucket: config.S3_BUCKET,
+      region: config.S3_REGION,
+      endpoint: config.S3_ENDPOINT,
+      forcePathStyle: config.S3_FORCE_PATH_STYLE,
+    });
     await mkdir(jobScratchDir, { recursive: true });
     await mkdir(outputHlsDir, { recursive: true });
 
@@ -382,16 +386,9 @@ export async function executeTranscodeJob(
       }
 
       if (!isLocalFile) {
-        await downloadS3File(
-          s3Client,
-          config.S3_BUCKET,
-          cleanVideoKey,
-          inputVideoPath,
-          {
-            maxBytes: config.HTTP_DOWNLOAD_MAX_BYTES,
-            signal,
-          },
-        );
+        await storage.downloadObject(cleanVideoKey, inputVideoPath, {
+          signal,
+        });
       }
     }
 
@@ -483,8 +480,7 @@ export async function executeTranscodeJob(
     // than waiting for the whole multi-quality encode to finish.
     if (config.STORAGE_PROVIDER === "s3") {
       uploadHandle = startIncrementalHlsUpload({
-        s3: s3Client,
-        bucket: config.S3_BUCKET,
+        storage,
         localDir: outputHlsDir,
         s3Prefix: job.output_prefix,
         pollIntervalMs: config.INCREMENTAL_UPLOAD_POLL_MS,
