@@ -84,7 +84,7 @@ export async function claimNextQueuedVideoJob(
     await trx
       .updateTable("video_jobs")
       .set({
-        status: "PROCESSING",
+        status: "PROVISIONING",
         ...(worker ? { worker_id: worker.id } : {}),
         started_at: new Date(),
         updated_at: new Date(),

@@ -243,7 +243,11 @@ export async function executeTranscodeJob(
   try {
     throwIfAborted(signal);
 
-    if (job.status !== "PROCESSING" && job.status !== "QUEUED") {
+    if (
+      job.status !== "PROCESSING" &&
+      job.status !== "PROVISIONING" &&
+      job.status !== "QUEUED"
+    ) {
       throw new Error(`Job ${jobId} is ${job.status}, not runnable`);
     }
     if (job.worker_id && job.worker_id !== workerId) {
@@ -253,13 +257,7 @@ export async function executeTranscodeJob(
     hardware = estimateJobHardware(job.video_size, job.qualities);
     const claimHardware = hardware;
 
-    // Claim ownership before doing any work. The worker-ID guard prevents a
-    // stale process from overwriting a job that has been reassigned. The
-    // hardware check re-validates compatibility even when the caller
-    // supplied JOB_ID directly (bypassing pollForNextJob/claimNextQueuedVideoJob,
-    // the only other place this check normally runs), so a worker can never
-    // end up running a job whose requirements exceed its own capacity.
-    await db.transaction().execute(async (trx) => {
+  await db.transaction().execute(async (trx) => {
       const worker = await trx
         .selectFrom("workers")
         .select(["cpu", "memory_mb", "storage_gb", "architecture"])
@@ -285,7 +283,7 @@ export async function executeTranscodeJob(
       const claimResult = await trx
         .updateTable("video_jobs")
         .set({
-          status: "PROCESSING",
+          status: "PROVISIONING",
           worker_id: workerId,
           started_at: job.started_at ?? new Date(),
           updated_at: new Date(),
@@ -324,12 +322,6 @@ export async function executeTranscodeJob(
       })
       .where("worker_id", "=", workerId)
       .execute();
-
-    await recordEvent("JOB_STARTED", jobId, {
-      videoKey: job.video_key,
-      outputPrefix: job.output_prefix,
-      qualities: job.qualities,
-    });
 
     const storage = new S3StorageService({
       bucket: config.S3_BUCKET,
@@ -413,6 +405,22 @@ export async function executeTranscodeJob(
       qualities: targetQualities,
       metadata: sourceMetadata,
       crf: config.VIDEO_COMPRESSION_CRF,
+    });
+
+    // 5b. Transition job to PROCESSING as FFmpeg is actually starting
+    await db
+      .updateTable("video_jobs")
+      .set({
+        status: "PROCESSING",
+        updated_at: new Date(),
+      })
+      .where("id", "=", jobId)
+      .execute();
+
+    await recordEvent("JOB_STARTED", jobId, {
+      videoKey: job.video_key,
+      outputPrefix: job.output_prefix,
+      qualities: job.qualities,
     });
 
     // Avoid a needless full re-encode when the source already fits the

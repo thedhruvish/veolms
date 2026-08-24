@@ -30,7 +30,7 @@ export function createMonitor(options: {
       const orphanedJobs = await db
         .selectFrom("video_jobs")
         .select(["id", "video_key", "started_at"])
-        .where("status", "=", "PROCESSING")
+        .where("status", "in", ["PROVISIONING", "PROCESSING"])
         .where("worker_id", "is", null)
         .where((eb) =>
           eb.or([

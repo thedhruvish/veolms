@@ -126,7 +126,7 @@ export async function getFleetHealthSummary(
 
   const queuedJobsCount = jobs.filter((j) => j.status === "QUEUED").length;
   const processingJobsCount = jobs.filter(
-    (j) => j.status === "PROCESSING",
+    (j) => j.status === "PROCESSING" || j.status === "PROVISIONING",
   ).length;
   const completedJobsCount = jobs.filter(
     (j) => j.status === "COMPLETED",

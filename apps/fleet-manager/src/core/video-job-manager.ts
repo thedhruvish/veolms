@@ -76,7 +76,7 @@ export function createJobManager(options: {
 
       if (expectedWorkerId) {
         query = query
-          .where("status", "=", "PROCESSING")
+          .where("status", "in", ["PROVISIONING", "PROCESSING"])
           .where("worker_id", "=", expectedWorkerId);
       }
 
@@ -103,7 +103,7 @@ export function createJobManager(options: {
 
       if (expectedWorkerId) {
         updateQuery = updateQuery
-          .where("status", "=", "PROCESSING")
+          .where("status", "in", ["PROVISIONING", "PROCESSING"])
           .where("worker_id", "=", expectedWorkerId);
       }
 
@@ -134,7 +134,7 @@ export function createJobManager(options: {
             eb("video_key", "=", params.videoKey),
           ]),
         )
-        .where("status", "in", ["QUEUED", "PROCESSING"])
+        .where("status", "in", ["QUEUED", "PROVISIONING", "PROCESSING"])
         .orderBy("created_at", "desc")
         .executeTakeFirst();
 

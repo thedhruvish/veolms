@@ -198,18 +198,17 @@ export function buildFfmpegHlsArgs(options: {
 
   const variants: GeneratedVariant[] = [];
 
+  // Align keyframes uniformly across all renditions to the real input cadence (or 30fps default)
+  // so HLS segments cut at the exact same PTS timestamps across every quality level.
+  const targetFps =
+    typeof metadata.fps === "number" && metadata.fps > 0
+      ? metadata.fps
+      : 30;
+  const gopSize = Math.max(1, Math.round(targetFps * segmentDuration));
+
   // Build FFmpeg multi-output HLS transcode command
   for (const quality of applicableQualities) {
     const profile = getQualityProfile(quality);
-    // FFmpeg preserves the input frame rate unless -r is explicitly set.
-    // Align keyframes to the real input cadence so HLS segments remain close
-    // to the requested duration for 24fps and 60fps sources alike.
-    const sourceFps =
-      typeof metadata.fps === "number" && metadata.fps > 0
-        ? metadata.fps
-        : profile.fps;
-    const gopSize = Math.max(1, Math.round(sourceFps * segmentDuration));
-
     const qualityOutputDir = `${outputDir}/${quality}`;
     const playlistPath = `${qualityOutputDir}/${quality}.m3u8`;
     const segmentPattern = `${qualityOutputDir}/segment_%03d.ts`;

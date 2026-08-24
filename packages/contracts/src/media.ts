@@ -18,6 +18,7 @@ export const MEDIA_MAX_SIZES = {
 // --- Video Jobs & Transcoding ---
 export const VIDEO_JOB_STATUSES = [
   "QUEUED",
+  "PROVISIONING",
   "PROCESSING",
   "COMPLETED",
   "FAILED",

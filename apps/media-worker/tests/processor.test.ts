@@ -362,7 +362,7 @@ describe("executeTranscodeJob — claim and retry logic", () => {
     );
 
     assert.equal(jobsSetCalls.length, 2);
-    assert.equal(jobsSetCalls[0].status, "PROCESSING");
+    assert.equal(jobsSetCalls[0].status, "PROVISIONING");
     assert.equal(jobsSetCalls[0].worker_id, WORKER_ID);
   });
 
