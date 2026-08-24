@@ -4,7 +4,6 @@ import {
   CertificateIcon as Certificate,
   ChartBarIcon as ChartBar,
   CopySimpleIcon as CopySimple,
-  DotsThreeVerticalIcon as DotsThreeVertical,
   EyeIcon as Eye,
   FlagIcon as Flag,
   GraduationCapIcon as GraduationCap,
@@ -20,11 +19,8 @@ import {
   UploadSimpleIcon as UploadSimple,
   UsersThreeIcon as UsersThree,
 } from "@phosphor-icons/react";
-import type { Icon } from "@phosphor-icons/react";
-import { useLayoutEffect, useRef, useState } from "react";
-import type { ReactNode } from "react";
-import { useBackDismiss } from "../navigation/useBackDismiss";
 import type { Course, CoursePricing, CourseRole } from "./catalogue";
+import { CourseActionMenu, MenuAction, MenuDivider } from "./CourseActionMenu";
 
 const courseOverviewPath = (course: Course) =>
   `/courses/${encodeURIComponent(course.id)}/overview`;
@@ -41,40 +37,6 @@ const studentStatusStyles = {
   "in-progress": "border-sky-400/25 bg-sky-500/15 text-sky-300",
   completed: "border-emerald-400/25 bg-emerald-500/15 text-emerald-300",
 } as const;
-
-const courseMenuWidth = 238;
-const courseMenuGap = 8;
-type CourseMenuHorizontalPlacement = "right" | "left" | "aligned";
-type CourseMenuVerticalPlacement = "below" | "above";
-
-const getCourseMenuBoundary = (element: HTMLElement) => {
-  const boundary = {
-    top: 0,
-    right: window.innerWidth,
-    bottom: window.innerHeight,
-    left: 0,
-  };
-  let ancestor = element.parentElement;
-
-  while (ancestor) {
-    const styles = window.getComputedStyle(ancestor);
-    const clipsContent = /(auto|scroll|hidden|clip)/.test(
-      `${styles.overflow} ${styles.overflowX} ${styles.overflowY}`,
-    );
-
-    if (clipsContent) {
-      const bounds = ancestor.getBoundingClientRect();
-      boundary.top = Math.max(boundary.top, bounds.top);
-      boundary.right = Math.min(boundary.right, bounds.right);
-      boundary.bottom = Math.min(boundary.bottom, bounds.bottom);
-      boundary.left = Math.max(boundary.left, bounds.left);
-    }
-
-    ancestor = ancestor.parentElement;
-  }
-
-  return boundary;
-};
 
 const DEFAULT_NOT_ENROLLED_PRICING: CoursePricing = {
   price: "₹1,999",
@@ -97,43 +59,6 @@ const getStudentStatusLabel = (course: Course) => {
   if (status === "in-progress") return "In Progress";
   return "Not Started";
 };
-
-interface MenuActionProps {
-  Icon?: Icon;
-  icon?: ReactNode;
-  label: string;
-  onClick: () => void;
-  destructive?: boolean;
-}
-
-function MenuAction({
-  Icon,
-  icon,
-  label,
-  onClick,
-  destructive,
-}: MenuActionProps) {
-  return (
-    <button
-      type="button"
-      role="menuitem"
-      className={`flex min-h-10 w-full items-center gap-2.5 rounded-lg px-3 text-left text-[0.78rem] transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-(--accent) ${
-        destructive
-          ? "text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
-          : "text-(--text-secondary) hover:bg-(--hover) hover:text-(--text)"
-      }`}
-      onClick={onClick}
-    >
-      {icon ??
-        (Icon ? <Icon size={17} weight="regular" aria-hidden="true" /> : null)}
-      <span>{label}</span>
-    </button>
-  );
-}
-
-function MenuDivider() {
-  return <div className="my-1 h-px bg-(--border)" aria-hidden="true" />;
-}
 
 export interface CourseCardProps {
   course: Course;
@@ -168,15 +93,6 @@ export function CourseCard({
   setNotice,
   imagePriority = false,
 }: CourseCardProps) {
-  const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const menuPointerInteractionRef = useRef(false);
-  const [menuHorizontalPlacement, setMenuHorizontalPlacement] =
-    useState<CourseMenuHorizontalPlacement>("right");
-  const [menuVerticalPlacement, setMenuVerticalPlacement] =
-    useState<CourseMenuVerticalPlacement>("below");
-  const [menuPressPulse, setMenuPressPulse] = useState(0);
-  const [menuKeyboardFocus, setMenuKeyboardFocus] = useState(false);
   const studentStatus = getStudentStatus(course);
   const progress = course.progress ?? 0;
   const overviewPath = courseOverviewPath(course);
@@ -185,84 +101,9 @@ export function CourseCard({
       ? overviewPath
       : new URL(overviewPath, window.location.origin).toString();
 
-  useBackDismiss({
-    open: menuOpen,
-    onDismiss: () => setMenuOpen(null),
-  });
-
   const closeThen = (action: () => void) => {
     setMenuOpen(null);
     action();
-  };
-
-  useLayoutEffect(() => {
-    if (!menuOpen || typeof window === "undefined") return;
-
-    const updateMenuPlacement = () => {
-      const button = menuButtonRef.current;
-      const menu = menuRef.current;
-      if (!button || !menu) return;
-
-      const buttonBounds = button.getBoundingClientRect();
-      const menuBounds = menu.getBoundingClientRect();
-      const boundary = getCourseMenuBoundary(menu);
-      const menuWidth = menu.offsetWidth || menuBounds.width || courseMenuWidth;
-      const menuHeight = menu.offsetHeight || menuBounds.height;
-      const roomOnRight = boundary.right - buttonBounds.right;
-      const roomOnLeft = buttonBounds.left - boundary.left;
-      const roomBelow = boundary.bottom - buttonBounds.bottom;
-      const roomAbove = buttonBounds.top - boundary.top;
-
-      setMenuHorizontalPlacement(
-        roomOnRight >= menuWidth + courseMenuGap
-          ? "right"
-          : roomOnLeft >= menuWidth + courseMenuGap
-            ? "left"
-            : "aligned",
-      );
-      setMenuVerticalPlacement(
-        roomBelow >= menuHeight + courseMenuGap
-          ? "below"
-          : roomAbove >= menuHeight + courseMenuGap || roomAbove > roomBelow
-            ? "above"
-            : "below",
-      );
-    };
-
-    updateMenuPlacement();
-    window.addEventListener("resize", updateMenuPlacement);
-    window.addEventListener("scroll", updateMenuPlacement, true);
-
-    return () => {
-      window.removeEventListener("resize", updateMenuPlacement);
-      window.removeEventListener("scroll", updateMenuPlacement, true);
-    };
-  }, [menuOpen, role]);
-
-  const toggleCourseMenu = () => {
-    if (menuOpen) {
-      setMenuOpen(null);
-      return;
-    }
-
-    const button = menuButtonRef.current;
-    if (!button || typeof window === "undefined") {
-      setMenuHorizontalPlacement("aligned");
-      setMenuVerticalPlacement("below");
-      setMenuOpen(course.id);
-      return;
-    }
-
-    const buttonBounds = button.getBoundingClientRect();
-    const hasRoomOnRight =
-      window.innerWidth - buttonBounds.right >= courseMenuWidth + courseMenuGap;
-    const hasRoomOnLeft = buttonBounds.left >= courseMenuWidth + courseMenuGap;
-
-    setMenuHorizontalPlacement(
-      hasRoomOnRight ? "right" : hasRoomOnLeft ? "left" : "aligned",
-    );
-    setMenuVerticalPlacement("below");
-    setMenuOpen(course.id);
   };
 
   const copyCourseLink = async () => {
@@ -433,288 +274,200 @@ export function CourseCard({
             </p>
           </div>
 
-          <div className="relative z-30 ml-auto shrink-0" data-course-menu>
-            <button
-              type="button"
-              ref={menuButtonRef}
-              className="group/action relative isolate flex size-10 items-center justify-center overflow-visible rounded-full text-(--text-secondary) focus-visible:outline-none!"
-              aria-label={`Actions for ${course.title}`}
-              aria-haspopup="menu"
-              aria-expanded={menuOpen}
-              onPointerDown={(event) => {
-                if (event.button === 0) {
-                  menuPointerInteractionRef.current = true;
-                  setMenuKeyboardFocus(false);
-                  setMenuPressPulse((pulse) => pulse + 1);
-                }
-              }}
-              onPointerUp={() => {
-                menuPointerInteractionRef.current = false;
-              }}
-              onPointerCancel={() => {
-                menuPointerInteractionRef.current = false;
-                setMenuPressPulse(0);
-              }}
-              onPointerLeave={() => setMenuPressPulse(0)}
-              onFocus={() => {
-                if (!menuPointerInteractionRef.current)
-                  setMenuKeyboardFocus(true);
-              }}
-              onBlur={() => {
-                menuPointerInteractionRef.current = false;
-                setMenuKeyboardFocus(false);
-              }}
-              onKeyDown={(event) => {
-                setMenuKeyboardFocus(true);
-                if (
-                  !event.repeat &&
-                  (event.key === "Enter" || event.key === " ")
-                ) {
-                  setMenuPressPulse((pulse) => pulse + 1);
-                }
-              }}
-              onClick={toggleCourseMenu}
-            >
-              <span
-                className={`relative z-10 flex size-9 items-center justify-center rounded-full text-(--text-secondary) transition-colors duration-150 group-hover/action:text-(--text) ${menuKeyboardFocus ? "text-(--text)" : ""}`}
-              >
-                <span
-                  key={menuPressPulse}
-                  className={`pointer-events-none absolute inset-0 z-0 rounded-full transition-colors duration-150 group-hover/action:bg-[color-mix(in_srgb,var(--text)_9%,var(--surface-strong))] group-active/action:bg-[color-mix(in_srgb,var(--text)_24%,var(--surface-strong))] ${menuKeyboardFocus ? "bg-[color-mix(in_srgb,var(--text)_16%,var(--surface-strong))]" : ""} ${menuPressPulse > 0 ? "course-menu-press-feedback motion-reduce:animate-none" : ""}`}
-                  aria-hidden="true"
-                  onAnimationEnd={() => setMenuPressPulse(0)}
+          <CourseActionMenu
+            open={menuOpen}
+            onOpenChange={(open) => setMenuOpen(open ? course.id : null)}
+            ariaLabel={`Actions for ${course.title}`}
+            dataMenu=""
+          >
+            {role === "creator" ? (
+              <>
+                <MenuAction
+                  Icon={PencilSimple}
+                  label="Edit Course"
+                  onClick={() => closeThen(() => onEdit?.(course))}
                 />
-                <DotsThreeVertical
-                  className="relative z-10"
-                  size={24}
-                  weight="bold"
+                <MenuAction
+                  Icon={ListBullets}
+                  label="Manage Curriculum"
+                  onClick={() => closeThen(() => onManage?.(course))}
                 />
-              </span>
-            </button>
-
-            {menuOpen && (
-              <div
-                ref={menuRef}
-                className={`absolute z-50 w-59.5 rounded-xl border border-(--border-strong) bg-(--surface) p-1.5 shadow-[0_20px_48px_rgba(0,0,0,0.38)] ${
-                  menuHorizontalPlacement === "right"
-                    ? "left-full"
-                    : menuHorizontalPlacement === "left"
-                      ? "right-full"
-                      : "left-0"
-                } ${
-                  menuVerticalPlacement === "above"
-                    ? menuHorizontalPlacement === "aligned"
-                      ? "bottom-full mb-2"
-                      : "bottom-full"
-                    : menuHorizontalPlacement === "aligned"
-                      ? "top-full mt-2"
-                      : "top-full"
-                }`}
-                role="menu"
-                aria-label={`Actions for ${course.title}`}
-                data-placement={`${menuVerticalPlacement}-${menuHorizontalPlacement}`}
-                data-control-radius-menu
-              >
-                {role === "creator" ? (
-                  <>
-                    <MenuAction
-                      Icon={PencilSimple}
-                      label="Edit Course"
-                      onClick={() => closeThen(() => onEdit?.(course))}
-                    />
-                    <MenuAction
-                      Icon={ListBullets}
-                      label="Manage Curriculum"
-                      onClick={() => closeThen(() => onManage?.(course))}
-                    />
-                    <MenuAction
-                      Icon={Eye}
-                      label="Course Preview"
-                      onClick={() => onExplore(course)}
-                    />
-                    <MenuAction
-                      Icon={ChartBar}
-                      label="Analytics"
-                      onClick={() =>
-                        closeThen(() =>
-                          onNavigatePage(`/analytics?course=${course.id}`),
-                        )
-                      }
-                    />
-                    <MenuAction
-                      Icon={UsersThree}
-                      label="Manage Students"
-                      onClick={() =>
-                        closeThen(() =>
-                          onNavigatePage(`/students?course=${course.id}`),
-                        )
-                      }
-                    />
-                    <MenuDivider />
-                    <MenuAction
-                      Icon={CopySimple}
-                      label="Copy Course Link"
-                      onClick={() => closeThen(() => void copyCourseLink())}
-                    />
-                    <MenuAction
-                      Icon={PaperPlaneTilt}
-                      label="Duplicate Course"
-                      onClick={() =>
-                        closeThen(() =>
-                          setNotice(
-                            `${course.title} was duplicated as a draft.`,
-                          ),
-                        )
-                      }
-                    />
-                    <MenuDivider />
-                    <MenuAction
-                      Icon={
-                        course.lifecycleStatus === "archived"
-                          ? ArrowCounterClockwise
-                          : UploadSimple
-                      }
-                      label={
-                        course.lifecycleStatus === "published"
-                          ? "Unpublish Course"
-                          : course.lifecycleStatus === "draft"
-                            ? "Publish Course"
-                            : "Restore Course"
-                      }
-                      onClick={() => closeThen(lifecycleAction)}
-                    />
-                    {course.lifecycleStatus !== "archived" && (
-                      <MenuAction
-                        Icon={Archive}
-                        label="Archive Course"
-                        onClick={() =>
-                          closeThen(() =>
-                            setNotice(`${course.title} was archived.`),
-                          )
-                        }
-                      />
-                    )}
-                    <MenuDivider />
-                    <MenuAction
-                      Icon={Trash}
-                      label="Delete Course"
-                      destructive
-                      onClick={() =>
-                        closeThen(() => onDeleteRequested?.(course))
-                      }
-                    />
-                  </>
-                ) : course.enrolled ? (
-                  <>
-                    <MenuAction
-                      Icon={Eye}
-                      label="Course Preview"
-                      onClick={() => onExplore(course)}
-                    />
-                    <MenuDivider />
-                    <MenuAction
-                      Icon={PaperPlaneTilt}
-                      label="Open Discussions"
-                      onClick={() =>
-                        closeThen(() =>
-                          onNavigatePage(`/discussions?course=${course.id}`),
-                        )
-                      }
-                    />
-                    <MenuDivider />
-                    <MenuAction
-                      Icon={ShareNetwork}
-                      label="Share Course"
-                      onClick={() => closeThen(() => void shareCourse())}
-                    />
-                    <MenuAction
-                      Icon={LinkSimple}
-                      label="Copy Course Link"
-                      onClick={() => closeThen(() => void copyCourseLink())}
-                    />
-                    <MenuDivider />
-                    {course.certificateAvailable && progress >= 100 && (
-                      <MenuAction
-                        Icon={Certificate}
-                        label="View Certificate"
-                        onClick={() =>
-                          closeThen(() =>
-                            setNotice(
-                              `Opening your ${course.title} certificate.`,
-                            ),
-                          )
-                        }
-                      />
-                    )}
-                    <MenuAction
-                      Icon={Flag}
-                      label="Report an Issue"
-                      onClick={() =>
-                        closeThen(() =>
-                          setNotice(
-                            `Issue reporting opened for ${course.title}.`,
-                          ),
-                        )
-                      }
-                    />
-                  </>
-                ) : (
-                  <>
-                    <MenuAction
-                      Icon={Eye}
-                      label="Course Preview"
-                      onClick={() => onExplore(course)}
-                    />
-                    <MenuDivider />
-                    <MenuAction
-                      icon={
-                        <span
-                          className="relative inline-flex size-4.25 shrink-0"
-                          aria-hidden="true"
-                        >
-                          <GraduationCap size={17} weight="regular" />
-                          <Plus
-                            className="absolute -right-1 -bottom-0.5 rounded-full bg-(--surface)"
-                            size={8}
-                            weight="bold"
-                          />
-                        </span>
-                      }
-                      label="Enroll Now"
-                      onClick={() =>
-                        closeThen(() =>
-                          onNavigatePage(`${overviewPath}?enroll=true`),
-                        )
-                      }
-                    />
-                    <MenuDivider />
-                    <MenuAction
-                      Icon={ShareNetwork}
-                      label="Share Course"
-                      onClick={() => closeThen(() => void shareCourse())}
-                    />
-                    <MenuAction
-                      Icon={LinkSimple}
-                      label="Copy Course Link"
-                      onClick={() => closeThen(() => void copyCourseLink())}
-                    />
-                    <MenuDivider />
-                    <MenuAction
-                      Icon={Flag}
-                      label="Report Course"
-                      onClick={() =>
-                        closeThen(() =>
-                          setNotice(
-                            `Course report opened for ${course.title}.`,
-                          ),
-                        )
-                      }
-                    />
-                  </>
+                <MenuAction
+                  Icon={Eye}
+                  label="Course Preview"
+                  onClick={() => closeThen(() => onExplore(course))}
+                />
+                <MenuAction
+                  Icon={ChartBar}
+                  label="Analytics"
+                  onClick={() =>
+                    closeThen(() =>
+                      onNavigatePage(`/analytics?course=${course.id}`),
+                    )
+                  }
+                />
+                <MenuAction
+                  Icon={UsersThree}
+                  label="Manage Students"
+                  onClick={() =>
+                    closeThen(() =>
+                      onNavigatePage(`/students?course=${course.id}`),
+                    )
+                  }
+                />
+                <MenuDivider />
+                <MenuAction
+                  Icon={CopySimple}
+                  label="Copy Course Link"
+                  onClick={() => closeThen(() => void copyCourseLink())}
+                />
+                <MenuAction
+                  Icon={PaperPlaneTilt}
+                  label="Duplicate Course"
+                  onClick={() =>
+                    closeThen(() =>
+                      setNotice(`${course.title} was duplicated as a draft.`),
+                    )
+                  }
+                />
+                <MenuDivider />
+                <MenuAction
+                  Icon={
+                    course.lifecycleStatus === "archived"
+                      ? ArrowCounterClockwise
+                      : UploadSimple
+                  }
+                  label={
+                    course.lifecycleStatus === "published"
+                      ? "Unpublish Course"
+                      : course.lifecycleStatus === "draft"
+                        ? "Publish Course"
+                        : "Restore Course"
+                  }
+                  onClick={() => closeThen(lifecycleAction)}
+                />
+                {course.lifecycleStatus !== "archived" && (
+                  <MenuAction
+                    Icon={Archive}
+                    label="Archive Course"
+                    onClick={() =>
+                      closeThen(() =>
+                        setNotice(`${course.title} was archived.`),
+                      )
+                    }
+                  />
                 )}
-              </div>
+                <MenuDivider />
+                <MenuAction
+                  Icon={Trash}
+                  label="Delete Course"
+                  destructive
+                  onClick={() => closeThen(() => onDeleteRequested?.(course))}
+                />
+              </>
+            ) : course.enrolled ? (
+              <>
+                <MenuAction
+                  Icon={Eye}
+                  label="Course Preview"
+                  onClick={() => closeThen(() => onExplore(course))}
+                />
+                <MenuDivider />
+                <MenuAction
+                  Icon={PaperPlaneTilt}
+                  label="Open Discussions"
+                  onClick={() =>
+                    closeThen(() =>
+                      onNavigatePage(`/discussions?course=${course.id}`),
+                    )
+                  }
+                />
+                <MenuDivider />
+                <MenuAction
+                  Icon={ShareNetwork}
+                  label="Share Course"
+                  onClick={() => closeThen(() => void shareCourse())}
+                />
+                <MenuAction
+                  Icon={LinkSimple}
+                  label="Copy Course Link"
+                  onClick={() => closeThen(() => void copyCourseLink())}
+                />
+                <MenuDivider />
+                {course.certificateAvailable && progress >= 100 && (
+                  <MenuAction
+                    Icon={Certificate}
+                    label="View Certificate"
+                    onClick={() =>
+                      closeThen(() =>
+                        setNotice(`Opening your ${course.title} certificate.`),
+                      )
+                    }
+                  />
+                )}
+                <MenuAction
+                  Icon={Flag}
+                  label="Report an Issue"
+                  onClick={() =>
+                    closeThen(() =>
+                      setNotice(`Issue reporting opened for ${course.title}.`),
+                    )
+                  }
+                />
+              </>
+            ) : (
+              <>
+                <MenuAction
+                  Icon={Eye}
+                  label="Course Preview"
+                  onClick={() => closeThen(() => onExplore(course))}
+                />
+                <MenuDivider />
+                <MenuAction
+                  icon={
+                    <span
+                      className="relative inline-flex size-4.25 shrink-0"
+                      aria-hidden="true"
+                    >
+                      <GraduationCap size={17} weight="regular" />
+                      <Plus
+                        className="absolute -right-1 -bottom-0.5 rounded-full bg-(--surface)"
+                        size={8}
+                        weight="bold"
+                      />
+                    </span>
+                  }
+                  label="Enroll Now"
+                  onClick={() =>
+                    closeThen(() =>
+                      onNavigatePage(`${overviewPath}?enroll=true`),
+                    )
+                  }
+                />
+                <MenuDivider />
+                <MenuAction
+                  Icon={ShareNetwork}
+                  label="Share Course"
+                  onClick={() => closeThen(() => void shareCourse())}
+                />
+                <MenuAction
+                  Icon={LinkSimple}
+                  label="Copy Course Link"
+                  onClick={() => closeThen(() => void copyCourseLink())}
+                />
+                <MenuDivider />
+                <MenuAction
+                  Icon={Flag}
+                  label="Report Course"
+                  onClick={() =>
+                    closeThen(() =>
+                      setNotice(`Course report opened for ${course.title}.`),
+                    )
+                  }
+                />
+              </>
             )}
-          </div>
+          </CourseActionMenu>
         </div>
 
         <div className="mt-auto flex flex-col">

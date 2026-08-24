@@ -34,7 +34,7 @@ export interface ShellRouteDescriptor {
 export interface LearningRouteDescriptor {
   kind: "learning";
   page: "learning";
-  section: "Courses";
+  section: "Learning Space";
   settingsTab?: undefined;
   discussionTab?: undefined;
 }
@@ -261,7 +261,7 @@ export const routeDescriptors = {
 const learningDescriptor = {
   kind: "learning",
   page: "learning",
-  section: "Courses",
+  section: "Learning Space",
 } as const satisfies LearningRouteDescriptor;
 
 const courseOverviewDescriptor = {

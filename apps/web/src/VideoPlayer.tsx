@@ -96,6 +96,7 @@ interface VideoPlayerProps {
   onTheaterToggle: () => void;
   autoPlayOnMediaChange?: boolean;
   onProgressChange?: (progress: number) => void;
+  resumePersistenceKey?: string;
 }
 
 export function VideoPlayer({
@@ -105,6 +106,7 @@ export function VideoPlayer({
   onTheaterToggle,
   autoPlayOnMediaChange = false,
   onProgressChange,
+  resumePersistenceKey,
 }: VideoPlayerProps) {
   const shellRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLElement>(null);
@@ -146,6 +148,7 @@ export function VideoPlayer({
   const [ambientPortalHost, setAmbientPortalHost] =
     useState<HTMLElement | null>(null);
   const [tempSpeedActive, setTempSpeedActive] = useState(false);
+  const resumeStorageKey = `veolms-watch-${resumePersistenceKey ?? media.fileName}`;
 
   const showHud = (message: string) => {
     window.clearTimeout(hudTimerRef.current);
@@ -302,16 +305,13 @@ export function VideoPlayer({
         return;
 
       try {
-        window.localStorage.setItem(
-          `veolms-watch-${media.fileName}`,
-          String(position),
-        );
+        window.localStorage.setItem(resumeStorageKey, String(position));
         lastResumePersistedAtRef.current = now;
       } catch {
         // Playback should remain available when browser storage is unavailable.
       }
     },
-    [media.fileName],
+    [resumeStorageKey],
   );
 
   const paintAmbientFrame = useCallback(() => {
@@ -833,9 +833,7 @@ export function VideoPlayer({
             setDuration(event.currentTarget.duration);
             let savedTime = 0;
             try {
-              savedTime = Number(
-                localStorage.getItem(`veolms-watch-${media.fileName}`),
-              );
+              savedTime = Number(localStorage.getItem(resumeStorageKey));
             } catch {
               // Resume from the beginning when browser storage is unavailable.
             }

@@ -26,6 +26,7 @@ export interface ChoiceCardProps {
   preview?: ReactNode;
   children?: ReactNode;
   className?: string;
+  disabled?: boolean;
 }
 
 export function ChoiceCard({
@@ -37,6 +38,7 @@ export function ChoiceCard({
   preview,
   children,
   className = "",
+  disabled = false,
 }: ChoiceCardProps) {
   return (
     <button
@@ -45,6 +47,7 @@ export function ChoiceCard({
       role="radio"
       aria-checked={checked}
       tabIndex={checked ? 0 : -1}
+      disabled={disabled}
       onClick={onChange}
     >
       {preview}

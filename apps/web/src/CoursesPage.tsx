@@ -26,7 +26,6 @@ import { EyeIcon as Eye } from "@phosphor-icons/react/Eye";
 import { GearSixIcon as GearSix } from "@phosphor-icons/react/GearSix";
 import { MoonIcon as Moon } from "@phosphor-icons/react/Moon";
 import { PaletteIcon as Palette } from "@phosphor-icons/react/Palette";
-import { PlayIcon as Play } from "@phosphor-icons/react/Play";
 import { QuestionIcon as Question } from "@phosphor-icons/react/Question";
 import { SignOutIcon as SignOut } from "@phosphor-icons/react/SignOut";
 import { SidebarSimpleIcon as SidebarSimple } from "@phosphor-icons/react/SidebarSimple";
@@ -129,11 +128,14 @@ import {
   toggleDocumentFullscreen,
 } from "./fullscreen";
 import {
+  activateCoursePlayerSession,
   COURSE_PLAYER_SESSION_CHANGE_EVENT,
-  COURSE_PLAYER_SESSION_STORAGE_KEY,
-  getCoursePlayerOriginFromSection,
-  getRememberedCoursePlayerDestination,
+  COURSE_PLAYER_SESSIONS_STORAGE_KEY,
+  closeCoursePlayerSession,
+  getOpenCoursePlayerSessions,
 } from "./learning/coursePlayerNavigation";
+import type { CoursePlayerSession } from "./learning/coursePlayerNavigation";
+import { LearningSpace } from "./learning-space/LearningSpace";
 import {
   isStoredString,
   useSessionStorageState,
@@ -177,6 +179,8 @@ type ThemePreference = "light" | "dark" | "device";
 type AppearanceOption = ThemePreference | "theme";
 type AppearanceSwipeSource = AppearanceOption;
 type NavigationDropPosition = "before" | "after";
+
+const LEARNING_SPACE_EXPANDED_STORAGE_KEY = "veolms-learning-space-expanded";
 
 interface CoursesPageProps {
   onOpenCourse: (
@@ -350,14 +354,6 @@ function SidebarTooltipSurface() {
         d={`M 51 1 H ${topRightCurveStart} C ${rightCurveControl} 1 ${rightEdge} 10 ${rightEdge} 21 V 156 C ${rightEdge} 167 ${rightCurveControl} 176 ${bottomRightCurveEnd} 176 H 51 C 40 176 34 167 34 156 V 132 C 34 126 32 123 29 120 L 4 96 C 1.6 93.7 0 91.2 0 88.5 C 0 85.8 1.6 83.3 4 81 L 29 56 C 32 53 34 50 34 45 V 21 C 34 10 40 1 51 1 Z`}
       />
     </svg>
-  );
-}
-
-function CourseResumeIndicator() {
-  return (
-    <i className="courses-nav__resume-indicator" aria-hidden="true">
-      <Play size={8} weight="fill" />
-    </i>
   );
 }
 
@@ -628,12 +624,13 @@ export function CoursesPage({
   });
   const readingModeEnabled = readingModePreferences.enabled;
   const [, setCoursePlayerSessionVersion] = useState(0);
+  const [learningSpaceExpanded, setLearningSpaceExpanded] = useState(true);
   const [activeSection, setActiveSection] = useState(() => {
     if (page === "home") return role === "creator" ? "Dashboard" : "Home";
     if (page === "courses") return "Courses";
     if (requestedSection) return requestedSection;
-    // Restore the session-persisted section in the effect below. Keeping the
-    // initializer deterministic avoids a server/client hydration mismatch.
+    // Keep the initializer deterministic to avoid a server/client hydration
+    // mismatch. Route props become authoritative in the effect below.
     return "Courses";
   });
   const [enrollmentFilter, setEnrollmentFilter] =
@@ -752,6 +749,16 @@ export function CoursesPage({
     [mobileMenuCollapsedSnapPoint],
   );
   const isLearningSurface = Boolean(renderMain);
+  const activeNavigationSection = isLearningSurface
+    ? null
+    : (requestedSection ??
+      (page === "home"
+        ? role === "creator"
+          ? "Dashboard"
+          : "Home"
+        : page === "courses"
+          ? "Courses"
+          : null));
   const sidebarResizeRef = useRef<SidebarResize | null>(null);
   const sidebarResizeMoveRef = useRef<
     ((event: PointerPositionEvent) => void) | null
@@ -825,6 +832,9 @@ export function CoursesPage({
       setSidebarPreferences(getInitialSidebarPreferences());
       setPageTabColors(readPageTabColors());
       setReadingModePreferences(readReadingModePreferences());
+      setLearningSpaceExpanded(
+        localStorage.getItem(LEARNING_SPACE_EXPANDED_STORAGE_KEY) !== "false",
+      );
 
       const storedWishlist: unknown = JSON.parse(
         localStorage.getItem("veolms-wishlist") || "[]",
@@ -1043,7 +1053,7 @@ export function CoursesPage({
     const syncCoursePlayerSession = () =>
       setCoursePlayerSessionVersion((version) => version + 1);
     const syncCoursePlayerStorage = (event: StorageEvent) => {
-      if (event.key === COURSE_PLAYER_SESSION_STORAGE_KEY)
+      if (event.key === COURSE_PLAYER_SESSIONS_STORAGE_KEY)
         syncCoursePlayerSession();
     };
     window.addEventListener(
@@ -1059,6 +1069,14 @@ export function CoursesPage({
       window.removeEventListener("storage", syncCoursePlayerStorage);
     };
   }, []);
+
+  useEffect(() => {
+    if (!storedPreferencesReady) return;
+    localStorage.setItem(
+      LEARNING_SPACE_EXPANDED_STORAGE_KEY,
+      String(learningSpaceExpanded),
+    );
+  }, [learningSpaceExpanded, storedPreferencesReady]);
 
   useEffect(() => {
     if (!storedPreferencesReady) return;
@@ -1103,16 +1121,8 @@ export function CoursesPage({
       setActiveSection(role === "creator" ? "Dashboard" : "Home");
     else if (requestedSection) setActiveSection(requestedSection);
     else if (page === "courses") setActiveSection("Courses");
-    else {
-      const storedSection = sessionStorage.getItem("veolms-course-section");
-      setActiveSection(
-        storedSection === "My Courses" || storedSection === "Explore Courses"
-          ? "Courses"
-          : storedSection || "Courses",
-      );
-      sessionStorage.removeItem("veolms-course-section");
-    }
-  }, [onNavigatePage, page, requestedSection, role, storedPreferencesReady]);
+    else setActiveSection("Courses");
+  }, [page, requestedSection, role, storedPreferencesReady]);
 
   useEffect(() => {
     if (!storedPreferencesReady) return;
@@ -1469,7 +1479,6 @@ export function CoursesPage({
   };
 
   const resetCatalogue = () => {
-    setActiveSection("Courses");
     setSearch("");
     setStatusFilter("all");
     setEnrollmentFilter("all");
@@ -1484,14 +1493,6 @@ export function CoursesPage({
 
   const selectNavigation = (label: string) => {
     closeMobileMenu();
-    if (label === "Courses") {
-      setSearch("");
-      setActiveSection(label);
-    }
-    if (label === "Wishlist") {
-      setSearch("");
-      setActiveSection("Wishlist");
-    }
     onNavigatePage?.(getNavigationDestination(label));
   };
 
@@ -2239,7 +2240,7 @@ export function CoursesPage({
     }
     setSidebarTooltip(null);
   }, [
-    activeSection,
+    activeNavigationSection,
     coarseNavigationInput,
     compactNavigation,
     showKeyboardShortcuts,
@@ -2752,9 +2753,32 @@ export function CoursesPage({
     }
   };
 
+  const learningSessions = getOpenCoursePlayerSessions();
+  const visibleLearningCourseId = isLearningSurface ? courseSlug : undefined;
+  const activateLearningSession = useCallback(
+    (session: CoursePlayerSession) => {
+      const destination =
+        activateCoursePlayerSession(session.courseId) || session.path;
+      onNavigatePage(destination);
+    },
+    [onNavigatePage],
+  );
+  const closeLearningSession = useCallback(
+    (session: CoursePlayerSession) => {
+      const closesVisibleSession =
+        isLearningSurface && courseSlug === session.courseId;
+      const nextSession = closeCoursePlayerSession(session.courseId);
+      if (!closesVisibleSession) return;
+      onNavigatePage(nextSession?.path || session.returnPath);
+    },
+    [courseSlug, isLearningSurface, onNavigatePage],
+  );
+
   const mobileNavigation = navigation.slice(0, 4);
-  const mobileMoreActive = !mobileNavigation.some(
-    ([label]) => label === activeSection,
+  const mobileMoreActive = Boolean(
+    activeNavigationSection &&
+    navigation.some(([label]) => label === activeNavigationSection) &&
+    !mobileNavigation.some(([label]) => label === activeNavigationSection),
   );
   const currentAcademyThemeIndex = academyThemes.findIndex(
     (item) => item.id === academyTheme,
@@ -2881,6 +2905,7 @@ export function CoursesPage({
               id="courses-sidebar-nav-scrollport"
               className={[
                 "courses-nav",
+                role === "student" ? "!flex-none max-h-[min(44dvh,24rem)]" : "",
                 navigationScrollFade.top ? "has-scroll-top" : "",
                 navigationScrollFade.bottom ? "has-scroll-bottom" : "",
               ]
@@ -2893,21 +2918,13 @@ export function CoursesPage({
               }}
             >
               {navigation.map(([label, Icon], navigationIndex) => {
-                const active = activeSection === label;
+                const active = activeNavigationSection === label;
                 const displayLabel = getNavigationDisplayLabel(label, page);
-                const badge = label === "Wishlist" ? wishlisted.size : 0;
-                const playerOrigin = getCoursePlayerOriginFromSection(label);
-                const hasResumableLesson = Boolean(
-                  storedPreferencesReady &&
-                  playerOrigin &&
-                  getRememberedCoursePlayerDestination(playerOrigin),
-                );
                 const accessibleLabel = [
                   displayLabel,
                   label === "Wishlist" && wishlisted.size > 0
                     ? `${wishlisted.size} saved`
                     : null,
-                  hasResumableLesson ? "lesson in progress" : null,
                 ]
                   .filter(Boolean)
                   .join(", ");
@@ -2968,7 +2985,6 @@ export function CoursesPage({
                     onBlur={hideCollapsedNavigationTooltip}
                   >
                     <Icon size={23} weight={active ? "fill" : "regular"} />
-                    {hasResumableLesson && <CourseResumeIndicator />}
                     <span className="courses-nav__text">{displayLabel}</span>
                     {showKeyboardShortcuts && (
                       <ShortcutKeys
@@ -2987,6 +3003,19 @@ export function CoursesPage({
                 );
               })}
             </nav>
+
+            {role === "student" && (
+              <LearningSpace
+                sessions={learningSessions}
+                activeCourseId={visibleLearningCourseId}
+                expanded={learningSpaceExpanded}
+                collapsedSidebar={sidebarCollapsed}
+                onExpandedChange={setLearningSpaceExpanded}
+                onRequestSidebarExpand={() => setSidebarMode("expanded")}
+                onActivate={activateLearningSession}
+                onClose={closeLearningSession}
+              />
+            )}
 
             <div className="courses-profile" ref={profileRef}>
               {profileMenu && (
@@ -3352,7 +3381,6 @@ export function CoursesPage({
               setNotice={setNotice}
               onSignOut={() => {
                 localStorage.removeItem("veolms-role");
-                sessionStorage.removeItem("veolms-course-section");
                 setRole("student");
               }}
             />
@@ -3446,14 +3474,8 @@ export function CoursesPage({
           onFocusCapture={() => setMobileBottomNavHidden(false)}
         >
           {mobileNavigation.map(([label, Icon]) => {
-            const active = activeSection === label;
+            const active = activeNavigationSection === label;
             const displayLabel = getNavigationDisplayLabel(label, page);
-            const playerOrigin = getCoursePlayerOriginFromSection(label);
-            const hasResumableLesson = Boolean(
-              storedPreferencesReady &&
-              playerOrigin &&
-              getRememberedCoursePlayerDestination(playerOrigin),
-            );
             return (
               <button
                 type="button"
@@ -3473,7 +3495,6 @@ export function CoursesPage({
                   label === "Wishlist" && wishlisted.size > 0
                     ? `${wishlisted.size} saved`
                     : null,
-                  hasResumableLesson ? "lesson in progress" : null,
                 ]
                   .filter(Boolean)
                   .join(", ")}
@@ -3481,7 +3502,6 @@ export function CoursesPage({
               >
                 <span>
                   <Icon size={23} weight={active ? "fill" : "regular"} />
-                  {hasResumableLesson && <CourseResumeIndicator />}
                   {label === "Wishlist" && wishlisted.size > 0 && (
                     <b>{wishlisted.size}</b>
                   )}
@@ -3606,14 +3626,8 @@ export function CoursesPage({
               aria-label="All navigation options"
             >
               {navigation.map(([label, Icon]) => {
-                const active = activeSection === label;
+                const active = activeNavigationSection === label;
                 const displayLabel = getNavigationDisplayLabel(label, page);
-                const playerOrigin = getCoursePlayerOriginFromSection(label);
-                const hasResumableLesson = Boolean(
-                  storedPreferencesReady &&
-                  playerOrigin &&
-                  getRememberedCoursePlayerDestination(playerOrigin),
-                );
                 return (
                   <button
                     type="button"
@@ -3645,7 +3659,6 @@ export function CoursesPage({
                       label === "Wishlist" && wishlisted.size > 0
                         ? `${wishlisted.size} saved`
                         : null,
-                      hasResumableLesson ? "lesson in progress" : null,
                     ]
                       .filter(Boolean)
                       .join(", ")}
@@ -3653,7 +3666,6 @@ export function CoursesPage({
                     onClick={(event) => handleNavigationClick(event, label)}
                   >
                     <Icon size={23} weight={active ? "fill" : "regular"} />
-                    {hasResumableLesson && <CourseResumeIndicator />}
                     <span>{displayLabel}</span>
                     {label === "Wishlist" && wishlisted.size > 0 && (
                       <b>{wishlisted.size}</b>
@@ -3661,6 +3673,23 @@ export function CoursesPage({
                   </button>
                 );
               })}
+              {role === "student" && (
+                <LearningSpace
+                  sessions={learningSessions}
+                  activeCourseId={visibleLearningCourseId}
+                  expanded={learningSpaceExpanded}
+                  mobile
+                  onExpandedChange={setLearningSpaceExpanded}
+                  onActivate={(session) => {
+                    closeMobileMenu();
+                    activateLearningSession(session);
+                  }}
+                  onClose={(session) => {
+                    closeMobileMenu();
+                    closeLearningSession(session);
+                  }}
+                />
+              )}
             </nav>
             <div
               className="mobile-menu-sheet__appearance"

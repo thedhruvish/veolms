@@ -201,15 +201,6 @@
     color: var(--nav-icon-color, var(--muted));
   }
 
-  .mobile-bottom-nav .courses-nav__resume-indicator {
-    top: -6px;
-    left: -10px;
-  }
-
-  .mobile-bottom-nav .courses-nav__resume-indicator > svg {
-    color: var(--on-accent);
-  }
-
   .mobile-bottom-nav > button small {
     max-width: 100%;
     overflow: hidden;
@@ -414,10 +405,6 @@
 
   .mobile-menu-sheet__list > button svg {
     color: var(--nav-icon-color, var(--muted));
-  }
-
-  .mobile-menu-sheet__list .courses-nav__resume-indicator > svg {
-    color: var(--on-accent);
   }
 
   .mobile-menu-sheet__list > button span {

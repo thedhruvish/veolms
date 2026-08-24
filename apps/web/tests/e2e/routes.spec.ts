@@ -485,7 +485,7 @@ test("framework navigation keeps the academy shell and transient catalogue state
   );
 });
 
-test("Courses navigation toggles its parent and resumable player until explicit player back", async ({
+test("top-level navigation stays direct while Learning Space owns the active course", async ({
   page,
 }) => {
   await openApp(page, "/");
@@ -503,9 +503,12 @@ test("Courses navigation toggles its parent and resumable player until explicit 
   await expect(page).toHaveURL(
     /\/learn\/ui-ux-design-mastery\/[^/?]+\?from=courses$/,
   );
-  await expect(
-    navigation.getByRole("button", { name: "Courses" }),
-  ).toHaveAttribute("aria-current", "page");
+  const coursesNavigation = navigation.getByRole("button", {
+    name: "Courses",
+  });
+  const homeNavigation = navigation.getByRole("button", { name: "Home" });
+  await expect(coursesNavigation).not.toHaveAttribute("aria-current");
+  await expect(homeNavigation).not.toHaveAttribute("aria-current");
   await expect(
     page.getByRole("heading", {
       name: "The Beginning of a Design Journey",
@@ -513,49 +516,36 @@ test("Courses navigation toggles its parent and resumable player until explicit 
     }),
   ).toBeVisible();
 
-  await navigation.getByRole("button", { name: "Home" }).click();
+  const learningSpace = navigation.getByRole("region", {
+    name: "Learning Space",
+  });
+  const session = learningSpace.getByRole("button", {
+    name: /Open UI\/UX Design Mastery/,
+  });
+  await expect(session).toHaveAttribute("aria-current", "page");
+
+  await homeNavigation.click();
   await expect(page).toHaveURL(/\/$/);
-  await navigation.getByRole("button", { name: "Courses" }).click();
-  await expect(page).toHaveURL(
-    /\/learn\/ui-ux-design-mastery\/[^/?]+\?from=courses$/,
-  );
-
-  await page.setViewportSize({ width: 1079, height: 779 });
-  await expect(page.locator(".courses-app")).toHaveClass(
-    /courses-app--collapsed/,
-  );
-  await navigation.getByRole("button", { name: /Courses/ }).click();
+  await expect(session).not.toHaveAttribute("aria-current");
+  await coursesNavigation.click();
   await expect(page).toHaveURL(/\/courses$/);
-  await expect(
-    page.getByRole("region", { name: /Lesson video player/ }),
-  ).toHaveCount(0);
-  await expect(
-    navigation
-      .getByRole("button", { name: /Courses/ })
-      .locator(".courses-nav__resume-indicator"),
-  ).toBeVisible();
+  await expect(coursesNavigation).toHaveAttribute("aria-current", "page");
 
-  await navigation.getByRole("button", { name: "Home" }).click();
-  await navigation.getByRole("button", { name: /Courses/ }).click();
+  await session.click();
   await expect(page).toHaveURL(
     /\/learn\/ui-ux-design-mastery\/[^/?]+\?from=courses$/,
   );
+  await expect(session).toHaveAttribute("aria-current", "page");
 
   await clickLearningBack(page, "Return to Courses");
   await expect(page).toHaveURL(/\/courses$/);
   await expect(
     page.getByRole("heading", { name: "Courses", level: 1 }),
   ).toBeVisible();
-
-  await navigation.getByRole("button", { name: "Home" }).click();
-  await navigation.getByRole("button", { name: "Courses" }).click();
-  await expect(page).toHaveURL(/\/courses$/);
-  await expect(
-    navigation.getByRole("button", { name: "Courses" }),
-  ).toHaveAttribute("aria-current", "page");
+  await expect(session).not.toHaveAttribute("aria-current");
 });
 
-test("Courses resumes the same paused lesson until explicit player back", async ({
+test("Learning Space resumes the same paused lesson while Courses remains direct", async ({
   page,
 }) => {
   await openApp(page, "/courses");
@@ -572,7 +562,7 @@ test("Courses resumes the same paused lesson until explicit player back", async 
   );
   await expect(
     navigation.getByRole("button", { name: "Courses" }),
-  ).toHaveAttribute("aria-current", "page");
+  ).not.toHaveAttribute("aria-current");
 
   const curriculum = page.getByRole("complementary", {
     name: "Course curriculum",
@@ -601,6 +591,11 @@ test("Courses resumes the same paused lesson until explicit player back", async 
 
   await navigation.getByRole("button", { name: "Home" }).click();
   await navigation.getByRole("button", { name: "Courses" }).click();
+  await expect(page).toHaveURL(/\/courses$/);
+  await navigation
+    .getByRole("region", { name: "Learning Space" })
+    .getByRole("button", { name: /Open The Ultimate TypeScript Course/ })
+    .click();
   await expect(page).toHaveURL(
     /\/learn\/typescript-course\/usability-testing\?from=courses$/,
   );
@@ -618,20 +613,16 @@ test("Courses resumes the same paused lesson until explicit player back", async 
   await page.reload();
   await expect(
     navigation.getByRole("button", { name: "Courses" }),
-  ).toHaveAttribute("aria-current", "page");
+  ).not.toHaveAttribute("aria-current");
   await clickLearningBack(page, "Return to Courses");
 
   await expect(page).toHaveURL(/\/courses$/);
   await expect(
     page.getByRole("heading", { name: "Courses", level: 1 }),
   ).toBeVisible();
-
-  await navigation.getByRole("button", { name: "Home" }).click();
-  await navigation.getByRole("button", { name: "Courses" }).click();
-  await expect(page).toHaveURL(/\/courses$/);
 });
 
-test("switching the single learning session protects an unposted comment", async ({
+test("switching learning sessions preserves an unposted comment draft", async ({
   page,
 }) => {
   await openApp(page, "/courses");
@@ -649,51 +640,39 @@ test("switching the single learning session protects an unposted comment", async
 
   await navigation.getByRole("button", { name: "Courses" }).click();
   await page.getByRole("article", { name: /UI\/UX Design Mastery/ }).click();
-
-  const dialog = page.getByRole("dialog", {
-    name: "Post your comment first?",
-  });
-  await expect(dialog).toBeVisible();
-  await expect(dialog).toContainText("The Ultimate TypeScript Course");
-  await expect(dialog).toContainText("UI/UX Design Mastery");
-  await expect(dialog).toContainText(
-    "Please post this before switching courses.",
-  );
-  await dialog.getByRole("button", { name: "Keep learning" }).click();
-  await expect(dialog).toHaveCount(0);
-  await expect(page).toHaveURL(/\/courses$/);
-  await expect(
-    navigation
-      .getByRole("button", { name: /Courses/ })
-      .locator(".courses-nav__resume-indicator"),
-  ).toBeVisible();
-
-  await page.getByRole("article", { name: /UI\/UX Design Mastery/ }).click();
-  await page
-    .getByRole("dialog", { name: "Post your comment first?" })
-    .getByRole("button", { name: "Post & switch" })
-    .click();
   await expect(page).toHaveURL(
     /\/learn\/ui-ux-design-mastery\/[^/?]+\?from=courses$/,
   );
   await expect(
-    navigation
-      .getByRole("button", { name: "Courses" })
-      .locator(".courses-nav__resume-indicator"),
+    page.getByRole("dialog", { name: "Post your comment first?" }),
+  ).toHaveCount(0);
+
+  const learningSpace = navigation.getByRole("region", {
+    name: "Learning Space",
+  });
+  await expect(
+    learningSpace.getByRole("button", {
+      name: /Collapse Learning Space, 2 open sessions/,
+    }),
+  ).toBeVisible();
+  await expect(
+    learningSpace.getByRole("button", {
+      name: /Open The Ultimate TypeScript Course/,
+    }),
   ).toBeVisible();
 
-  await navigation.getByRole("button", { name: /Courses/ }).click();
-  await page
-    .getByRole("article")
-    .filter({ hasText: "The Ultimate TypeScript Course" })
-    .getByRole("button", { name: "Continue Learning" })
+  await learningSpace
+    .getByRole("button", { name: /Open The Ultimate TypeScript Course/ })
     .click();
+  await expect(page).toHaveURL(
+    /\/learn\/typescript-course\/[^/?]+\?from=courses$/,
+  );
   await expect(
-    page.getByText("Please post this before switching courses."),
-  ).toBeVisible();
+    page.getByRole("textbox", { name: "Add a comment" }),
+  ).toHaveValue("Please post this before switching courses.");
 });
 
-test("opening a new course moves the single resumable session and navigation indicator", async ({
+test("each Learning Space session keeps its launch page without top-level resume state", async ({
   page,
 }) => {
   await openApp(page, "/");
@@ -701,6 +680,12 @@ test("opening a new course moves the single resumable session and navigation ind
     name: "Student navigation",
   });
   const homeNavigation = navigation.getByRole("button", { name: "Home" });
+  const coursesNavigation = navigation.getByRole("button", {
+    name: "Courses",
+  });
+  const wishlistNavigation = navigation.getByRole("button", {
+    name: "Wishlist",
+  });
 
   await page
     .locator(".home-resume-card")
@@ -709,130 +694,30 @@ test("opening a new course moves the single resumable session and navigation ind
   await expect(page).toHaveURL(
     /\/learn\/typescript-course\/[^/?]+\?from=home$/,
   );
+  const learningSpace = navigation.getByRole("region", {
+    name: "Learning Space",
+  });
+  const typescriptSession = learningSpace.getByRole("button", {
+    name: /Open The Ultimate TypeScript Course/,
+  });
+  await expect(typescriptSession).toHaveAttribute("aria-current", "page");
+  await expect(homeNavigation).not.toHaveAttribute("aria-current");
+  await expect(coursesNavigation).not.toHaveAttribute("aria-current");
+  await expect(wishlistNavigation).not.toHaveAttribute("aria-current");
+  await expect(
+    navigation.locator(".courses-nav__resume-indicator"),
+  ).toHaveCount(0);
+
+  await homeNavigation.click();
+  await expect(page).toHaveURL(/\/$/);
   await expect(homeNavigation).toHaveAttribute("aria-current", "page");
-  await expect(
-    homeNavigation.locator(".courses-nav__resume-indicator"),
-  ).toBeVisible();
-  const resumeIndicator = homeNavigation.locator(
-    ".courses-nav__resume-indicator",
-  );
+  await expect(typescriptSession).not.toHaveAttribute("aria-current");
 
-  await navigation
-    .getByRole("group", { name: "Appearance controls" })
-    .getByRole("button", { name: /Switch to light mode/ })
-    .click();
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await expect
-    .poll(() =>
-      resumeIndicator.evaluate((indicator) => {
-        const style = getComputedStyle(indicator);
-        const accentProbe = document.createElement("span");
-        accentProbe.style.color = "var(--accent)";
-        document.body.append(accentProbe);
-        const accentColor = getComputedStyle(accentProbe).color;
-        accentProbe.remove();
-        return {
-          backgroundMatchesAccent: style.backgroundColor === accentColor,
-          boxShadow: style.boxShadow,
-        };
-      }),
-    )
-    .toMatchObject({
-      backgroundMatchesAccent: true,
-      boxShadow: expect.not.stringContaining("0px 0px 0px 2px"),
-    });
-
-  const indicatorFitsInsideNavigation = async () => {
-    const navigationBox = await homeNavigation.boundingBox();
-    const indicatorBox = await homeNavigation
-      .locator(".courses-nav__resume-indicator")
-      .boundingBox();
-    expect(navigationBox).not.toBeNull();
-    expect(indicatorBox).not.toBeNull();
-    return (
-      indicatorBox!.x >= navigationBox!.x &&
-      indicatorBox!.y >= navigationBox!.y &&
-      indicatorBox!.x + indicatorBox!.width <=
-        navigationBox!.x + navigationBox!.width &&
-      indicatorBox!.y + indicatorBox!.height <=
-        navigationBox!.y + navigationBox!.height
-    );
-  };
-  const indicatorInset = async () => {
-    const navigationBox = await homeNavigation.boundingBox();
-    const indicatorBox = await homeNavigation
-      .locator(".courses-nav__resume-indicator")
-      .boundingBox();
-    expect(navigationBox).not.toBeNull();
-    expect(indicatorBox).not.toBeNull();
-    return {
-      x: indicatorBox!.x - navigationBox!.x,
-      y: indicatorBox!.y - navigationBox!.y,
-    };
-  };
-  const indicatorGeometry = async () =>
-    homeNavigation
-      .locator(".courses-nav__resume-indicator")
-      .evaluate((indicator) => {
-        const glyph = indicator.querySelector("svg");
-        if (!glyph) {
-          throw new Error("Resume indicator is missing its play glyph");
-        }
-
-        const indicatorRect = indicator.getBoundingClientRect();
-        const glyphRect = glyph.getBoundingClientRect();
-        return {
-          indicatorAspectDelta: Math.abs(
-            indicatorRect.width - indicatorRect.height,
-          ),
-          glyphAspectDelta: Math.abs(glyphRect.width - glyphRect.height),
-          glyphCenterXDelta: Math.abs(
-            glyphRect.left +
-              glyphRect.width / 2 -
-              (indicatorRect.left + indicatorRect.width / 2),
-          ),
-          glyphCenterYDelta: Math.abs(
-            glyphRect.top +
-              glyphRect.height / 2 -
-              (indicatorRect.top + indicatorRect.height / 2),
-          ),
-        };
-      });
-  const expectIndicatorGeometry = async () => {
-    const geometry = await indicatorGeometry();
-    expect(geometry.indicatorAspectDelta).toBeLessThan(0.02);
-    expect(geometry.glyphAspectDelta).toBeLessThan(0.02);
-    expect(geometry.glyphCenterXDelta).toBeLessThan(0.02);
-    expect(geometry.glyphCenterYDelta).toBeLessThan(0.02);
-  };
-  expect(await indicatorFitsInsideNavigation()).toBe(true);
-  await expectIndicatorGeometry();
-  const expandedInset = await indicatorInset();
-  expect(expandedInset.x).toBeGreaterThanOrEqual(1.5);
-  expect(expandedInset.y).toBeGreaterThanOrEqual(1.5);
-  const expandedIndicatorX = (await homeNavigation
-    .locator(".courses-nav__resume-indicator")
-    .boundingBox())!.x;
-
-  await navigation.getByRole("button", { name: "Collapse navigation" }).click();
-  await expect(
-    homeNavigation.locator(".courses-nav__resume-indicator"),
-  ).toBeVisible();
-  expect(await indicatorFitsInsideNavigation()).toBe(true);
-  await expectIndicatorGeometry();
-  const collapsedInset = await indicatorInset();
-  expect(collapsedInset.x).toBeGreaterThanOrEqual(1.5);
-  expect(collapsedInset.y).toBeGreaterThanOrEqual(1.5);
-  const collapsedIndicatorX = (await homeNavigation
-    .locator(".courses-nav__resume-indicator")
-    .boundingBox())!.x;
-  expect(collapsedIndicatorX).toBeCloseTo(expandedIndicatorX, 2);
-
-  await navigation.getByRole("button", { name: "Courses" }).click();
+  await coursesNavigation.click();
   await page
     .getByRole("button", { name: "Add Figma UI Essentials to wishlist" })
     .click();
-  await navigation.getByRole("button", { name: /Wishlist/ }).click();
+  await wishlistNavigation.click();
   await page
     .getByRole("button", {
       name: "Play free preview for Figma UI Essentials",
@@ -842,27 +727,26 @@ test("opening a new course moves the single resumable session and navigation ind
     /\/learn\/figma-ui-essentials\/[^/?]+\?from=wishlist$/,
   );
 
-  const wishlistNavigation = navigation.getByRole("button", {
-    name: /Wishlist/,
+  const figmaSession = learningSpace.getByRole("button", {
+    name: /Open Figma UI Essentials/,
   });
-  await expect(wishlistNavigation).toHaveAttribute("aria-current", "page");
-  await expect(
-    wishlistNavigation.locator(".courses-nav__resume-indicator"),
-  ).toBeVisible();
-  await expect(
-    homeNavigation.locator(".courses-nav__resume-indicator"),
-  ).toHaveCount(0);
+  await expect(figmaSession).toHaveAttribute("aria-current", "page");
+  await expect(typescriptSession).not.toHaveAttribute("aria-current");
+  await expect(wishlistNavigation).not.toHaveAttribute("aria-current");
 
-  await homeNavigation.click();
-  await wishlistNavigation.click();
+  await typescriptSession.click();
+  await expect(page).toHaveURL(
+    /\/learn\/typescript-course\/[^/?]+\?from=home$/,
+  );
+  await clickLearningBack(page, "Return to Home");
+  await expect(page).toHaveURL(/\/$/);
+
+  await figmaSession.click();
   await expect(page).toHaveURL(
     /\/learn\/figma-ui-essentials\/[^/?]+\?from=wishlist$/,
   );
   await clickLearningBack(page, "Return to Wishlist");
   await expect(page).toHaveURL(/\/wishlist$/);
-  await expect(
-    wishlistNavigation.locator(".courses-nav__resume-indicator"),
-  ).toHaveCount(0);
 });
 
 test("listing searches survive opening a player and returning explicitly", async ({
@@ -885,6 +769,7 @@ test("listing searches survive opening a player and returning explicitly", async
     name: "Student navigation",
   });
   await navigation.getByRole("button", { name: "Courses" }).click();
+  await page.getByRole("button", { name: "Clear search" }).click();
   await page
     .getByRole("button", { name: "Add Figma UI Essentials to wishlist" })
     .click();
@@ -910,9 +795,52 @@ test("direct course player links return to Courses by default", async ({
 
   await expect(
     navigation.getByRole("button", { name: "Courses" }),
+  ).not.toHaveAttribute("aria-current");
+  await expect(
+    navigation
+      .getByRole("region", { name: "Learning Space" })
+      .getByRole("button", { name: /Open UI\/UX Design Mastery/ }),
   ).toHaveAttribute("aria-current", "page");
   await clickLearningBack(page, "Return to Courses");
   await expect(page).toHaveURL(/\/courses$/);
+});
+
+test("course overview launches return to the exact source URL", async ({
+  page,
+}) => {
+  const sourcePath =
+    "/courses/typescript-course/overview?ref=dashboard#curriculum";
+  await openApp(page, sourcePath);
+
+  await page.getByRole("button", { name: "Continue Learning" }).click();
+  await expect(page).toHaveURL((url) => {
+    return (
+      url.pathname.startsWith("/learn/typescript-course/") &&
+      url.searchParams.get("from") === "courses" &&
+      url.searchParams.get("returnTo") === sourcePath
+    );
+  });
+
+  await clickLearningBack(page, "Return to Course Overview");
+  await expect(page).toHaveURL((url) => {
+    return `${url.pathname}${url.search}${url.hash}` === sourcePath;
+  });
+});
+
+test("learning Back preserves validated source query and hash values", async ({
+  page,
+}) => {
+  const sourcePath = "/settings?source=course-player#learning";
+  const search = new URLSearchParams({
+    from: "courses",
+    returnTo: sourcePath,
+  });
+  await openApp(page, `/learn/typescript-course?${search.toString()}`);
+
+  await clickLearningBack(page, "Return to the previous page");
+  await expect(page).toHaveURL((url) => {
+    return `${url.pathname}${url.search}${url.hash}` === sourcePath;
+  });
 });
 
 test("lecture slugs are canonical and lecture IDs remain supported", async ({

@@ -112,12 +112,14 @@
     --page-tabs-sticky-top: calc(-1 * var(--student-surface-block-start, 0px));
   }
 
-  :root[data-content-layout="framed"] .courses-main {
+  :root[data-content-layout="framed"]:not([data-scrollbar-style="default"])
+    .courses-main {
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
 
-  :root[data-content-layout="framed"] .courses-main::-webkit-scrollbar {
+  :root[data-content-layout="framed"]:not([data-scrollbar-style="default"])
+    .courses-main::-webkit-scrollbar {
     display: none;
     width: 0;
     height: 0;
@@ -238,6 +240,7 @@
     0 0 0 4px var(--accent);
 }
 
+:root[data-scrollbar-style="default"] .floating-scrollbar,
 :root[data-hide-scrollbars="true"] .floating-scrollbar,
 :root:not([data-content-layout="framed"])
   .floating-scrollbar:not(.floating-scrollbar--sidebar):not(

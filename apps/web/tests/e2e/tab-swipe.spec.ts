@@ -338,6 +338,52 @@ test("settings slides reach the main edges with a visible card gap", async ({
   await expect(app).not.toHaveClass(/courses-app--resizing/);
 });
 
+test("settings swipe gutters stay five pixels wider across viewports", async ({
+  page,
+}) => {
+  await openApp(page, "/settings/appearance");
+
+  const viewportCases = [
+    { width: 390, expectedGutter: 21 },
+    { width: 800, expectedGutter: 23 },
+    { width: 1133, expectedGutter: 30 },
+  ];
+
+  for (const { width, expectedGutter } of viewportCases) {
+    await page.setViewportSize({ width, height: 844 });
+
+    await expect
+      .poll(
+        () =>
+          page.locator("#settings-tab-panel").evaluate((panel) => {
+            const current = panel.querySelector<HTMLElement>(
+              ".swiper-slide-active",
+            );
+            const next = panel.querySelector<HTMLElement>(".swiper-slide-next");
+            const currentContent =
+              current?.firstElementChild?.getBoundingClientRect();
+            const nextContent =
+              next?.firstElementChild?.getBoundingClientRect();
+            if (!current || !next || !currentContent || !nextContent)
+              return null;
+
+            const currentStyle = getComputedStyle(current);
+            return {
+              contentGap: Math.round(nextContent.left - currentContent.right),
+              slideGutter: Math.round(
+                Number.parseFloat(currentStyle.paddingRight),
+              ),
+            };
+          }),
+        { message: `${width}px viewport` },
+      )
+      .toEqual({
+        contentGap: expectedGutter,
+        slideGutter: expectedGutter,
+      });
+  }
+});
+
 test("the Settings tab rail reaches the main edges without moving its tabs", async ({
   page,
 }) => {
@@ -397,6 +443,45 @@ test("the active Settings tab stays unobstructed on narrow mobile screens", asyn
     return hit === element || element.contains(hit);
   });
   expect(hitTarget).toBe(true);
+});
+
+test("settings tabs stay fill-free when swipe moves past a hovered tab", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openApp(page, "/settings/profile");
+
+  const panel = page.locator("#settings-tab-panel");
+  const tablist = page.getByRole("tablist", { name: "Settings sections" });
+  const appearanceTab = tablist.getByRole("tab", { name: "Appearance" });
+  const sidebarTab = tablist.getByRole("tab", { name: "Sidebar" });
+
+  await appearanceTab.click();
+  await expect(appearanceTab).toHaveAttribute("aria-selected", "true");
+  expect(await appearanceTab.evaluate((tab) => tab.matches(":hover"))).toBe(
+    true,
+  );
+
+  const finishSwipe = await startTouchSwipe(page, panel, -190);
+  await finishSwipe();
+
+  await expect(sidebarTab).toHaveAttribute("aria-selected", "true");
+  await expect(appearanceTab).toHaveAttribute("aria-selected", "false");
+
+  const tabStates = await Promise.all(
+    [appearanceTab, sidebarTab].map((tab) =>
+      tab.evaluate((element) => ({
+        backgroundColor: getComputedStyle(element).backgroundColor,
+        hovered: element.matches(":hover"),
+      })),
+    ),
+  );
+
+  expect(tabStates[0]!.hovered).toBe(true);
+  expect(tabStates.map(({ backgroundColor }) => backgroundColor)).toEqual([
+    "rgba(0, 0, 0, 0)",
+    "rgba(0, 0, 0, 0)",
+  ]);
 });
 
 test("swiping Settings keeps every newly selected tab inside the mobile tab strip", async ({

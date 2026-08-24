@@ -92,14 +92,14 @@ test("sidebar layout animates unless reduced animations are enabled", async ({
       property: getComputedStyle(element).transitionProperty,
     }));
 
-  await expect.poll(async () => readSidebarTransition()).toEqual({
-    duration: "0.22s",
-    property: "grid-template-columns",
-  });
+  await expect
+    .poll(async () => readSidebarTransition())
+    .toEqual({
+      duration: "0.22s",
+      property: "grid-template-columns",
+    });
 
-  await page
-    .getByRole("button", { name: "Collapse navigation" })
-    .click();
+  await page.getByRole("button", { name: "Collapse navigation" }).click();
   await expect(page.locator(".courses-app")).toHaveClass(
     /courses-app--collapsed/,
   );
@@ -619,7 +619,7 @@ test("student course cards separate playback, curriculum, and preview actions", 
   ).not.toBe("rgba(0, 0, 0, 0)");
   await expect(actionsButton).toHaveAttribute("aria-haspopup", "menu");
   await actionsButton.click();
-  const actionsMenu = backendCourse.getByRole("menu", {
+  const actionsMenu = page.getByRole("menu", {
     name: "Actions for Complete Backend with Node.js",
   });
   await expect(actionsMenu).toBeVisible();
@@ -716,9 +716,7 @@ test("creator course cards keep playback, overview, editing, and preview indepen
   await refreshedCourse
     .getByRole("button", { name: "Actions for Complete Backend with Node.js" })
     .click();
-  await refreshedCourse
-    .getByRole("menuitem", { name: "Course Preview" })
-    .click();
+  await page.getByRole("menuitem", { name: "Course Preview" }).click();
 
   await expect(page).toHaveURL(/\/courses\/backend-nodejs\/overview$/);
   await expect(

@@ -131,12 +131,7 @@ describe("learning course content", () => {
 });
 
 describe("learning course metadata", () => {
-  it("prefers known slug titles over the deterministic fallback title", () => {
-    localStorage.setItem(
-      "veolms-current-course-title",
-      "Stored Academy Course",
-    );
-
+  it("resolves known slug titles before the deterministic fallback title", () => {
     expect(getCourseTitle("typescript-course")).toBe(
       "The Ultimate TypeScript Course",
     );

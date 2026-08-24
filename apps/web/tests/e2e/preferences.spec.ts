@@ -518,7 +518,7 @@ test("learning scrollports use floating scrollbars at compact and wide desktop s
   }
 });
 
-test("Appearance hides main and curriculum scrollbars only when enabled", async ({
+test("Appearance controls scrollbar visibility and style across the app", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1247, height: 779 });
@@ -537,6 +537,7 @@ test("Appearance hides main and curriculum scrollbars only when enabled", async 
     '.floating-scrollbar[aria-controls="learning-course-curriculum-scrollport"]',
   );
   await expect(root).toHaveAttribute("data-hide-scrollbars", "false");
+  await expect(root).toHaveAttribute("data-scrollbar-style", "theme");
   await expect(mainSurface).toHaveCSS("scrollbar-width", "none");
   await expect(curriculum).toHaveCSS("scrollbar-width", "none");
   await expect(mainScrollbar).toHaveClass(/is-visible/);
@@ -544,11 +545,34 @@ test("Appearance hides main and curriculum scrollbars only when enabled", async 
 
   await openApp(page, "/settings/appearance");
   await expectAppearanceSettingsReady(page);
-  const hideScrollbars = page.getByRole("switch", {
-    name: "Hide scrollbars",
+  const showScrollbars = page.getByRole("switch", {
+    name: "Show scrollbars",
   });
-  await expect(hideScrollbars).toHaveAttribute("aria-checked", "false");
-  await hideScrollbars.click();
+  const scrollbarStyleMenu = page.getByRole("radiogroup", {
+    name: "Scrollbar style",
+  });
+  await expect(showScrollbars).toHaveAttribute("aria-checked", "true");
+
+  await scrollbarStyleMenu.getByRole("radio", { name: /^Thick/ }).click();
+  await expect(root).toHaveAttribute("data-scrollbar-style", "thick");
+  await expectStoredValue(page, "veolms-scrollbar-style", "thick");
+
+  await scrollbarStyleMenu.getByRole("radio", { name: /^Default/ }).click();
+  await expect(root).toHaveAttribute("data-scrollbar-style", "default");
+  await expectStoredValue(page, "veolms-scrollbar-style", "default");
+
+  await openApp(
+    page,
+    "/learn/typescript-course/career-opportunities?from=home",
+  );
+  await expect(mainSurface).toHaveCSS("scrollbar-width", "auto");
+  await expect(curriculum).toHaveCSS("scrollbar-width", "auto");
+  await expect(mainScrollbar).toBeHidden();
+  await expect(curriculumScrollbar).toBeHidden();
+
+  await openApp(page, "/settings/appearance");
+  await expectAppearanceSettingsReady(page);
+  await showScrollbars.click();
   await expect(root).toHaveAttribute("data-hide-scrollbars", "true");
   await expectStoredValue(page, "veolms-hide-scrollbars", "true");
 
@@ -1831,10 +1855,7 @@ test("double-clicking the brand header opens temporary floating navigation until
   const app = page.locator(".courses-app");
   const sidebar = page.locator(".courses-sidebar");
   const brand = sidebar.locator(".courses-sidebar__brand");
-  await expect(brand).toHaveAttribute(
-    "title",
-    "Double-click to float sidebar",
-  );
+  await expect(brand).toHaveAttribute("title", "Double-click to float sidebar");
   await brand.dblclick({ position: { x: 120, y: 2 } });
 
   await expect(app).toHaveClass(/courses-app--hidden/);
@@ -1845,10 +1866,7 @@ test("double-clicking the brand header opens temporary floating navigation until
     name: "Pin navigation",
   });
   await expect(pinNavigation).toBeVisible();
-  await expect(pinNavigation).toHaveAttribute(
-    "title",
-    "Pin (Ctrl+B)",
-  );
+  await expect(pinNavigation).toHaveAttribute("title", "Pin (Ctrl+B)");
   await expect(brand).toHaveAttribute("title", "Double-click to pin sidebar");
   await expectStoredValue(page, "veolms-sidebar-mode", "hidden");
 
@@ -3010,10 +3028,7 @@ test("floating sidebar preserves the fixed active-menu elevation", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1197, height: 779 });
-  await openApp(
-    page,
-    "/learn/backend-nodejs/what-is-ui-ux-design?from=courses",
-  );
+  await openApp(page, "/courses");
   await page.evaluate(() => {
     window.localStorage.setItem("veolms-theme", "light");
     window.localStorage.setItem("veolms-sidebar-mode", "expanded");
@@ -3959,21 +3974,9 @@ test.describe("wide touch tablet navigation", () => {
     expect(overlayGeometry.topOverhang).toBeCloseTo(1, 1);
     expect(overlayGeometry.bottomOverhang).toBeCloseTo(1, 1);
 
-    const activeNavigationMaterial = await sidebar
-      .locator(".courses-nav button.is-active")
-      .evaluate((element) => {
-        const style = getComputedStyle(element);
-        return {
-          backdropFilter: style.backdropFilter,
-          backgroundColor: style.backgroundColor,
-          backgroundImage: style.backgroundImage,
-        };
-      });
-    expect(activeNavigationMaterial.backdropFilter).toBe(
-      "blur(12px) saturate(1.15)",
+    await expect(sidebar.locator(".courses-nav button.is-active")).toHaveCount(
+      0,
     );
-    expect(activeNavigationMaterial.backgroundColor).toContain("/ 0.68");
-    expect(activeNavigationMaterial.backgroundImage).toBe("none");
 
     const resizeBox = await resizeRail.boundingBox();
     expect(resizeBox).not.toBeNull();
