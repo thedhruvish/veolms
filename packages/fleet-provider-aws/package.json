@@ -27,6 +27,7 @@
     "@aws-sdk/client-s3": "^3.1112.0",
     "@aws-sdk/client-ssm": "^3.750.0",
     "@aws-sdk/client-sts": "^3.1112.0",
+    "@veolms/config": "workspace:*",
     "@veolms/fleet-types": "workspace:*",
     "zod": "catalog:"
   }

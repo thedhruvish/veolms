@@ -43,30 +43,3 @@ export async function sampleResourceUsage(
 
   return { cpuPercent, memoryPercent };
 }
-
-export interface DefaultUploadConcurrency {
-  maxConcurrency: number;
-  minConcurrency: number;
-}
-
-/**
- * Sizes upload concurrency to the actual worker instance instead of one
- * fixed number that's oversized for a t4g.small and undersized for a
- * c7g.4xlarge. Each in-flight upload buffers its whole file into memory
- * before sending (see uploadFiles in s3.ts), so both CPU count and total
- * memory bound how many can safely run at once — whichever resource is
- * more constrained wins, then clamped to a sane floor/ceiling so neither
- * a single-core nor a huge box produces a degenerate value.
- */
-export function resolveDefaultUploadConcurrency(): DefaultUploadConcurrency {
-  const cpuCount = os.cpus().length || 1;
-  const totalMemGb = os.totalmem() / 1024 ** 3;
-
-  const cpuBasedMax = cpuCount * 4;
-  const memoryBasedMax = Math.floor(totalMemGb * 4);
-
-  const maxConcurrency = Math.max(4, Math.min(cpuBasedMax, memoryBasedMax, 32));
-  const minConcurrency = Math.max(2, Math.floor(maxConcurrency / 4));
-
-  return { maxConcurrency, minConcurrency };
-}

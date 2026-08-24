@@ -3,10 +3,9 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createDatabase } from "@veolms/database";
-import { loadServerConfig } from "@veolms/config";
+import { loadFleetManagerConfig, loadServerConfig } from "@veolms/config";
 import type { VideoQualityLevel } from "@veolms/fleet-types";
 import { createFleetManager } from "../src/core/fleet-manager.ts";
-import { loadFleetManagerConfig } from "../src/config/config.ts";
 import { resolveFleetProvider } from "../src/core/provider-resolver.ts";
 
 async function main() {

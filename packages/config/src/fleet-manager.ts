@@ -1,5 +1,28 @@
 import { z } from "zod";
-import { resolveProviderName } from "../core/provider-resolver.ts";
+
+/**
+ * Single source of truth for "which provider name did the caller mean".
+ *
+ * Precedence: an explicit override (e.g. a --provider CLI flag) always
+ * wins; otherwise PROVIDER, then FLEET_PROVIDER. An empty/whitespace-only
+ * string is treated the same as unset at every level, so e.g.
+ * `FLEET_PROVIDER=""` can't force an invalid empty PROVIDER downstream.
+ */
+export function resolveProviderName(
+  explicit?: string,
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): string | undefined {
+  if (typeof explicit === "string" && explicit.trim() !== "") {
+    return explicit.trim().toLowerCase();
+  }
+  for (const key of ["PROVIDER", "FLEET_PROVIDER"] as const) {
+    const value = env[key];
+    if (typeof value === "string" && value.trim() !== "") {
+      return value.trim().toLowerCase();
+    }
+  }
+  return undefined;
+}
 
 const baseFleetManagerConfigSchema = z.object({
   DATABASE_URL: z

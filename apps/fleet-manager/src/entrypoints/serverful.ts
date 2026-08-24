@@ -6,7 +6,7 @@ import type { FleetProvider } from "@veolms/fleet-types";
 import {
   loadFleetManagerConfig,
   type FleetManagerConfig,
-} from "../config/config.ts";
+} from "@veolms/config";
 import {
   createFleetManager,
   type FleetManager,

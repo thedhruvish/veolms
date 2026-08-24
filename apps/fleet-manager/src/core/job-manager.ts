@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Kysely } from "kysely";
 import { claimNextQueuedJob, type Database } from "@veolms/database";
 import type { Job, JobStatus, VideoQualityLevel } from "@veolms/fleet-types";
-import type { FleetManagerConfig } from "../config/config.ts";
+import type { FleetManagerConfig } from "@veolms/config";
 
 export interface QueueJobParams {
   videoKey: string;

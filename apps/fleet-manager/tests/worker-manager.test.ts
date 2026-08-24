@@ -11,7 +11,7 @@ import type {
 } from "@veolms/fleet-types";
 import { createScheduler } from "../src/core/scheduler.ts";
 import { createWorkerManager } from "../src/core/worker-manager.ts";
-import { loadFleetManagerConfig } from "../src/config/config.ts";
+import { loadFleetManagerConfig } from "@veolms/config";
 
 describe("Worker Manager Spec Calculations", () => {
   const config = loadFleetManagerConfig();

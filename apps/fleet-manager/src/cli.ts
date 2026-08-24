@@ -8,13 +8,10 @@ import {
   type VideoQualityLevel,
 } from "@veolms/fleet-types";
 import { bold, cyan, dim, red } from "@veolms/fleet-types/terminal";
-import { loadFleetManagerConfig } from "./config/config.ts";
+import { loadFleetManagerConfig, resolveProviderName } from "@veolms/config";
 import { loadModuleFunction } from "./core/dynamic-module.ts";
 import { createJobManager } from "./core/job-manager.ts";
-import {
-  resolveFleetProvider,
-  resolveProviderName,
-} from "./core/provider-resolver.ts";
+import { resolveFleetProvider } from "./core/provider-resolver.ts";
 import {
   getFleetHealthSummary,
   getJobDiagnostics,

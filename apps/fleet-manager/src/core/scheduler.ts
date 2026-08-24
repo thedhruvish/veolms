@@ -1,4 +1,4 @@
-import type { FleetManagerConfig } from "../config/config.ts";
+import type { FleetManagerConfig } from "@veolms/config";
 
 export interface CalculateNextCheckOptions {
   estimatedDurationSec: number;

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { Kysely } from "kysely";
 import type { Database } from "@veolms/database";
-import { loadMediaWorkerConfig } from "../src/config.ts";
+import { loadMediaWorkerConfig } from "@veolms/config";
 import { initMediaWorker, pollForNextJob } from "../src/worker.ts";
 
 const WORKER_ID = "11111111-1111-4111-8111-111111111111";

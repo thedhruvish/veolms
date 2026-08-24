@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { createScheduler } from "../src/core/scheduler.ts";
-import { loadFleetManagerConfig } from "../src/config/config.ts";
+import { loadFleetManagerConfig } from "@veolms/config";
 
 describe("Fleet Manager Dynamic Scheduler", () => {
   const config = loadFleetManagerConfig({

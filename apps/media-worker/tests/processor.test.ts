@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import type { Kysely } from "kysely";
 import type { Database } from "@veolms/database";
 import type { FleetEventType } from "@veolms/fleet-types";
-import { loadMediaWorkerConfig } from "../src/config.ts";
+import { loadMediaWorkerConfig } from "@veolms/config";
 import {
   executeTranscodeJob,
   extractVideoExtension,

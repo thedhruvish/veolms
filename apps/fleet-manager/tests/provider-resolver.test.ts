@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loadFleetManagerConfig } from "../src/config/config.ts";
+import { loadFleetManagerConfig } from "@veolms/config";
 import { resolveFleetProvider } from "../src/core/provider-resolver.ts";
 
 describe("Pluggable Provider Resolver", () => {

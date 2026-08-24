@@ -1,9 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import {
-  resolveDefaultUploadConcurrency,
-  sampleResourceUsage,
-} from "../src/resource-monitor.ts";
+import { resolveDefaultUploadConcurrency } from "@veolms/config";
+import { sampleResourceUsage } from "../src/resource-monitor.ts";
 
 describe("sampleResourceUsage", () => {
   it("returns CPU and memory percentages within a valid 0-100 range", async () => {

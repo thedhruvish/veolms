@@ -12,7 +12,7 @@ import type {
 import { createScheduler } from "../src/core/scheduler.ts";
 import { createJobManager } from "../src/core/job-manager.ts";
 import { createWorkerManager } from "../src/core/worker-manager.ts";
-import { loadFleetManagerConfig } from "../src/config/config.ts";
+import { loadFleetManagerConfig } from "@veolms/config";
 
 describe("Fleet Manager End-to-End Core Integration", () => {
   const config = loadFleetManagerConfig();

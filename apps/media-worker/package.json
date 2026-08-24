@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.750.0",
+    "@veolms/config": "workspace:*",
     "@veolms/database": "workspace:*",
     "@veolms/fleet-types": "workspace:*",
     "kysely": "catalog:",

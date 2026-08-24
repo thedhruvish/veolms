@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import { createDatabase } from "@veolms/database";
-import { loadMediaWorkerConfig } from "./config.ts";
+import { loadMediaWorkerConfig } from "@veolms/config";
 import { executeTranscodeJob } from "./processor.ts";
 import { initMediaWorker, pollForNextJob } from "./worker.ts";
 

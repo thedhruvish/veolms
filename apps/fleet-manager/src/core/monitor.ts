@@ -1,7 +1,7 @@
 import { sql, type Kysely } from "kysely";
 import type { Database } from "@veolms/database";
 import type { FleetProvider } from "@veolms/fleet-types";
-import type { FleetManagerConfig } from "../config/config.ts";
+import type { FleetManagerConfig } from "@veolms/config";
 import type { JobManager } from "./job-manager.ts";
 import type { Scheduler } from "./scheduler.ts";
 import type { WorkerManager } from "./worker-manager.ts";

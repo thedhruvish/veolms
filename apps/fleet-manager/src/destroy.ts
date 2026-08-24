@@ -10,8 +10,8 @@
  */
 
 import { red } from "@veolms/fleet-types/terminal";
+import { resolveProviderName } from "@veolms/config";
 import { loadModuleFunction } from "./core/dynamic-module.ts";
-import { resolveProviderName } from "./core/provider-resolver.ts";
 
 function parseProviderFlag(argv: readonly string[]): string | true | undefined {
   for (let i = 0; i < argv.length; i++) {

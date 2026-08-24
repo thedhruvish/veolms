@@ -9,7 +9,8 @@ apps/media-worker/
     processor.ts
     ffmpeg-builder.ts
     progress.ts
-    s3.ts
+    http-download.ts
+    incremental-upload.ts
     resource-monitor.ts
   tests/
     ffmpeg-builder.test.ts
@@ -20,6 +21,10 @@ apps/media-worker/
   README.md
   package.json
   tsconfig.json
+
+packages/storage/
+  src/index.ts
+  tests/storage.test.ts
 
 packages/database/
   src/fleet/jobs.ts
@@ -35,7 +40,9 @@ packages/database/
 | [`src/processor.ts`](../../apps/media-worker/src/processor.ts)                     | One-job orchestration: ownership, input acquisition, probing, FFmpeg, persistence, retries, cleanup, and cancellation. |
 | [`src/ffmpeg-builder.ts`](../../apps/media-worker/src/ffmpeg-builder.ts)           | Quality filtering, compression-cap calculation, FFmpeg arguments, and master playlist generation.                      |
 | [`src/progress.ts`](../../apps/media-worker/src/progress.ts)                       | Chunk-safe FFmpeg progress parser and callback throttling.                                                             |
-| [`src/s3.ts`](../../apps/media-worker/src/s3.ts)                                   | S3 client creation, bounded downloads, streamed uploads, MIME/cache policy, and incremental HLS upload loop.           |
+| [`src/http-download.ts`](../../apps/media-worker/src/http-download.ts)             | Bounded streaming HTTP/HTTPS video ingestion with timeout and signal handling.                                         |
+| [`src/incremental-upload.ts`](../../apps/media-worker/src/incremental-upload.ts)   | Real-time HLS segment/playlist scanning and incremental uploading via S3StorageService.                                |
+| [`packages/storage/src/index.ts`](../../packages/storage/src/index.ts)             | Shared S3 storage service class with head, download, streamed upload, directory upload, and presigning.                |
 | [`src/resource-monitor.ts`](../../apps/media-worker/src/resource-monitor.ts)       | Whole-host CPU/memory sampling and default upload concurrency calculation.                                             |
 | [`packages/database/src/fleet/jobs.ts`](../../packages/database/src/fleet/jobs.ts) | Shared atomic queue claim helper used by the fleet manager and reusable workers.                                       |
 

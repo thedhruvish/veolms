@@ -10,7 +10,7 @@ import {
   type WorkerHandle,
   type WorkerSpec,
 } from "@veolms/fleet-types";
-import type { FleetManagerConfig } from "../config/config.ts";
+import type { FleetManagerConfig } from "@veolms/config";
 import type { Scheduler } from "./scheduler.ts";
 
 // Statuses that occupy a worker slot; COMPLETED/FAILED/TERMINATED have

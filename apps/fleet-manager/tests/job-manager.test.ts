@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import type { Kysely } from "kysely";
 import type { Database } from "@veolms/database";
 import { createJobManager } from "../src/core/job-manager.ts";
-import { loadFleetManagerConfig } from "../src/config/config.ts";
+import { loadFleetManagerConfig } from "@veolms/config";
 
 describe("Job Manager — queueJob insert values", () => {
   it("passes qualities as a plain array (jobs.qualities is a native Postgres array, not jsonb)", async () => {

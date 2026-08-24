@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Kysely } from "kysely";
 import { claimNextQueuedJob, type Database } from "@veolms/database";
 import type { FleetEventType } from "@veolms/fleet-types";
-import type { MediaWorkerConfig } from "./config.ts";
+import type { MediaWorkerConfig } from "@veolms/config";
 
 export interface MediaWorkerContext {
   readonly workerId: string;
