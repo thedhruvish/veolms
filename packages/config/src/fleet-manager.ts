@@ -13,12 +13,12 @@ export function resolveProviderName(
   env: Readonly<Record<string, string | undefined>> = process.env,
 ): string | undefined {
   if (typeof explicit === "string" && explicit.trim() !== "") {
-    return explicit.trim().toLowerCase();
+    return explicit.trim().toUpperCase();
   }
   for (const key of ["PROVIDER", "FLEET_PROVIDER"] as const) {
     const value = env[key];
     if (typeof value === "string" && value.trim() !== "") {
-      return value.trim().toLowerCase();
+      return value.trim().toUpperCase();
     }
   }
   return undefined;
@@ -28,7 +28,7 @@ const baseFleetManagerConfigSchema = z.object({
   DATABASE_URL: z
     .string()
     .default("postgresql://veolms:veolms@localhost:5433/veolms"),
-  PROVIDER: z.enum(["local", "aws"]).default("local"),
+  PROVIDER: z.enum(["LOCAL", "AWS"]).default("LOCAL"),
   POLL_INTERVAL_MS: z.coerce.number().int().min(500).default(2000),
   HEARTBEAT_TIMEOUT_SECONDS: z.coerce.number().int().min(10).default(90),
   MIN_CHECK_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(15),

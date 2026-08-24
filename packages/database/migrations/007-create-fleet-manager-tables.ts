@@ -1,54 +1,7 @@
 import { sql, type Kysely } from "kysely";
 
 export async function up(database: Kysely<unknown>): Promise<void> {
-  // 1. Create jobs table
-  await database.schema
-    .createTable("jobs")
-    .ifNotExists()
-    .addColumn("id", "uuid", (column) => column.primaryKey())
-    .addColumn("status", "text", (column) =>
-      column.notNull().defaultTo("QUEUED"),
-    )
-    .addColumn("video_key", "text", (column) => column.notNull())
-    .addColumn("output_prefix", "text", (column) => column.notNull())
-    .addColumn("video_size", "bigint", (column) =>
-      column.notNull().defaultTo(0),
-    )
-    .addColumn("qualities", sql`text[]`, (column) =>
-      column
-        .notNull()
-        .defaultTo(sql`ARRAY['1080p', '720p', '480p', '360p']::text[]`),
-    )
-    .addColumn("worker_id", "uuid")
-    .addColumn("attempts", "integer", (column) => column.notNull().defaultTo(0))
-    .addColumn("max_attempts", "integer", (column) =>
-      column.notNull().defaultTo(3),
-    )
-    .addColumn("error_message", "text")
-    .addColumn("created_at", "timestamptz", (column) =>
-      column.notNull().defaultTo(sql`CURRENT_TIMESTAMP`),
-    )
-    .addColumn("started_at", "timestamptz")
-    .addColumn("completed_at", "timestamptz")
-    .addColumn("failed_at", "timestamptz")
-    .addColumn("updated_at", "timestamptz", (column) =>
-      column.notNull().defaultTo(sql`CURRENT_TIMESTAMP`),
-    )
-    .addCheckConstraint(
-      "jobs_status_valid",
-      sql`status in ('QUEUED', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED')`,
-    )
-    .execute();
-
-  // Index on jobs status and created_at for fast queue fetching
-  await database.schema
-    .createIndex("idx_jobs_status_created")
-    .ifNotExists()
-    .on("jobs")
-    .columns(["status", "created_at"])
-    .execute();
-
-  // 2. Create workers table
+  // 1. Create workers table
   await database.schema
     .createTable("workers")
     .ifNotExists()
@@ -59,7 +12,7 @@ export async function up(database: Kysely<unknown>): Promise<void> {
       column.notNull().defaultTo("PENDING"),
     )
     .addColumn("architecture", "text", (column) =>
-      column.notNull().defaultTo("arm64"),
+      column.notNull().defaultTo("ARM64"),
     )
     .addColumn("cpu", "integer", (column) => column.notNull())
     .addColumn("memory_mb", "integer", (column) => column.notNull())
@@ -70,7 +23,7 @@ export async function up(database: Kysely<unknown>): Promise<void> {
       column.notNull().defaultTo("local"),
     )
     .addColumn("job_id", "uuid", (column) =>
-      column.references("jobs.id").onDelete("set null"),
+      column.references("video_jobs.id").onDelete("set null"),
     )
     .addColumn("metadata", "jsonb", (column) =>
       column.notNull().defaultTo(sql`'{}'::jsonb`),
@@ -86,7 +39,7 @@ export async function up(database: Kysely<unknown>): Promise<void> {
     )
     .addCheckConstraint(
       "workers_provider_valid",
-      sql`provider in ('local', 'aws')`,
+      sql`provider in ('LOCAL', 'AWS')`,
     )
     .addCheckConstraint(
       "workers_status_valid",
@@ -94,7 +47,7 @@ export async function up(database: Kysely<unknown>): Promise<void> {
     )
     .addCheckConstraint(
       "workers_architecture_valid",
-      sql`architecture in ('arm64', 'x86_64')`,
+      sql`architecture in ('ARM64', 'X86_64')`,
     )
     .execute();
 
@@ -113,7 +66,7 @@ export async function up(database: Kysely<unknown>): Promise<void> {
     .columns(["status", "last_heartbeat_at"])
     .execute();
 
-  // 3. Create worker_monitoring table
+  // 2. Create worker_monitoring table
   await database.schema
     .createTable("worker_monitoring")
     .ifNotExists()
@@ -147,7 +100,7 @@ export async function up(database: Kysely<unknown>): Promise<void> {
     .column("next_check_at")
     .execute();
 
-  // 4. Create worker_events table
+  // 3. Create worker_events table
   await database.schema
     .createTable("worker_events")
     .ifNotExists()
@@ -156,7 +109,7 @@ export async function up(database: Kysely<unknown>): Promise<void> {
       column.references("workers.id").onDelete("cascade"),
     )
     .addColumn("job_id", "uuid", (column) =>
-      column.references("jobs.id").onDelete("cascade"),
+      column.references("video_jobs.id").onDelete("cascade"),
     )
     .addColumn("event", "text", (column) => column.notNull())
     .addColumn("metadata", "jsonb", (column) =>
@@ -201,8 +154,7 @@ export async function up(database: Kysely<unknown>): Promise<void> {
 }
 
 export async function down(database: Kysely<unknown>): Promise<void> {
-  await database.schema.dropTable("worker_events").execute();
-  await database.schema.dropTable("worker_monitoring").execute();
-  await database.schema.dropTable("workers").execute();
-  await database.schema.dropTable("jobs").execute();
+  await database.schema.dropTable("worker_events").ifExists().execute();
+  await database.schema.dropTable("worker_monitoring").ifExists().execute();
+  await database.schema.dropTable("workers").ifExists().execute();
 }
