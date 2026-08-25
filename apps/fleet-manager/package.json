@@ -2,9 +2,13 @@
   "name": "@veolms/fleet-manager",
   "private": true,
   "type": "module",
-  "exports": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./serverless": "./src/entrypoints/serverless.ts"
+  },
   "scripts": {
     "build": "tsc --noEmit",
+    "build:serverless": "node --env-file-if-exists=.env scripts/build-serverless.ts",
     "typecheck": "tsc --noEmit",
     "test": "node --test tests/**/*.test.ts",
     "start": "node --env-file-if-exists=.env src/index.ts",
@@ -19,6 +23,7 @@
   "dependencies": {
     "@veolms/database": "workspace:*",
     "@veolms/config": "workspace:*",
+    "@veolms/contracts": "workspace:*",
     "@veolms/fleet-types": "workspace:*",
     "kysely": "catalog:",
     "pg": "^8.22.0",
@@ -26,6 +31,7 @@
   },
   "devDependencies": {
     "@types/pg": "8.15.5",
-    "@veolms/fleet-provider-aws": "workspace:*"
+    "@veolms/fleet-provider-aws": "workspace:*",
+    "esbuild": "^0.25.0"
   }
 }

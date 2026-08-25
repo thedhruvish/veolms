@@ -13,6 +13,6 @@
   },
   "dependencies": {
     "zod": "catalog:",
-     "@veolms/contracts": "workspace:*"
+    "@veolms/contracts": "workspace:*"
   }
 }

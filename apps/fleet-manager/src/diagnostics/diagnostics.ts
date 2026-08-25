@@ -44,7 +44,6 @@ export async function getJobDiagnostics(
     return null;
   }
 
-
   let worker: WorkerHandle | null = null;
   if (job.worker_id) {
     const workerRow = await db

@@ -10,7 +10,6 @@
   },
   "scripts": {
     "build": "tsc --noEmit",
-    "build:lambda": "esbuild src/lambda.ts --bundle --platform=node --target=node22 --format=cjs --outfile=dist/lambda/index.js && cp src/bootstrap-script.sh dist/lambda/bootstrap-script.sh",
     "build:ami": "node --env-file-if-exists=../../apps/fleet-manager/.env src/setup/build-ami.ts",
     "typecheck": "tsc --noEmit",
     "test": "node --test tests/**/*.test.ts"

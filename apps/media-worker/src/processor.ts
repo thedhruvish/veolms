@@ -4,7 +4,7 @@ import { copyFile, cp, mkdir, rm, stat, writeFile } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { promisify } from "node:util";
 import {
-    ARCHITECTURES,
+  ARCHITECTURES,
   DEFAULT_SEGMENT_DURATION_SECONDS,
   estimateJobHardware,
   type JobHardwareRequirements,
@@ -257,7 +257,7 @@ export async function executeTranscodeJob(
     hardware = estimateJobHardware(job.video_size, job.qualities);
     const claimHardware = hardware;
 
-  await db.transaction().execute(async (trx) => {
+    await db.transaction().execute(async (trx) => {
       const worker = await trx
         .selectFrom("workers")
         .select(["cpu", "memory_mb", "storage_gb", "architecture"])

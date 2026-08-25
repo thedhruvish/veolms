@@ -25,7 +25,7 @@ This document is a comprehensive guide to all commands used to configure, provis
 | `pnpm fleet:infra`           | `apps/fleet-manager`          | Provision cloud infrastructure (IAM, Lambda, S3, CloudWatch, `.env`)                        |
 | `pnpm fleet:destroy`         | `apps/fleet-manager`          | **Teardown**: Terminate all EC2 workers and delete all AWS resources                        |
 | `pnpm fleet:build-ami`       | `packages/fleet-provider-aws` | _(Optional)_ Build pre-baked worker AMI with Node.js 24 + FFmpeg                            |
-| `pnpm build:lambda`          | `packages/fleet-provider-aws` | Fast `esbuild` bundling of the Lambda Fleet Manager handler                                 |
+| `pnpm build:serverless`      | `apps/fleet-manager`          | Fast universal `esbuild` bundling of the Serverless Fleet Manager handler                   |
 | `pnpm build:worker`          | `apps/media-worker`           | Fast `esbuild` bundling of the standalone Media Worker                                      |
 | `pnpm fleet:queue:trigger`   | `apps/fleet-manager`          | Queue one AWS job & invoke the Lambda once to claim it — requires `fleet:infra` already run |
 | `pnpm test:pipeline`         | `apps/fleet-manager`          | Automated local offline end-to-end transcoding test                                         |
@@ -108,11 +108,11 @@ This document is a comprehensive guide to all commands used to configure, provis
 
 ## ⚡ 3. Fast Bundling with esbuild
 
-### `pnpm build:lambda`
+### `pnpm build:serverless`
 
-**Location:** `packages/fleet-provider-aws/package.json`
+**Location:** `apps/fleet-manager/scripts/build-serverless.ts`
 
-- Bundles `packages/fleet-provider-aws/src/lambda.ts` into `dist/lambda/index.js` using `esbuild` in **~250ms**.
+- Bundles `apps/fleet-manager/src/entrypoints/serverless.ts` into `dist/serverless/index.js` and ZIP package using `esbuild` in **~250ms**. Supports all cloud providers via `--provider=<name>`.
 
 ### `pnpm build:worker`
 

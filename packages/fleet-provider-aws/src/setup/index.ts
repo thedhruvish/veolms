@@ -577,10 +577,13 @@ function buildLambdaBundleZip(): Uint8Array {
     "..",
     "..",
   );
-  const lambdaSource = path.join(
+  const universalSource = path.join(
     repoRoot,
-    "packages/fleet-provider-aws/src/lambda.ts",
+    "apps/fleet-manager/src/entrypoints/serverless.ts",
   );
+  const lambdaSource = fsSync.existsSync(universalSource)
+    ? universalSource
+    : path.join(repoRoot, "packages/fleet-provider-aws/src/lambda.ts");
   const distDir = path.join(repoRoot, "dist/lambda");
   if (!fsSync.existsSync(distDir)) {
     fsSync.mkdirSync(distDir, { recursive: true });

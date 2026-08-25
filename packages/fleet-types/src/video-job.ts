@@ -15,7 +15,6 @@ import {
 export { JOB_STATUSES, VIDEO_JOB_STATUSES, videoJobStatusSchema };
 export type { VideoJobStatus };
 
-
 // The codec/segment settings a job used to be able to override per-row were
 // never actually set by the real inserter (the backend API only ever writes
 // video_key/output_prefix/qualities/video_size) — so they're fixed defaults
@@ -97,7 +96,7 @@ export function estimateJobHardware(
       : Math.max(
           600,
           videoSizeBytes > 0
-            ? Math.ceil(videoSizeBytes / (5 * 1000 * 1000 / 8))
+            ? Math.ceil(videoSizeBytes / ((5 * 1000 * 1000) / 8))
             : 600,
         );
   estimatedDurationSeconds = Math.max(
@@ -109,8 +108,9 @@ export function estimateJobHardware(
   const sourceSizeGb = Math.max(videoSizeBytes, 0) / BYTES_PER_GB;
   const estimatedOutputGb =
     (estimatedDurationSeconds * totalOutputBytesPerSec) / BYTES_PER_GB;
-  const calculatedStorageGb =
-    Math.ceil(sourceSizeGb + estimatedOutputGb + SAFETY_MARGIN_GB);
+  const calculatedStorageGb = Math.ceil(
+    sourceSizeGb + estimatedOutputGb + SAFETY_MARGIN_GB,
+  );
 
   storageGb = Math.max(storageGb, calculatedStorageGb);
 

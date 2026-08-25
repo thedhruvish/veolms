@@ -78,7 +78,11 @@ describe("Job & Worker Schemas and Contracts", () => {
     // If requesting 2160p (4K), 1440p, 1080p, 720p for a 4-hour video (14400s)
     const long4kDuration = 14400; // 4 hours
     const highQualities = ["2160p", "1440p", "1080p", "720p"] as const;
-    const hw4k = estimateJobHardware(5 * 1024 ** 3, highQualities, long4kDuration);
+    const hw4k = estimateJobHardware(
+      5 * 1024 ** 3,
+      highQualities,
+      long4kDuration,
+    );
 
     // Total bitrate = 14192 + 8192 + 4628 + 2528 = 29540 kbps = 3.6925 MB/s
     // Output = 14400 * 3.6925 MB = ~53.17 GB

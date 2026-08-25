@@ -9,6 +9,7 @@ export * from "./core/worker-manager.ts";
 export * from "./core/provider-resolver.ts";
 export * from "./diagnostics/diagnostics.ts";
 export * from "./entrypoints/serverful.ts";
+export * from "./entrypoints/serverless.ts";
 
 export function main(): void {
   runCli(process.argv.slice(2)).catch((err: unknown) => {

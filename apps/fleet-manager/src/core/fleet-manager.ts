@@ -17,6 +17,12 @@ export interface FleetManagerDependencies {
   readonly config: FleetManagerConfig;
 }
 
+export interface MonitorCycleResult {
+  dueProcessed: number;
+  timeoutsProcessed: number;
+  orphansProcessed: number;
+}
+
 export interface FleetManager {
   readonly jobManager: JobManager;
   readonly workerManager: WorkerManager;
@@ -24,11 +30,7 @@ export interface FleetManager {
   readonly monitor: Monitor;
 
   processNextJob(): Promise<boolean>;
-  runMonitoringCycle(): Promise<{
-    dueProcessed: number;
-    timeoutsProcessed: number;
-    orphansProcessed: number;
-  }>;
+  runMonitoringCycle(): Promise<MonitorCycleResult>;
   runTick(): Promise<void>;
   queueJob(params: QueueJobParams): Promise<Selectable<VideoJobTable>>;
   startServerfulLoop(signal?: AbortSignal): Promise<void>;
@@ -81,7 +83,7 @@ export function createFleetManager(
       }
 
       console.info(
-        `[fleet-manager] Claimed job ${job.id} for processing (qualities: ${job.qualities.join(", ")})`,
+        `[fleet-manager] Claimed job ${job.id} for processing (qualities: ${Array.isArray(job.qualities) ? job.qualities.join(", ") : "default"})`,
       );
 
       try {

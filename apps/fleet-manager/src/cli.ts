@@ -167,7 +167,8 @@ export async function runCli(
         process.exit(1);
       }
 
-      const videoId = (flags["video-id"] as string) || (flags["videoId"] as string);
+      const videoId =
+        (flags["video-id"] as string) || (flags["videoId"] as string);
 
       const jobManager = createJobManager({ db: getDb(), config });
       const job = await jobManager.queueJob({

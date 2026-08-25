@@ -37,7 +37,11 @@ export interface WorkerManager {
 }
 
 export function calculateWorkerSpec(
-  job: { id?: string; video_size: number; qualities: readonly VideoQualityLevel[] },
+  job: {
+    id?: string;
+    video_size: number;
+    qualities: readonly VideoQualityLevel[];
+  },
   options: { databaseUrl?: string; jobId?: string } = {},
 ): WorkerSpec {
   const hw = estimateJobHardware(job.video_size, job.qualities);
@@ -49,7 +53,7 @@ export function calculateWorkerSpec(
     storageGb: hw.storageGb,
     region: "local",
     environmentVariables: {
-      ...(options.jobId ?? job.id ? { JOB_ID: options.jobId ?? job.id } : {}),
+      ...((options.jobId ?? job.id) ? { JOB_ID: options.jobId ?? job.id } : {}),
       ...(options.databaseUrl ? { DATABASE_URL: options.databaseUrl } : {}),
     },
   };
@@ -105,7 +109,9 @@ export function createWorkerManager(options: {
       return Number(result?.count ?? 0);
     },
 
-    async provisionWorker(job: Selectable<VideoJobTable>): Promise<WorkerHandle> {
+    async provisionWorker(
+      job: Selectable<VideoJobTable>,
+    ): Promise<WorkerHandle> {
       const workerId = randomUUID();
 
       if (job.video_size <= 0) {
