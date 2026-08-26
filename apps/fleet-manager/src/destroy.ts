@@ -36,7 +36,10 @@ if (cliProviderFlag === true) {
 const provider = resolveProviderName(cliProviderFlag, process.env) ?? "local";
 
 async function dispatch(): Promise<void> {
-  const packageName = `@veolms/fleet-provider-${provider}/destroy`;
+  const normalized = provider.trim().toLowerCase();
+  const packageName = normalized.startsWith("@")
+    ? `${normalized}/destroy`
+    : `@veolms/fleet-provider-${normalized}/destroy`;
 
   let destroyFn: () => Promise<void>;
   try {

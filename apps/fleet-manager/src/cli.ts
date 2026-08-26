@@ -329,7 +329,9 @@ export async function runCli(
         process.exit(1);
       }
 
-      if (infraProvider === "gcp" || infraProvider === "azure") {
+      const normalized = infraProvider.trim().toLowerCase();
+
+      if (normalized === "gcp" || normalized === "azure") {
         console.error(`
   ${red(`✘ ${infraProvider.toUpperCase()} provider setup is not yet implemented.`)}
 
@@ -339,7 +341,9 @@ export async function runCli(
         process.exit(1);
       }
 
-      const packageName = `@veolms/fleet-provider-${infraProvider}/setup`;
+      const packageName = normalized.startsWith("@")
+        ? `${normalized}/setup`
+        : `@veolms/fleet-provider-${normalized}/setup`;
 
       let setupFn: () => Promise<void>;
       try {
