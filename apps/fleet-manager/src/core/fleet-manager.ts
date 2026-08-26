@@ -7,7 +7,7 @@ import {
   type JobManager,
   type QueueJobParams,
 } from "./video-job-manager.ts";
-import { createMonitor, type Monitor } from "./monitor.ts";
+import { createMonitor, type Monitor, type ReconcileResult } from "./monitor.ts";
 import { createScheduler, type Scheduler } from "./scheduler.ts";
 import { createWorkerManager, type WorkerManager } from "./worker-manager.ts";
 
@@ -21,6 +21,7 @@ export interface MonitorCycleResult {
   dueProcessed: number;
   timeoutsProcessed: number;
   orphansProcessed: number;
+  reconcileResult?: ReconcileResult;
 }
 
 export interface FleetManager {
@@ -32,6 +33,7 @@ export interface FleetManager {
   processNextJob(): Promise<boolean>;
   runMonitoringCycle(): Promise<MonitorCycleResult>;
   runTick(): Promise<void>;
+  syncWakeupSchedule(): Promise<Date | null>;
   queueJob(params: QueueJobParams): Promise<Selectable<VideoJobTable>>;
   startServerfulLoop(signal?: AbortSignal): Promise<void>;
 }
@@ -111,29 +113,67 @@ export function createFleetManager(
       }
     },
 
-    async runMonitoringCycle(): Promise<{
-      dueProcessed: number;
-      timeoutsProcessed: number;
-      orphansProcessed: number;
-    }> {
+    async runMonitoringCycle(): Promise<MonitorCycleResult> {
+      const reconcileResult = await monitor.reconcileClusterState();
       const orphansProcessed = await monitor.checkOrphanedJobs();
       const timeoutsProcessed = await monitor.checkHeartbeatTimeouts();
       const dueProcessed = await monitor.checkDueWorkers();
-      return { dueProcessed, timeoutsProcessed, orphansProcessed };
+      return {
+        dueProcessed,
+        timeoutsProcessed,
+        orphansProcessed,
+        reconcileResult,
+      };
+    },
+
+    async syncWakeupSchedule(): Promise<Date | null> {
+      if (typeof provider.scheduleNextWakeup !== "function") {
+        return null;
+      }
+
+      const nextDue = await db
+        .selectFrom("worker_monitoring")
+        .innerJoin("workers", "workers.id", "worker_monitoring.worker_id")
+        .select((eb) =>
+          eb.fn.min("worker_monitoring.next_check_at").as("earliestCheck"),
+        )
+        .where("workers.status", "in", [
+          "PENDING",
+          "PROVISIONING",
+          "STARTING",
+          "READY",
+          "PROCESSING",
+        ])
+        .executeTakeFirst();
+
+      const earliest = nextDue?.earliestCheck
+        ? new Date(nextDue.earliestCheck)
+        : null;
+
+      if (earliest) {
+        await provider.scheduleNextWakeup(earliest, { action: "TICK" });
+        return earliest;
+      } else if (typeof provider.cancelWakeup === "function") {
+        await provider.cancelWakeup();
+        return null;
+      }
+      return null;
     },
 
     async runTick(): Promise<void> {
-      // Process pending queued jobs in batch up to 5 per tick if available
-      let processedAny = false;
+      // 1. Reconcile cluster state and run monitoring cycle first
+      await this.runMonitoringCycle();
+
+      // 2. Process pending queued jobs in batch up to 5 per tick if available
       let count = 0;
       while (count < 5) {
         const claimed = await this.processNextJob();
         if (!claimed) break;
-        processedAny = true;
         count++;
       }
 
-      await this.runMonitoringCycle();
+      // 3. Dynamically synchronize wakeup schedule (e.g. EventBridge Scheduler)
+      await this.syncWakeupSchedule();
     },
 
     async startServerfulLoop(signal?: AbortSignal): Promise<void> {

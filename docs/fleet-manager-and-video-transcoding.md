@@ -200,44 +200,75 @@ s3-bucket/output/<video-id>/
 
 ---
 
-## 7. Dynamic Monitoring Scheduler
+## 7. Dynamic Monitoring Scheduler & EventBridge Triggers
 
-Rather than constant naive polling, Fleet Manager uses a dynamic backoff algorithm:
+Rather than constant naive polling, Fleet Manager uses a dynamic progress-aware algorithm:
 
 1. **Initial Check**: Scheduled at **$50\%$** of estimated job duration.
 2. **Intermediate Checks**: When progress is reported (e.g. $60\%$), calculates remaining time and checks at the halfway point of remaining work.
-3. **Clamping**: Near completion ($\ge 90\%$), check intervals tighten to **$5$ seconds** until finished.
-4. **Heartbeat Timeout**: If a worker fails to write a direct heartbeat within `HEARTBEAT_TIMEOUT_SECONDS` (default: 90s), Fleet Manager marks it `TIMEOUT` and re-queues the job.
+3. **Clamping**: Near completion ($\ge 99\%$), check intervals tighten to the minimum interval (`MIN_CHECK_INTERVAL_SECONDS`, default 15s).
+4. **Heartbeat Timeout**: If a worker fails to write a direct heartbeat within `HEARTBEAT_TIMEOUT_SECONDS` (default: 90s), Fleet Manager marks it `FAILED` and re-queues the job.
+5. **AWS EventBridge Scheduler (Serverless)**:
+   - Evaluates $\min(\text{next\_check\_at})$ across all active workers.
+   - Upserts a single one-shot schedule named `veolms-fleet-next-check` in AWS EventBridge Scheduler targeting the Lambda at that exact timestamp (`at(YYYY-MM-DDTHH:mm:ss)`).
+   - Automatically deletes the schedule when all workers finish, guaranteeing **zero idle invocations**.
 
 ---
 
-## 8. CLI & Diagnostic Commands
+## 8. Two-Way State Reconciliation
+
+Fleet Manager actively reconciles database state with real cloud provider instances on every tick and serverless invocation:
+
+1. **Spot Interruption & Worker Crash Recovery**:
+   - If a DB worker is in `PROVISIONING`, `STARTING`, `READY`, or `PROCESSING`, but its EC2 instance is terminated/missing in AWS (past a 30s launch grace period):
+   - The worker is marked `FAILED` with event `SPOT_INTERRUPTED`.
+   - The job has its `attempts` incremented and is automatically reset to `QUEUED` if `attempts < max_attempts`.
+
+2. **Orphaned Cloud Instances (Zombie Cleanup)**:
+   - If an EC2 instance tagged with `ManagedBy: veolms-fleet-manager` is running in AWS without a matching active worker in the database (older than 3 minutes):
+   - Fleet Manager terminates the instance via `provider.terminateWorker()` and logs `ORPHAN_INSTANCE_TERMINATED`.
+
+3. **Storage Output Verification**:
+   - When a job reaches 100% progress or is marked completed, Fleet Manager verifies that the target `master.m3u8` playlist exists in S3 (non-zero size) before finalizing `COMPLETED` status.
+
+---
+
+## 9. CLI & Diagnostic Commands
 
 The Fleet Manager provides built-in operational CLI commands:
 
 ```bash
 # 1. Run the continuous Fleet Manager daemon
-pnpm fleet:run
+pnpm fleet run
 
-# 2. Run the automated end-to-end test pipeline
-pnpm test:pipeline
+# 2. Queue a video transcoding job
+pnpm fleet queue my-video.mp4 --qualities=1080p,720p,480p --prefix=transcoded/my-video/
 
 # 3. View real-time Fleet Health Summary
-pnpm fleet:cli status
+pnpm fleet health
 
 # 4. Inspect timeline and audit events for a specific job
-pnpm fleet:cli job <JOB_ID>
+pnpm fleet status <JOB_ID>
 
-# 5. Prune dead/zombie worker processes
-pnpm fleet:cli prune
+# 5. List active and recent workers
+pnpm fleet workers
+
+# 6. Prune dead/zombie worker processes
+pnpm fleet prune
+
+# 7. Select active provider (AWS / Local)
+pnpm fleet provider
+
+# 8. Interactive AWS Infrastructure provisioning
+pnpm fleet infra
+
+# 9. Tear down AWS infrastructure
+pnpm fleet destroy
 ```
 
 ---
 
-## 9. Verification & Code Quality
+## 10. Verification & Code Quality
 
-The system maintains strict code quality standards:
-
-- **Zero `any` Types**: Verified via `pnpm typecheck` across all 10 monorepo packages.
-- **Linting & Formatting**: `pnpm format:check` and `pnpm lint`.
-- **Test Suite**: `pnpm test` (36/36 unit and simulation tests passing).
+- **Zero `any` Types**: Verified via `pnpm typecheck` across all monorepo packages.
+- **Automated Test Suite**: `pnpm test` (70+ unit and simulation tests passing across contracts, fleet-types, fleet-provider-aws, and fleet-manager).

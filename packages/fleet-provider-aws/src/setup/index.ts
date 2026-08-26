@@ -363,6 +363,17 @@ export async function checkOrCreateRole(
         Action: "ssm:GetParameter",
         Resource: "arn:aws:ssm:*::parameter/aws/service/debian/*",
       },
+      {
+        Sid: "EventBridgeSchedulerControl",
+        Effect: "Allow",
+        Action: [
+          "scheduler:CreateSchedule",
+          "scheduler:UpdateSchedule",
+          "scheduler:DeleteSchedule",
+          "scheduler:GetSchedule",
+        ],
+        Resource: "*",
+      },
     ],
   });
 
@@ -599,27 +610,14 @@ function buildLambdaBundleZip(): Uint8Array {
     logLevel: "silent",
   });
 
-  // bootstrapper.ts reads this as a sibling file at runtime — must ship
-  // in the zip alongside index.js.
-  const bootstrapScriptSource = path.join(
-    repoRoot,
-    "packages/fleet-provider-aws/src/bootstrap-script.sh",
-  );
-  const bootstrapScriptDest = path.join(distDir, "bootstrap-script.sh");
-  fsSync.copyFileSync(bootstrapScriptSource, bootstrapScriptDest);
-
   const jsContent = fsSync.readFileSync(outfile);
-  const shContent = fsSync.readFileSync(bootstrapScriptDest);
 
   // Attempt to use system zip CLI if available
   try {
     const zipPath = path.join(distDir, "function.zip");
-    execSync(
-      `cd "${distDir}" && zip -q -9 function.zip index.js bootstrap-script.sh`,
-      {
-        stdio: "pipe",
-      },
-    );
+    execSync(`cd "${distDir}" && zip -q -9 function.zip index.js`, {
+      stdio: "pipe",
+    });
     if (fsSync.existsSync(zipPath)) {
       return fsSync.readFileSync(zipPath);
     }
@@ -627,10 +625,7 @@ function buildLambdaBundleZip(): Uint8Array {
     // Fall back to pure JS zip generator with valid CRC32
   }
 
-  return createZipFromBuffers([
-    { name: "index.js", content: jsContent },
-    { name: "bootstrap-script.sh", content: shContent },
-  ]);
+  return createZipFromBuffers([{ name: "index.js", content: jsContent }]);
 }
 
 export async function ensureSecurityGroup(
@@ -1130,13 +1125,16 @@ function loadExistingConfig(repoRoot: string): Partial<SetupAnswers> {
   const databaseUrl =
     combined["DATABASE_URL"] ||
     "postgresql://veolms:veolms@localhost:5433/veolms";
-  const keyName = combined["EC2_KEY_NAME"] || combined["KEY_NAME"] || null;
-  const securityGroupId =
-    combined["EC2_SECURITY_GROUP_IDS"] ||
-    combined["SECURITY_GROUP_IDS"] ||
-    combined["EC2_SECURITY_GROUP_ID"] ||
-    null;
   const allowSsh = combined["ALLOW_SSH"] !== "false";
+  const keyName = allowSsh
+    ? combined["EC2_KEY_NAME"] || combined["KEY_NAME"] || null
+    : null;
+  const securityGroupId = allowSsh
+    ? combined["EC2_SECURITY_GROUP_IDS"] ||
+      combined["SECURITY_GROUP_IDS"] ||
+      combined["EC2_SECURITY_GROUP_ID"] ||
+      null
+    : null;
 
   return {
     targetEnv,
@@ -1499,34 +1497,39 @@ async function runSetupFlow(
   const allowSsh = allowSshChoice === "yes";
 
   // ── Step 9: EC2 SSH Key Pair ───────────────────────────────────────────────
-  step(9, TOTAL_STEPS, "EC2 SSH Key Pair");
-  info(
-    "Specifying an SSH Key Pair allows you to SSH into EC2 worker instances (e.g. debian@<ip>).",
-  );
-  const defaultKeyName =
-    initialDefaults?.keyName ??
-    process.env.EC2_KEY_NAME ??
-    process.env.KEY_NAME ??
-    "";
-  const keyNameInput = await ask(
-    rl,
-    "EC2 SSH Key Pair Name leave empty to skip . it must me same region)",
-    defaultKeyName || undefined,
-  );
-  const keyName = keyNameInput.trim() || null;
+  let keyName: string | null = null;
+  if (allowSsh) {
+    step(9, TOTAL_STEPS, "EC2 SSH Key Pair");
+    info(
+      "Specifying an SSH Key Pair allows you to SSH into EC2 worker instances (e.g. debian@<ip>).",
+    );
+    const defaultKeyName =
+      initialDefaults?.keyName ??
+      process.env.EC2_KEY_NAME ??
+      process.env.KEY_NAME ??
+      "";
+    const keyNameInput = await ask(
+      rl,
+      "EC2 SSH Key Pair Name (leave empty to skip, must be in same region)",
+      defaultKeyName || undefined,
+    );
+    keyName = keyNameInput.trim() || null;
 
-  if (keyName) {
-    const ec2 = new EC2Client({ region });
-    const keyExists = await checkKeyPair(ec2, keyName);
-    if (keyExists) {
-      ok(`Found EC2 Key Pair: ${bold(keyName)} in region ${bold(region)}`);
+    if (keyName) {
+      const ec2 = new EC2Client({ region });
+      const keyExists = await checkKeyPair(ec2, keyName);
+      if (keyExists) {
+        ok(`Found EC2 Key Pair: ${bold(keyName)} in region ${bold(region)}`);
+      } else {
+        info(
+          `EC2 Key Pair configured as ${bold(keyName)} (ensure it exists in AWS).`,
+        );
+      }
     } else {
-      info(
-        `EC2 Key Pair configured as ${bold(keyName)} (ensure it exists in AWS).`,
-      );
+      info("No SSH Key Pair configured — skipping key assignment.");
     }
   } else {
-    info("No SSH Key Pair configured — skipping key assignment.");
+    info("SSH access disabled — skipping SSH Key Pair configuration.");
   }
 
   // ── Step 10: Max Workers ───────────────────────────────────────────────────

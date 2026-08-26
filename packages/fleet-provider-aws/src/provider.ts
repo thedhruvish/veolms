@@ -8,12 +8,14 @@ import {
   type _InstanceType,
   type Instance,
 } from "@aws-sdk/client-ec2";
+import { HeadObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import {
   GetCommandInvocationCommand,
   SendCommandCommand,
   SSMClient,
 } from "@aws-sdk/client-ssm";
 import type {
+  ActiveProviderInstance,
   ExecutionResult,
   FleetProvider,
   HealthStatus,
@@ -28,6 +30,11 @@ import {
 import { loadAwsProviderConfig } from "./config.ts";
 import { resolveDebianAmiId } from "./debian-ami.ts";
 import { selectOptimalInstanceType } from "./instance-types.ts";
+import {
+  createAwsSchedulerManager,
+  type AwsSchedulerConfig,
+  type AwsSchedulerManager,
+} from "./scheduler.ts";
 
 export interface AwsProviderConfig {
   readonly region?: string;
@@ -38,8 +45,12 @@ export interface AwsProviderConfig {
   readonly iamInstanceProfile?: string;
   readonly useSpot?: boolean;
   readonly defaultEnv?: Readonly<Record<string, string>>;
+  readonly s3BucketName?: string;
   readonly ec2Client?: EC2Client;
   readonly ssmClient?: SSMClient;
+  readonly s3Client?: S3Client;
+  readonly schedulerManager?: AwsSchedulerManager;
+  readonly schedulerConfig?: AwsSchedulerConfig;
 }
 
 const DEFAULT_ROOT_DEVICE_NAME = "/dev/sda1";
@@ -107,6 +118,13 @@ export function createAwsProvider(
 
   const ec2 = config.ec2Client ?? new EC2Client({ region });
   const ssm = config.ssmClient ?? new SSMClient({ region });
+  const s3 = config.s3Client ?? new S3Client({ region });
+  const schedulerManager =
+    config.schedulerManager ??
+    createAwsSchedulerManager({
+      region,
+      ...config.schedulerConfig,
+    });
   // LocalStack Docker VM manager only accepts its tagged Docker AMIs.
   // Real AWS AMI IDs are API-only/mock resources in LocalStack and do not
   // create an instance container or execute UserData.
@@ -130,10 +148,18 @@ export function createAwsProvider(
         ? DEFAULT_ROOT_DEVICE_NAME
         : await resolveRootDeviceName(ec2, imageId);
 
+      const bucketName = config.s3BucketName ?? envConfig.S3_BUCKET;
+      const defaultAwsEnv: Record<string, string> = {
+        AWS_REGION: region,
+        STORAGE_PROVIDER: envConfig.STORAGE_PROVIDER,
+        ...(bucketName ? { S3_BUCKET: bucketName, S3_BUCKET_NAME: bucketName } : {}),
+        ...config.defaultEnv,
+      };
+
       const userDataScript = generateUserDataScript({
         workerId: id,
         spec,
-        extraEnv: config.defaultEnv,
+        extraEnv: defaultAwsEnv,
       });
 
       const userDataBase64 = encodeUserDataBase64(userDataScript);
@@ -368,6 +394,93 @@ export function createAwsProvider(
         const message = err instanceof Error ? err.message : String(err);
         return { exitCode: 1, stdout: "", stderr: message };
       }
+    },
+
+    async listActiveInstances(): Promise<readonly ActiveProviderInstance[]> {
+      try {
+        const response = await ec2.send(
+          new DescribeInstancesCommand({
+            Filters: [
+              {
+                Name: "tag:ManagedBy",
+                Values: ["veolms-fleet-manager", "veolms-infra-setup"],
+              },
+              {
+                Name: "instance-state-name",
+                Values: ["pending", "running", "shutting-down", "stopped"],
+              },
+            ],
+          }),
+        );
+
+        const instances: ActiveProviderInstance[] = [];
+        for (const res of response.Reservations ?? []) {
+          for (const inst of res.Instances ?? []) {
+            if (inst.InstanceId) {
+              const workerIdTag = inst.Tags?.find(
+                (t) => t.Key === "WorkerId",
+              )?.Value;
+              instances.push({
+                providerWorkerId: inst.InstanceId,
+                status: mapEc2StateToWorkerStatus(inst.State?.Name),
+                launchTime: inst.LaunchTime
+                  ? new Date(inst.LaunchTime)
+                  : undefined,
+                workerId: workerIdTag ?? null,
+              });
+            }
+          }
+        }
+        return instances;
+      } catch (err: unknown) {
+        console.error("Failed to list active EC2 instances:", err);
+        return [];
+      }
+    },
+
+    async verifyJobOutput(outputPrefix: string): Promise<boolean> {
+      const bucketName = config.s3BucketName ?? envConfig.S3_BUCKET;
+      if (!bucketName) {
+        return true;
+      }
+
+      const cleanPrefix = outputPrefix.replace(/^[/\\]+/, "");
+      const masterKey = cleanPrefix.endsWith("/")
+        ? `${cleanPrefix}master.m3u8`
+        : `${cleanPrefix}/master.m3u8`;
+
+      try {
+        const head = await s3.send(
+          new HeadObjectCommand({
+            Bucket: bucketName,
+            Key: masterKey,
+          }),
+        );
+        return (head.ContentLength ?? 0) > 0;
+      } catch {
+        try {
+          const directHead = await s3.send(
+            new HeadObjectCommand({
+              Bucket: bucketName,
+              Key: cleanPrefix,
+            }),
+          );
+          return (directHead.ContentLength ?? 0) > 0;
+        } catch {
+          return false;
+        }
+      }
+    },
+
+    async scheduleNextWakeup(
+      targetTime: Date,
+      payload: Readonly<Record<string, unknown>> = {},
+    ): Promise<void> {
+      await schedulerManager.scheduleNextWakeup(targetTime, payload);
+    },
+
+    async cancelWakeup(): Promise<void> {
+      await schedulerManager.cancelWakeup();
     },
   };
 }

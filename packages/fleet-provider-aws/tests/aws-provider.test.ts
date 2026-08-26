@@ -42,4 +42,80 @@ describe("AWS Fleet Provider", () => {
       assert.equal(resolveS3BucketName({}), null);
     });
   });
+
+  describe("listActiveInstances", () => {
+    it("should query and return active EC2 instances with mapped statuses and worker IDs", async () => {
+      const { createAwsProvider } = await import("../src/provider.ts");
+      const mockEc2 = {
+        send: async (cmd: any) => {
+          if (cmd.constructor.name === "DescribeInstancesCommand") {
+            return {
+              Reservations: [
+                {
+                  Instances: [
+                    {
+                      InstanceId: "i-0123456789abcdef0",
+                      State: { Name: "running" },
+                      LaunchTime: new Date("2026-08-25T12:00:00Z"),
+                      Tags: [
+                        { Key: "ManagedBy", Value: "veolms-fleet-manager" },
+                        { Key: "WorkerId", Value: "w-abc-123" },
+                      ],
+                    },
+                    {
+                      InstanceId: "i-0123456789abcdef1",
+                      State: { Name: "pending" },
+                      LaunchTime: new Date("2026-08-25T12:05:00Z"),
+                      Tags: [{ Key: "ManagedBy", Value: "veolms-fleet-manager" }],
+                    },
+                  ],
+                },
+              ],
+            };
+          }
+          return {};
+        },
+      } as any;
+
+      const provider = createAwsProvider({ ec2Client: mockEc2 });
+      const instances = await provider.listActiveInstances!();
+
+      assert.equal(instances.length, 2);
+      assert.equal(instances[0]!.providerWorkerId, "i-0123456789abcdef0");
+      assert.equal(instances[0]!.status, "PROCESSING");
+      assert.equal(instances[0]!.workerId, "w-abc-123");
+      assert.equal(instances[1]!.providerWorkerId, "i-0123456789abcdef1");
+      assert.equal(instances[1]!.status, "STARTING");
+      assert.equal(instances[1]!.workerId, null);
+    });
+  });
+
+  describe("verifyJobOutput", () => {
+    it("should verify existence of master.m3u8 playlist in S3", async () => {
+      const { createAwsProvider } = await import("../src/provider.ts");
+      let requestedKey = "";
+      const mockS3 = {
+        send: async (cmd: any) => {
+          requestedKey = cmd.input.Key;
+          if (cmd.input.Key === "transcoded/video-1/master.m3u8") {
+            return { ContentLength: 2048 };
+          }
+          throw new Error("NoSuchKey");
+        },
+      } as any;
+
+      const provider = createAwsProvider({
+        s3Client: mockS3,
+        s3BucketName: "test-bucket",
+      });
+
+      const verified = await provider.verifyJobOutput!("transcoded/video-1/");
+      assert.equal(verified, true);
+      assert.equal(requestedKey, "transcoded/video-1/master.m3u8");
+
+      const notFound = await provider.verifyJobOutput!("transcoded/nonexistent/");
+      assert.equal(notFound, false);
+    });
+  });
 });
+

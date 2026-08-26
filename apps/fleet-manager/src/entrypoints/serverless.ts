@@ -34,6 +34,7 @@ export interface ServerlessExecutionResult {
   readonly success: boolean;
   readonly jobClaimed?: boolean;
   readonly monitorResult?: MonitorCycleResult;
+  readonly nextWakeupScheduledAt?: string | null;
   readonly timestamp: string;
   readonly error?: string;
 }
@@ -188,9 +189,11 @@ export async function runServerlessFleetCycle(
     const monitorResult = await fleet.runMonitoringCycle();
 
     if (event.action === "MONITOR") {
+      const nextWakeup = await fleet.syncWakeupSchedule();
       return {
         success: true,
         monitorResult,
+        nextWakeupScheduledAt: nextWakeup ? nextWakeup.toISOString() : null,
         timestamp: new Date().toISOString(),
       };
     }
@@ -198,10 +201,14 @@ export async function runServerlessFleetCycle(
     // 3. Claim and provision next queued job
     const jobClaimed = await fleet.processNextJob();
 
+    // 4. Synchronize dynamic EventBridge wakeup schedule
+    const nextWakeup = await fleet.syncWakeupSchedule();
+
     return {
       success: true,
       jobClaimed,
       monitorResult,
+      nextWakeupScheduledAt: nextWakeup ? nextWakeup.toISOString() : null,
       timestamp: new Date().toISOString(),
     };
   } finally {

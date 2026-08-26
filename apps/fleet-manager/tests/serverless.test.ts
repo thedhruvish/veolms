@@ -227,7 +227,7 @@ describe("Universal Serverless Builder — Packaging & CLI Argument Parser", () 
     }
   });
 
-  it("should bundle AWS provider and copy bootstrap-script.sh when provider is aws", () => {
+  it("should bundle AWS provider and produce function.zip when provider is aws", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "veolms-build-aws-test-"));
     try {
       const result = bundleServerless({
@@ -239,8 +239,7 @@ describe("Universal Serverless Builder — Packaging & CLI Argument Parser", () 
 
       assert.equal(result.provider, "aws");
       assert.ok(existsSync(result.outfile));
-      assert.ok(result.bundledFiles.includes("bootstrap-script.sh"));
-      assert.ok(existsSync(join(tempDir, "bootstrap-script.sh")));
+      assert.ok(result.bundledFiles.includes("index.js"));
       assert.ok(result.zipPath);
       assert.ok(existsSync(result.zipPath));
     } finally {

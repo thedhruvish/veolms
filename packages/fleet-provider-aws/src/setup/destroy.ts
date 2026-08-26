@@ -265,7 +265,7 @@ async function runDestroySteps(
   }
 
   // 6. Delete EC2 Worker Security Group
-  console.info("\n[6/7] Deleting EC2 Worker Security Group...");
+  console.info("\n[6/8] Deleting EC2 Worker Security Group...");
   const sgDel = exec(
     `aws ec2 delete-security-group --group-name "VeoLMSWorkerSecurityGroup" --region ${region}`,
   );
@@ -279,11 +279,24 @@ async function runDestroySteps(
     );
   }
 
-  // 7. Delete S3 bucket — asks for confirmation if it still holds data
+  // 7. Delete EventBridge Scheduler Schedule & Role
+  console.info("\n[7/8] Deleting EventBridge Scheduler Schedule & Role...");
+  exec(`aws scheduler delete-schedule --name veolms-fleet-next-check --region ${region} 2>/dev/null`);
+  exec(`aws iam delete-role-policy --role-name VeoLMSSchedulerRole --policy-name VeoLMSSchedulerInvokeLambda 2>/dev/null`);
+  const schedRoleDel = exec(`aws iam delete-role --role-name VeoLMSSchedulerRole 2>/dev/null`);
+  if (schedRoleDel !== null) {
+    console.info(`  ${green("✔")} Deleted IAM role: VeoLMSSchedulerRole`);
+  } else {
+    console.info(
+      `  ${dim("IAM role VeoLMSSchedulerRole not found or already deleted.")}`,
+    );
+  }
+
+  // 8. Delete S3 bucket — asks for confirmation if it still holds data
   if (s3BucketName) {
     await destroyS3Bucket(rl, s3BucketName, region);
   } else {
-    console.info(`\n[7/7] No S3_BUCKET_NAME configured — skipping S3 cleanup.`);
+    console.info(`\n[8/8] No S3_BUCKET_NAME configured — skipping S3 cleanup.`);
   }
 
   console.info(`

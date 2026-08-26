@@ -6,10 +6,17 @@ import type { JobManager } from "./video-job-manager.ts";
 import type { Scheduler } from "./scheduler.ts";
 import type { WorkerManager } from "./worker-manager.ts";
 
+export interface ReconcileResult {
+  deadWorkersProcessed: number;
+  zombieInstancesTerminated: number;
+  verifiedCompletedJobs: number;
+}
+
 export interface Monitor {
   checkHeartbeatTimeouts(): Promise<number>;
   checkDueWorkers(): Promise<number>;
   checkOrphanedJobs(): Promise<number>;
+  reconcileClusterState(): Promise<ReconcileResult>;
 }
 
 export function createMonitor(options: {
@@ -20,7 +27,8 @@ export function createMonitor(options: {
   workerManager: WorkerManager;
   config: FleetManagerConfig;
 }): Monitor {
-  const { db, scheduler, jobManager, workerManager, config } = options;
+  const { provider, db, scheduler, jobManager, workerManager, config } =
+    options;
   const timeoutMs = config.HEARTBEAT_TIMEOUT_SECONDS * 1000;
 
   return {
@@ -175,6 +183,197 @@ export function createMonitor(options: {
       }
 
       return dueMonitoring.length;
+    },
+
+    async reconcileClusterState(): Promise<ReconcileResult> {
+      let deadWorkersProcessed = 0;
+      let zombieInstancesTerminated = 0;
+      let verifiedCompletedJobs = 0;
+
+      // 1. Two-way reconciliation with Cloud Provider instances if supported
+      if (typeof provider.listActiveInstances === "function") {
+        try {
+          const cloudInstances = await provider.listActiveInstances();
+          const cloudMap = new Map(
+            cloudInstances.map((inst) => [inst.providerWorkerId, inst]),
+          );
+
+          const dbActiveWorkers = await db
+            .selectFrom("workers")
+            .selectAll()
+            .where("status", "in", [
+              "PENDING",
+              "PROVISIONING",
+              "STARTING",
+              "READY",
+              "PROCESSING",
+            ])
+            .execute();
+
+          const now = Date.now();
+
+          // Check DB active workers against cloud instances (Dead workers / Spot interruption)
+          for (const worker of dbActiveWorkers) {
+            if (
+              worker.provider_worker_id &&
+              worker.provider_worker_id !== "pending"
+            ) {
+              const cloudInst = cloudMap.get(worker.provider_worker_id);
+              const isTerminatedInCloud =
+                !cloudInst ||
+                cloudInst.status === "TERMINATED" ||
+                cloudInst.status === "FAILED";
+
+              // 30-second grace period for newly provisioned workers
+              const ageMs = now - new Date(worker.created_at).getTime();
+              if (isTerminatedInCloud && ageMs > 30000) {
+                console.warn(
+                  `[reconciliation] Worker ${worker.id} (${worker.provider_worker_id}) terminated unexpectedly in cloud provider (state: ${cloudInst?.status ?? "missing"}). Recovering job...`,
+                );
+
+                await workerManager.recordEvent(
+                  "SPOT_INTERRUPTED",
+                  worker.id,
+                  worker.job_id,
+                  {
+                    providerWorkerId: worker.provider_worker_id,
+                    cloudStatus: cloudInst?.status ?? "NOT_FOUND",
+                  },
+                );
+
+                await db
+                  .updateTable("workers")
+                  .set({
+                    status: "FAILED",
+                    updated_at: new Date(),
+                  })
+                  .where("id", "=", worker.id)
+                  .execute();
+
+                if (worker.job_id) {
+                  await jobManager.markJobFailed(
+                    worker.job_id,
+                    `Worker instance terminated unexpectedly in cloud provider (${cloudInst?.status ?? "missing"})`,
+                    worker.id,
+                  );
+                }
+
+                deadWorkersProcessed++;
+              }
+            }
+          }
+
+          // Check Cloud instances against DB active workers (Zombie instances)
+          for (const cloudInst of cloudInstances) {
+            if (cloudInst.status !== "TERMINATED") {
+              const matchingWorker = dbActiveWorkers.find(
+                (w) =>
+                  w.provider_worker_id === cloudInst.providerWorkerId ||
+                  (cloudInst.workerId && w.id === cloudInst.workerId),
+              );
+
+              if (!matchingWorker) {
+                // 3-minute grace period for fresh launches before terminating
+                const launchAgeMs = cloudInst.launchTime
+                  ? now - cloudInst.launchTime.getTime()
+                  : 300000;
+
+                if (launchAgeMs > 180000) {
+                  console.warn(
+                    `[reconciliation] Orphaned cloud instance ${cloudInst.providerWorkerId} detected without active DB worker record. Terminating...`,
+                  );
+
+                  try {
+                    await provider.terminateWorker(cloudInst.providerWorkerId);
+                    await workerManager.recordEvent(
+                      "ORPHAN_INSTANCE_TERMINATED",
+                      null,
+                      null,
+                      {
+                        providerWorkerId: cloudInst.providerWorkerId,
+                      },
+                    );
+                    zombieInstancesTerminated++;
+                  } catch (termErr) {
+                    console.error(
+                      `[reconciliation] Failed to terminate orphan instance ${cloudInst.providerWorkerId}:`,
+                      termErr,
+                    );
+                  }
+                }
+              }
+            }
+          }
+        } catch (reconcileErr) {
+          console.error(
+            "[reconciliation] Error during cloud instance reconciliation:",
+            reconcileErr,
+          );
+        }
+      }
+
+      // 2. Storage Output Verification on completed / 100% progress jobs
+      if (typeof provider.verifyJobOutput === "function") {
+        try {
+          const completedJobs = await db
+            .selectFrom("video_jobs")
+            .selectAll()
+            .where((eb) =>
+              eb.or([
+                eb("status", "=", "COMPLETED"),
+                eb("progress_percent", ">=", 100),
+              ]),
+            )
+            .where("worker_id", "is not", null)
+            .execute();
+
+          for (const job of completedJobs) {
+            const verified = await provider.verifyJobOutput(job.output_prefix);
+            if (verified) {
+              if (job.status !== "COMPLETED") {
+                await jobManager.markJobCompleted(job.id);
+              }
+              await workerManager.recordEvent(
+                "JOB_OUTPUT_VERIFIED",
+                job.worker_id,
+                job.id,
+                {
+                  outputPrefix: job.output_prefix,
+                },
+              );
+              verifiedCompletedJobs++;
+            } else if (job.status === "COMPLETED") {
+              console.warn(
+                `[reconciliation] Job ${job.id} marked completed but output verification failed for ${job.output_prefix}`,
+              );
+              await jobManager.markJobFailed(
+                job.id,
+                "Output verification failed: master.m3u8 missing or empty in storage",
+                job.worker_id ?? undefined,
+              );
+              await workerManager.recordEvent(
+                "JOB_OUTPUT_VERIFICATION_FAILED",
+                job.worker_id,
+                job.id,
+                {
+                  outputPrefix: job.output_prefix,
+                },
+              );
+            }
+          }
+        } catch (verifyErr) {
+          console.error(
+            "[reconciliation] Error during output verification:",
+            verifyErr,
+          );
+        }
+      }
+
+      return {
+        deadWorkersProcessed,
+        zombieInstancesTerminated,
+        verifiedCompletedJobs,
+      };
     },
   };
 }

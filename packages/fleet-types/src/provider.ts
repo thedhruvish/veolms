@@ -17,6 +17,13 @@ export interface HealthStatus {
   message?: string;
 }
 
+export interface ActiveProviderInstance {
+  readonly providerWorkerId: string;
+  readonly status: WorkerStatus;
+  readonly launchTime?: Date;
+  readonly workerId?: string | null;
+}
+
 export interface FleetProvider {
   readonly name: ProviderType;
   createWorker(id: string, spec: WorkerSpec): Promise<WorkerHandle>;
@@ -28,4 +35,11 @@ export interface FleetProvider {
   ): Promise<ExecutionResult>;
   terminateWorker(providerWorkerId: string): Promise<void>;
   healthCheck(providerWorkerId: string): Promise<HealthStatus>;
+  listActiveInstances?(): Promise<readonly ActiveProviderInstance[]>;
+  scheduleNextWakeup?(
+    targetTime: Date,
+    payload: Readonly<Record<string, unknown>>,
+  ): Promise<void>;
+  cancelWakeup?(): Promise<void>;
+  verifyJobOutput?(outputPrefix: string): Promise<boolean>;
 }
