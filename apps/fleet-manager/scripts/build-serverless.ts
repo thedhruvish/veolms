@@ -178,38 +178,13 @@ export function bundleServerless(
     console.info(`  ${green("✔")} Bundled serverless handler (${sizeKb} KB)`);
   }
 
-  // 2. Provider-specific asset copies
-  if (provider === "aws") {
-    const awsBootstrapSource = path.join(
-      repoRoot,
-      "packages/fleet-provider-aws/src/bootstrap-script.sh",
-    );
-    if (fsSync.existsSync(awsBootstrapSource)) {
-      const bootstrapDest = path.join(distDir, "bootstrap-script.sh");
-      fsSync.copyFileSync(awsBootstrapSource, bootstrapDest);
-      bundledFiles.push("bootstrap-script.sh");
-      if (log) {
-        console.info(
-          `  ${green("✔")} Included AWS bootstrap script (${dim("bootstrap-script.sh")})`,
-        );
-      }
-    }
-  }
-
-  // 3. Mirror to dist/lambda for AWS backwards compatibility
+  // 2. Mirror to dist/lambda for AWS backwards compatibility
   if (provider === "aws" && !options.outDir) {
     const lambdaDir = path.join(repoRoot, "dist/lambda");
     if (!fsSync.existsSync(lambdaDir)) {
       fsSync.mkdirSync(lambdaDir, { recursive: true });
     }
     fsSync.copyFileSync(outfile, path.join(lambdaDir, "index.js"));
-    const bootstrapSrc = path.join(distDir, "bootstrap-script.sh");
-    if (fsSync.existsSync(bootstrapSrc)) {
-      fsSync.copyFileSync(
-        bootstrapSrc,
-        path.join(lambdaDir, "bootstrap-script.sh"),
-      );
-    }
   }
 
   // 4. Create ZIP package

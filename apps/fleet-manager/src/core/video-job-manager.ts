@@ -143,9 +143,121 @@ export function createJobManager(options: {
       }
 
       const id = params.jobId ?? randomUUID();
-      const videoId = params.videoId ?? id;
       const videoSize = params.videoSize ?? 0;
       const now = new Date();
+
+      // Ensure media_assets record exists so foreign key video_jobs.video_id -> media_assets.id is satisfied
+      let videoId = params.videoId;
+      if (!videoId) {
+        const existingMedia = await db
+          .selectFrom("media_assets")
+          .selectAll()
+          .where("storage_key", "=", params.videoKey)
+          .executeTakeFirst();
+
+        if (existingMedia) {
+          videoId = existingMedia.id;
+        } else {
+          videoId = randomUUID();
+          const filename = params.videoKey.split("/").pop() || "video.mp4";
+          const defaultOwnerId = "00000000-0000-4000-8000-000000000001";
+          let ownerId = defaultOwnerId;
+          try {
+            const ownerUser = await db
+              .selectFrom("users")
+              .selectAll()
+              .where("id", "=", defaultOwnerId)
+              .executeTakeFirst();
+            if (ownerUser?.id) {
+              ownerId = ownerUser.id;
+            } else {
+              await db
+                .insertInto("users")
+                .values({
+                  id: defaultOwnerId,
+                  email: "creator@veolms.org",
+                  username: "creator",
+                  display_name: "VeoLMS Creator",
+                  email_verified_at: new Date(),
+                })
+                .execute();
+            }
+          } catch {
+            // Ignore mock DB / concurrent insert errors
+          }
+          try {
+            await db
+              .insertInto("media_assets")
+              .values({
+                id: videoId,
+                owner_id: ownerId,
+                type: "video",
+                storage_provider: "s3",
+                storage_key: params.videoKey,
+                original_filename: filename,
+                mime_type: "video/mp4",
+                size_bytes: videoSize,
+                status: "ready",
+              })
+              .execute();
+          } catch {
+            // Ignore if concurrently inserted
+          }
+        }
+      } else {
+        const existingMedia = await db
+          .selectFrom("media_assets")
+          .selectAll()
+          .where("id", "=", videoId)
+          .executeTakeFirst();
+
+        if (!existingMedia) {
+          const filename = params.videoKey.split("/").pop() || "video.mp4";
+          const defaultOwnerId = "00000000-0000-4000-8000-000000000001";
+          let ownerId = defaultOwnerId;
+          try {
+            const ownerUser = await db
+              .selectFrom("users")
+              .selectAll()
+              .where("id", "=", defaultOwnerId)
+              .executeTakeFirst();
+            if (ownerUser?.id) {
+              ownerId = ownerUser.id;
+            } else {
+              await db
+                .insertInto("users")
+                .values({
+                  id: defaultOwnerId,
+                  email: "creator@veolms.org",
+                  username: "creator",
+                  display_name: "VeoLMS Creator",
+                  email_verified_at: new Date(),
+                })
+                .execute();
+            }
+          } catch {
+            // Ignore mock DB / concurrent insert errors
+          }
+          try {
+            await db
+              .insertInto("media_assets")
+              .values({
+                id: videoId,
+                owner_id: ownerId,
+                type: "video",
+                storage_provider: "s3",
+                storage_key: params.videoKey,
+                original_filename: filename,
+                mime_type: "video/mp4",
+                size_bytes: videoSize,
+                status: "ready",
+              })
+              .execute();
+          } catch {
+            // Ignore if concurrently inserted
+          }
+        }
+      }
 
       try {
         const [row] = await db

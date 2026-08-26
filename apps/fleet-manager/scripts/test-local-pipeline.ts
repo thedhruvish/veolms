@@ -77,11 +77,58 @@ async function main() {
   console.info(
     "[1/4] User queues a new transcode task directly into PostgreSQL `video_jobs` table...",
   );
+  let existingMedia = await db
+    .selectFrom("media_assets")
+    .selectAll()
+    .where("storage_key", "=", videoKey)
+    .executeTakeFirst();
+
+  const videoId = existingMedia?.id ?? randomUUID();
+  if (!existingMedia) {
+    const ownerUser = await db
+      .selectFrom("users")
+      .select("id")
+      .limit(1)
+      .executeTakeFirst();
+
+    let ownerId = ownerUser?.id;
+    if (!ownerId) {
+      ownerId = "00000000-0000-4000-8000-000000000001";
+      await db
+        .insertInto("users")
+        .values({
+          id: ownerId,
+          email: "creator@veolms.org",
+          username: "creator",
+          display_name: "VeoLMS Creator",
+          email_verified_at: new Date(),
+        })
+        .onConflict((oc) => oc.column("id").doNothing())
+        .execute();
+    }
+
+    const filename = videoKey.split("/").pop() || "sample-input.mp4";
+    await db
+      .insertInto("media_assets")
+      .values({
+        id: videoId,
+        owner_id: ownerId,
+        type: "video",
+        storage_provider: "local",
+        storage_key: videoKey,
+        original_filename: filename,
+        mime_type: "video/mp4",
+        size_bytes: 0,
+        status: "ready",
+      })
+      .execute();
+  }
+
   await db
     .insertInto("video_jobs")
     .values({
       id: jobId,
-      video_id: jobId,
+      video_id: videoId,
       status: "QUEUED",
       video_key: videoKey,
       output_prefix: outputPrefix,

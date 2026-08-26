@@ -17,6 +17,7 @@
     "provider": "node --env-file-if-exists=.env src/provider-select.ts",
     "infra": "node --env-file-if-exists=.env src/cli.ts infra",
     "destroy": "node --env-file-if-exists=.env src/destroy.ts",
+    "bundle:upload": "node --env-file-if-exists=.env scripts/upload-worker-bundle.ts",
     "queue:trigger": "node --env-file-if-exists=.env scripts/queue-and-trigger-lambda.ts",
     "test:pipeline": "node --env-file-if-exists=.env scripts/test-local-pipeline.ts"
   },
@@ -24,6 +25,8 @@
     "@veolms/database": "workspace:*",
     "@veolms/config": "workspace:*",
     "@veolms/contracts": "workspace:*",
+    "@veolms/fleet-provider-aws": "workspace:*",
+    "@veolms/fleet-provider-local": "workspace:*",
     "@veolms/fleet-types": "workspace:*",
     "kysely": "catalog:",
     "pg": "^8.22.0",
@@ -31,7 +34,6 @@
   },
   "devDependencies": {
     "@types/pg": "8.15.5",
-    "@veolms/fleet-provider-aws": "workspace:*",
     "esbuild": "^0.25.0"
   }
 }

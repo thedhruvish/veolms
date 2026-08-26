@@ -91,12 +91,9 @@ export async function run(): Promise<void> {
 
 // Auto-run when executed directly as main script
 const isMain =
-  typeof require !== "undefined"
+  typeof require !== "undefined" && typeof module !== "undefined"
     ? require.main === module
-    : typeof process !== "undefined" &&
-      process.argv[1] &&
-      (import.meta?.url?.endsWith(process.argv[1]) ||
-        import.meta?.url === `file://${resolve(process.argv[1])}`);
+    : true;
 
 if (isMain) {
   run().catch((err) => {

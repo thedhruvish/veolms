@@ -122,13 +122,20 @@ export async function runServerlessFleetCycle(
   try {
     let provider = options.provider;
     if (!provider) {
-      const repoRoot = join(
-        dirname(fileURLToPath(import.meta.url)),
-        "..",
-        "..",
-        "..",
-        "..",
-      );
+      let repoRoot = process.cwd();
+      try {
+        if (typeof __dirname !== "undefined") {
+          repoRoot = join(__dirname, "../../../..");
+        } else if (
+          typeof import.meta !== "undefined" &&
+          typeof import.meta.url === "string" &&
+          import.meta.url
+        ) {
+          repoRoot = join(dirname(fileURLToPath(import.meta.url)), "../../../..");
+        }
+      } catch {
+        // Fall back to process.cwd()
+      }
       const defaultWorkerScript = join(
         repoRoot,
         "apps/media-worker/src/index.ts",

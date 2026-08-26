@@ -33,11 +33,64 @@ import {
   type VideoQualityLevel,
 } from "@veolms/fleet-types";
 
-const REGION = process.env.AWS_REGION || "us-east-1";
-const LAMBDA_NAME = process.env.LAMBDA_FUNCTION_NAME || "veolms-fleet-manager";
-const ENDPOINT_URL = process.env.AWS_ENDPOINT_URL;
+function resolveAwsRegion(): string {
+  if (process.env.AWS_REGION) {
+    return process.env.AWS_REGION;
+  }
+  if (process.env.AWS_DEFAULT_REGION) {
+    return process.env.AWS_DEFAULT_REGION;
+  }
+  if (process.env.FLEET_MANAGER_LAMBDA_REGION) {
+    return process.env.FLEET_MANAGER_LAMBDA_REGION;
+  }
+  if (process.env.LAMBDA_FUNCTION_ARN) {
+    const match = /^arn:aws:lambda:([^:]+):/i.exec(
+      process.env.LAMBDA_FUNCTION_ARN,
+    );
+    if (match?.[1]) {
+      return match[1];
+    }
+  }
+  return "us-east-1";
+}
+
+function resolveLambdaName(): string {
+  if (process.env.LAMBDA_FUNCTION_NAME) {
+    return process.env.LAMBDA_FUNCTION_NAME;
+  }
+  if (process.env.FLEET_MANAGER_LAMBDA_NAME) {
+    return process.env.FLEET_MANAGER_LAMBDA_NAME;
+  }
+  if (process.env.LAMBDA_FUNCTION_ARN) {
+    const match = /:function:([^:]+)$/i.exec(process.env.LAMBDA_FUNCTION_ARN);
+    if (match?.[1]) {
+      return match[1];
+    }
+  }
+  return "veolms-fleet-manager";
+}
+
+const REGION = resolveAwsRegion();
+const LAMBDA_NAME = resolveLambdaName();
+const PROFILE = process.env.AWS_PROFILE;
+const ENDPOINT_URL =
+  process.env.AWS_ENDPOINT_URL || process.env.LOCALSTACK_ENDPOINT;
 const DEFAULT_VIDEO_KEY = "raw/video.mp4";
 const DEFAULT_QUALITIES: readonly VideoQualityLevel[] = ["240p"];
+
+function buildAwsCliArgs(subcommandArgs: string[]): string[] {
+  const args = [...subcommandArgs];
+  if (REGION) {
+    args.push("--region", REGION);
+  }
+  if (PROFILE) {
+    args.push("--profile", PROFILE);
+  }
+  if (ENDPOINT_URL) {
+    args.push("--endpoint-url", ENDPOINT_URL);
+  }
+  return args;
+}
 
 function shellQuote(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`;
@@ -144,58 +197,131 @@ async function main(): Promise<void> {
     console.info(`  Qualities:     ${QUALITIES.join(", ")}`);
     console.info(`  Video Size:    ${videoSize} bytes`);
 
-    await db
-      .insertInto("video_jobs")
-      .values({
-        id: jobId,
-        video_id: jobId,
-        status: "QUEUED",
-        video_key: VIDEO_KEY,
-        output_prefix: outputPrefix,
-        video_size: videoSize,
-        qualities: QUALITIES,
-        worker_id: null,
-        attempts: 0,
-        max_attempts: 3,
-        error_message: null,
-        created_at: new Date(),
-        started_at: null,
-        completed_at: null,
-        failed_at: null,
-        updated_at: new Date(),
-      })
-      .execute();
+    // Ensure a media_assets record exists so foreign key video_jobs.video_id -> media_assets.id is satisfied
+    const existingMedia = await db
+      .selectFrom("media_assets")
+      .selectAll()
+      .where("storage_key", "=", VIDEO_KEY)
+      .executeTakeFirst();
 
-    console.info(`✔ Job [${jobId}] queued.\n`);
+    const videoId = existingMedia?.id ?? randomUUID();
+    if (!existingMedia) {
+      const ownerUser = await db
+        .selectFrom("users")
+        .select("id")
+        .limit(1)
+        .executeTakeFirst();
+
+      let ownerId = ownerUser?.id;
+      if (!ownerId) {
+        ownerId = "00000000-0000-4000-8000-000000000001";
+        await db
+          .insertInto("users")
+          .values({
+            id: ownerId,
+            email: "creator@veolms.org",
+            username: "creator",
+            display_name: "VeoLMS Creator",
+            email_verified_at: new Date(),
+          })
+          .onConflict((oc) => oc.column("id").doNothing())
+          .execute();
+      }
+
+      const filename = VIDEO_KEY.split("/").pop() || "video.mp4";
+      await db
+        .insertInto("media_assets")
+        .values({
+          id: videoId,
+          owner_id: ownerId,
+          type: "video",
+          storage_provider: process.env.STORAGE_PROVIDER || "s3",
+          storage_key: VIDEO_KEY,
+          original_filename: filename,
+          mime_type: "video/mp4",
+          size_bytes: videoSize,
+          status: "ready",
+        })
+        .execute();
+    }
+
+    // Check if an active job already exists for this video
+    const existingActiveJob = await db
+      .selectFrom("video_jobs")
+      .selectAll()
+      .where("video_id", "=", videoId)
+      .where("status", "in", [
+        "QUEUED",
+        "CLAIMED",
+        "PROVISIONING",
+        "PROCESSING",
+      ])
+      .orderBy("created_at", "desc")
+      .executeTakeFirst();
+
+    let actualJobId = jobId;
+    let actualOutputPrefix = outputPrefix;
+
+    if (existingActiveJob) {
+      actualJobId = existingActiveJob.id;
+      actualOutputPrefix = existingActiveJob.output_prefix;
+      console.info(
+        `✔ Found existing active job [${actualJobId}] in status "${existingActiveJob.status}". Reusing it.\n`,
+      );
+    } else {
+      await db
+        .insertInto("video_jobs")
+        .values({
+          id: jobId,
+          video_id: videoId,
+          status: "QUEUED",
+          video_key: VIDEO_KEY,
+          output_prefix: outputPrefix,
+          video_size: videoSize,
+          qualities: QUALITIES,
+          worker_id: null,
+          attempts: 0,
+          max_attempts: 3,
+          error_message: null,
+          created_at: new Date(),
+          started_at: null,
+          completed_at: null,
+          failed_at: null,
+          updated_at: new Date(),
+        })
+        .execute();
+
+      console.info(`✔ Job [${jobId}] queued.\n`);
+    }
 
     console.info(
-      `[2/3] Invoking Lambda "${LAMBDA_NAME}" to claim and launch EC2 worker...`,
+      `[2/3] Invoking Lambda "${LAMBDA_NAME}" (region: ${REGION}${PROFILE ? `, profile: ${PROFILE}` : ""}) to claim and launch EC2 worker...`,
     );
-    const outFile = join(tmpdir(), `lambda-invoke-${jobId.slice(0, 8)}.json`);
+    const outFile = join(
+      tmpdir(),
+      `lambda-invoke-${actualJobId.slice(0, 8)}.json`,
+    );
     const invokeArgs = [
-      "lambda",
-      "invoke",
-      "--function-name",
-      LAMBDA_NAME,
-      "--payload",
-      JSON.stringify({
-        action: "CLAIM",
-        jobId,
-        videoId: jobId,
-        videoKey: VIDEO_KEY,
-        outputPrefix,
-        qualities: QUALITIES,
-        videoSize,
-      }),
-      "--cli-binary-format",
-      "raw-in-base64-out",
-      "--region",
-      REGION,
+      ...buildAwsCliArgs([
+        "lambda",
+        "invoke",
+        "--function-name",
+        LAMBDA_NAME,
+        "--payload",
+        JSON.stringify({
+          action: "CLAIM",
+          jobId: actualJobId,
+          videoId,
+          videoKey: VIDEO_KEY,
+          outputPrefix: actualOutputPrefix,
+          qualities: QUALITIES,
+          videoSize,
+        }),
+        "--cli-binary-format",
+        "raw-in-base64-out",
+      ]),
+      outFile,
     ];
-    if (ENDPOINT_URL) {
-      invokeArgs.push("--endpoint-url", ENDPOINT_URL);
-    }
-    invokeArgs.push(outFile);
 
     try {
       // aws lambda invoke's own stdout JSON carries FunctionError when the
@@ -254,6 +380,29 @@ async function main(): Promise<void> {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`✘ Lambda invoke failed: ${msg}`);
+      if (
+        msg.includes("CreateOAuth2Token") ||
+        msg.includes("InvalidClientTokenId") ||
+        msg.includes("ExpiredToken") ||
+        msg.includes("AuthFailure") ||
+        msg.includes("UnrecognizedClientException")
+      ) {
+        console.error(`\n  💡 AWS Authentication Hint:`);
+        console.error(
+          `     Your AWS session or SSO credentials have expired or are not configured.`,
+        );
+        console.error(
+          `     Run: aws sso login${PROFILE ? ` --profile ${PROFILE}` : ""} (or set AWS_ACCESS_KEY_ID & AWS_SECRET_ACCESS_KEY)`,
+        );
+      } else if (msg.includes("ResourceNotFoundException")) {
+        console.error(`\n  💡 Lambda Not Found Hint:`);
+        console.error(
+          `     Function "${LAMBDA_NAME}" was not found in region "${REGION}".`,
+        );
+        console.error(
+          `     Run "pnpm fleet:infra --provider=aws" to deploy the infrastructure.`,
+        );
+      }
       process.exitCode = 1;
       return;
     }
@@ -275,7 +424,7 @@ async function main(): Promise<void> {
       updatedJob = await db
         .selectFrom("video_jobs")
         .select(["id", "status", "worker_id", "error_message"])
-        .where("id", "=", jobId)
+        .where("id", "=", actualJobId)
         .executeTakeFirst();
       if (updatedJob?.worker_id) break;
       await new Promise((r) => setTimeout(r, 1000));
@@ -297,19 +446,14 @@ async function main(): Promise<void> {
         const ec2InstanceId = worker.provider_worker_id;
         if (ec2InstanceId && ec2InstanceId.startsWith("i-")) {
           try {
-            const descArgs = [
+            const descArgs = buildAwsCliArgs([
               "ec2",
               "describe-instances",
               "--instance-ids",
               ec2InstanceId,
-              "--region",
-              REGION,
               "--output",
               "json",
-            ];
-            if (ENDPOINT_URL) {
-              descArgs.push("--endpoint-url", ENDPOINT_URL);
-            }
+            ]);
             const descOut = JSON.parse(
               execFileSync("aws", descArgs, { stdio: "pipe" }).toString(),
             );
@@ -383,7 +527,7 @@ async function main(): Promise<void> {
     }
 
     console.info(`\nTo monitor jobs & workers continuously:`);
-    console.info(`  pnpm fleet:cli status ${jobId}`);
+    console.info(`  pnpm fleet:cli status ${actualJobId}`);
     console.info(
       `  aws logs tail /veolms/workers --follow --region ${REGION}\n`,
     );
