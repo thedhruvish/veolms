@@ -24,7 +24,8 @@ describe("AWS EventBridge Scheduler Manager", () => {
 
     const manager = createAwsSchedulerManager({
       schedulerClient: mockSchedulerClient,
-      lambdaArn: "arn:aws:lambda:us-east-1:123456789012:function:veolms-fleet-manager",
+      lambdaArn:
+        "arn:aws:lambda:us-east-1:123456789012:function:veolms-fleet-manager",
       schedulerRoleArn: "arn:aws:iam::123456789012:role/VeoLMSSchedulerRole",
       scheduleName: "test-fleet-schedule",
     });
@@ -63,7 +64,8 @@ describe("AWS EventBridge Scheduler Manager", () => {
 
     const manager = createAwsSchedulerManager({
       schedulerClient: mockSchedulerClient,
-      lambdaArn: "arn:aws:lambda:us-east-1:123456789012:function:veolms-fleet-manager",
+      lambdaArn:
+        "arn:aws:lambda:us-east-1:123456789012:function:veolms-fleet-manager",
       schedulerRoleArn: "arn:aws:iam::123456789012:role/VeoLMSSchedulerRole",
       scheduleName: "test-fleet-schedule",
     });

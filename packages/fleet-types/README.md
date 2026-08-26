@@ -7,6 +7,7 @@ Shared, zero-`any` TypeScript types, contracts, quality profiles, and hardware e
 ## Core Modules
 
 ### 1. Quality Profiles & Video Formats ([`src/quality.ts`](./src/quality.ts))
+
 - Supported Video Codecs: `h264`, `h265`, `av1`.
 - Supported Audio Codecs: `aac`, `opus`.
 - Standardized `QUALITY_PROFILES` for all 8 resolutions:
@@ -23,7 +24,9 @@ Shared, zero-`any` TypeScript types, contracts, quality profiles, and hardware e
 ---
 
 ### 2. Hardware Estimation ([`src/video-job.ts`](./src/video-job.ts))
+
 The `estimateJobHardware(videoSizeBytes, qualities, duration)` function determines exact hardware specifications needed for a job:
+
 - **CPU & RAM**:
   - `2160p` (4K): Min 8 vCPUs / 16 GB RAM.
   - `1440p` or $\ge 5$ renditions: Min 4 vCPUs / 8 GB RAM.
@@ -34,6 +37,7 @@ The `estimateJobHardware(videoSizeBytes, qualities, duration)` function determin
 ---
 
 ### 3. Provider Interface Contract ([`src/provider.ts`](./src/provider.ts))
+
 Every provider package must implement the `FleetProvider` interface:
 
 ```typescript
@@ -49,13 +53,19 @@ export interface FleetProvider {
   createWorker(id: string, spec: WorkerSpec): Promise<WorkerHandle>;
   getWorker(providerWorkerId: string): Promise<WorkerHandle | null>;
   getWorkerStatus(providerWorkerId: string): Promise<WorkerStatus>;
-  execute?(providerWorkerId: string, command: readonly string[]): Promise<ExecutionResult>;
+  execute?(
+    providerWorkerId: string,
+    command: readonly string[],
+  ): Promise<ExecutionResult>;
   terminateWorker(providerWorkerId: string): Promise<void>;
   healthCheck(providerWorkerId: string): Promise<HealthStatus>;
-  
+
   // Two-way cluster reconciliation & dynamic scheduling hooks
   listActiveInstances?(): Promise<readonly ActiveProviderInstance[]>;
-  scheduleNextWakeup?(targetTime: Date, payload: Readonly<Record<string, unknown>>): Promise<void>;
+  scheduleNextWakeup?(
+    targetTime: Date,
+    payload: Readonly<Record<string, unknown>>,
+  ): Promise<void>;
   cancelWakeup?(): Promise<void>;
   verifyJobOutput?(outputPrefix: string): Promise<boolean>;
 }
@@ -64,12 +74,14 @@ export interface FleetProvider {
 ---
 
 ### 4. Worker Specifications & Handles ([`src/worker.ts`](./src/worker.ts))
+
 - `WorkerSpec`: `cpu`, `memoryMb`, `architecture` (`ARM64` / `X86_64`), `storageGb`, `region`, `amiId`, `environmentVariables`, `tags`.
 - `WorkerHandle`: `id`, `providerWorkerId`, `provider`, `status`, `privateIp`, `publicIp`, `createdAt`.
 
 ---
 
 ### 5. Monitoring & Progress Update Schemas ([`src/monitoring.ts`](./src/monitoring.ts))
+
 - `ProgressUpdate`: `workerId`, `jobId`, `progressPercent`, `processedSeconds`, `totalDurationSeconds`, `fps`, `speed`, `currentQuality`.
 - `MonitoringConfig`: `heartbeatTimeoutSeconds` (90s), `minCheckIntervalSeconds` (15s), `maxCheckIntervalSeconds` (300s).
 

@@ -53,16 +53,16 @@ The **Fleet Manager** is the control-plane orchestrator responsible for managing
 
 ## Core Components
 
-| Component | File | Description |
-| :--- | :--- | :--- |
-| **`FleetManager`** | [`src/core/fleet-manager.ts`](./src/core/fleet-manager.ts) | Master coordinator; runs ticks, monitoring cycles, job provisioning, and schedule sync. |
-| **`JobManager`** | [`src/core/video-job-manager.ts`](./src/core/video-job-manager.ts) | Atomic queue claims with `FOR UPDATE SKIP LOCKED`, status updates, and retry logic. |
-| **`WorkerManager`** | [`src/core/worker-manager.ts`](./src/core/worker-manager.ts) | Hardware sizing calculation (`cpu`, `memory`, `storage`), active worker tracking, and safe termination ordering. |
-| **`Scheduler`** | [`src/core/scheduler.ts`](./src/core/scheduler.ts) | Dynamic check-in interval calculator based on estimated duration and reported progress percentage. |
-| **`Monitor`** | [`src/core/monitor.ts`](./src/core/monitor.ts) | Two-way cluster reconciliation, heartbeat timeout detection, orphan recovery, and S3 output verification. |
-| **`ProviderResolver`** | [`src/core/provider-resolver.ts`](./src/core/provider-resolver.ts) | Pluggable dynamic import loader for provider packages (`@veolms/fleet-provider-${name}`). |
-| **`ServerlessEntry`** | [`src/entrypoints/serverless.ts`](./src/entrypoints/serverless.ts) | Universal execution cycle for AWS Lambda / Cloud Functions, parsing direct JSON, CloudEvents, base64, or HTTP proxies. |
-| **`ServerfulEntry`** | [`src/entrypoints/serverful.ts`](./src/entrypoints/serverful.ts) | Continuous background daemon loop with `AbortSignal` shutdown handling. |
+| Component              | File                                                               | Description                                                                                                            |
+| :--------------------- | :----------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------- |
+| **`FleetManager`**     | [`src/core/fleet-manager.ts`](./src/core/fleet-manager.ts)         | Master coordinator; runs ticks, monitoring cycles, job provisioning, and schedule sync.                                |
+| **`JobManager`**       | [`src/core/video-job-manager.ts`](./src/core/video-job-manager.ts) | Atomic queue claims with `FOR UPDATE SKIP LOCKED`, status updates, and retry logic.                                    |
+| **`WorkerManager`**    | [`src/core/worker-manager.ts`](./src/core/worker-manager.ts)       | Hardware sizing calculation (`cpu`, `memory`, `storage`), active worker tracking, and safe termination ordering.       |
+| **`Scheduler`**        | [`src/core/scheduler.ts`](./src/core/scheduler.ts)                 | Dynamic check-in interval calculator based on estimated duration and reported progress percentage.                     |
+| **`Monitor`**          | [`src/core/monitor.ts`](./src/core/monitor.ts)                     | Two-way cluster reconciliation, heartbeat timeout detection, orphan recovery, and S3 output verification.              |
+| **`ProviderResolver`** | [`src/core/provider-resolver.ts`](./src/core/provider-resolver.ts) | Pluggable dynamic import loader for provider packages (`@veolms/fleet-provider-${name}`).                              |
+| **`ServerlessEntry`**  | [`src/entrypoints/serverless.ts`](./src/entrypoints/serverless.ts) | Universal execution cycle for AWS Lambda / Cloud Functions, parsing direct JSON, CloudEvents, base64, or HTTP proxies. |
+| **`ServerfulEntry`**   | [`src/entrypoints/serverful.ts`](./src/entrypoints/serverful.ts)   | Continuous background daemon loop with `AbortSignal` shutdown handling.                                                |
 
 ---
 
@@ -87,6 +87,7 @@ The Fleet Manager actively reconciles state between the PostgreSQL database and 
 ## Dynamic EventBridge Scheduler Integration
 
 In serverless environments (AWS Lambda), Fleet Manager avoids expensive fixed polling:
+
 - After every tick or job claim, `fleet.syncWakeupSchedule()` computes `min(next_check_at)` across all active workers.
 - It upserts a single one-shot schedule named `veolms-fleet-next-check` in AWS EventBridge Scheduler targeting the Lambda ARN at that exact timestamp (`at(YYYY-MM-DDTHH:mm:ss)`).
 - When all active jobs complete and no workers remain, `cancelWakeup()` automatically deletes the schedule. **Zero workers = zero Lambda invocations = zero idle cost.**
@@ -143,6 +144,7 @@ pnpm --filter @veolms/fleet-manager typecheck
 ## How to Contribute a New Provider
 
 To add a new cloud provider (e.g. `@veolms/fleet-provider-gcp` or `@veolms/fleet-provider-azure`):
+
 1. Create `packages/fleet-provider-<name>`.
 2. Implement the `FleetProvider` interface defined in `@veolms/fleet-types`:
    - `createWorker(id, spec)`

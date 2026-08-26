@@ -152,7 +152,9 @@ export function createAwsProvider(
       const defaultAwsEnv: Record<string, string> = {
         AWS_REGION: region,
         STORAGE_PROVIDER: envConfig.STORAGE_PROVIDER,
-        ...(bucketName ? { S3_BUCKET: bucketName, S3_BUCKET_NAME: bucketName } : {}),
+        ...(bucketName
+          ? { S3_BUCKET: bucketName, S3_BUCKET_NAME: bucketName }
+          : {}),
         ...config.defaultEnv,
       };
 

@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { createFleetManager } from "../src/core/fleet-manager.ts";
-import type { FleetProvider, ActiveProviderInstance, WorkerHandle, WorkerSpec, WorkerStatus, HealthStatus } from "@veolms/fleet-types";
+import type { FleetProvider, WorkerHandle } from "@veolms/fleet-types";
 import type { FleetManagerConfig } from "@veolms/config";
 
 describe("Fleet Manager — State Reconciliation & Dynamic Scheduling", () => {
@@ -117,7 +117,7 @@ describe("Fleet Manager — State Reconciliation & Dynamic Scheduling", () => {
     const terminatedInstances: string[] = [];
     const mockProvider: FleetProvider = {
       name: "AWS",
-      createWorker: async () => ({} as WorkerHandle),
+      createWorker: async () => ({}) as WorkerHandle,
       getWorker: async () => null,
       getWorkerStatus: async () => "TERMINATED",
       terminateWorker: async (id) => {
@@ -195,7 +195,7 @@ describe("Fleet Manager — State Reconciliation & Dynamic Scheduling", () => {
 
     const mockProvider: FleetProvider = {
       name: "AWS",
-      createWorker: async () => ({} as WorkerHandle),
+      createWorker: async () => ({}) as WorkerHandle,
       getWorker: async () => null,
       getWorkerStatus: async () => "PROCESSING",
       terminateWorker: async (id) => {
@@ -254,7 +254,7 @@ describe("Fleet Manager — State Reconciliation & Dynamic Scheduling", () => {
 
     const mockProvider: FleetProvider = {
       name: "AWS",
-      createWorker: async () => ({} as WorkerHandle),
+      createWorker: async () => ({}) as WorkerHandle,
       getWorker: async () => null,
       getWorkerStatus: async () => "PROCESSING",
       terminateWorker: async () => {},
@@ -276,7 +276,10 @@ describe("Fleet Manager — State Reconciliation & Dynamic Scheduling", () => {
     const scheduledDate = await fleet.syncWakeupSchedule();
 
     assert.equal(scheduledDate?.toISOString(), expectedEarliest.toISOString());
-    assert.equal(scheduledWakeupTarget?.toISOString(), expectedEarliest.toISOString());
+    assert.equal(
+      scheduledWakeupTarget?.toISOString(),
+      expectedEarliest.toISOString(),
+    );
     assert.equal(cancelledWakeup, false);
   });
 
@@ -299,7 +302,7 @@ describe("Fleet Manager — State Reconciliation & Dynamic Scheduling", () => {
 
     const mockProvider: FleetProvider = {
       name: "AWS",
-      createWorker: async () => ({} as WorkerHandle),
+      createWorker: async () => ({}) as WorkerHandle,
       getWorker: async () => null,
       getWorkerStatus: async () => "PROCESSING",
       terminateWorker: async () => {},

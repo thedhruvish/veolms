@@ -169,4 +169,3 @@ z.globalRegistry.add(videoJobProgressResponseSchema, {
 z.globalRegistry.add(videoJobEventSchema, {
   id: "VideoJobEvent",
 });
-

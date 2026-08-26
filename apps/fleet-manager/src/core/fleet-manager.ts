@@ -7,7 +7,11 @@ import {
   type JobManager,
   type QueueJobParams,
 } from "./video-job-manager.ts";
-import { createMonitor, type Monitor, type ReconcileResult } from "./monitor.ts";
+import {
+  createMonitor,
+  type Monitor,
+  type ReconcileResult,
+} from "./monitor.ts";
 import { createScheduler, type Scheduler } from "./scheduler.ts";
 import { createWorkerManager, type WorkerManager } from "./worker-manager.ts";
 

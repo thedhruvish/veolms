@@ -48,18 +48,18 @@ packages/fleet-provider-aws/
 
 ## Configuration Variables
 
-| Variable | Description | Default |
-| :--- | :--- | :--- |
-| `AWS_REGION` | AWS region for EC2, S3, SSM, and EventBridge Scheduler | `us-east-1` |
-| `EC2_USE_SPOT` | Whether to launch workers as EC2 Spot instances (`true`/`false`) | `true` |
-| `EC2_IAM_INSTANCE_PROFILE` | IAM instance profile attached to worker instances | `VeoLMSWorkerInstanceProfile` |
-| `S3_BUCKET` / `S3_BUCKET_NAME` | S3 bucket containing worker bundles and video outputs | *Required* |
-| `AMI_ID` | Optional pre-baked AMI ID (bypasses dynamic Debian SSM lookup) | *Optional* |
-| `SUBNET_ID` | Optional target subnet ID for EC2 launches | *Optional* |
-| `SECURITY_GROUP_IDS` / `EC2_SECURITY_GROUP_IDS` | Comma-separated list of Security Group IDs | *Optional* |
-| `KEY_NAME` / `EC2_KEY_NAME` | Optional EC2 KeyPair name for SSH debugging | *Optional* |
-| `LAMBDA_FUNCTION_ARN` | ARN of the Fleet Manager Lambda (used by EventBridge Scheduler) | *Optional* |
-| `SCHEDULER_ROLE_ARN` | IAM Role ARN allowing EventBridge Scheduler to invoke Lambda | *Optional* |
+| Variable                                        | Description                                                      | Default                       |
+| :---------------------------------------------- | :--------------------------------------------------------------- | :---------------------------- |
+| `AWS_REGION`                                    | AWS region for EC2, S3, SSM, and EventBridge Scheduler           | `us-east-1`                   |
+| `EC2_USE_SPOT`                                  | Whether to launch workers as EC2 Spot instances (`true`/`false`) | `true`                        |
+| `EC2_IAM_INSTANCE_PROFILE`                      | IAM instance profile attached to worker instances                | `VeoLMSWorkerInstanceProfile` |
+| `S3_BUCKET` / `S3_BUCKET_NAME`                  | S3 bucket containing worker bundles and video outputs            | _Required_                    |
+| `AMI_ID`                                        | Optional pre-baked AMI ID (bypasses dynamic Debian SSM lookup)   | _Optional_                    |
+| `SUBNET_ID`                                     | Optional target subnet ID for EC2 launches                       | _Optional_                    |
+| `SECURITY_GROUP_IDS` / `EC2_SECURITY_GROUP_IDS` | Comma-separated list of Security Group IDs                       | _Optional_                    |
+| `KEY_NAME` / `EC2_KEY_NAME`                     | Optional EC2 KeyPair name for SSH debugging                      | _Optional_                    |
+| `LAMBDA_FUNCTION_ARN`                           | ARN of the Fleet Manager Lambda (used by EventBridge Scheduler)  | _Optional_                    |
+| `SCHEDULER_ROLE_ARN`                            | IAM Role ARN allowing EventBridge Scheduler to invoke Lambda     | _Optional_                    |
 
 ---
 

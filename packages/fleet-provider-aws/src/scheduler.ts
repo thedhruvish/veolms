@@ -148,7 +148,9 @@ export function createAwsSchedulerManager(
 
     async cancelWakeup(): Promise<void> {
       if (isLocalStack) {
-        console.info(`[aws-scheduler] LocalStack: cancelled wakeup schedule ${scheduleName}`);
+        console.info(
+          `[aws-scheduler] LocalStack: cancelled wakeup schedule ${scheduleName}`,
+        );
         return;
       }
 
@@ -158,13 +160,21 @@ export function createAwsSchedulerManager(
             Name: scheduleName,
           }),
         );
-        console.info(`[aws-scheduler] Deleted EventBridge schedule ${scheduleName}`);
+        console.info(
+          `[aws-scheduler] Deleted EventBridge schedule ${scheduleName}`,
+        );
       } catch (err: unknown) {
-        if (err instanceof ResourceNotFoundException || (err as { name?: string })?.name === "ResourceNotFoundException") {
+        if (
+          err instanceof ResourceNotFoundException ||
+          (err as { name?: string })?.name === "ResourceNotFoundException"
+        ) {
           // Schedule does not exist, nothing to delete
           return;
         }
-        console.error(`[aws-scheduler] Error deleting EventBridge schedule ${scheduleName}:`, err);
+        console.error(
+          `[aws-scheduler] Error deleting EventBridge schedule ${scheduleName}:`,
+          err,
+        );
       }
     },
 

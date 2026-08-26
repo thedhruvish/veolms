@@ -281,9 +281,15 @@ async function runDestroySteps(
 
   // 7. Delete EventBridge Scheduler Schedule & Role
   console.info("\n[7/8] Deleting EventBridge Scheduler Schedule & Role...");
-  exec(`aws scheduler delete-schedule --name veolms-fleet-next-check --region ${region} 2>/dev/null`);
-  exec(`aws iam delete-role-policy --role-name VeoLMSSchedulerRole --policy-name VeoLMSSchedulerInvokeLambda 2>/dev/null`);
-  const schedRoleDel = exec(`aws iam delete-role --role-name VeoLMSSchedulerRole 2>/dev/null`);
+  exec(
+    `aws scheduler delete-schedule --name veolms-fleet-next-check --region ${region} 2>/dev/null`,
+  );
+  exec(
+    `aws iam delete-role-policy --role-name VeoLMSSchedulerRole --policy-name VeoLMSSchedulerInvokeLambda 2>/dev/null`,
+  );
+  const schedRoleDel = exec(
+    `aws iam delete-role --role-name VeoLMSSchedulerRole 2>/dev/null`,
+  );
   if (schedRoleDel !== null) {
     console.info(`  ${green("✔")} Deleted IAM role: VeoLMSSchedulerRole`);
   } else {

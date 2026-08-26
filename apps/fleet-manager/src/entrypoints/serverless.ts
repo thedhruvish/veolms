@@ -132,7 +132,10 @@ export async function runServerlessFleetCycle(
           typeof import.meta.url === "string" &&
           import.meta.url
         ) {
-          repoRoot = join(dirname(fileURLToPath(import.meta.url)), "../../../..");
+          repoRoot = join(
+            dirname(fileURLToPath(import.meta.url)),
+            "../../../..",
+          );
         }
       } catch {
         // Fall back to process.cwd()

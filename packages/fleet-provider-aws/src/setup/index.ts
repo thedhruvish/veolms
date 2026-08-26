@@ -189,7 +189,9 @@ async function ask(
 ): Promise<string> {
   const hint = defaultVal !== undefined ? dim(` (default: ${defaultVal})`) : "";
   if (isNonInteractive()) {
-    console.log(`  ${bold("?")} ${question}${hint}: ${green(defaultVal ?? "")}`);
+    console.log(
+      `  ${bold("?")} ${question}${hint}: ${green(defaultVal ?? "")}`,
+    );
     return defaultVal ?? "";
   }
   const answer = await rl.question(`  ${bold("?")} ${question}${hint}: `);
@@ -210,9 +212,7 @@ async function askChoice<T extends string>(
   });
   if (isNonInteractive()) {
     const chosen = choices[defaultIndex]!.value;
-    console.log(
-      `  Auto-selected: ${green(choices[defaultIndex]!.label)}`,
-    );
+    console.log(`  Auto-selected: ${green(choices[defaultIndex]!.label)}`);
     return chosen;
   }
   const answer = await rl.question(
@@ -230,30 +230,30 @@ async function askChoice<T extends string>(
 
 // ─── AWS Resource Provisioners ────────────────────────────────────────────────
 
+const TRUST_POLICY = JSON.stringify({
+  Version: "2012-10-17",
+  Statement: [
+    {
+      Effect: "Allow",
+      Principal: {
+        Service: [
+          "ec2.amazonaws.com",
+          "lambda.amazonaws.com",
+          "scheduler.amazonaws.com",
+        ],
+      },
+      Action: "sts:AssumeRole",
+    },
+  ],
+});
+
 async function createRole(iam: IAMClient): Promise<string> {
   info(`Creating IAM role ${bold(ROLE_NAME)}...`);
-
-  const trustPolicy = JSON.stringify({
-    Version: "2012-10-17",
-    Statement: [
-      {
-        Effect: "Allow",
-        Principal: {
-          Service: [
-            "ec2.amazonaws.com",
-            "lambda.amazonaws.com",
-            "scheduler.amazonaws.com",
-          ],
-        },
-        Action: "sts:AssumeRole",
-      },
-    ],
-  });
 
   const createResult = await iam.send(
     new CreateRoleCommand({
       RoleName: ROLE_NAME,
-      AssumeRolePolicyDocument: trustPolicy,
+      AssumeRolePolicyDocument: TRUST_POLICY,
       Description:
         "VeoLMS EC2 Worker Role - CloudWatch Logs, SSM, and optional S3 access.",
       Tags: [
@@ -287,7 +287,7 @@ export async function checkOrCreateRole(
       await iam.send(
         new UpdateAssumeRolePolicyCommand({
           RoleName: ROLE_NAME,
-          PolicyDocument: trustPolicy,
+          PolicyDocument: TRUST_POLICY,
         }),
       );
     } else {
@@ -1144,15 +1144,17 @@ function parseSetupCliArgs(): Partial<SetupAnswers> & {
 } {
   const result: Record<string, unknown> = {};
   for (const arg of process.argv.slice(2)) {
+    const eqIdx = arg.indexOf("=");
+    const val = eqIdx >= 0 ? arg.slice(eqIdx + 1).trim() : "";
     if (arg.startsWith("--region=")) {
-      result.region = arg.slice("--region=".length).trim();
+      result.region = val;
     } else if (arg.startsWith("--bucket=") || arg.startsWith("--s3-bucket=")) {
-      result.s3BucketName = arg.split("=")[1].trim();
+      result.s3BucketName = val;
       result.storageProvider = "s3";
     } else if (arg.startsWith("--db=") || arg.startsWith("--database-url=")) {
-      result.databaseUrl = arg.split("=")[1].trim();
+      result.databaseUrl = val;
     } else if (arg.startsWith("--mode=") || arg.startsWith("--fleet-mode=")) {
-      result.fleetMode = arg.split("=")[1].trim() as FleetMode;
+      result.fleetMode = val as FleetMode;
     } else if (arg === "--update") {
       result.action = "update";
     } else if (arg === "--destroy") {
@@ -1172,7 +1174,7 @@ function loadExistingConfig(repoRoot: string): Partial<SetupAnswers> {
   const fleetEnv = parseEnvFile(fleetEnvPath);
   const workerEnv = parseEnvFile(workerEnvPath);
   const cliArgs = parseSetupCliArgs();
-  const combined: Record<string, string> = {
+  const combined: Record<string, string | undefined> = {
     ...workerEnv,
     ...fleetEnv,
     ...process.env,
@@ -1208,9 +1210,7 @@ function loadExistingConfig(repoRoot: string): Partial<SetupAnswers> {
         .filter(Boolean)
     : ["c7g.xlarge", "c7g.2xlarge", "c6i.xlarge"];
   const bootMode: BootMode =
-    combined["EC2_BOOT_MODE"] === "ami" || combined["AMI_ID"]
-      ? "ami"
-      : "fresh";
+    combined["EC2_BOOT_MODE"] === "ami" || combined["AMI_ID"] ? "ami" : "fresh";
   const amiId = combined["AMI_ID"] || null;
   const maxWorkers = parseInt(combined["MAX_WORKERS"] || "8", 10) || 8;
   const workerIdlePollSeconds =

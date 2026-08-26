@@ -66,7 +66,9 @@ describe("AWS Fleet Provider", () => {
                       InstanceId: "i-0123456789abcdef1",
                       State: { Name: "pending" },
                       LaunchTime: new Date("2026-08-25T12:05:00Z"),
-                      Tags: [{ Key: "ManagedBy", Value: "veolms-fleet-manager" }],
+                      Tags: [
+                        { Key: "ManagedBy", Value: "veolms-fleet-manager" },
+                      ],
                     },
                   ],
                 },
@@ -113,9 +115,10 @@ describe("AWS Fleet Provider", () => {
       assert.equal(verified, true);
       assert.equal(requestedKey, "transcoded/video-1/master.m3u8");
 
-      const notFound = await provider.verifyJobOutput!("transcoded/nonexistent/");
+      const notFound = await provider.verifyJobOutput!(
+        "transcoded/nonexistent/",
+      );
       assert.equal(notFound, false);
     });
   });
 });
-
