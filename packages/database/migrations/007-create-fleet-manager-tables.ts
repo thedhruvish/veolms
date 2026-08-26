@@ -133,7 +133,13 @@ export async function up(database: Kysely<unknown>): Promise<void> {
         'JOB_FAILED',
         'WORKER_TERMINATION_REQUESTED',
         'WORKER_TERMINATED',
-        'WORKER_ERROR'
+        'WORKER_ERROR',
+        'SPOT_INTERRUPTED',
+        'ORPHAN_INSTANCE_TERMINATED',
+        'JOB_OUTPUT_VERIFIED',
+        'JOB_OUTPUT_VERIFICATION_FAILED',
+        'SCHEDULE_UPDATED',
+        'SCHEDULE_CLEARED'
       )`,
     )
     .execute();

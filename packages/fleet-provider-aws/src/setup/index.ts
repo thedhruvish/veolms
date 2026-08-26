@@ -35,6 +35,7 @@ import {
   AddRoleToInstanceProfileCommand,
   PutRolePolicyCommand,
   GetRoleCommand,
+  UpdateAssumeRolePolicyCommand,
 } from "@aws-sdk/client-iam";
 import {
   EC2Client,
@@ -171,12 +172,26 @@ function isValidS3BucketName(name: string): boolean {
   );
 }
 
+function isNonInteractive(): boolean {
+  return (
+    process.argv.includes("--yes") ||
+    process.argv.includes("-y") ||
+    process.argv.includes("--non-interactive") ||
+    process.env["NON_INTERACTIVE"] === "true" ||
+    process.env["SETUP_NON_INTERACTIVE"] === "true"
+  );
+}
+
 async function ask(
   rl: readline.Interface,
   question: string,
   defaultVal?: string,
 ): Promise<string> {
   const hint = defaultVal !== undefined ? dim(` (default: ${defaultVal})`) : "";
+  if (isNonInteractive()) {
+    console.log(`  ${bold("?")} ${question}${hint}: ${green(defaultVal ?? "")}`);
+    return defaultVal ?? "";
+  }
   const answer = await rl.question(`  ${bold("?")} ${question}${hint}: `);
   const trimmed = answer.trim();
   return trimmed === "" && defaultVal !== undefined ? defaultVal : trimmed;
@@ -193,6 +208,13 @@ async function askChoice<T extends string>(
     const marker = i === defaultIndex ? green("→") : " ";
     console.log(`    ${marker} ${bold(`${i + 1}.`)} ${c.label}`);
   });
+  if (isNonInteractive()) {
+    const chosen = choices[defaultIndex]!.value;
+    console.log(
+      `  Auto-selected: ${green(choices[defaultIndex]!.label)}`,
+    );
+    return chosen;
+  }
   const answer = await rl.question(
     `  Enter number ${dim(`(default: ${defaultIndex + 1})`)}: `,
   );
@@ -217,7 +239,11 @@ async function createRole(iam: IAMClient): Promise<string> {
       {
         Effect: "Allow",
         Principal: {
-          Service: ["ec2.amazonaws.com", "lambda.amazonaws.com"],
+          Service: [
+            "ec2.amazonaws.com",
+            "lambda.amazonaws.com",
+            "scheduler.amazonaws.com",
+          ],
         },
         Action: "sts:AssumeRole",
       },
@@ -258,6 +284,12 @@ export async function checkOrCreateRole(
     if (existing.Role?.Arn) {
       ok(`IAM role ${bold(ROLE_NAME)} already exists — reusing.`);
       roleArn = existing.Role.Arn;
+      await iam.send(
+        new UpdateAssumeRolePolicyCommand({
+          RoleName: ROLE_NAME,
+          PolicyDocument: trustPolicy,
+        }),
+      );
     } else {
       roleArn = await createRole(iam);
     }
@@ -371,6 +403,26 @@ export async function checkOrCreateRole(
           "scheduler:UpdateSchedule",
           "scheduler:DeleteSchedule",
           "scheduler:GetSchedule",
+        ],
+        Resource: "*",
+      },
+      {
+        Sid: "EventBridgeLambdaInvoke",
+        Effect: "Allow",
+        Action: "lambda:InvokeFunction",
+        Resource: "*",
+      },
+      {
+        Sid: "CloudWatchLogsFullAccess",
+        Effect: "Allow",
+        Action: [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
+          "logs:GetLogEvents",
+          "logs:FilterLogEvents",
         ],
         Resource: "*",
       },
@@ -1087,12 +1139,52 @@ function parseEnvFile(filePath: string): Record<string, string> {
   }
 }
 
+function parseSetupCliArgs(): Partial<SetupAnswers> & {
+  action?: "setup" | "update" | "destroy";
+} {
+  const result: Record<string, unknown> = {};
+  for (const arg of process.argv.slice(2)) {
+    if (arg.startsWith("--region=")) {
+      result.region = arg.slice("--region=".length).trim();
+    } else if (arg.startsWith("--bucket=") || arg.startsWith("--s3-bucket=")) {
+      result.s3BucketName = arg.split("=")[1].trim();
+      result.storageProvider = "s3";
+    } else if (arg.startsWith("--db=") || arg.startsWith("--database-url=")) {
+      result.databaseUrl = arg.split("=")[1].trim();
+    } else if (arg.startsWith("--mode=") || arg.startsWith("--fleet-mode=")) {
+      result.fleetMode = arg.split("=")[1].trim() as FleetMode;
+    } else if (arg === "--update") {
+      result.action = "update";
+    } else if (arg === "--destroy") {
+      result.action = "destroy";
+    } else if (arg === "--setup") {
+      result.action = "setup";
+    }
+  }
+  return result as Partial<SetupAnswers> & {
+    action?: "setup" | "update" | "destroy";
+  };
+}
+
 function loadExistingConfig(repoRoot: string): Partial<SetupAnswers> {
   const fleetEnvPath = path.join(repoRoot, "apps", "fleet-manager", ".env");
   const workerEnvPath = path.join(repoRoot, "apps", "media-worker", ".env");
   const fleetEnv = parseEnvFile(fleetEnvPath);
   const workerEnv = parseEnvFile(workerEnvPath);
-  const combined = { ...workerEnv, ...fleetEnv, ...process.env };
+  const cliArgs = parseSetupCliArgs();
+  const combined: Record<string, string> = {
+    ...workerEnv,
+    ...fleetEnv,
+    ...process.env,
+  };
+  if (cliArgs.region) combined["AWS_REGION"] = cliArgs.region;
+  if (cliArgs.s3BucketName) {
+    combined["S3_BUCKET"] = cliArgs.s3BucketName;
+    combined["S3_BUCKET_NAME"] = cliArgs.s3BucketName;
+    combined["STORAGE_PROVIDER"] = "s3";
+  }
+  if (cliArgs.databaseUrl) combined["DATABASE_URL"] = cliArgs.databaseUrl;
+  if (cliArgs.fleetMode) combined["FLEET_MODE"] = cliArgs.fleetMode;
 
   const targetEnv: TargetEnv = combined["AWS_ENDPOINT_URL"]
     ? "localstack"
@@ -1116,7 +1208,9 @@ function loadExistingConfig(repoRoot: string): Partial<SetupAnswers> {
         .filter(Boolean)
     : ["c7g.xlarge", "c7g.2xlarge", "c6i.xlarge"];
   const bootMode: BootMode =
-    combined["EC2_BOOT_MODE"] === "fresh" ? "fresh" : "ami";
+    combined["EC2_BOOT_MODE"] === "ami" || combined["AMI_ID"]
+      ? "ami"
+      : "fresh";
   const amiId = combined["AMI_ID"] || null;
   const maxWorkers = parseInt(combined["MAX_WORKERS"] || "8", 10) || 8;
   const workerIdlePollSeconds =
@@ -1451,7 +1545,7 @@ async function runSetupFlow(
 
   // ── Step 7: EC2 Boot Mode ──────────────────────────────────────────────────
   step(7, TOTAL_STEPS, "EC2 Worker Boot Mode");
-  const defaultBootMode = initialDefaults?.bootMode ?? "ami";
+  const defaultBootMode = initialDefaults?.bootMode ?? "fresh";
   const bootMode = await askChoice(
     rl,
     "How should EC2 workers boot?",
@@ -1621,6 +1715,7 @@ async function runSetupFlow(
   let lambdaFunctionArn: string | null = null;
   if (fleetMode === "serverless") {
     info("Setting up Lambda function...");
+    const lambdaArn = `arn:aws:lambda:${region}:${accountId}:function:${LAMBDA_FUNCTION_NAME}`;
     const lambdaEnvVars: Record<string, string> = {
       DATABASE_URL: databaseUrl,
       FLEET_MODE: "serverless",
@@ -1631,6 +1726,8 @@ async function runSetupFlow(
       EC2_USE_SPOT: String(useSpot),
       MAX_WORKERS: String(maxWorkers),
       WORKER_IDLE_POLL_SECONDS: String(workerIdlePollSeconds),
+      SCHEDULER_ROLE_ARN: workerRoleArn,
+      LAMBDA_FUNCTION_ARN: lambdaArn,
     };
     if (s3BucketName) {
       lambdaEnvVars["S3_BUCKET"] = s3BucketName;
@@ -2071,32 +2168,53 @@ export async function runAwsInfraSetup(): Promise<void> {
   // Resolve repo root relative to this package (packages/fleet-provider-aws)
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const repoRoot = path.resolve(__dirname, "..", "..", "..", "..");
+  const existingConfig = loadExistingConfig(repoRoot);
+  const cliArgs = parseSetupCliArgs();
+
+  const isNonInteractive =
+    process.argv.includes("--yes") ||
+    process.argv.includes("-y") ||
+    process.argv.includes("--non-interactive") ||
+    process.env["NON_INTERACTIVE"] === "true" ||
+    process.env["SETUP_NON_INTERACTIVE"] === "true";
+
+  const requestedAction =
+    cliArgs.action ??
+    (process.argv.includes("--update")
+      ? "update"
+      : process.argv.includes("--destroy")
+        ? "destroy"
+        : process.argv.includes("--setup")
+          ? "setup"
+          : undefined);
 
   const rl = readline.createInterface({ input, output });
 
   try {
-    const action = await askChoice<SetupAction>(
-      rl,
-      "What infrastructure action would you like to perform?",
-      [
-        {
-          label: `Setup Infrastructure   ${dim("— Provision fresh AWS resources and generate .env")}`,
-          value: "setup",
-        },
-        {
-          label: `Update Infrastructure  ${dim("— Sync IAM, update Lambda code/config, worker bundle, .env")}`,
-          value: "update",
-        },
-        {
-          label: `Destroy Infrastructure ${dim("— Teardown and delete all AWS resources")}`,
-          value: "destroy",
-        },
-      ],
-      0,
-    );
+    const action =
+      requestedAction ??
+      (await askChoice<SetupAction>(
+        rl,
+        "What infrastructure action would you like to perform?",
+        [
+          {
+            label: `Setup Infrastructure   ${dim("— Provision fresh AWS resources and generate .env")}`,
+            value: "setup",
+          },
+          {
+            label: `Update Infrastructure  ${dim("— Sync IAM, update Lambda code/config, worker bundle, .env")}`,
+            value: "update",
+          },
+          {
+            label: `Destroy Infrastructure ${dim("— Teardown and delete all AWS resources")}`,
+            value: "destroy",
+          },
+        ],
+        0,
+      ));
 
     if (action === "setup") {
-      await runSetupFlow(rl, repoRoot);
+      await runSetupFlow(rl, repoRoot, existingConfig);
     } else if (action === "update") {
       await runUpdateFlow(rl, repoRoot);
     } else if (action === "destroy") {

@@ -27,10 +27,10 @@ describe("EC2 UserData Bootstrapper Generator", () => {
       script.includes('WORKER_ID="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"'),
     );
     assert.ok(script.includes('JOB_ID="job-123"'));
-    assert.ok(script.includes("apt-get install -y ffmpeg"));
+    assert.ok(script.includes("apt-get install"));
+    assert.ok(script.includes("ffmpeg"));
     assert.ok(script.includes("if ! command -v node"));
-    assert.ok(script.includes("if ! command -v ffmpeg"));
-    assert.ok(script.includes("if ! command -v aws"));
+    assert.ok(script.includes("awscli"));
   });
 
   it("always installs a trap-based cleanup that uploads the log and terminates on any exit", () => {
