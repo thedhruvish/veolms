@@ -132,6 +132,17 @@ export const videoJobProgressResponseSchema = z.object({
   error: z.string().nullable().optional(),
 });
 
+export const videoMetadataSchema = z.looseObject({
+  durationSeconds: z.number().nonnegative().optional(),
+  width: z.number().int().positive().optional(),
+  height: z.number().int().positive().optional(),
+  bitrate: z.number().nonnegative().optional(),
+  format: z.string().optional(),
+  codec: z.string().optional(),
+  fps: z.number().positive().optional(),
+  rawStreams: z.array(z.record(z.string(), z.unknown())).optional(),
+});
+
 export const videoJobEventSchema = z.looseObject({
   action: lambdaActionSchema.optional(),
   jobId: z.uuid().optional(),
@@ -140,6 +151,7 @@ export const videoJobEventSchema = z.looseObject({
   outputPrefix: z.string().min(1).optional(),
   qualities: z.array(videoQualityLevelSchema).min(1).optional(),
   videoSize: z.coerce.number().int().nonnegative().optional(),
+  videoMetadata: videoMetadataSchema.optional(),
 });
 
 export const lambdaResponseSchema = z.object({
@@ -155,6 +167,7 @@ export type PresignMediaResponse = z.infer<typeof presignMediaResponseSchema>;
 export type VideoJobProgressResponse = z.infer<
   typeof videoJobProgressResponseSchema
 >;
+export type VideoMetadata = z.infer<typeof videoMetadataSchema>;
 export type VideoJobEvent = z.infer<typeof videoJobEventSchema>;
 export type LambdaResponse = z.infer<typeof lambdaResponseSchema>;
 
@@ -165,6 +178,9 @@ z.globalRegistry.add(presignMediaResponseSchema, {
 });
 z.globalRegistry.add(videoJobProgressResponseSchema, {
   id: "VideoJobProgressResponse",
+});
+z.globalRegistry.add(videoMetadataSchema, {
+  id: "VideoMetadata",
 });
 z.globalRegistry.add(videoJobEventSchema, {
   id: "VideoJobEvent",
