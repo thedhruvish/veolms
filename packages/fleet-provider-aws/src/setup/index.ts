@@ -2206,25 +2206,36 @@ async function runUpdateFlow(
     info("No previous configuration detected — will use standard defaults.");
   }
 
-  const updateChoice = await askChoice<"full" | "bundles" | "interactive">(
-    rl,
-    "What would you like to update?",
-    [
-      {
-        label: `Full Infrastructure Update ${dim("— Sync IAM, Security Group, log groups, Lambda, worker bundle, .env")}`,
-        value: "full",
-      },
-      {
-        label: `Code & Bundles Only        ${dim("— Fast rebuild and update of Lambda function + S3 worker bundle")}`,
-        value: "bundles",
-      },
-      {
-        label: `Interactive Re-configure   ${dim("— Review and change configuration values step-by-step")}`,
-        value: "interactive",
-      },
-    ],
-    0,
-  );
+  // --bundles-only (or UPDATE_MODE=bundles) skips the prompt and picks
+  // "Code & Bundles Only" directly — the fast path that updates Lambda
+  // function code (fleet-manager + probe) and the S3 worker bundle
+  // without touching IAM/security-group/log-group state or rebuilding
+  // and republishing the ffprobe Docker layer.
+  const forceBundlesOnly =
+    process.argv.includes("--bundles-only") ||
+    process.env["UPDATE_MODE"] === "bundles";
+
+  const updateChoice = forceBundlesOnly
+    ? "bundles"
+    : await askChoice<"full" | "bundles" | "interactive">(
+        rl,
+        "What would you like to update?",
+        [
+          {
+            label: `Full Infrastructure Update ${dim("— Sync IAM, Security Group, log groups, Lambda, worker bundle, .env")}`,
+            value: "full",
+          },
+          {
+            label: `Code & Bundles Only        ${dim("— Fast rebuild and update of Lambda function + S3 worker bundle")}`,
+            value: "bundles",
+          },
+          {
+            label: `Interactive Re-configure   ${dim("— Review and change configuration values step-by-step")}`,
+            value: "interactive",
+          },
+        ],
+        0,
+      );
 
   if (updateChoice === "interactive") {
     await runSetupFlow(rl, repoRoot, existing);

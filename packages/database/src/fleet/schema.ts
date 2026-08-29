@@ -17,6 +17,8 @@ export type {
   WorkerStatus,
 };
 
+export type HardwareProfile = "NANO" | "MICRO" | "SMALL" | "MEDIUM" | "LARGE";
+
 export interface VideoJobTable {
   id: string;
   video_id: string;
@@ -30,6 +32,18 @@ export interface VideoJobTable {
   attempts: Generated<number>;
   max_attempts: Generated<number>;
   error_message: string | null;
+  // Resolved once at queue time by estimateJobHardware() in
+  // @veolms/fleet-types, from probed source metadata when available. NULL
+  // means "no probe ran (direct trigger) or probing failed" — every
+  // reader falls back to the qualities+size heuristic. video_metadata is
+  // the only signal any sizing logic actually needs; hardware_profile is
+  // persisted purely for observability/filtering (see migration 008).
+  hardware_profile: HardwareProfile | null;
+  video_metadata: JSONColumnType<
+    Record<string, unknown>,
+    Record<string, unknown> | string,
+    Record<string, unknown> | string
+  > | null;
   created_at: Generated<Date>;
   started_at: Date | null;
   completed_at: Date | null;

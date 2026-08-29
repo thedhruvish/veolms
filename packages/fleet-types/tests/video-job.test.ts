@@ -2,6 +2,8 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   estimateJobHardware,
+  resolveJobHardware,
+  resolveMachineProfile,
   videoJobStatusSchema,
   JOB_STATUSES,
 } from "../src/video-job.ts";
@@ -31,6 +33,7 @@ describe("Job & Worker Schemas and Contracts", () => {
     assert.equal(hw.minMemoryMb, 4096);
     assert.equal(hw.storageGb, 30);
     assert.equal(hw.architecture, "ARM64");
+    assert.equal(hw.profile, "MICRO");
   });
 
   it("scales cpu/memory/storage up for 2160p regardless of size", () => {
@@ -38,6 +41,7 @@ describe("Job & Worker Schemas and Contracts", () => {
     assert.equal(hw.minCpu, 8);
     assert.equal(hw.minMemoryMb, 16384);
     assert.equal(hw.storageGb, 80);
+    assert.equal(hw.profile, "MEDIUM");
   });
 
   it("scales up when 5+ qualities are requested even without 1440p/2160p", () => {
@@ -50,6 +54,103 @@ describe("Job & Worker Schemas and Contracts", () => {
     ]);
     assert.equal(hw.minCpu, 4);
     assert.equal(hw.minMemoryMb, 8192);
+    assert.equal(hw.profile, "SMALL");
+  });
+
+  describe("resolveMachineProfile — metadata-driven sizing", () => {
+    it("falls back to the exact legacy qualities-only profile when no metadata is available", () => {
+      assert.equal(resolveMachineProfile(["720p"]), "MICRO");
+      assert.equal(resolveMachineProfile(["1440p", "1080p"]), "SMALL");
+      assert.equal(resolveMachineProfile(["2160p"]), "MEDIUM");
+      assert.equal(resolveMachineProfile(["720p"], null), "MICRO");
+      assert.equal(resolveMachineProfile(["720p"], undefined), "MICRO");
+    });
+
+    it("bumps a low-quality-count job up when the source is 4K/60fps/HEVC — a heavier decode than the requested output implies", () => {
+      const profile = resolveMachineProfile(["480p"], {
+        width: 3840,
+        height: 2160,
+        fps: 60,
+        codec: "hevc",
+      });
+      assert.equal(profile, "LARGE");
+    });
+
+    it("never lets qualities alone imply NANO — only confirmed-small metadata can", () => {
+      // Same low qualities count, but no metadata: stays at the legacy
+      // MICRO floor, never guesses down to NANO.
+      assert.equal(resolveMachineProfile(["360p"]), "MICRO");
+    });
+
+    it("steps down to NANO only when metadata confirms a small, simple source with a low quality count", () => {
+      const profile = resolveMachineProfile(["360p"], {
+        width: 640,
+        height: 360,
+        fps: 24,
+        codec: "h264",
+      });
+      assert.equal(profile, "NANO");
+    });
+
+    it("does not step down to NANO when 3+ qualities are requested even for a small source", () => {
+      const profile = resolveMachineProfile(["480p", "360p", "240p"], {
+        width: 640,
+        height: 360,
+        fps: 24,
+        codec: "h264",
+      });
+      assert.equal(profile, "MICRO");
+    });
+
+    it("clamps at LARGE instead of exceeding it for an extreme 8K/120fps/AV1 source", () => {
+      const profile = resolveMachineProfile(["2160p"], {
+        width: 7680,
+        height: 4320,
+        fps: 120,
+        codec: "av1",
+      });
+      assert.equal(profile, "LARGE");
+    });
+  });
+
+  describe("estimateJobHardware — with videoMetadata", () => {
+    it("uses videoMetadata.durationSeconds when no explicit duration is given", () => {
+      const hw = estimateJobHardware(0, ["720p"], {
+        videoMetadata: { durationSeconds: 3600 },
+      });
+      assert.equal(hw.estimatedDurationSeconds, 3600);
+    });
+
+    it("prefers an explicit durationSeconds over videoMetadata.durationSeconds", () => {
+      const hw = estimateJobHardware(0, ["720p"], {
+        durationSeconds: 1200,
+        videoMetadata: { durationSeconds: 3600 },
+      });
+      assert.equal(hw.estimatedDurationSeconds, 1200);
+    });
+  });
+
+  describe("resolveJobHardware", () => {
+    it("is a pure function of (video_size, qualities, video_metadata) — same row, same result", () => {
+      const job = {
+        video_size: 0,
+        qualities: ["480p"] as const,
+        video_metadata: { width: 3840, height: 2160, fps: 60, codec: "hevc" },
+      };
+      const first = resolveJobHardware(job);
+      const second = resolveJobHardware(job);
+      assert.deepEqual(first, second);
+      assert.equal(first.profile, "LARGE");
+    });
+
+    it("treats a null video_metadata (not probed) the same as absent metadata", () => {
+      const hw = resolveJobHardware({
+        video_size: 0,
+        qualities: ["720p"],
+        video_metadata: null,
+      });
+      assert.equal(hw.profile, "MICRO");
+    });
   });
 
   it("scales storage and estimated duration up for a large source video", () => {

@@ -21,6 +21,8 @@ interface FfprobeStream {
   readonly avg_frame_rate?: string;
   readonly duration?: string | number;
   readonly bit_rate?: string | number;
+  readonly pix_fmt?: string;
+  readonly bits_per_raw_sample?: string | number;
   readonly [key: string]: unknown;
 }
 
@@ -74,7 +76,7 @@ export async function probeVideoMetadata(
     "-v",
     "error",
     "-show_entries",
-    "format=duration,size,bit_rate,format_name:stream=width,height,codec_name,codec_type,r_frame_rate,avg_frame_rate,duration,bit_rate",
+    "format=duration,size,bit_rate,format_name:stream=width,height,codec_name,codec_type,r_frame_rate,avg_frame_rate,duration,bit_rate,pix_fmt,bits_per_raw_sample",
     "-of",
     "json",
     videoSourceUrlOrPath,
@@ -139,6 +141,11 @@ export async function probeVideoMetadata(
       format: format.format_name,
       codec: videoStream?.codec_name,
       fps,
+      pixelFormat: videoStream?.pix_fmt,
+      bitDepth:
+        videoStream?.bits_per_raw_sample !== undefined
+          ? Number(videoStream.bits_per_raw_sample) || undefined
+          : undefined,
       rawStreams: streams as Record<string, unknown>[],
     };
   } catch (err: unknown) {

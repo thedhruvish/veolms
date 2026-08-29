@@ -40,32 +40,66 @@ export async function claimNextQueuedVideoJob(
       .orderBy("created_at", "asc");
 
     if (worker) {
+      // Prefer the tier estimateJobHardware() already resolved (and
+      // persisted as hardware_profile) at queue time — it accounts for
+      // probed source metadata (resolution/fps/codec), not just requested
+      // output qualities. Each CASE-on-hardware_profile is wrapped in a
+      // COALESCE against the exact legacy qualities-only heuristic, kept
+      // only as a fallback for rows queued before this column existed
+      // (hardware_profile IS NULL).
       query = query
         .where(
           sql<boolean>`
-            CASE
-              WHEN qualities @> ARRAY['2160p'] THEN 8
-              WHEN qualities @> ARRAY['1440p'] OR cardinality(qualities) >= 5 THEN 4
-              ELSE 2
-            END <= ${worker.cpu}
+            COALESCE(
+              CASE hardware_profile
+                WHEN 'NANO' THEN 1
+                WHEN 'MICRO' THEN 2
+                WHEN 'SMALL' THEN 4
+                WHEN 'MEDIUM' THEN 8
+                WHEN 'LARGE' THEN 16
+              END,
+              CASE
+                WHEN qualities @> ARRAY['2160p'] THEN 8
+                WHEN qualities @> ARRAY['1440p'] OR cardinality(qualities) >= 5 THEN 4
+                ELSE 2
+              END
+            ) <= ${worker.cpu}
           `,
         )
         .where(
           sql<boolean>`
-            CASE
-              WHEN qualities @> ARRAY['2160p'] THEN 16384
-              WHEN qualities @> ARRAY['1440p'] OR cardinality(qualities) >= 5 THEN 8192
-              ELSE 4096
-            END <= ${worker.memory_mb}
+            COALESCE(
+              CASE hardware_profile
+                WHEN 'NANO' THEN 2048
+                WHEN 'MICRO' THEN 4096
+                WHEN 'SMALL' THEN 8192
+                WHEN 'MEDIUM' THEN 16384
+                WHEN 'LARGE' THEN 32768
+              END,
+              CASE
+                WHEN qualities @> ARRAY['2160p'] THEN 16384
+                WHEN qualities @> ARRAY['1440p'] OR cardinality(qualities) >= 5 THEN 8192
+                ELSE 4096
+              END
+            ) <= ${worker.memory_mb}
           `,
         )
         .where(
           sql<boolean>`
-            CASE
-              WHEN qualities @> ARRAY['2160p'] THEN 80
-              WHEN qualities @> ARRAY['1440p'] OR cardinality(qualities) >= 5 THEN 50
-              ELSE 30
-            END <= ${worker.storage_gb}
+            COALESCE(
+              CASE hardware_profile
+                WHEN 'NANO' THEN 20
+                WHEN 'MICRO' THEN 30
+                WHEN 'SMALL' THEN 50
+                WHEN 'MEDIUM' THEN 80
+                WHEN 'LARGE' THEN 130
+              END,
+              CASE
+                WHEN qualities @> ARRAY['2160p'] THEN 80
+                WHEN qualities @> ARRAY['1440p'] OR cardinality(qualities) >= 5 THEN 50
+                ELSE 30
+              END
+            ) <= ${worker.storage_gb}
           `,
         )
         .where(sql<boolean>`${worker.architecture} in ('ARM64', 'X86_64')`);

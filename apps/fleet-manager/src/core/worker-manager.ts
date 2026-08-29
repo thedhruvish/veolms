@@ -2,10 +2,10 @@ import { randomUUID } from "node:crypto";
 import type { Kysely, Selectable } from "kysely";
 import type { Database, VideoJobTable } from "@veolms/database";
 import {
-  estimateJobHardware,
+  resolveJobHardware,
   type FleetEventType,
   type FleetProvider,
-  type VideoQualityLevel,
+  type JobHardwareFields,
   type WorkerHandle,
   type WorkerSpec,
 } from "@veolms/fleet-types";
@@ -36,15 +36,13 @@ export interface WorkerManager {
   ): Promise<void>;
 }
 
+export type HardwareSizedJob = JobHardwareFields & { id?: string };
+
 export function calculateWorkerSpec(
-  job: {
-    id?: string;
-    video_size: number;
-    qualities: readonly VideoQualityLevel[];
-  },
+  job: HardwareSizedJob,
   options: { databaseUrl?: string; jobId?: string } = {},
 ): WorkerSpec {
-  const hw = estimateJobHardware(job.video_size, job.qualities);
+  const hw = resolveJobHardware(job);
 
   return {
     cpu: hw.minCpu,
@@ -174,10 +172,7 @@ export function createWorkerManager(options: {
       });
 
       // 4. Initialize worker_monitoring schedule
-      const estimatedDuration = estimateJobHardware(
-        job.video_size,
-        job.qualities,
-      ).estimatedDurationSeconds;
+      const estimatedDuration = resolveJobHardware(job).estimatedDurationSeconds;
       const initialCheck = scheduler.calculateNextCheck({
         estimatedDurationSec: estimatedDuration,
         progressPercent: 0,

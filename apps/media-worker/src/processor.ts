@@ -6,7 +6,7 @@ import { promisify } from "node:util";
 import {
   ARCHITECTURES,
   DEFAULT_SEGMENT_DURATION_SECONDS,
-  estimateJobHardware,
+  resolveJobHardware,
   type JobHardwareRequirements,
   type VideoQualityLevel,
 } from "@veolms/fleet-types";
@@ -254,7 +254,11 @@ export async function executeTranscodeJob(
       throw new Error(`Job ${jobId} is assigned to another worker`);
     }
 
-    hardware = estimateJobHardware(job.video_size, job.qualities);
+    // Same pure function of (video_size, qualities, video_metadata) the
+    // fleet manager used to size this worker at provisioning time, reading
+    // the same persisted row — so this re-check can never disagree with
+    // provisioning-time sizing.
+    hardware = resolveJobHardware(job);
     const claimHardware = hardware;
 
     await db.transaction().execute(async (trx) => {

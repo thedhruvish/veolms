@@ -92,6 +92,95 @@ describe("AWS Fleet Provider", () => {
     });
   });
 
+  describe("createWorker — instance candidate retry", () => {
+    it("falls through to the next same-size candidate when the preferred type has no capacity", async () => {
+      const { createAwsProvider } = await import("../src/provider.ts");
+      const attemptedInstanceTypes: string[] = [];
+
+      const mockEc2 = {
+        send: async (cmd: any) => {
+          const name = cmd.constructor.name;
+          if (name === "RunInstancesCommand") {
+            attemptedInstanceTypes.push(cmd.input.InstanceType);
+            if (cmd.input.InstanceType === "c7g.large") {
+              const err = new Error("no capacity");
+              err.name = "InsufficientInstanceCapacity";
+              throw err;
+            }
+            return {
+              Instances: [
+                {
+                  InstanceId: "i-second-candidate",
+                  State: { Name: "pending" },
+                  LaunchTime: new Date("2026-08-29T00:00:00Z"),
+                },
+              ],
+            };
+          }
+          if (name === "DescribeImagesCommand") {
+            return {};
+          }
+          return {};
+        },
+      } as any;
+
+      const provider = createAwsProvider({
+        ec2Client: mockEc2,
+        amiId: "ami-test-1234567890abcdef0",
+      });
+
+      const handle = await provider.createWorker("worker-1", {
+        cpu: 2,
+        memoryMb: 4096,
+        architecture: "ARM64",
+        storageGb: 30,
+        region: "us-east-1",
+        environmentVariables: {},
+      });
+
+      assert.deepEqual(attemptedInstanceTypes, ["c7g.large", "c8g.large"]);
+      assert.equal(handle.providerWorkerId, "i-second-candidate");
+    });
+
+    it("raises immediately on a non-retryable error without trying further candidates", async () => {
+      const { createAwsProvider } = await import("../src/provider.ts");
+      const attemptedInstanceTypes: string[] = [];
+
+      const mockEc2 = {
+        send: async (cmd: any) => {
+          const name = cmd.constructor.name;
+          if (name === "RunInstancesCommand") {
+            attemptedInstanceTypes.push(cmd.input.InstanceType);
+            const err = new Error("not authorized");
+            err.name = "UnauthorizedOperation";
+            throw err;
+          }
+          return {};
+        },
+      } as any;
+
+      const provider = createAwsProvider({
+        ec2Client: mockEc2,
+        amiId: "ami-test-1234567890abcdef0",
+      });
+
+      await assert.rejects(
+        () =>
+          provider.createWorker("worker-2", {
+            cpu: 2,
+            memoryMb: 4096,
+            architecture: "ARM64",
+            storageGb: 30,
+            region: "us-east-1",
+            environmentVariables: {},
+          }),
+        (err: Error) => err.name === "UnauthorizedOperation",
+      );
+
+      assert.deepEqual(attemptedInstanceTypes, ["c7g.large"]);
+    });
+  });
+
   describe("verifyJobOutput", () => {
     it("should verify existence of master.m3u8 playlist in S3", async () => {
       const { createAwsProvider } = await import("../src/provider.ts");

@@ -65,6 +65,8 @@ describe("Worker Manager Spec Calculations", () => {
       attempts: 0,
       max_attempts: 3,
       error_message: null,
+      hardware_profile: null,
+      video_metadata: null,
       created_at: new Date(),
       started_at: null,
       completed_at: null,
@@ -93,6 +95,8 @@ describe("Worker Manager Spec Calculations", () => {
       attempts: 0,
       max_attempts: 3,
       error_message: null,
+      hardware_profile: null,
+      video_metadata: null,
       created_at: new Date(),
       started_at: null,
       completed_at: null,
@@ -104,5 +108,76 @@ describe("Worker Manager Spec Calculations", () => {
     assert.equal(spec.cpu, 2);
     assert.equal(spec.memoryMb, 4096);
     assert.equal(spec.storageGb, 30);
+  });
+
+  it("scales up a low-quality-count job when probed source metadata confirms a demanding 4K/60fps/HEVC source", () => {
+    const jobLowQualityRichSource: Selectable<VideoJobTable> = {
+      id: "c2eebc99-9c0b-4ef8-bb6d-6bb9bd380a33",
+      video_id: "media-4k-hevc-1",
+      status: "QUEUED",
+      video_key: "raw/drone-4k.mp4",
+      output_prefix: "transcoded/drone-4k",
+      video_size: 0,
+      // Only a single low-effort output rendition requested — the old,
+      // qualities-only heuristic would size this as the smallest tier.
+      qualities: ["480p"],
+      worker_id: null,
+      progress_percent: 0,
+      attempts: 0,
+      max_attempts: 3,
+      error_message: null,
+      hardware_profile: null,
+      video_metadata: {
+        width: 3840,
+        height: 2160,
+        fps: 60,
+        codec: "hevc",
+        durationSeconds: 120,
+      },
+      created_at: new Date(),
+      started_at: null,
+      completed_at: null,
+      failed_at: null,
+      updated_at: new Date(),
+    };
+
+    const spec = workerManager.calculateWorkerSpec(jobLowQualityRichSource);
+    // 4K resolution floor (MEDIUM) + codec bump (HEVC) clamps at LARGE.
+    assert.equal(spec.cpu, 16);
+    assert.equal(spec.memoryMb, 32768);
+  });
+
+  it("steps a small, simple, low-quality-count job down to the NANO tier when metadata confirms it", () => {
+    const jobTinySource: Selectable<VideoJobTable> = {
+      id: "d3eebc99-9c0b-4ef8-bb6d-6bb9bd380a44",
+      video_id: "media-tiny-1",
+      status: "QUEUED",
+      video_key: "raw/tiny-clip.mp4",
+      output_prefix: "transcoded/tiny-clip",
+      video_size: 0,
+      qualities: ["240p"],
+      worker_id: null,
+      progress_percent: 0,
+      attempts: 0,
+      max_attempts: 3,
+      error_message: null,
+      hardware_profile: null,
+      video_metadata: {
+        width: 640,
+        height: 360,
+        fps: 24,
+        codec: "h264",
+        durationSeconds: 30,
+      },
+      created_at: new Date(),
+      started_at: null,
+      completed_at: null,
+      failed_at: null,
+      updated_at: new Date(),
+    };
+
+    const spec = workerManager.calculateWorkerSpec(jobTinySource);
+    assert.equal(spec.cpu, 1);
+    assert.equal(spec.memoryMb, 2048);
   });
 });

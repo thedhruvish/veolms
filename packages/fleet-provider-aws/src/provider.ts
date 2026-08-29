@@ -29,12 +29,32 @@ import {
 } from "./bootstrapper.ts";
 import { loadAwsProviderConfig } from "./config.ts";
 import { resolveDebianAmiId } from "./debian-ami.ts";
-import { selectOptimalInstanceType } from "./instance-types.ts";
+import {
+  filterAllowedInstanceTypes,
+  selectOptimalInstanceType,
+} from "./instance-types.ts";
 import {
   createAwsSchedulerManager,
   type AwsSchedulerConfig,
   type AwsSchedulerManager,
 } from "./scheduler.ts";
+
+// Capacity/availability-class RunInstances errors: worth trying the next
+// same-size candidate for. Everything else (bad AMI, IAM, subnet, etc.)
+// would fail identically on every candidate, so it's raised immediately
+// instead of wasting time retrying.
+const RETRYABLE_EC2_ERROR_NAMES = new Set([
+  "InsufficientInstanceCapacity",
+  "Unsupported",
+  "InstanceLimitExceeded",
+  "SpotMaxPriceTooLow",
+  "MaxSpotInstanceCountExceeded",
+]);
+
+function isRetryableEc2Error(err: unknown): boolean {
+  const name = (err as { name?: string } | undefined)?.name;
+  return typeof name === "string" && RETRYABLE_EC2_ERROR_NAMES.has(name);
+}
 
 export interface AwsProviderConfig {
   readonly region?: string;
@@ -135,7 +155,17 @@ export function createAwsProvider(
     name: "AWS",
 
     async createWorker(id: string, spec: WorkerSpec): Promise<WorkerHandle> {
-      const instanceType = selectOptimalInstanceType(spec);
+      const candidates = selectOptimalInstanceType(spec);
+      const allowedInstanceTypes = envConfig.EC2_ALLOWED_INSTANCE_TYPES
+        ? envConfig.EC2_ALLOWED_INSTANCE_TYPES.split(",")
+            .map((t) => t.trim())
+            .filter(Boolean)
+        : undefined;
+      const instanceTypesToTry = filterAllowedInstanceTypes(
+        candidates,
+        allowedInstanceTypes,
+      );
+
       const imageId =
         amiId ??
         (isLocalStack
@@ -166,60 +196,85 @@ export function createAwsProvider(
 
       const userDataBase64 = encodeUserDataBase64(userDataScript);
 
-      const command = new RunInstancesCommand({
-        ImageId: imageId,
-        InstanceType: instanceType as _InstanceType,
-        MinCount: 1,
-        MaxCount: 1,
-        UserData: userDataBase64,
-        SubnetId: subnetId,
-        SecurityGroupIds: securityGroupIds ? [...securityGroupIds] : undefined,
-        KeyName: keyName,
-        IamInstanceProfile: iamInstanceProfile
-          ? { Name: iamInstanceProfile }
-          : undefined,
-        InstanceMarketOptions: useSpot ? { MarketType: "spot" } : undefined,
-        BlockDeviceMappings: [
-          {
-            DeviceName: rootDeviceName,
-            Ebs: {
-              VolumeSize: Math.max(30, spec.storageGb),
-              VolumeType: "gp3",
-              DeleteOnTermination: true,
+      // Try each same-size candidate in turn, most-preferred first. Only a
+      // capacity/availability-class error moves on to the next candidate —
+      // any other error (bad AMI, IAM, subnet, ...) would fail identically
+      // on every candidate, so it's raised immediately instead.
+      let lastError: unknown;
+      for (const instanceType of instanceTypesToTry) {
+        const command = new RunInstancesCommand({
+          ImageId: imageId,
+          InstanceType: instanceType as _InstanceType,
+          MinCount: 1,
+          MaxCount: 1,
+          UserData: userDataBase64,
+          SubnetId: subnetId,
+          SecurityGroupIds: securityGroupIds
+            ? [...securityGroupIds]
+            : undefined,
+          KeyName: keyName,
+          IamInstanceProfile: iamInstanceProfile
+            ? { Name: iamInstanceProfile }
+            : undefined,
+          InstanceMarketOptions: useSpot ? { MarketType: "spot" } : undefined,
+          BlockDeviceMappings: [
+            {
+              DeviceName: rootDeviceName,
+              Ebs: {
+                VolumeSize: Math.max(30, spec.storageGb),
+                VolumeType: "gp3",
+                DeleteOnTermination: true,
+              },
             },
-          },
-        ],
-        TagSpecifications: [
-          {
-            ResourceType: "instance",
-            Tags: [
-              { Key: "Name", Value: `veolms-worker-${id.slice(0, 8)}` },
-              { Key: "WorkerId", Value: id },
-              { Key: "ManagedBy", Value: "veolms-fleet-manager" },
-              { Key: "Architecture", Value: spec.architecture },
-            ],
-          },
-        ],
-      });
+          ],
+          TagSpecifications: [
+            {
+              ResourceType: "instance",
+              Tags: [
+                { Key: "Name", Value: `veolms-worker-${id.slice(0, 8)}` },
+                { Key: "WorkerId", Value: id },
+                { Key: "ManagedBy", Value: "veolms-fleet-manager" },
+                { Key: "Architecture", Value: spec.architecture },
+              ],
+            },
+          ],
+        });
 
-      const response = await ec2.send(command);
-      const instance = response.Instances?.[0];
+        try {
+          const response = await ec2.send(command);
+          const instance = response.Instances?.[0];
 
-      if (!instance || !instance.InstanceId) {
-        throw new Error(`Failed to launch EC2 instance for worker ${id}`);
+          if (!instance || !instance.InstanceId) {
+            throw new Error(`Failed to launch EC2 instance for worker ${id}`);
+          }
+
+          return {
+            id,
+            providerWorkerId: instance.InstanceId,
+            provider: "AWS",
+            status: "STARTING",
+            privateIp: instance.PrivateIpAddress ?? null,
+            publicIp: instance.PublicIpAddress ?? null,
+            createdAt: instance.LaunchTime
+              ? new Date(instance.LaunchTime)
+              : new Date(),
+          };
+        } catch (err: unknown) {
+          lastError = err;
+          if (!isRetryableEc2Error(err)) {
+            throw err;
+          }
+          const errName = err instanceof Error ? err.name : "unknown error";
+          console.warn(
+            `[fleet-provider-aws] ${instanceType} unavailable for worker ${id} (${errName}) — trying next candidate...`,
+          );
+        }
       }
 
-      return {
-        id,
-        providerWorkerId: instance.InstanceId,
-        provider: "AWS",
-        status: "STARTING",
-        privateIp: instance.PrivateIpAddress ?? null,
-        publicIp: instance.PublicIpAddress ?? null,
-        createdAt: instance.LaunchTime
-          ? new Date(instance.LaunchTime)
-          : new Date(),
-      };
+      throw new Error(
+        `Failed to launch EC2 instance for worker ${id}: exhausted candidates [${instanceTypesToTry.join(", ")}]`,
+        { cause: lastError },
+      );
     },
 
     async getWorker(providerWorkerId: string): Promise<WorkerHandle | null> {

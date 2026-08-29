@@ -5,7 +5,11 @@ import {
   type Database,
   type VideoJobTable,
 } from "@veolms/database";
-import type { VideoQualityLevel, VideoMetadata } from "@veolms/fleet-types";
+import {
+  estimateJobHardware,
+  type VideoQualityLevel,
+  type VideoMetadata,
+} from "@veolms/fleet-types";
 import type { FleetManagerConfig } from "@veolms/config";
 
 export interface QueueJobParams {
@@ -154,6 +158,24 @@ export function createJobManager(options: {
       const id = params.jobId ?? randomUUID();
       const videoSize = params.videoSize ?? 0;
       const now = new Date();
+
+      // Persist the probed metadata subset (minus ffprobe's raw per-stream
+      // dump) alongside the resolved profile tier. estimateJobHardware()
+      // is a pure function of (video_size, qualities, video_metadata), so
+      // every later reader (worker provisioning, the atomic claim query,
+      // the worker's own claim-time capacity check) recomputes the exact
+      // same cpu/memory/storage/duration from this persisted row — nothing
+      // else needs to be stored. hardware_profile itself is kept only for
+      // observability/filtering (see migration 008).
+      const persistedMetadata = params.videoMetadata
+        ? (() => {
+            const { rawStreams: _rawStreams, ...rest } = params.videoMetadata;
+            return rest;
+          })()
+        : null;
+      const hardwareProfile = estimateJobHardware(videoSize, params.qualities, {
+        videoMetadata: persistedMetadata,
+      }).profile;
 
       const metaWidth = params.videoMetadata?.width ?? null;
       const metaHeight = params.videoMetadata?.height ?? null;
@@ -338,6 +360,8 @@ export function createJobManager(options: {
             attempts: 0,
             max_attempts: config.MAX_RETRIES,
             error_message: null,
+            hardware_profile: hardwareProfile,
+            video_metadata: persistedMetadata,
             created_at: now,
             started_at: null,
             completed_at: null,
@@ -361,6 +385,8 @@ export function createJobManager(options: {
             attempts: 0,
             max_attempts: config.MAX_RETRIES,
             error_message: null,
+            hardware_profile: hardwareProfile,
+            video_metadata: persistedMetadata,
             created_at: now,
             started_at: null,
             completed_at: null,

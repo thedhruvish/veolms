@@ -123,6 +123,7 @@ function buildFakeDb(options: {
   return {
     selectFrom(table: string) {
       if (table === "video_jobs") return makeChain(() => jobRow);
+      if (table === "media_assets") return makeChain(() => undefined);
       throw new Error(`db: unexpected selectFrom ${table}`);
     },
     updateTable(table: string) {
