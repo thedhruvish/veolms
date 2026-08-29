@@ -1,6 +1,6 @@
 import { sql, type Kysely, type Selectable } from "kysely";
 import type { Database } from "../schema.ts";
-import type { VideoJobTable } from "./schema.ts";
+import type { VideoJobTable } from "../schema/fleet.schema.ts";
 
 /**
  * Atomically claims the oldest QUEUED job and marks it PROCESSING.
