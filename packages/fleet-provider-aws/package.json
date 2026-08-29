@@ -6,7 +6,9 @@
     ".": "./src/index.ts",
     "./setup": "./src/setup/index.ts",
     "./destroy": "./src/setup/destroy.ts",
-    "./build-ami": "./src/setup/build-ami.ts"
+    "./build-ami": "./src/setup/build-ami.ts",
+    "./prober": "./src/prober.ts",
+    "./probe-lambda": "./src/probe-lambda.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
@@ -27,6 +29,7 @@
     "@aws-sdk/client-scheduler": "^3.1112.0",
     "@aws-sdk/client-ssm": "^3.750.0",
     "@aws-sdk/client-sts": "^3.1112.0",
+    "@aws-sdk/s3-request-presigner": "^3.1113.0",
     "@veolms/config": "workspace:*",
     "@veolms/contracts": "workspace:*",
     "@veolms/fleet-types": "workspace:*",

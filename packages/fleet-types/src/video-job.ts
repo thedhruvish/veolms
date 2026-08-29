@@ -3,7 +3,9 @@ import {
   JOB_STATUSES,
   VIDEO_JOB_STATUSES,
   videoJobStatusSchema,
+  videoMetadataSchema,
   type VideoJobStatus,
+  type VideoMetadata,
 } from "@veolms/contracts";
 import {
   DEFAULT_QUALITIES,
@@ -12,8 +14,13 @@ import {
   type VideoQualityLevel,
 } from "./quality.ts";
 
-export { JOB_STATUSES, VIDEO_JOB_STATUSES, videoJobStatusSchema };
-export type { VideoJobStatus };
+export {
+  JOB_STATUSES,
+  VIDEO_JOB_STATUSES,
+  videoJobStatusSchema,
+  videoMetadataSchema,
+};
+export type { VideoJobStatus, VideoMetadata };
 
 // The codec/segment settings a job used to be able to override per-row were
 // never actually set by the real inserter (the backend API only ever writes

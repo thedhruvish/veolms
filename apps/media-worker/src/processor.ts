@@ -384,11 +384,39 @@ export async function executeTranscodeJob(
       }
     }
 
-    // 4. Probe Video Metadata
-    const sourceMetadata = await probeVideoMetadata(
-      inputVideoPath,
-      config.FFPROBE_PATH,
-    );
+    // 4. Probe Video Metadata (or reuse from DB if already probed)
+    const mediaAsset = await db
+      .selectFrom("media_assets")
+      .selectAll()
+      .where("id", "=", job.video_id)
+      .executeTakeFirst();
+
+    let sourceMetadata: VideoMetadata;
+
+    if (
+      mediaAsset &&
+      typeof mediaAsset.width === "number" &&
+      mediaAsset.width > 0 &&
+      typeof mediaAsset.height === "number" &&
+      mediaAsset.height > 0 &&
+      mediaAsset.duration_seconds !== null &&
+      Number(mediaAsset.duration_seconds) > 0
+    ) {
+      console.info(
+        `[media-worker] Reusing video metadata from database: ${mediaAsset.width}x${mediaAsset.height}, duration: ${mediaAsset.duration_seconds}s`,
+      );
+      sourceMetadata = {
+        width: mediaAsset.width,
+        height: mediaAsset.height,
+        durationSeconds: Number(mediaAsset.duration_seconds),
+      };
+    } else {
+      console.info(`[media-worker] Probing video metadata from source file...`);
+      sourceMetadata = await probeVideoMetadata(
+        inputVideoPath,
+        config.FFPROBE_PATH,
+      );
+    }
 
     // 5. Build FFmpeg command for requested qualities array
     const targetQualities: readonly VideoQualityLevel[] = [

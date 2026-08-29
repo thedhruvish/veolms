@@ -98,6 +98,9 @@ export function extractVideoJobEvent(rawEvent: unknown): VideoJobEvent {
   ) {
     result.videoSize = Number(candidate.videoSize);
   }
+  if (candidate.videoMetadata && typeof candidate.videoMetadata === "object") {
+    result.videoMetadata = candidate.videoMetadata as Record<string, unknown>;
+  }
 
   return result as VideoJobEvent;
 }
@@ -169,8 +172,25 @@ export async function runServerlessFleetCycle(
     // 1. If action is QUEUE and video parameters are provided, ensure job is queued (idempotent)
     if (event.action === "QUEUE" && event.videoKey) {
       const videoKey = event.videoKey;
-      const videoId = event.videoId ?? event.jobId ?? videoKey;
-      const outputPrefix = event.outputPrefix ?? `transcoded/${videoId}`;
+      const isUuid = (val: string) =>
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          val,
+        );
+
+      const videoId =
+        event.videoId && isUuid(event.videoId)
+          ? event.videoId
+          : event.jobId && isUuid(event.jobId)
+            ? event.jobId
+            : undefined;
+
+      const jobId =
+        event.jobId && isUuid(event.jobId) ? event.jobId : undefined;
+
+      const filename = videoKey.split("/").pop() || "video.mp4";
+      const cleanFilename = filename.replace(/\.[^/.]+$/, "");
+      const outputPrefix = event.outputPrefix ?? `transcoded/${cleanFilename}/`;
+
       const qualities: readonly VideoQualityLevel[] = event.qualities ?? [
         "1080p",
         "720p",
@@ -179,12 +199,13 @@ export async function runServerlessFleetCycle(
       ];
 
       await fleet.queueJob({
-        jobId: event.jobId,
+        jobId,
         videoId,
         videoKey,
         outputPrefix,
         qualities,
         videoSize: event.videoSize ? Number(event.videoSize) : undefined,
+        videoMetadata: event.videoMetadata,
       });
     }
 

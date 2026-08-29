@@ -50,6 +50,7 @@ import {
   GetFunctionCommand,
   Runtime,
   PackageType,
+  Architecture,
   UpdateFunctionCodeCommand,
   UpdateFunctionConfigurationCommand,
 } from "@aws-sdk/client-lambda";
@@ -77,6 +78,13 @@ import {
 
 import { checkAwsCredentials } from "./aws-cli-check.ts";
 import { runAwsInfraDestroy } from "./destroy.ts";
+import {
+  isDockerRunning,
+  buildFfprobeLayer,
+  publishFfprobeLayer,
+  resolveRepoRoot,
+  type LambdaArchitecture,
+} from "./layer-builder.ts";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -84,8 +92,10 @@ const ROLE_NAME = "VeoLMSWorkerRole";
 const INSTANCE_PROFILE_NAME = "VeoLMSWorkerInstanceProfile";
 const SECURITY_GROUP_NAME = "VeoLMSWorkerSecurityGroup";
 const LAMBDA_FUNCTION_NAME = "veolms-fleet-manager";
+const PROBE_LAMBDA_FUNCTION_NAME = "veolms-video-metadata-probe";
 const LOG_GROUP_WORKERS = "/veolms/workers";
 const LOG_GROUP_FLEET = "/veolms/fleet-manager";
+const LOG_GROUP_PROBE = "/aws/lambda/veolms-video-metadata-probe";
 const LOG_RETENTION_DAYS = 30;
 const LOCALSTACK_DOCKER_AMI_ID = "ami-df5de72bdb3b3";
 
@@ -107,6 +117,8 @@ interface SetupAnswers {
   readonly accountId: string;
   readonly databaseUrl: string;
   readonly fleetMode: FleetMode;
+  readonly lambdaArch?: LambdaArchitecture;
+  readonly setupProbeLambda?: boolean;
   readonly storageProvider: StorageProvider;
   readonly s3BucketName: string | null;
   readonly s3CredentialMode: CredentialMode | null;
@@ -125,6 +137,8 @@ interface SetupResult {
   readonly workerRoleArn: string;
   readonly instanceProfileArn: string;
   readonly lambdaFunctionArn: string | null;
+  readonly probeLambdaArn?: string | null;
+  readonly ffprobeLayerArn?: string | null;
   readonly logGroupWorkers: string;
   readonly logGroupFleet: string;
   readonly s3BucketName: string | null;
@@ -632,14 +646,42 @@ function createZipFromBuffers(
   return total;
 }
 
+export const AWS_RESERVED_ENV_KEYS = new Set([
+  "AWS_REGION",
+  "AWS_DEFAULT_REGION",
+  "_HANDLER",
+  "_X_AMZN_TRACE_ID",
+  "AWS_LAMBDA_FUNCTION_NAME",
+  "AWS_LAMBDA_FUNCTION_VERSION",
+  "AWS_LAMBDA_LOG_GROUP_NAME",
+  "AWS_LAMBDA_LOG_STREAM_NAME",
+  "AWS_LAMBDA_RUNTIME_API",
+  "AWS_EXECUTION_ENV",
+  "LAMBDA_TASK_ROOT",
+  "LAMBDA_RUNTIME_DIR",
+]);
+
+/**
+ * Filters out AWS Lambda reserved environment variables that cannot be modified via the API.
+ */
+export function sanitizeLambdaEnvVars(
+  vars: Readonly<Record<string, string>>,
+): Record<string, string> {
+  const sanitized: Record<string, string> = {};
+  for (const [key, value] of Object.entries(vars)) {
+    if (
+      !AWS_RESERVED_ENV_KEYS.has(key) &&
+      value !== undefined &&
+      value !== null
+    ) {
+      sanitized[key] = String(value);
+    }
+  }
+  return sanitized;
+}
+
 function buildLambdaBundleZip(): Uint8Array {
-  const repoRoot = path.resolve(
-    path.dirname(fileURLToPath(import.meta.url)),
-    "..",
-    "..",
-    "..",
-    "..",
-  );
+  const repoRoot = resolveRepoRoot();
   const universalSource = path.join(
     repoRoot,
     "apps/fleet-manager/src/entrypoints/serverless.ts",
@@ -785,13 +827,7 @@ export async function buildAndUploadWorkerBundle(
   region: string,
 ): Promise<boolean> {
   try {
-    const repoRoot = path.resolve(
-      path.dirname(fileURLToPath(import.meta.url)),
-      "..",
-      "..",
-      "..",
-      "..",
-    );
+    const repoRoot = resolveRepoRoot();
     const workerSource = path.join(repoRoot, "apps/media-worker/src/index.ts");
     if (!fsSync.existsSync(workerSource)) {
       warn(
@@ -891,18 +927,18 @@ async function updateExistingLambda(
       ZipFile: lambdaZip,
     }),
   );
-  await waitUntilFunctionUpdated(lambda);
+  await waitUntilFunctionUpdated(lambda, LAMBDA_FUNCTION_NAME);
 
   await lambda.send(
     new UpdateFunctionConfigurationCommand({
       FunctionName: LAMBDA_FUNCTION_NAME,
       Role: roleArn,
       Environment: {
-        Variables: {
+        Variables: sanitizeLambdaEnvVars({
           LOG_LEVEL: "info",
           FLEET_MODE: "serverless",
           ...envVars,
-        },
+        }),
       },
     }),
   );
@@ -910,10 +946,13 @@ async function updateExistingLambda(
   return functionArn;
 }
 
-async function waitUntilFunctionUpdated(lambda: LambdaClient): Promise<void> {
+async function waitUntilFunctionUpdated(
+  lambda: LambdaClient,
+  functionName: string = LAMBDA_FUNCTION_NAME,
+): Promise<void> {
   for (let attempt = 0; attempt < 15; attempt++) {
     const res = await lambda.send(
-      new GetFunctionCommand({ FunctionName: LAMBDA_FUNCTION_NAME }),
+      new GetFunctionCommand({ FunctionName: functionName }),
     );
     if (res.Configuration?.LastUpdateStatus !== "InProgress") return;
     await new Promise((r) => setTimeout(r, 2000));
@@ -924,8 +963,11 @@ async function setupLambda(
   region: string,
   roleArn: string,
   envVars: Readonly<Record<string, string>>,
+  arch: "arm64" | "x86_64" = "arm64",
 ): Promise<string | null> {
   const lambda = new LambdaClient({ region });
+  const architecture =
+    arch === "x86_64" ? Architecture.x86_64 : Architecture.arm64;
 
   try {
     const existing = await lambda.send(
@@ -944,7 +986,7 @@ async function setupLambda(
   }
 
   info(
-    `Building and creating Lambda function ${bold(LAMBDA_FUNCTION_NAME)}...`,
+    `Building and creating Lambda function ${bold(LAMBDA_FUNCTION_NAME)} (${arch})...`,
   );
   const lambdaZip = buildLambdaBundleZip();
 
@@ -959,16 +1001,17 @@ async function setupLambda(
           Handler: "index.handler",
           Code: { ZipFile: lambdaZip },
           PackageType: PackageType.Zip,
+          Architectures: [architecture],
           Description:
             "VeoLMS Fleet Manager - serverless control plane for video transcoding jobs",
           Timeout: 900,
           MemorySize: 512,
           Environment: {
-            Variables: {
+            Variables: sanitizeLambdaEnvVars({
               LOG_LEVEL: "info",
               FLEET_MODE: "serverless",
               ...envVars,
-            },
+            }),
           },
           Tags: {
             ManagedBy: "veolms-infra-setup",
@@ -1001,6 +1044,169 @@ async function setupLambda(
       warn(
         "Deploy the fleet-manager Lambda manually after building the bundle.",
       );
+      return null;
+    }
+  }
+  return null;
+}
+
+export function buildProbeLambdaBundleZip(): Uint8Array {
+  const repoRoot = resolveRepoRoot();
+  const probeSource = path.join(
+    repoRoot,
+    "packages/fleet-provider-aws/src/probe-lambda.ts",
+  );
+  const distDir = path.join(repoRoot, "dist/probe-lambda");
+  if (!fsSync.existsSync(distDir)) {
+    fsSync.mkdirSync(distDir, { recursive: true });
+  }
+  const outfile = path.join(distDir, "index.js");
+  esbuild.buildSync({
+    entryPoints: [probeSource],
+    bundle: true,
+    platform: "node",
+    target: "node22",
+    format: "cjs",
+    outfile,
+    logLevel: "silent",
+  });
+
+  const jsContent = fsSync.readFileSync(outfile);
+
+  try {
+    const zipPath = path.join(distDir, "function.zip");
+    execSync(`cd "${distDir}" && zip -q -9 function.zip index.js`, {
+      stdio: "pipe",
+    });
+    if (fsSync.existsSync(zipPath)) {
+      return fsSync.readFileSync(zipPath);
+    }
+  } catch {
+    // Fall back to pure JS zip generator with valid CRC32
+  }
+
+  return createZipFromBuffers([{ name: "index.js", content: jsContent }]);
+}
+
+async function updateExistingProbeLambda(
+  lambda: LambdaClient,
+  roleArn: string,
+  layerArn: string | null,
+  envVars: Readonly<Record<string, string>>,
+  functionArn: string,
+): Promise<string> {
+  ok(
+    `Lambda function ${bold(PROBE_LAMBDA_FUNCTION_NAME)} already exists — updating.`,
+  );
+
+  const lambdaZip = buildProbeLambdaBundleZip();
+  await lambda.send(
+    new UpdateFunctionCodeCommand({
+      FunctionName: PROBE_LAMBDA_FUNCTION_NAME,
+      ZipFile: lambdaZip,
+    }),
+  );
+  await waitUntilFunctionUpdated(lambda, PROBE_LAMBDA_FUNCTION_NAME);
+
+  await lambda.send(
+    new UpdateFunctionConfigurationCommand({
+      FunctionName: PROBE_LAMBDA_FUNCTION_NAME,
+      Role: roleArn,
+      Layers: layerArn ? [layerArn] : undefined,
+      Environment: {
+        Variables: sanitizeLambdaEnvVars({
+          LOG_LEVEL: "info",
+          FFPROBE_PATH: "/opt/bin/ffprobe",
+          ...envVars,
+        }),
+      },
+    }),
+  );
+  ok(`Updated code + configuration for ${bold(PROBE_LAMBDA_FUNCTION_NAME)}`);
+  return functionArn;
+}
+
+async function setupProbeLambda(
+  region: string,
+  roleArn: string,
+  layerArn: string | null,
+  arch: "arm64" | "x86_64",
+  envVars: Readonly<Record<string, string>>,
+): Promise<string | null> {
+  const lambda = new LambdaClient({ region });
+  const architecture =
+    arch === "x86_64" ? Architecture.x86_64 : Architecture.arm64;
+
+  try {
+    const existing = await lambda.send(
+      new GetFunctionCommand({ FunctionName: PROBE_LAMBDA_FUNCTION_NAME }),
+    );
+    if (existing.Configuration?.FunctionArn) {
+      return await updateExistingProbeLambda(
+        lambda,
+        roleArn,
+        layerArn,
+        envVars,
+        existing.Configuration.FunctionArn,
+      );
+    }
+  } catch {
+    // Doesn't exist — create it
+  }
+
+  info(
+    `Building and creating Lambda function ${bold(PROBE_LAMBDA_FUNCTION_NAME)} (${arch})...`,
+  );
+  const lambdaZip = buildProbeLambdaBundleZip();
+
+  const maxRetries = 5;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const created = await lambda.send(
+        new CreateFunctionCommand({
+          FunctionName: PROBE_LAMBDA_FUNCTION_NAME,
+          Runtime: Runtime.nodejs22x,
+          Role: roleArn,
+          Handler: "index.handler",
+          Code: { ZipFile: lambdaZip },
+          PackageType: PackageType.Zip,
+          Architectures: [architecture],
+          Layers: layerArn ? [layerArn] : undefined,
+          Description:
+            "VeoLMS Video Metadata Probe Lambda (extracts metadata via ffprobe layer and invokes fleet manager)",
+          Timeout: 60,
+          MemorySize: 512,
+          Environment: {
+            Variables: sanitizeLambdaEnvVars({
+              LOG_LEVEL: "info",
+              FFPROBE_PATH: "/opt/bin/ffprobe",
+              ...envVars,
+            }),
+          },
+          Tags: {
+            ManagedBy: "veolms-infra-setup",
+            Project: "VeoLMS",
+          },
+          LoggingConfig: {
+            LogFormat: "JSON",
+            LogGroup: LOG_GROUP_PROBE,
+          },
+        }),
+      );
+      const fnArn = created.FunctionArn ?? null;
+      if (fnArn)
+        ok(`Created Lambda function ${bold(PROBE_LAMBDA_FUNCTION_NAME)}`);
+      return fnArn;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (attempt < maxRetries) {
+        info(
+          `Waiting for IAM role propagation (attempt ${attempt}/${maxRetries})...`,
+        );
+        await new Promise((r) => setTimeout(r, 4000));
+        continue;
+      }
+      warn(`Could not create probe Lambda function: ${msg}`);
       return null;
     }
   }
@@ -1059,6 +1265,16 @@ async function generateEnvFiles(
   }
   if (result.lambdaFunctionArn) {
     fleetEnv["LAMBDA_FUNCTION_ARN"] = result.lambdaFunctionArn;
+  }
+  if (answers.lambdaArch) {
+    fleetEnv["LAMBDA_ARCHITECTURE"] = answers.lambdaArch;
+  }
+  if (result.probeLambdaArn) {
+    fleetEnv["PROBE_LAMBDA_ARN"] = result.probeLambdaArn;
+    fleetEnv["PROBE_LAMBDA_NAME"] = PROBE_LAMBDA_FUNCTION_NAME;
+  }
+  if (result.ffprobeLayerArn) {
+    fleetEnv["FFPROBE_LAYER_ARN"] = result.ffprobeLayerArn;
   }
   if (answers.targetEnv === "localstack" && answers.endpointUrl) {
     fleetEnv["AWS_ENDPOINT_URL"] = answers.endpointUrl;
@@ -1229,12 +1445,17 @@ function loadExistingConfig(repoRoot: string): Partial<SetupAnswers> {
       combined["EC2_SECURITY_GROUP_ID"] ||
       null
     : null;
+  const lambdaArch: LambdaArchitecture =
+    combined["LAMBDA_ARCHITECTURE"] === "x86_64" ? "x86_64" : "arm64";
+  const setupProbeLambda = combined["SETUP_PROBE_LAMBDA"] !== "false";
 
   return {
     targetEnv,
     endpointUrl,
     region,
     fleetMode,
+    lambdaArch,
+    setupProbeLambda,
     storageProvider,
     s3BucketName,
     s3CredentialMode,
@@ -1258,7 +1479,7 @@ async function runSetupFlow(
   repoRoot: string,
   initialDefaults?: Partial<SetupAnswers>,
 ): Promise<void> {
-  const TOTAL_STEPS = 14;
+  const TOTAL_STEPS = 16;
 
   // ── Step 1: Target Environment ─────────────────────────────────────────────
   step(1, TOTAL_STEPS, "Target Environment");
@@ -1333,8 +1554,69 @@ async function runSetupFlow(
       : "Will not set up Lambda — daemon runs as a persistent process.",
   );
 
-  // ── Step 4: Storage Provider ───────────────────────────────────────────────
-  step(4, TOTAL_STEPS, "Video Storage Provider");
+  let lambdaArch: LambdaArchitecture = initialDefaults?.lambdaArch ?? "arm64";
+  let shouldSetupProbeLambda = initialDefaults?.setupProbeLambda ?? true;
+
+  if (fleetMode === "serverless") {
+    // ── Step 4: Lambda CPU Architecture ──────────────────────────────────────
+    step(4, TOTAL_STEPS, "Lambda Architecture");
+    lambdaArch = await askChoice(
+      rl,
+      "Which CPU Architecture for Lambda functions?",
+      [
+        {
+          label: "ARM64 (AWS Graviton — faster, cheaper, recommended)",
+          value: "arm64" as LambdaArchitecture,
+        },
+        {
+          label: "x86_64 (Standard Intel/AMD 64-bit)",
+          value: "x86_64" as LambdaArchitecture,
+        },
+      ],
+      initialDefaults?.lambdaArch === "x86_64" ? 1 : 0,
+    );
+    ok(
+      `Selected Lambda Architecture: ${bold(lambdaArch)} (applied to all Lambdas)`,
+    );
+
+    // ── Step 5: Video Metadata Probe Lambda ──────────────────────────────────
+    step(5, TOTAL_STEPS, "Video Metadata Probe Lambda");
+    info(
+      "The Video Metadata Probe Lambda uses a standalone ffprobe layer to probe video " +
+        "duration, resolution, and codecs, and forward enriched payloads to the Fleet Manager.",
+    );
+    const probeChoice = await askChoice(
+      rl,
+      "Do you also want to setup the Video Metadata Probe Lambda?",
+      [
+        {
+          label:
+            "Yes — Build ffprobe layer via Docker and deploy veolms-video-metadata-probe (recommended)",
+          value: "yes",
+        },
+        {
+          label: "No — Skip probe Lambda (direct triggers only)",
+          value: "no",
+        },
+      ],
+      initialDefaults?.setupProbeLambda === false ? 1 : 0,
+    );
+    shouldSetupProbeLambda = probeChoice === "yes";
+    ok(
+      shouldSetupProbeLambda
+        ? "Video Metadata Probe Lambda enabled."
+        : "Video Metadata Probe Lambda skipped.",
+    );
+  } else {
+    step(4, TOTAL_STEPS, "Lambda Architecture");
+    info("Serverful mode selected — skipping Lambda architecture setup.");
+    step(5, TOTAL_STEPS, "Video Metadata Probe Lambda");
+    info("Serverful mode selected — skipping serverless probe Lambda setup.");
+    shouldSetupProbeLambda = false;
+  }
+
+  // ── Step 6: Storage Provider ───────────────────────────────────────────────
+  step(6, TOTAL_STEPS, "Video Storage Provider");
   const defaultStorageProvider = initialDefaults?.storageProvider ?? "s3";
   const storageProvider = await askChoice(
     rl,
@@ -1502,8 +1784,8 @@ async function runSetupFlow(
     }
   }
 
-  // ── Step 5: Database URL ────────────────────────────────────────────────────
-  step(5, TOTAL_STEPS, "Database Connection");
+  // ── Step 7: Database URL ────────────────────────────────────────────────────
+  step(7, TOTAL_STEPS, "Database Connection");
   info(
     "The deployed Lambda / EC2 workers need a database URL reachable from " +
       (targetEnv === "localstack" ? "LocalStack" : "AWS") +
@@ -1519,8 +1801,8 @@ async function runSetupFlow(
     defaultDbUrl,
   );
 
-  // ── Step 6: Allowed EC2 Instance Types ─────────────────────────────────────
-  step(6, TOTAL_STEPS, "Allowed EC2 Instance Types");
+  // ── Step 8: Allowed EC2 Instance Types ─────────────────────────────────────
+  step(8, TOTAL_STEPS, "Allowed EC2 Instance Types");
   console.log(
     dim(
       "  ARM64 Graviton: t4g.small, c7g.large, c7g.xlarge, c7g.2xlarge, c7g.4xlarge",
@@ -1543,8 +1825,8 @@ async function runSetupFlow(
     .filter(Boolean);
   ok(`Allowed: ${bold(allowedInstanceTypes.join(", "))}`);
 
-  // ── Step 7: EC2 Boot Mode ──────────────────────────────────────────────────
-  step(7, TOTAL_STEPS, "EC2 Worker Boot Mode");
+  // ── Step 9: EC2 Boot Mode ──────────────────────────────────────────────────
+  step(9, TOTAL_STEPS, "EC2 Worker Boot Mode");
   const defaultBootMode = initialDefaults?.bootMode ?? "fresh";
   const bootMode = await askChoice(
     rl,
@@ -1569,8 +1851,8 @@ async function runSetupFlow(
     info(`Build the AMI separately: ${cyan("pnpm fleet:build-ami")}`);
   }
 
-  // ── Step 8: EC2 SSH Port / Security Group ──────────────────────────────────
-  step(8, TOTAL_STEPS, "EC2 SSH Port / Security Group Access");
+  // ── Step 10: EC2 SSH Port / Security Group ──────────────────────────────────
+  step(10, TOTAL_STEPS, "EC2 SSH Port / Security Group Access");
   const defaultAllowSsh = initialDefaults?.allowSsh !== false;
   const allowSshChoice = await askChoice(
     rl,
@@ -1590,10 +1872,10 @@ async function runSetupFlow(
   );
   const allowSsh = allowSshChoice === "yes";
 
-  // ── Step 9: EC2 SSH Key Pair ───────────────────────────────────────────────
+  // ── Step 11: EC2 SSH Key Pair ───────────────────────────────────────────────
   let keyName: string | null = null;
   if (allowSsh) {
-    step(9, TOTAL_STEPS, "EC2 SSH Key Pair");
+    step(11, TOTAL_STEPS, "EC2 SSH Key Pair");
     info(
       "Specifying an SSH Key Pair allows you to SSH into EC2 worker instances (e.g. debian@<ip>).",
     );
@@ -1626,8 +1908,8 @@ async function runSetupFlow(
     info("SSH access disabled — skipping SSH Key Pair configuration.");
   }
 
-  // ── Step 10: Max Workers ───────────────────────────────────────────────────
-  step(10, TOTAL_STEPS, "Maximum Concurrent Workers");
+  // ── Step 12: Max Workers ───────────────────────────────────────────────────
+  step(12, TOTAL_STEPS, "Maximum Concurrent Workers");
   const defaultMaxWorkers = String(initialDefaults?.maxWorkers ?? 8);
   const maxWorkersInput = await ask(
     rl,
@@ -1637,8 +1919,8 @@ async function runSetupFlow(
   const maxWorkers = Math.max(1, parseInt(maxWorkersInput, 10) || 8);
   ok(`Max concurrent workers: ${bold(String(maxWorkers))}`);
 
-  // ── Step 11: Worker Idle Poll Interval ─────────────────────────────────────
-  step(11, TOTAL_STEPS, "Worker Idle Poll Interval");
+  // ── Step 13: Worker Idle Poll Interval ─────────────────────────────────────
+  step(13, TOTAL_STEPS, "Worker Idle Poll Interval");
   info(
     "After finishing a job, a worker checks the queue for more work " +
       "instead of terminating immediately — reusing an already-booted " +
@@ -1655,8 +1937,8 @@ async function runSetupFlow(
   const workerIdlePollSeconds = Math.max(1, parseInt(idlePollInput, 10) || 15);
   ok(`Idle poll interval: ${bold(`${workerIdlePollSeconds}s`)}`);
 
-  // ── Step 12: Spot vs On-Demand ─────────────────────────────────────────────
-  step(12, TOTAL_STEPS, "EC2 Pricing Model");
+  // ── Step 14: Spot vs On-Demand ─────────────────────────────────────────────
+  step(14, TOTAL_STEPS, "EC2 Pricing Model");
   const defaultPricingModel =
     initialDefaults?.useSpot === false ? "on-demand" : "spot";
   const pricingModel = await askChoice(
@@ -1678,14 +1960,15 @@ async function runSetupFlow(
   const useSpot = pricingModel === "spot";
   ok(useSpot ? "Spot Instances selected." : "On-Demand Instances selected.");
 
-  // ── Step 13: Create AWS Resources ─────────────────────────────────────────
-  step(13, TOTAL_STEPS, "Creating AWS Resources");
+  // ── Step 15: Create AWS Resources ─────────────────────────────────────────
+  step(15, TOTAL_STEPS, "Creating AWS Resources");
 
   const iam = new IAMClient({ region });
   const ec2 = new EC2Client({ region });
   const cw = new CloudWatchLogsClient({ region });
+  const lambda = new LambdaClient({ region });
 
-  info("Setting up IAM role for EC2 workers...");
+  info("Setting up IAM role for EC2 workers and Lambda functions...");
   const workerRoleArn = await checkOrCreateRole(
     iam,
     storageProvider === "s3" && s3BucketName !== null,
@@ -1704,17 +1987,14 @@ async function runSetupFlow(
   await ensureLogGroup(cw, LOG_GROUP_WORKERS);
   await ensureLogGroup(cw, LOG_GROUP_FLEET);
 
-  // Not a wizard question — build-ami.ts is what actually sets this, by
-  // writing AMI_ID into apps/fleet-manager/.env after a successful build.
-  // Since this process is launched via `node --env-file-if-exists=.env`,
-  // process.env already reflects that by the time this runs; initialDefaults
-  // covers the same value when this flow was entered via "Interactive
-  // Re-configure" with an explicitly-loaded existing config.
   const amiId = initialDefaults?.amiId ?? process.env["AMI_ID"] ?? null;
 
   let lambdaFunctionArn: string | null = null;
+  let probeLambdaArn: string | null = null;
+  let ffprobeLayerArn: string | null = null;
+
   if (fleetMode === "serverless") {
-    info("Setting up Lambda function...");
+    info("Setting up Fleet Manager Lambda function...");
     const lambdaArn = `arn:aws:lambda:${region}:${accountId}:function:${LAMBDA_FUNCTION_NAME}`;
     const lambdaEnvVars: Record<string, string> = {
       DATABASE_URL: databaseUrl,
@@ -1748,7 +2028,67 @@ async function runSetupFlow(
     } else if (amiId) {
       lambdaEnvVars["AMI_ID"] = amiId;
     }
-    lambdaFunctionArn = await setupLambda(region, workerRoleArn, lambdaEnvVars);
+    lambdaFunctionArn = await setupLambda(
+      region,
+      workerRoleArn,
+      lambdaEnvVars,
+      lambdaArch,
+    );
+
+    // Setup Video Metadata Probe Lambda if enabled
+    if (shouldSetupProbeLambda) {
+      info("Checking Docker status for building ffprobe Lambda layer...");
+      if (!isDockerRunning()) {
+        warn(
+          "Docker is not running or not installed. Please check that Docker is running to build and publish the ffprobe layer.",
+        );
+      } else {
+        try {
+          info(
+            `Building ffprobe layer for architecture ${bold(lambdaArch)} using Docker...`,
+          );
+          const zipPath = buildFfprobeLayer({
+            architecture: lambdaArch,
+            log: true,
+          });
+
+          info("Publishing veolms-ffprobe layer to AWS Lambda...");
+          ffprobeLayerArn = await publishFfprobeLayer({
+            lambdaClient: lambda,
+            zipPath,
+            architecture: lambdaArch,
+            layerName: "veolms-ffprobe",
+          });
+          ok(`Published layer: ${bold(ffprobeLayerArn)}`);
+        } catch (layerErr: unknown) {
+          const msg =
+            layerErr instanceof Error ? layerErr.message : String(layerErr);
+          warn(`Could not build/publish ffprobe layer: ${msg}`);
+        }
+      }
+
+      info("Setting up CloudWatch log group for Probe Lambda...");
+      await ensureLogGroup(cw, LOG_GROUP_PROBE);
+
+      info("Setting up Video Metadata Probe Lambda function...");
+      const probeEnvVars: Record<string, string> = {
+        FLEET_MANAGER_LAMBDA_NAME: LAMBDA_FUNCTION_NAME,
+      };
+      if (s3BucketName) {
+        probeEnvVars["S3_BUCKET"] = s3BucketName;
+        probeEnvVars["STORAGE_BUCKET"] = s3BucketName;
+      }
+      if (endpointUrl) {
+        probeEnvVars["AWS_ENDPOINT_URL"] = endpointUrl;
+      }
+      probeLambdaArn = await setupProbeLambda(
+        region,
+        workerRoleArn, // Same shared IAM role
+        ffprobeLayerArn,
+        lambdaArch,
+        probeEnvVars,
+      );
+    }
   }
 
   if (storageProvider === "s3" && s3BucketName) {
@@ -1762,6 +2102,8 @@ async function runSetupFlow(
     logGroupWorkers: LOG_GROUP_WORKERS,
     logGroupFleet: LOG_GROUP_FLEET,
     lambdaFunctionArn,
+    probeLambdaArn,
+    ffprobeLayerArn,
     s3BucketName,
     securityGroupId,
     keyName,
@@ -1774,6 +2116,8 @@ async function runSetupFlow(
     accountId,
     databaseUrl,
     fleetMode,
+    lambdaArch,
+    setupProbeLambda: shouldSetupProbeLambda,
     storageProvider,
     s3BucketName,
     s3CredentialMode,
@@ -1788,8 +2132,8 @@ async function runSetupFlow(
     securityGroupId,
   };
 
-  // ── Step 14: Write .env Files ──────────────────────────────────────────────
-  step(14, TOTAL_STEPS, "Writing Per-App .env Files");
+  // ── Step 16: Write .env Files ──────────────────────────────────────────────
+  step(16, TOTAL_STEPS, "Writing Per-App .env Files");
   await generateEnvFiles(answers, result, repoRoot);
 
   // ── Summary ────────────────────────────────────────────────────────────────
@@ -1799,10 +2143,10 @@ ${bold(cyan("║"))}               ${bold(green("AWS Setup Complete!"))}        
 ${bold(cyan("╚══════════════════════════════════════════════════════╝"))}
 
 ${bold("Resources:")} ${dim(`(target: ${targetEnv === "localstack" ? `LocalStack @ ${endpointUrl}` : `AWS account ${accountId}`})`)}
-  ${green("✔")} IAM Role:             ${bold(ROLE_NAME)}
+  ${green("✔")} IAM Role:             ${bold(ROLE_NAME)} (Shared by Workers & Lambdas)
   ${green("✔")} Instance Profile:     ${bold(INSTANCE_PROFILE_NAME)}${securityGroupId ? `\n  ${green("✔")} Security Group (SSH): ${bold(`${SECURITY_GROUP_NAME} (${securityGroupId}, port 22)`)}` : ""}${keyName ? `\n  ${green("✔")} EC2 SSH Key Pair:    ${bold(keyName)}` : ""}
   ${green("✔")} Log Group (workers):  ${bold(LOG_GROUP_WORKERS)}
-  ${green("✔")} Log Group (fleet):    ${bold(LOG_GROUP_FLEET)}${lambdaFunctionArn ? `\n  ${green("✔")} Lambda Function:     ${bold(LAMBDA_FUNCTION_NAME)}` : ""}${s3BucketName ? `\n  ${green("✔")} S3 Bucket & Bundle:  ${bold(`s3://${s3BucketName}/bundles/media-worker.js`)}` : ""}
+  ${green("✔")} Log Group (fleet):    ${bold(LOG_GROUP_FLEET)}${lambdaFunctionArn ? `\n  ${green("✔")} Fleet Lambda:        ${bold(`${LAMBDA_FUNCTION_NAME} (${lambdaArch})`)}` : ""}${probeLambdaArn ? `\n  ${green("✔")} Probe Lambda:        ${bold(`${PROBE_LAMBDA_FUNCTION_NAME} (${lambdaArch})`)}` : ""}${ffprobeLayerArn ? `\n  ${green("✔")} ffprobe Layer:       ${bold(`veolms-ffprobe (${lambdaArch})`)}` : ""}${s3BucketName ? `\n  ${green("✔")} S3 Bucket & Bundle:  ${bold(`s3://${s3BucketName}/bundles/media-worker.js`)}` : ""}
 
 ${bold("Generated .env Files:")}
   ${green("✔")} apps/fleet-manager/.env
@@ -1824,8 +2168,7 @@ export async function runAwsInfraUpdate(
   const ownRl = !existingRl;
   const rl = existingRl ?? readline.createInterface({ input, output });
 
-  const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  const repoRoot = path.resolve(__dirname, "..", "..", "..", "..");
+  const repoRoot = resolveRepoRoot();
 
   try {
     await runUpdateFlow(rl, repoRoot);
@@ -1892,6 +2235,8 @@ async function runUpdateFlow(
   const endpointUrl: string | null = existing.endpointUrl ?? null;
   const region: string = existing.region ?? "us-east-1";
   const fleetMode: FleetMode = existing.fleetMode ?? "serverless";
+  const lambdaArch: LambdaArchitecture = existing.lambdaArch ?? "arm64";
+  const shouldSetupProbeLambda: boolean = existing.setupProbeLambda ?? true;
   const storageProvider: StorageProvider = existing.storageProvider ?? "s3";
   const s3BucketName: string | null = existing.s3BucketName ?? null;
   const databaseUrl: string =
@@ -1927,6 +2272,7 @@ async function runUpdateFlow(
 
   if (updateChoice === "bundles") {
     let lambdaUpdated = false;
+    let probeLambdaUpdated = false;
     if (fleetMode === "serverless") {
       const lambda = new LambdaClient({ region });
       try {
@@ -1947,6 +2293,29 @@ async function runUpdateFlow(
         const msg = err instanceof Error ? err.message : String(err);
         warn(`Could not update Lambda code: ${msg}`);
       }
+
+      if (shouldSetupProbeLambda) {
+        try {
+          info(
+            `Rebuilding and updating Probe Lambda function ${bold(PROBE_LAMBDA_FUNCTION_NAME)} code...`,
+          );
+          const probeZip = buildProbeLambdaBundleZip();
+          await lambda.send(
+            new UpdateFunctionCodeCommand({
+              FunctionName: PROBE_LAMBDA_FUNCTION_NAME,
+              ZipFile: probeZip,
+            }),
+          );
+          await waitUntilFunctionUpdated(lambda, PROBE_LAMBDA_FUNCTION_NAME);
+          ok(
+            `Updated code for Probe Lambda ${bold(PROBE_LAMBDA_FUNCTION_NAME)}`,
+          );
+          probeLambdaUpdated = true;
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          warn(`Could not update Probe Lambda code: ${msg}`);
+        }
+      }
     }
 
     let bundleUploaded = false;
@@ -1962,8 +2331,9 @@ ${bold(cyan("╔═════════════════════�
 ${bold(cyan("║"))}         ${bold(green("Code & Bundles Updated Successfully!"))}        ${bold(cyan("║"))}
 ${bold(cyan("╚══════════════════════════════════════════════════════╝"))}
 
-  ${lambdaUpdated ? `${green("✔")} Lambda Code:     ${bold(LAMBDA_FUNCTION_NAME)}` : `${dim("—")} Lambda Code:     ${dim("Skipped / Not serverless")}`}
-  ${bundleUploaded ? `${green("✔")} S3 Worker Bundle: ${bold(`s3://${s3BucketName}/bundles/media-worker.js`)}` : `${dim("—")} S3 Worker Bundle: ${dim("Skipped / No S3 bucket")}`}
+  ${lambdaUpdated ? `${green("✔")} Lambda Code:       ${bold(LAMBDA_FUNCTION_NAME)}` : `${dim("—")} Lambda Code:       ${dim("Skipped / Not serverless")}`}
+  ${probeLambdaUpdated ? `${green("✔")} Probe Lambda Code: ${bold(PROBE_LAMBDA_FUNCTION_NAME)}` : `${dim("—")} Probe Lambda Code: ${dim("Skipped / Not enabled")}`}
+  ${bundleUploaded ? `${green("✔")} S3 Worker Bundle:   ${bold(`s3://${s3BucketName}/bundles/media-worker.js`)}` : `${dim("—")} S3 Worker Bundle:   ${dim("Skipped / No S3 bucket")}`}
 
 ${bold("Next Steps:")}
   Queue & trigger a job: ${cyan("pnpm fleet:queue:trigger")}
@@ -1996,6 +2366,8 @@ ${bold("Next Steps:")}
   await ensureLogGroup(cw, LOG_GROUP_FLEET);
 
   let lambdaFunctionArn: string | null = null;
+  let probeLambdaArn: string | null = null;
+  let ffprobeLayerArn: string | null = null;
   if (fleetMode === "serverless") {
     info("Updating Lambda function code & configuration...");
     const lambdaEnvVars: Record<string, string> = {
@@ -2028,7 +2400,67 @@ ${bold("Next Steps:")}
     } else if (amiId) {
       lambdaEnvVars["AMI_ID"] = amiId;
     }
-    lambdaFunctionArn = await setupLambda(region, workerRoleArn, lambdaEnvVars);
+    lambdaFunctionArn = await setupLambda(
+      region,
+      workerRoleArn,
+      lambdaEnvVars,
+      lambdaArch,
+    );
+
+    if (shouldSetupProbeLambda) {
+      info("Checking Docker status for building ffprobe Lambda layer...");
+      if (!isDockerRunning()) {
+        warn(
+          "Docker is not running or not installed. Please check that Docker is running to build and publish the ffprobe layer.",
+        );
+      } else {
+        try {
+          info(
+            `Building ffprobe layer for architecture ${bold(lambdaArch)} using Docker...`,
+          );
+          const zipPath = buildFfprobeLayer({
+            architecture: lambdaArch,
+            log: true,
+          });
+
+          const lambdaClient = new LambdaClient({ region });
+          info("Publishing veolms-ffprobe layer to AWS Lambda...");
+          ffprobeLayerArn = await publishFfprobeLayer({
+            lambdaClient,
+            zipPath,
+            architecture: lambdaArch,
+            layerName: "veolms-ffprobe",
+          });
+          ok(`Published layer: ${bold(ffprobeLayerArn)}`);
+        } catch (layerErr: unknown) {
+          const msg =
+            layerErr instanceof Error ? layerErr.message : String(layerErr);
+          warn(`Could not build/publish ffprobe layer: ${msg}`);
+        }
+      }
+
+      info("Setting up CloudWatch log group for Probe Lambda...");
+      await ensureLogGroup(cw, LOG_GROUP_PROBE);
+
+      info("Setting up Video Metadata Probe Lambda function...");
+      const probeEnvVars: Record<string, string> = {
+        FLEET_MANAGER_LAMBDA_NAME: LAMBDA_FUNCTION_NAME,
+      };
+      if (s3BucketName) {
+        probeEnvVars["S3_BUCKET"] = s3BucketName;
+        probeEnvVars["STORAGE_BUCKET"] = s3BucketName;
+      }
+      if (endpointUrl) {
+        probeEnvVars["AWS_ENDPOINT_URL"] = endpointUrl;
+      }
+      probeLambdaArn = await setupProbeLambda(
+        region,
+        workerRoleArn, // Same shared IAM role
+        ffprobeLayerArn,
+        lambdaArch,
+        probeEnvVars,
+      );
+    }
   }
 
   if (storageProvider === "s3" && s3BucketName) {
@@ -2043,6 +2475,8 @@ ${bold("Next Steps:")}
     accountId,
     databaseUrl,
     fleetMode,
+    lambdaArch,
+    setupProbeLambda: shouldSetupProbeLambda,
     storageProvider,
     s3BucketName,
     s3CredentialMode,
@@ -2063,6 +2497,8 @@ ${bold("Next Steps:")}
     logGroupWorkers: LOG_GROUP_WORKERS,
     logGroupFleet: LOG_GROUP_FLEET,
     lambdaFunctionArn,
+    probeLambdaArn,
+    ffprobeLayerArn,
     s3BucketName,
     securityGroupId,
     keyName,
@@ -2080,7 +2516,7 @@ ${bold("Resources Updated:")} ${dim(`(target: ${targetEnv === "localstack" ? `Lo
   ${green("✔")} IAM Role:             ${bold(ROLE_NAME)}
   ${green("✔")} Instance Profile:     ${bold(INSTANCE_PROFILE_NAME)}${securityGroupId ? `\n  ${green("✔")} Security Group (SSH): ${bold(`${SECURITY_GROUP_NAME} (${securityGroupId}, port 22)`)}` : ""}${keyName ? `\n  ${green("✔")} EC2 SSH Key Pair:    ${bold(keyName)}` : ""}
   ${green("✔")} Log Group (workers):  ${bold(LOG_GROUP_WORKERS)}
-  ${green("✔")} Log Group (fleet):    ${bold(LOG_GROUP_FLEET)}${lambdaFunctionArn ? `\n  ${green("✔")} Lambda Function:     ${bold(LAMBDA_FUNCTION_NAME)}` : ""}${s3BucketName ? `\n  ${green("✔")} S3 Bucket & Bundle:  ${bold(`s3://${s3BucketName}/bundles/media-worker.js`)}` : ""}
+  ${green("✔")} Log Group (fleet):    ${bold(LOG_GROUP_FLEET)}${lambdaFunctionArn ? `\n  ${green("✔")} Fleet Lambda:        ${bold(`${LAMBDA_FUNCTION_NAME} (${lambdaArch})`)}` : ""}${probeLambdaArn ? `\n  ${green("✔")} Probe Lambda:        ${bold(`${PROBE_LAMBDA_FUNCTION_NAME} (${lambdaArch})`)}` : ""}${ffprobeLayerArn ? `\n  ${green("✔")} ffprobe Layer:       ${bold(`veolms-ffprobe (${lambdaArch})`)}` : ""}${s3BucketName ? `\n  ${green("✔")} S3 Bucket & Bundle:  ${bold(`s3://${s3BucketName}/bundles/media-worker.js`)}` : ""}
 
 ${bold("Generated .env Files:")}
   ${green("✔")} apps/fleet-manager/.env
@@ -2165,9 +2601,8 @@ type SetupAction = "setup" | "update" | "destroy";
 export async function runAwsInfraSetup(): Promise<void> {
   banner();
 
-  // Resolve repo root relative to this package (packages/fleet-provider-aws)
-  const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  const repoRoot = path.resolve(__dirname, "..", "..", "..", "..");
+  // Resolve repo root relative to workspace markers
+  const repoRoot = resolveRepoRoot();
   const existingConfig = loadExistingConfig(repoRoot);
   const cliArgs = parseSetupCliArgs();
 

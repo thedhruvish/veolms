@@ -5,16 +5,17 @@ import {
   type Database,
   type VideoJobTable,
 } from "@veolms/database";
-import type { VideoQualityLevel } from "@veolms/fleet-types";
+import type { VideoQualityLevel, VideoMetadata } from "@veolms/fleet-types";
 import type { FleetManagerConfig } from "@veolms/config";
 
 export interface QueueJobParams {
   jobId?: string;
-  videoId: string;
+  videoId?: string;
   videoKey: string;
   outputPrefix: string;
   qualities: readonly VideoQualityLevel[];
   videoSize?: number;
+  videoMetadata?: VideoMetadata;
 }
 
 export interface JobManager {
@@ -125,16 +126,24 @@ export function createJobManager(options: {
       }
 
       // 2. Check if a job is already active for this videoId or videoKey
-      const existingActive = await db
+      let activeQuery = db
         .selectFrom("video_jobs")
         .selectAll()
-        .where((eb) =>
+        .where("status", "in", ["QUEUED", "PROVISIONING", "PROCESSING"]);
+
+      if (params.videoId) {
+        const vid = params.videoId;
+        activeQuery = activeQuery.where((eb) =>
           eb.or([
-            eb("video_id", "=", params.videoId),
+            eb("video_id", "=", vid),
             eb("video_key", "=", params.videoKey),
           ]),
-        )
-        .where("status", "in", ["QUEUED", "PROVISIONING", "PROCESSING"])
+        );
+      } else {
+        activeQuery = activeQuery.where("video_key", "=", params.videoKey);
+      }
+
+      const existingActive = await activeQuery
         .orderBy("created_at", "desc")
         .executeTakeFirst();
 
@@ -145,6 +154,12 @@ export function createJobManager(options: {
       const id = params.jobId ?? randomUUID();
       const videoSize = params.videoSize ?? 0;
       const now = new Date();
+
+      const metaWidth = params.videoMetadata?.width ?? null;
+      const metaHeight = params.videoMetadata?.height ?? null;
+      const metaDuration = params.videoMetadata?.durationSeconds
+        ? Math.round(params.videoMetadata.durationSeconds)
+        : null;
 
       // Ensure media_assets record exists so foreign key video_jobs.video_id -> media_assets.id is satisfied
       let videoId = params.videoId;
@@ -157,6 +172,27 @@ export function createJobManager(options: {
 
         if (existingMedia) {
           videoId = existingMedia.id;
+          if (
+            (metaWidth && !existingMedia.width) ||
+            (metaHeight && !existingMedia.height) ||
+            (metaDuration && !existingMedia.duration_seconds)
+          ) {
+            try {
+              await db
+                .updateTable("media_assets")
+                .set({
+                  width: existingMedia.width ?? metaWidth,
+                  height: existingMedia.height ?? metaHeight,
+                  duration_seconds:
+                    existingMedia.duration_seconds ?? metaDuration,
+                  updated_at: new Date(),
+                })
+                .where("id", "=", videoId)
+                .execute();
+            } catch {
+              // Ignore update error
+            }
+          }
         } else {
           videoId = randomUUID();
           const filename = params.videoKey.split("/").pop() || "video.mp4";
@@ -197,6 +233,9 @@ export function createJobManager(options: {
                 original_filename: filename,
                 mime_type: "video/mp4",
                 size_bytes: videoSize,
+                width: metaWidth,
+                height: metaHeight,
+                duration_seconds: metaDuration,
                 status: "ready",
               })
               .execute();
@@ -211,7 +250,29 @@ export function createJobManager(options: {
           .where("id", "=", videoId)
           .executeTakeFirst();
 
-        if (!existingMedia) {
+        if (existingMedia) {
+          if (
+            (metaWidth && !existingMedia.width) ||
+            (metaHeight && !existingMedia.height) ||
+            (metaDuration && !existingMedia.duration_seconds)
+          ) {
+            try {
+              await db
+                .updateTable("media_assets")
+                .set({
+                  width: existingMedia.width ?? metaWidth,
+                  height: existingMedia.height ?? metaHeight,
+                  duration_seconds:
+                    existingMedia.duration_seconds ?? metaDuration,
+                  updated_at: new Date(),
+                })
+                .where("id", "=", videoId)
+                .execute();
+            } catch {
+              // Ignore update error
+            }
+          }
+        } else {
           const filename = params.videoKey.split("/").pop() || "video.mp4";
           const defaultOwnerId = "00000000-0000-4000-8000-000000000001";
           let ownerId = defaultOwnerId;
@@ -250,6 +311,9 @@ export function createJobManager(options: {
                 original_filename: filename,
                 mime_type: "video/mp4",
                 size_bytes: videoSize,
+                width: metaWidth,
+                height: metaHeight,
+                duration_seconds: metaDuration,
                 status: "ready",
               })
               .execute();
