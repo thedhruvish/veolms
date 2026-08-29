@@ -14,15 +14,15 @@ import { sql, type Kysely } from "kysely";
  *    can recompute the exact same minCpu/minMemoryMb/storageGb/profile
  *    from this column at any time — nothing else needs to be persisted.
  *
- *  - hardware_profile (new enum type, nullable): the NANO/MICRO/SMALL/
- *    MEDIUM/LARGE tier estimateJobHardware() resolved at queue time.
- *    Informational/queryable (dashboards, "show me all LARGE jobs", the
+ *  - hardware_profile (new enum type, nullable): the nano/micro/small/
+ *    medium/large tier estimateJobHardware() resolved at queue time.
+ *    Informational/queryable (dashboards, "show me all large jobs", the
  *    idle-worker pull-claim pre-filter below) — not re-derived from it by
  *    any sizing logic, since video_metadata above is already sufficient.
  */
 export async function up(database: Kysely<unknown>): Promise<void> {
   await sql`
-    create type hardware_profile_enum as enum ('NANO', 'MICRO', 'SMALL', 'MEDIUM', 'LARGE')
+    create type hardware_profile_enum as enum ('nano', 'micro', 'small', 'medium', 'large')
   `.execute(database);
 
   await sql`
