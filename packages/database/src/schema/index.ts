@@ -7,6 +7,7 @@ export * from "./media.schema.ts";
 export * from "./commerce.schema.ts";
 export * from "./webhooks.schema.ts";
 export * from "./json.schema.ts";
+export * from './fleet.schema.ts'
 
 // Import table interfaces to assemble unified Database schema
 import type {
@@ -140,7 +141,7 @@ export interface Database {
 
 export type PurchaseTable = OrderTable;
 export type PurchaseItemTable = OrderItemTable;
-export type { VideoJobTable };
+
 /**
  * A query runner over the whole `Database` schema — either the top-level
  * connection or a `Kysely<Database>.transaction()` context.
