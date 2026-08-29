@@ -140,8 +140,25 @@ export const videoMetadataSchema = z.looseObject({
   format: z.string().optional(),
   codec: z.string().optional(),
   fps: z.number().positive().optional(),
+  // Forward-looking, informational only — not yet used by machine-profile
+  // sizing (see estimateJobHardware in @veolms/fleet-types). 10-bit/HDR
+  // heuristics need more real-world validation before they drive hardware
+  // sizing decisions.
+  pixelFormat: z.string().optional(),
+  bitDepth: z.number().int().positive().optional(),
   rawStreams: z.array(z.record(z.string(), z.unknown())).optional(),
 });
+
+// The subset of VideoMetadata worth persisting alongside a job row for
+// machine-profile sizing: excludes `rawStreams`, which is ffprobe's raw
+// per-stream JSON dump (can be tens of KB) and is never read back by any
+// consumer — persisting it would only bloat the jsonb column.
+export const persistedVideoMetadataSchema = videoMetadataSchema.omit({
+  rawStreams: true,
+});
+export type PersistedVideoMetadata = z.infer<
+  typeof persistedVideoMetadataSchema
+>;
 
 export const videoJobEventSchema = z.looseObject({
   action: lambdaActionSchema.optional(),
