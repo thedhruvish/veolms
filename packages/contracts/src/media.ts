@@ -17,12 +17,12 @@ export const MEDIA_MAX_SIZES = {
 
 // --- Video Jobs & Transcoding ---
 export const VIDEO_JOB_STATUSES = [
-  "QUEUED",
-  "PROVISIONING",
-  "PROCESSING",
-  "COMPLETED",
-  "FAILED",
-  "CANCELLED",
+  "queued",
+  "provisioning",
+  "processing",
+  "completed",
+  "failed",
+  "cancelled",
 ] as const;
 export const JOB_STATUSES = VIDEO_JOB_STATUSES;
 export type VideoJobStatus = (typeof VIDEO_JOB_STATUSES)[number];
@@ -41,54 +41,63 @@ export const VIDEO_QUALITY_LEVELS = [
 export type VideoQualityLevel = (typeof VIDEO_QUALITY_LEVELS)[number];
 export const videoQualityLevelSchema = z.enum(VIDEO_QUALITY_LEVELS);
 
+// --- Hardware Sizing Profiles ---
+export const HARDWARE_PROFILES = [
+  "nano",
+  "micro",
+  "small",
+  "medium",
+  "large",
+] as const;
+export type HardwareProfile = (typeof HARDWARE_PROFILES)[number];
+export const hardwareProfileSchema = z.enum(HARDWARE_PROFILES);
+
 // --- Fleet Workers & Providers ---
 export const WORKER_STATUSES = [
-  "PENDING",
-  "PROVISIONING",
-  "STARTING",
-  "READY",
-  "PROCESSING",
-  "COMPLETED",
-  "FAILED",
-  "TERMINATING",
-  "TERMINATED",
+  "pending",
+  "provisioning",
+  "starting",
+  "ready",
+  "processing",
+  "completed",
+  "failed",
+  "terminating",
+  "terminated",
 ] as const;
 export type WorkerStatus = (typeof WORKER_STATUSES)[number];
 export const workerStatusSchema = z.enum(WORKER_STATUSES);
 
-export const ARCHITECTURES = ["ARM64", "X86_64"] as const;
+export const ARCHITECTURES = ["arm64", "x86_64"] as const;
 export type Architecture = (typeof ARCHITECTURES)[number];
 export const architectureSchema = z.enum(ARCHITECTURES);
 
-export const PROVIDER_TYPES = ["LOCAL", "AWS"] as const;
+export const PROVIDER_TYPES = ["local", "aws"] as const;
 export type ProviderType = (typeof PROVIDER_TYPES)[number];
 export const providerTypeSchema = z.enum(PROVIDER_TYPES);
 
 export const FLEET_EVENT_TYPES = [
-  "WORKER_CREATED",
-  "WORKER_PROVISIONING",
-  "WORKER_READY",
-  "JOB_ASSIGNED",
-  "JOB_STARTED",
-  "PROGRESS_UPDATED",
-  "HEARTBEAT_RECORDED",
-  "HEARTBEAT_TIMEOUT",
-  "JOB_COMPLETED",
-  "JOB_FAILED",
-  "WORKER_TERMINATION_REQUESTED",
-  "WORKER_TERMINATED",
-  "WORKER_ERROR",
-  "SPOT_INTERRUPTED",
-  "ORPHAN_INSTANCE_TERMINATED",
-  "JOB_OUTPUT_VERIFIED",
-  "JOB_OUTPUT_VERIFICATION_FAILED",
-  "SCHEDULE_UPDATED",
-  "SCHEDULE_CLEARED",
+  "worker_created",
+  "worker_provisioning",
+  "worker_ready",
+  "job_assigned",
+  "job_started",
+  "progress_updated",
+  "heartbeat_recorded",
+  "heartbeat_timeout",
+  "job_completed",
+  "job_failed",
+  "worker_termination_requested",
+  "worker_terminated",
+  "worker_error",
+  "spot_interrupted",
+  "orphan_instance_terminated",
+  "job_output_verified",
+  "job_output_verification_failed",
 ] as const;
 export type FleetEventType = (typeof FLEET_EVENT_TYPES)[number];
 export const fleetEventTypeSchema = z.enum(FLEET_EVENT_TYPES);
 
-export const LAMBDA_ACTIONS = ["TICK", "CLAIM", "MONITOR", "QUEUE"] as const;
+export const LAMBDA_ACTIONS = ["tick", "claim", "monitor", "queue"] as const;
 export type LambdaAction = (typeof LAMBDA_ACTIONS)[number];
 export const lambdaActionSchema = z.enum(LAMBDA_ACTIONS);
 
@@ -132,6 +141,30 @@ export const videoJobProgressResponseSchema = z.object({
   error: z.string().nullable().optional(),
 });
 
+export const videoMetadataSchema = z.looseObject({
+  durationSeconds: z.number().nonnegative().optional(),
+  width: z.number().int().positive().optional(),
+  height: z.number().int().positive().optional(),
+  bitrate: z.number().nonnegative().optional(),
+  format: z.string().optional(),
+  codec: z.string().optional(),
+  fps: z.number().positive().optional(),
+  pixelFormat: z.string().optional(),
+  bitDepth: z.number().int().positive().optional(),
+  rawStreams: z.array(z.record(z.string(), z.unknown())).optional(),
+});
+
+// The subset of VideoMetadata worth persisting alongside a job row for
+// machine-profile sizing: excludes `rawStreams`, which is ffprobe's raw
+// per-stream JSON dump (can be tens of KB) and is never read back by any
+// consumer — persisting it would only bloat the jsonb column.
+export const persistedVideoMetadataSchema = videoMetadataSchema.omit({
+  rawStreams: true,
+});
+export type PersistedVideoMetadata = z.infer<
+  typeof persistedVideoMetadataSchema
+>;
+
 export const videoJobEventSchema = z.looseObject({
   action: lambdaActionSchema.optional(),
   jobId: z.uuid().optional(),
@@ -140,6 +173,7 @@ export const videoJobEventSchema = z.looseObject({
   outputPrefix: z.string().min(1).optional(),
   qualities: z.array(videoQualityLevelSchema).min(1).optional(),
   videoSize: z.coerce.number().int().nonnegative().optional(),
+  videoMetadata: videoMetadataSchema.optional(),
 });
 
 export const lambdaResponseSchema = z.object({
@@ -155,6 +189,7 @@ export type PresignMediaResponse = z.infer<typeof presignMediaResponseSchema>;
 export type VideoJobProgressResponse = z.infer<
   typeof videoJobProgressResponseSchema
 >;
+export type VideoMetadata = z.infer<typeof videoMetadataSchema>;
 export type VideoJobEvent = z.infer<typeof videoJobEventSchema>;
 export type LambdaResponse = z.infer<typeof lambdaResponseSchema>;
 
@@ -166,6 +201,12 @@ z.globalRegistry.add(presignMediaResponseSchema, {
 z.globalRegistry.add(videoJobProgressResponseSchema, {
   id: "VideoJobProgressResponse",
 });
+z.globalRegistry.add(videoMetadataSchema, {
+  id: "VideoMetadata",
+});
 z.globalRegistry.add(videoJobEventSchema, {
   id: "VideoJobEvent",
+});
+z.globalRegistry.add(hardwareProfileSchema, {
+  id: "HardwareProfile",
 });
