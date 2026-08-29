@@ -2,10 +2,10 @@ import { randomUUID } from "node:crypto";
 import type { Kysely, Selectable } from "kysely";
 import type { Database, VideoJobTable } from "@veolms/database";
 import {
-  estimateJobHardware,
+  resolveJobHardware,
   type FleetEventType,
   type FleetProvider,
-  type VideoQualityLevel,
+  type JobHardwareFields,
   type WorkerHandle,
   type WorkerSpec,
 } from "@veolms/fleet-types";
@@ -15,12 +15,12 @@ import type { Scheduler } from "./scheduler.ts";
 // Statuses that occupy a worker slot; COMPLETED/FAILED/TERMINATED have
 // released their capacity back to the pool.
 const ACTIVE_WORKER_STATUSES = [
-  "PENDING",
-  "PROVISIONING",
-  "STARTING",
-  "READY",
-  "PROCESSING",
-  "TERMINATING",
+  "pending",
+  "provisioning",
+  "starting",
+  "ready",
+  "processing",
+  "terminating",
 ] as const;
 
 export interface WorkerManager {
@@ -36,15 +36,13 @@ export interface WorkerManager {
   ): Promise<void>;
 }
 
+export type HardwareSizedJob = JobHardwareFields & { id?: string };
+
 export function calculateWorkerSpec(
-  job: {
-    id?: string;
-    video_size: number;
-    qualities: readonly VideoQualityLevel[];
-  },
+  job: HardwareSizedJob,
   options: { databaseUrl?: string; jobId?: string } = {},
 ): WorkerSpec {
-  const hw = estimateJobHardware(job.video_size, job.qualities);
+  const hw = resolveJobHardware(job);
 
   return {
     cpu: hw.minCpu,
@@ -133,7 +131,7 @@ export function createWorkerManager(options: {
           id: workerId,
           provider: provider.name,
           provider_worker_id: "pending",
-          status: "PENDING",
+          status: "pending",
           architecture: spec.architecture,
           cpu: spec.cpu,
           memory_mb: spec.memoryMb,
@@ -149,7 +147,7 @@ export function createWorkerManager(options: {
         })
         .execute();
 
-      await recordEvent("WORKER_CREATED", workerId, job.id, {
+      await recordEvent("worker_created", workerId, job.id, {
         cpu: spec.cpu,
         memoryMb: spec.memoryMb,
         qualities: job.qualities,
@@ -163,21 +161,19 @@ export function createWorkerManager(options: {
         .updateTable("workers")
         .set({
           provider_worker_id: handle.providerWorkerId,
-          status: "PROVISIONING",
+          status: "provisioning",
           updated_at: new Date(),
         })
         .where("id", "=", workerId)
         .execute();
 
-      await recordEvent("WORKER_PROVISIONING", workerId, job.id, {
+      await recordEvent("worker_provisioning", workerId, job.id, {
         providerWorkerId: handle.providerWorkerId,
       });
 
       // 4. Initialize worker_monitoring schedule
-      const estimatedDuration = estimateJobHardware(
-        job.video_size,
-        job.qualities,
-      ).estimatedDurationSeconds;
+      const estimatedDuration =
+        resolveJobHardware(job).estimatedDurationSeconds;
       const initialCheck = scheduler.calculateNextCheck({
         estimatedDurationSec: estimatedDuration,
         progressPercent: 0,
@@ -208,7 +204,7 @@ export function createWorkerManager(options: {
         .where("id", "=", workerId)
         .executeTakeFirst();
 
-      if (!worker || worker.status === "TERMINATED") {
+      if (!worker || worker.status === "terminated") {
         return;
       }
 
@@ -216,14 +212,14 @@ export function createWorkerManager(options: {
       await db
         .updateTable("workers")
         .set({
-          status: "TERMINATING",
+          status: "terminating",
           updated_at: new Date(),
         })
         .where("id", "=", workerId)
         .execute();
 
       await recordEvent(
-        "WORKER_TERMINATION_REQUESTED",
+        "worker_termination_requested",
         workerId,
         worker.job_id,
       );
@@ -244,14 +240,14 @@ export function createWorkerManager(options: {
       await db
         .updateTable("workers")
         .set({
-          status: "TERMINATED",
+          status: "terminated",
           terminated_at: new Date(),
           updated_at: new Date(),
         })
         .where("id", "=", workerId)
         .execute();
 
-      await recordEvent("WORKER_TERMINATED", workerId, worker.job_id);
+      await recordEvent("worker_terminated", workerId, worker.job_id);
     },
   };
 }

@@ -21,7 +21,7 @@ export async function claimNextQueuedVideoJob(
           .selectFrom("workers")
           .select(["id", "cpu", "memory_mb", "storage_gb", "architecture"])
           .where("id", "=", workerId)
-          .where("status", "=", "READY")
+          .where("status", "=", "ready")
           .forUpdate()
           .executeTakeFirst()
       : null;
@@ -36,39 +36,73 @@ export async function claimNextQueuedVideoJob(
     let query = trx
       .selectFrom("video_jobs")
       .selectAll()
-      .where("status", "=", "QUEUED")
+      .where("status", "=", "queued")
       .orderBy("created_at", "asc");
 
     if (worker) {
+      // Prefer the tier estimateJobHardware() already resolved (and
+      // persisted as hardware_profile) at queue time — it accounts for
+      // probed source metadata (resolution/fps/codec), not just requested
+      // output qualities. Each CASE-on-hardware_profile is wrapped in a
+      // COALESCE against the exact legacy qualities-only heuristic, kept
+      // only as a fallback for rows queued before this column existed
+      // (hardware_profile IS NULL).
       query = query
         .where(
           sql<boolean>`
-            CASE
-              WHEN qualities @> ARRAY['2160p'] THEN 8
-              WHEN qualities @> ARRAY['1440p'] OR cardinality(qualities) >= 5 THEN 4
-              ELSE 2
-            END <= ${worker.cpu}
+            COALESCE(
+              CASE hardware_profile
+                WHEN 'nano' THEN 1
+                WHEN 'micro' THEN 2
+                WHEN 'small' THEN 4
+                WHEN 'medium' THEN 8
+                WHEN 'large' THEN 16
+              END,
+              CASE
+                WHEN qualities @> ARRAY['2160p'] THEN 8
+                WHEN qualities @> ARRAY['1440p'] OR cardinality(qualities) >= 5 THEN 4
+                ELSE 2
+              END
+            ) <= ${worker.cpu}
           `,
         )
         .where(
           sql<boolean>`
-            CASE
-              WHEN qualities @> ARRAY['2160p'] THEN 16384
-              WHEN qualities @> ARRAY['1440p'] OR cardinality(qualities) >= 5 THEN 8192
-              ELSE 4096
-            END <= ${worker.memory_mb}
+            COALESCE(
+              CASE hardware_profile
+                WHEN 'nano' THEN 2048
+                WHEN 'micro' THEN 4096
+                WHEN 'small' THEN 8192
+                WHEN 'medium' THEN 16384
+                WHEN 'large' THEN 32768
+              END,
+              CASE
+                WHEN qualities @> ARRAY['2160p'] THEN 16384
+                WHEN qualities @> ARRAY['1440p'] OR cardinality(qualities) >= 5 THEN 8192
+                ELSE 4096
+              END
+            ) <= ${worker.memory_mb}
           `,
         )
         .where(
           sql<boolean>`
-            CASE
-              WHEN qualities @> ARRAY['2160p'] THEN 80
-              WHEN qualities @> ARRAY['1440p'] OR cardinality(qualities) >= 5 THEN 50
-              ELSE 30
-            END <= ${worker.storage_gb}
+            COALESCE(
+              CASE hardware_profile
+                WHEN 'nano' THEN 20
+                WHEN 'micro' THEN 30
+                WHEN 'small' THEN 50
+                WHEN 'medium' THEN 80
+                WHEN 'large' THEN 130
+              END,
+              CASE
+                WHEN qualities @> ARRAY['2160p'] THEN 80
+                WHEN qualities @> ARRAY['1440p'] OR cardinality(qualities) >= 5 THEN 50
+                ELSE 30
+              END
+            ) <= ${worker.storage_gb}
           `,
         )
-        .where(sql<boolean>`${worker.architecture} in ('ARM64', 'X86_64')`);
+        .where(sql<boolean>`${worker.architecture} in ('arm64', 'x86_64')`);
     }
 
     const row = await query
@@ -84,7 +118,7 @@ export async function claimNextQueuedVideoJob(
     await trx
       .updateTable("video_jobs")
       .set({
-        status: "PROVISIONING",
+        status: "provisioning",
         ...(worker ? { worker_id: worker.id } : {}),
         started_at: new Date(),
         updated_at: new Date(),
@@ -96,7 +130,7 @@ export async function claimNextQueuedVideoJob(
       await trx
         .updateTable("workers")
         .set({
-          status: "PROCESSING",
+          status: "processing",
           job_id: row.id,
           updated_at: new Date(),
         })

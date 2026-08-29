@@ -17,6 +17,11 @@ export const awsProviderConfigSchema = z.object({
   KEY_NAME: z.string().optional(),
   EC2_KEY_NAME: z.string().optional(),
   WORKER_IDLE_POLL_SECONDS: z.coerce.number().int().min(1).optional(),
+  // Comma-separated exact instance types (e.g. "c7g.xlarge,c7g.2xlarge").
+  // When set, each size tier's candidate list (see instance-types.ts) is
+  // filtered down to only the types present here, letting an operator
+  // restrict provisioning to a known set of types.
+  EC2_ALLOWED_INSTANCE_TYPES: z.string().optional(),
 });
 
 export type AwsProviderEnvironmentConfig = z.infer<

@@ -27,7 +27,7 @@ export async function initMediaWorker(options: {
   await db
     .updateTable("workers")
     .set({
-      status: "READY",
+      status: "ready",
       started_at: new Date(),
       last_heartbeat_at: new Date(),
       updated_at: new Date(),
@@ -58,7 +58,7 @@ export async function initMediaWorker(options: {
   };
 
   // Record WORKER_READY event
-  await recordEvent("WORKER_READY", config.JOB_ID ?? null, {
+  await recordEvent("worker_ready", config.JOB_ID ?? null, {
     pid: process.pid,
     nodeVersion: process.version,
     platform: process.platform,
@@ -168,7 +168,7 @@ export async function pollForNextJob(
       .where("id", "=", ctx.workerId)
       .executeTakeFirst();
 
-    if (worker && worker.status !== "READY") {
+    if (worker && worker.status !== "ready") {
       return null;
     }
   }

@@ -5,16 +5,21 @@ import {
   type Database,
   type VideoJobTable,
 } from "@veolms/database";
-import type { VideoQualityLevel } from "@veolms/fleet-types";
+import {
+  estimateJobHardware,
+  type VideoQualityLevel,
+  type VideoMetadata,
+} from "@veolms/fleet-types";
 import type { FleetManagerConfig } from "@veolms/config";
 
 export interface QueueJobParams {
   jobId?: string;
-  videoId: string;
+  videoId?: string;
   videoKey: string;
   outputPrefix: string;
   qualities: readonly VideoQualityLevel[];
   videoSize?: number;
+  videoMetadata?: VideoMetadata;
 }
 
 export interface JobManager {
@@ -56,7 +61,7 @@ export function createJobManager(options: {
       await db
         .updateTable("video_jobs")
         .set({
-          status: "COMPLETED",
+          status: "completed",
           completed_at: new Date(),
           updated_at: new Date(),
         })
@@ -76,13 +81,13 @@ export function createJobManager(options: {
 
       if (expectedWorkerId) {
         query = query
-          .where("status", "in", ["PROVISIONING", "PROCESSING"])
+          .where("status", "in", ["provisioning", "processing"])
           .where("worker_id", "=", expectedWorkerId);
       }
 
       const job = await query.executeTakeFirst();
 
-      if (!job || job.status === "COMPLETED") {
+      if (!job || job.status === "completed") {
         return false;
       }
 
@@ -93,7 +98,7 @@ export function createJobManager(options: {
         .updateTable("video_jobs")
         .set({
           attempts: nextAttempts,
-          status: shouldRetry ? "QUEUED" : "FAILED",
+          status: shouldRetry ? "queued" : "failed",
           worker_id: null,
           error_message: errorMessage,
           failed_at: shouldRetry ? null : new Date(),
@@ -103,7 +108,7 @@ export function createJobManager(options: {
 
       if (expectedWorkerId) {
         updateQuery = updateQuery
-          .where("status", "in", ["PROVISIONING", "PROCESSING"])
+          .where("status", "in", ["provisioning", "processing"])
           .where("worker_id", "=", expectedWorkerId);
       }
 
@@ -125,16 +130,24 @@ export function createJobManager(options: {
       }
 
       // 2. Check if a job is already active for this videoId or videoKey
-      const existingActive = await db
+      let activeQuery = db
         .selectFrom("video_jobs")
         .selectAll()
-        .where((eb) =>
+        .where("status", "in", ["queued", "provisioning", "processing"]);
+
+      if (params.videoId) {
+        const vid = params.videoId;
+        activeQuery = activeQuery.where((eb) =>
           eb.or([
-            eb("video_id", "=", params.videoId),
+            eb("video_id", "=", vid),
             eb("video_key", "=", params.videoKey),
           ]),
-        )
-        .where("status", "in", ["QUEUED", "PROVISIONING", "PROCESSING"])
+        );
+      } else {
+        activeQuery = activeQuery.where("video_key", "=", params.videoKey);
+      }
+
+      const existingActive = await activeQuery
         .orderBy("created_at", "desc")
         .executeTakeFirst();
 
@@ -145,6 +158,30 @@ export function createJobManager(options: {
       const id = params.jobId ?? randomUUID();
       const videoSize = params.videoSize ?? 0;
       const now = new Date();
+
+      // Persist the probed metadata subset (minus ffprobe's raw per-stream
+      // dump) alongside the resolved profile tier. estimateJobHardware()
+      // is a pure function of (video_size, qualities, video_metadata), so
+      // every later reader (worker provisioning, the atomic claim query,
+      // the worker's own claim-time capacity check) recomputes the exact
+      // same cpu/memory/storage/duration from this persisted row — nothing
+      // else needs to be stored. hardware_profile itself is kept only for
+      // observability/filtering (see migration 008).
+      const persistedMetadata = params.videoMetadata
+        ? (() => {
+            const { rawStreams: _rawStreams, ...rest } = params.videoMetadata;
+            return rest;
+          })()
+        : null;
+      const hardwareProfile = estimateJobHardware(videoSize, params.qualities, {
+        videoMetadata: persistedMetadata,
+      }).profile;
+
+      const metaWidth = params.videoMetadata?.width ?? null;
+      const metaHeight = params.videoMetadata?.height ?? null;
+      const metaDuration = params.videoMetadata?.durationSeconds
+        ? Math.round(params.videoMetadata.durationSeconds)
+        : null;
 
       // Ensure media_assets record exists so foreign key video_jobs.video_id -> media_assets.id is satisfied
       let videoId = params.videoId;
@@ -157,6 +194,27 @@ export function createJobManager(options: {
 
         if (existingMedia) {
           videoId = existingMedia.id;
+          if (
+            (metaWidth && !existingMedia.width) ||
+            (metaHeight && !existingMedia.height) ||
+            (metaDuration && !existingMedia.duration_seconds)
+          ) {
+            try {
+              await db
+                .updateTable("media_assets")
+                .set({
+                  width: existingMedia.width ?? metaWidth,
+                  height: existingMedia.height ?? metaHeight,
+                  duration_seconds:
+                    existingMedia.duration_seconds ?? metaDuration,
+                  updated_at: new Date(),
+                })
+                .where("id", "=", videoId)
+                .execute();
+            } catch {
+              // Ignore update error
+            }
+          }
         } else {
           videoId = randomUUID();
           const filename = params.videoKey.split("/").pop() || "video.mp4";
@@ -197,6 +255,9 @@ export function createJobManager(options: {
                 original_filename: filename,
                 mime_type: "video/mp4",
                 size_bytes: videoSize,
+                width: metaWidth,
+                height: metaHeight,
+                duration_seconds: metaDuration,
                 status: "ready",
               })
               .execute();
@@ -211,7 +272,29 @@ export function createJobManager(options: {
           .where("id", "=", videoId)
           .executeTakeFirst();
 
-        if (!existingMedia) {
+        if (existingMedia) {
+          if (
+            (metaWidth && !existingMedia.width) ||
+            (metaHeight && !existingMedia.height) ||
+            (metaDuration && !existingMedia.duration_seconds)
+          ) {
+            try {
+              await db
+                .updateTable("media_assets")
+                .set({
+                  width: existingMedia.width ?? metaWidth,
+                  height: existingMedia.height ?? metaHeight,
+                  duration_seconds:
+                    existingMedia.duration_seconds ?? metaDuration,
+                  updated_at: new Date(),
+                })
+                .where("id", "=", videoId)
+                .execute();
+            } catch {
+              // Ignore update error
+            }
+          }
+        } else {
           const filename = params.videoKey.split("/").pop() || "video.mp4";
           const defaultOwnerId = "00000000-0000-4000-8000-000000000001";
           let ownerId = defaultOwnerId;
@@ -250,6 +333,9 @@ export function createJobManager(options: {
                 original_filename: filename,
                 mime_type: "video/mp4",
                 size_bytes: videoSize,
+                width: metaWidth,
+                height: metaHeight,
+                duration_seconds: metaDuration,
                 status: "ready",
               })
               .execute();
@@ -265,7 +351,7 @@ export function createJobManager(options: {
           .values({
             id,
             video_id: videoId,
-            status: "QUEUED",
+            status: "queued",
             video_key: params.videoKey,
             output_prefix: params.outputPrefix,
             video_size: videoSize,
@@ -274,6 +360,8 @@ export function createJobManager(options: {
             attempts: 0,
             max_attempts: config.MAX_RETRIES,
             error_message: null,
+            hardware_profile: hardwareProfile,
+            video_metadata: persistedMetadata,
             created_at: now,
             started_at: null,
             completed_at: null,
@@ -287,7 +375,7 @@ export function createJobManager(options: {
           row ?? {
             id,
             video_id: videoId,
-            status: "QUEUED",
+            status: "queued",
             video_key: params.videoKey,
             output_prefix: params.outputPrefix,
             video_size: videoSize,
@@ -297,6 +385,8 @@ export function createJobManager(options: {
             attempts: 0,
             max_attempts: config.MAX_RETRIES,
             error_message: null,
+            hardware_profile: hardwareProfile,
+            video_metadata: persistedMetadata,
             created_at: now,
             started_at: null,
             completed_at: null,

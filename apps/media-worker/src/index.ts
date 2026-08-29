@@ -76,12 +76,12 @@ export async function run(): Promise<void> {
       await db
         .updateTable("workers")
         .set({
-          status: "COMPLETED",
+          status: "completed",
           job_id: null,
           updated_at: new Date(),
         })
         .where("id", "=", config.WORKER_ID)
-        .where("status", "=", "READY")
+        .where("status", "=", "ready")
         .execute();
     } finally {
       await db.destroy();

@@ -164,23 +164,49 @@ async function runDestroySteps(
     console.info(`  ${green("✔")} No active EC2 instances found.`);
   }
 
-  // 2. Delete Lambda function
-  console.info("\n[2/6] Deleting AWS Lambda function...");
-  const lambdaDel = exec(
-    `aws lambda delete-function --function-name ${LAMBDA_NAME} --region ${region}`,
-  );
-  if (lambdaDel !== null) {
-    console.info(`  ${green("✔")} Deleted Lambda: ${LAMBDA_NAME}`);
-  } else {
-    console.info(
-      `  ${red("✘")} Could not delete Lambda (may not exist): ${LAMBDA_NAME}`,
+  // 2. Delete Lambda functions & Layers
+  console.info("\n[2/6] Deleting AWS Lambda functions and layers...");
+  const lambdaNames = [LAMBDA_NAME, "veolms-video-metadata-probe"];
+  for (const fnName of lambdaNames) {
+    const lambdaDel = exec(
+      `aws lambda delete-function --function-name ${fnName} --region ${region}`,
     );
+    if (lambdaDel !== null) {
+      console.info(`  ${green("✔")} Deleted Lambda: ${fnName}`);
+    } else {
+      console.info(
+        `  ${dim(`Lambda ${fnName} not found or already deleted.`)}`,
+      );
+    }
+  }
+
+  // Delete ffprobe layer versions
+  try {
+    const layerVersionsRaw = exec(
+      `aws lambda list-layer-versions --layer-name veolms-ffprobe --region ${region} --query "LayerVersions[*].Version" --output text`,
+    );
+    if (layerVersionsRaw) {
+      const versions = layerVersionsRaw.split(/\s+/).filter(Boolean);
+      for (const ver of versions) {
+        exec(
+          `aws lambda delete-layer-version --layer-name veolms-ffprobe --version-number ${ver} --region ${region}`,
+        );
+      }
+      if (versions.length > 0) {
+        console.info(
+          `  ${green("✔")} Deleted veolms-ffprobe layer versions: ${versions.join(", ")}`,
+        );
+      }
+    }
+  } catch {
+    // Ignore layer deletion errors
   }
 
   // 3. Delete CloudWatch Log Groups
   console.info("\n[3/6] Deleting CloudWatch log groups...");
   const logGroups = [
     `/aws/lambda/${LAMBDA_NAME}`,
+    "/aws/lambda/veolms-video-metadata-probe",
     "/veolms/workers",
     "/veolms/fleet-manager",
   ];
@@ -191,9 +217,7 @@ async function runDestroySteps(
     if (res !== null) {
       console.info(`  ${green("✔")} Deleted log group: ${lg}`);
     } else {
-      console.info(
-        `  ${red("✘")} Could not delete log group (may not exist): ${lg}`,
-      );
+      console.info(`  ${dim(`Log group ${lg} not found or already deleted.`)}`);
     }
   }
 

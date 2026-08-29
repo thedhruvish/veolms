@@ -123,24 +123,24 @@ export async function getFleetHealthSummary(
 ): Promise<FleetHealthSummary> {
   const jobs = await db.selectFrom("video_jobs").select(["status"]).execute();
 
-  const queuedJobsCount = jobs.filter((j) => j.status === "QUEUED").length;
+  const queuedJobsCount = jobs.filter((j) => j.status === "queued").length;
   const processingJobsCount = jobs.filter(
-    (j) => j.status === "PROCESSING" || j.status === "PROVISIONING",
+    (j) => j.status === "processing" || j.status === "provisioning",
   ).length;
   const completedJobsCount = jobs.filter(
-    (j) => j.status === "COMPLETED",
+    (j) => j.status === "completed",
   ).length;
-  const failedJobsCount = jobs.filter((j) => j.status === "FAILED").length;
+  const failedJobsCount = jobs.filter((j) => j.status === "failed").length;
 
   const workers = await db
     .selectFrom("workers")
     .selectAll()
     .where("status", "in", [
-      "PENDING",
-      "PROVISIONING",
-      "STARTING",
-      "READY",
-      "PROCESSING",
+      "pending",
+      "provisioning",
+      "starting",
+      "ready",
+      "processing",
     ])
     .execute();
 
@@ -180,11 +180,11 @@ export async function pruneZombieWorkers(
     .selectFrom("workers")
     .selectAll()
     .where("status", "in", [
-      "PENDING",
-      "PROVISIONING",
-      "STARTING",
-      "READY",
-      "PROCESSING",
+      "pending",
+      "provisioning",
+      "starting",
+      "ready",
+      "processing",
     ])
     .where((eb) =>
       eb.or([
@@ -202,7 +202,7 @@ export async function pruneZombieWorkers(
   for (const worker of stalledWorkers) {
     await db
       .updateTable("workers")
-      .set({ status: "TERMINATING" })
+      .set({ status: "terminating" })
       .where("id", "=", worker.id)
       .execute();
 
@@ -220,7 +220,7 @@ export async function pruneZombieWorkers(
     await db
       .updateTable("workers")
       .set({
-        status: "TERMINATED",
+        status: "terminated",
         terminated_at: new Date(),
         updated_at: new Date(),
       })

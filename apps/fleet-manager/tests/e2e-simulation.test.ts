@@ -24,7 +24,7 @@ describe("Fleet Manager End-to-End Workflow Simulation", () => {
 
     assert.equal(spec.cpu, 8); // Scaled up to 8 vCPU for 4K
     assert.equal(spec.memoryMb, 16384); // Scaled up to 16GB RAM
-    assert.equal(spec.architecture, "ARM64");
+    assert.equal(spec.architecture, "arm64");
 
     // 3. Dynamic scheduler determines check intervals across progress milestones
     const estimatedDuration = 600; // 10 minutes

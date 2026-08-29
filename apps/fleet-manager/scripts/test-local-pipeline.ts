@@ -69,8 +69,8 @@ async function main() {
   // Cancel any stale pending jobs from prior runs
   await db
     .updateTable("video_jobs")
-    .set({ status: "CANCELLED", updated_at: new Date() })
-    .where("status", "in", ["QUEUED", "PROCESSING"])
+    .set({ status: "cancelled", updated_at: new Date() })
+    .where("status", "in", ["queued", "processing"])
     .execute();
 
   // Step 1: Insert job into PostgreSQL
@@ -129,7 +129,7 @@ async function main() {
     .values({
       id: jobId,
       video_id: videoId,
-      status: "QUEUED",
+      status: "queued",
       video_key: videoKey,
       output_prefix: outputPrefix,
       video_size: 0,
@@ -183,13 +183,13 @@ async function main() {
       );
     }
 
-    if (currentJob.status === "COMPLETED") {
+    if (currentJob.status === "completed") {
       completed = true;
       console.info("\n\n✓ Job successfully COMPLETED!");
       break;
     }
 
-    if (currentJob.status === "FAILED") {
+    if (currentJob.status === "failed") {
       throw new Error(`Job FAILED: ${currentJob.error_message}`);
     }
 

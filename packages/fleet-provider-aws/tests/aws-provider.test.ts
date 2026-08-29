@@ -5,13 +5,13 @@ import { loadAwsProviderConfig, resolveS3BucketName } from "../src/config.ts";
 
 describe("AWS Fleet Provider", () => {
   it("should map EC2 instance states to fleet WorkerStatus correctly", () => {
-    assert.equal(mapEc2StateToWorkerStatus("pending"), "STARTING");
-    assert.equal(mapEc2StateToWorkerStatus("running"), "PROCESSING");
-    assert.equal(mapEc2StateToWorkerStatus("shutting-down"), "TERMINATING");
-    assert.equal(mapEc2StateToWorkerStatus("terminated"), "TERMINATED");
-    assert.equal(mapEc2StateToWorkerStatus("stopped"), "FAILED");
-    assert.equal(mapEc2StateToWorkerStatus("stopping"), "FAILED");
-    assert.equal(mapEc2StateToWorkerStatus("unknown"), "PENDING");
+    assert.equal(mapEc2StateToWorkerStatus("pending"), "starting");
+    assert.equal(mapEc2StateToWorkerStatus("running"), "processing");
+    assert.equal(mapEc2StateToWorkerStatus("shutting-down"), "terminating");
+    assert.equal(mapEc2StateToWorkerStatus("terminated"), "terminated");
+    assert.equal(mapEc2StateToWorkerStatus("stopped"), "failed");
+    assert.equal(mapEc2StateToWorkerStatus("stopping"), "failed");
+    assert.equal(mapEc2StateToWorkerStatus("unknown"), "pending");
   });
 
   it("should load config with EC2_KEY_NAME and EC2_SECURITY_GROUP_IDS fallback", () => {
@@ -84,11 +84,100 @@ describe("AWS Fleet Provider", () => {
 
       assert.equal(instances.length, 2);
       assert.equal(instances[0]!.providerWorkerId, "i-0123456789abcdef0");
-      assert.equal(instances[0]!.status, "PROCESSING");
+      assert.equal(instances[0]!.status, "processing");
       assert.equal(instances[0]!.workerId, "w-abc-123");
       assert.equal(instances[1]!.providerWorkerId, "i-0123456789abcdef1");
-      assert.equal(instances[1]!.status, "STARTING");
+      assert.equal(instances[1]!.status, "starting");
       assert.equal(instances[1]!.workerId, null);
+    });
+  });
+
+  describe("createWorker — instance candidate retry", () => {
+    it("falls through to the next same-size candidate when the preferred type has no capacity", async () => {
+      const { createAwsProvider } = await import("../src/provider.ts");
+      const attemptedInstanceTypes: string[] = [];
+
+      const mockEc2 = {
+        send: async (cmd: any) => {
+          const name = cmd.constructor.name;
+          if (name === "RunInstancesCommand") {
+            attemptedInstanceTypes.push(cmd.input.InstanceType);
+            if (cmd.input.InstanceType === "c7g.large") {
+              const err = new Error("no capacity");
+              err.name = "InsufficientInstanceCapacity";
+              throw err;
+            }
+            return {
+              Instances: [
+                {
+                  InstanceId: "i-second-candidate",
+                  State: { Name: "pending" },
+                  LaunchTime: new Date("2026-08-29T00:00:00Z"),
+                },
+              ],
+            };
+          }
+          if (name === "DescribeImagesCommand") {
+            return {};
+          }
+          return {};
+        },
+      } as any;
+
+      const provider = createAwsProvider({
+        ec2Client: mockEc2,
+        amiId: "ami-test-1234567890abcdef0",
+      });
+
+      const handle = await provider.createWorker("worker-1", {
+        cpu: 2,
+        memoryMb: 4096,
+        architecture: "arm64",
+        storageGb: 30,
+        region: "us-east-1",
+        environmentVariables: {},
+      });
+
+      assert.deepEqual(attemptedInstanceTypes, ["c7g.large", "c8g.large"]);
+      assert.equal(handle.providerWorkerId, "i-second-candidate");
+    });
+
+    it("raises immediately on a non-retryable error without trying further candidates", async () => {
+      const { createAwsProvider } = await import("../src/provider.ts");
+      const attemptedInstanceTypes: string[] = [];
+
+      const mockEc2 = {
+        send: async (cmd: any) => {
+          const name = cmd.constructor.name;
+          if (name === "RunInstancesCommand") {
+            attemptedInstanceTypes.push(cmd.input.InstanceType);
+            const err = new Error("not authorized");
+            err.name = "UnauthorizedOperation";
+            throw err;
+          }
+          return {};
+        },
+      } as any;
+
+      const provider = createAwsProvider({
+        ec2Client: mockEc2,
+        amiId: "ami-test-1234567890abcdef0",
+      });
+
+      await assert.rejects(
+        () =>
+          provider.createWorker("worker-2", {
+            cpu: 2,
+            memoryMb: 4096,
+            architecture: "arm64",
+            storageGb: 30,
+            region: "us-east-1",
+            environmentVariables: {},
+          }),
+        (err: Error) => err.name === "UnauthorizedOperation",
+      );
+
+      assert.deepEqual(attemptedInstanceTypes, ["c7g.large"]);
     });
   });
 

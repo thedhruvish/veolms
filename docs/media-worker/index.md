@@ -25,7 +25,7 @@ reuse the same compatible worker for more than one queued job.
 Fleet manager or idle worker
         |
         v
-Claim a compatible QUEUED job atomically
+Claim a compatible queued job atomically
         |
         v
 Download source -> ffprobe -> optional resolution cap
@@ -37,7 +37,7 @@ FFmpeg multi-rendition HLS transcode
         +--> incremental S3 segment/playlist uploads (when enabled)
         |
         v
-Persist output -> mark job COMPLETED -> worker READY
+Persist output -> mark job completed -> worker ready
         |
         v
 Claim one more compatible job, or exit cleanly

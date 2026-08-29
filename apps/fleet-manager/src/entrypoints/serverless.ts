@@ -8,7 +8,7 @@ import type {
   VideoJobEvent,
   VideoQualityLevel,
 } from "@veolms/contracts";
-import { videoJobEventSchema } from "@veolms/contracts";
+import { LAMBDA_ACTIONS, videoJobEventSchema } from "@veolms/contracts";
 import {
   loadFleetManagerConfig,
   resolveProviderName,
@@ -79,9 +79,9 @@ export function extractVideoJobEvent(rawEvent: unknown): VideoJobEvent {
   // Fallback extraction for loose / non-UUID or partial payloads
   const result: Record<string, unknown> = {};
   if (typeof candidate.action === "string") {
-    const actionUpper = candidate.action.toUpperCase();
-    if (["TICK", "CLAIM", "MONITOR", "QUEUE"].includes(actionUpper)) {
-      result.action = actionUpper;
+    const action = candidate.action.toLowerCase();
+    if (LAMBDA_ACTIONS.includes(action as (typeof LAMBDA_ACTIONS)[number])) {
+      result.action = action;
     }
   }
   if (typeof candidate.jobId === "string") result.jobId = candidate.jobId;
@@ -97,6 +97,9 @@ export function extractVideoJobEvent(rawEvent: unknown): VideoJobEvent {
     !Number.isNaN(Number(candidate.videoSize))
   ) {
     result.videoSize = Number(candidate.videoSize);
+  }
+  if (candidate.videoMetadata && typeof candidate.videoMetadata === "object") {
+    result.videoMetadata = candidate.videoMetadata as Record<string, unknown>;
   }
 
   return result as VideoJobEvent;
@@ -167,10 +170,27 @@ export async function runServerlessFleetCycle(
     });
 
     // 1. If action is QUEUE and video parameters are provided, ensure job is queued (idempotent)
-    if (event.action === "QUEUE" && event.videoKey) {
+    if (event.action === "queue" && event.videoKey) {
       const videoKey = event.videoKey;
-      const videoId = event.videoId ?? event.jobId ?? videoKey;
-      const outputPrefix = event.outputPrefix ?? `transcoded/${videoId}`;
+      const isUuid = (val: string) =>
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          val,
+        );
+
+      const videoId =
+        event.videoId && isUuid(event.videoId)
+          ? event.videoId
+          : event.jobId && isUuid(event.jobId)
+            ? event.jobId
+            : undefined;
+
+      const jobId =
+        event.jobId && isUuid(event.jobId) ? event.jobId : undefined;
+
+      const filename = videoKey.split("/").pop() || "video.mp4";
+      const cleanFilename = filename.replace(/\.[^/.]+$/, "");
+      const outputPrefix = event.outputPrefix ?? `transcoded/${cleanFilename}/`;
+
       const qualities: readonly VideoQualityLevel[] = event.qualities ?? [
         "1080p",
         "720p",
@@ -179,19 +199,20 @@ export async function runServerlessFleetCycle(
       ];
 
       await fleet.queueJob({
-        jobId: event.jobId,
+        jobId,
         videoId,
         videoKey,
         outputPrefix,
         qualities,
         videoSize: event.videoSize ? Number(event.videoSize) : undefined,
+        videoMetadata: event.videoMetadata,
       });
     }
 
     // 2. Run monitoring cycle first to clean up stale/timed-out workers and free capacity
     const monitorResult = await fleet.runMonitoringCycle();
 
-    if (event.action === "MONITOR") {
+    if (event.action === "monitor") {
       const nextWakeup = await fleet.syncWakeupSchedule();
       return {
         success: true,

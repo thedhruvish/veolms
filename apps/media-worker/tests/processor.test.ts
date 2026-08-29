@@ -123,6 +123,7 @@ function buildFakeDb(options: {
   return {
     selectFrom(table: string) {
       if (table === "video_jobs") return makeChain(() => jobRow);
+      if (table === "media_assets") return makeChain(() => undefined);
       throw new Error(`db: unexpected selectFrom ${table}`);
     },
     updateTable(table: string) {
@@ -175,7 +176,7 @@ describe("executeTranscodeJob — claim and retry logic", () => {
     const db = buildFakeDb({
       jobRow: {
         id: JOB_ID,
-        status: "QUEUED",
+        status: "queued",
         worker_id: null,
         video_key: "raw/video.mp4",
         output_prefix: "out/job-1",
@@ -191,7 +192,7 @@ describe("executeTranscodeJob — claim and retry logic", () => {
         cpu: 1,
         memory_mb: 1024,
         storage_gb: 10,
-        architecture: "ARM64",
+        architecture: "arm64",
       },
       jobsSetCalls,
       workersSetCalls,
@@ -223,7 +224,7 @@ describe("executeTranscodeJob — claim and retry logic", () => {
     const db = buildFakeDb({
       jobRow: {
         id: JOB_ID,
-        status: "QUEUED",
+        status: "queued",
         worker_id: null,
         video_key: "raw/video.mp4",
         output_prefix: "out/job-1",
@@ -238,7 +239,7 @@ describe("executeTranscodeJob — claim and retry logic", () => {
         cpu: 8,
         memory_mb: 16384,
         storage_gb: 200,
-        architecture: "ARM64",
+        architecture: "arm64",
       },
       workerMonitoringThrows: true,
       jobsSetCalls,
@@ -254,16 +255,16 @@ describe("executeTranscodeJob — claim and retry logic", () => {
 
     // First set() call is the claim; second is the failure/retry update.
     assert.equal(jobsSetCalls.length, 2);
-    assert.equal(jobsSetCalls[1].status, "QUEUED");
+    assert.equal(jobsSetCalls[1].status, "queued");
     assert.equal(jobsSetCalls[1].attempts, 1);
     assert.equal(jobsSetCalls[1].worker_id, null);
     assert.equal(jobsSetCalls[1].failed_at, null);
 
     assert.equal(workersSetCalls.length, 2);
-    assert.equal(workersSetCalls[1].status, "READY");
+    assert.equal(workersSetCalls[1].status, "ready");
     assert.equal(workersSetCalls[1].job_id, null);
 
-    const jobFailedEvent = recordedEvents.find((e) => e.event === "JOB_FAILED");
+    const jobFailedEvent = recordedEvents.find((e) => e.event === "job_failed");
     assert.ok(jobFailedEvent, "JOB_FAILED event should be recorded");
     assert.equal(jobFailedEvent?.metadata?.["willRetry"], true);
     assert.equal(jobFailedEvent?.metadata?.["attempts"], 1);
@@ -281,7 +282,7 @@ describe("executeTranscodeJob — claim and retry logic", () => {
     const db = buildFakeDb({
       jobRow: {
         id: JOB_ID,
-        status: "QUEUED",
+        status: "queued",
         worker_id: null,
         video_key: "raw/video.mp4",
         output_prefix: "out/job-1",
@@ -296,7 +297,7 @@ describe("executeTranscodeJob — claim and retry logic", () => {
         cpu: 8,
         memory_mb: 16384,
         storage_gb: 200,
-        architecture: "ARM64",
+        architecture: "arm64",
       },
       workerMonitoringThrows: true,
       jobsSetCalls,
@@ -308,14 +309,14 @@ describe("executeTranscodeJob — claim and retry logic", () => {
     await assert.rejects(() => executeTranscodeJob(ctx, JOB_ID));
 
     assert.equal(jobsSetCalls.length, 2);
-    assert.equal(jobsSetCalls[1].status, "FAILED");
+    assert.equal(jobsSetCalls[1].status, "failed");
     assert.equal(jobsSetCalls[1].attempts, 3);
     assert.ok(jobsSetCalls[1].failed_at instanceof Date);
 
     assert.equal(workersSetCalls.length, 2);
-    assert.equal(workersSetCalls[1].status, "FAILED");
+    assert.equal(workersSetCalls[1].status, "failed");
 
-    const jobFailedEvent = recordedEvents.find((e) => e.event === "JOB_FAILED");
+    const jobFailedEvent = recordedEvents.find((e) => e.event === "job_failed");
     assert.equal(jobFailedEvent?.metadata?.["willRetry"], false);
   });
 
@@ -331,7 +332,7 @@ describe("executeTranscodeJob — claim and retry logic", () => {
     const db = buildFakeDb({
       jobRow: {
         id: JOB_ID,
-        status: "QUEUED",
+        status: "queued",
         worker_id: null,
         video_key: "raw/video.mp4",
         output_prefix: "out/job-1",
@@ -346,7 +347,7 @@ describe("executeTranscodeJob — claim and retry logic", () => {
         cpu: 4,
         memory_mb: 8192,
         storage_gb: 50,
-        architecture: "X86_64",
+        architecture: "x86_64",
       },
       workerMonitoringThrows: true,
       jobsSetCalls,
@@ -362,7 +363,7 @@ describe("executeTranscodeJob — claim and retry logic", () => {
     );
 
     assert.equal(jobsSetCalls.length, 2);
-    assert.equal(jobsSetCalls[0].status, "PROVISIONING");
+    assert.equal(jobsSetCalls[0].status, "provisioning");
     assert.equal(jobsSetCalls[0].worker_id, WORKER_ID);
   });
 
@@ -374,7 +375,7 @@ describe("executeTranscodeJob — claim and retry logic", () => {
     const db = buildFakeDb({
       jobRow: {
         id: JOB_ID,
-        status: "QUEUED",
+        status: "queued",
         worker_id: null,
         video_key: "raw/video.mp4",
         output_prefix: "out/job-1",

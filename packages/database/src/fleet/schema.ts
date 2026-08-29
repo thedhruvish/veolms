@@ -2,6 +2,7 @@ import type { Generated, JSONColumnType } from "kysely";
 import type {
   Architecture,
   FleetEventType,
+  HardwareProfile,
   ProviderType,
   VideoJobStatus,
   VideoQualityLevel,
@@ -11,6 +12,7 @@ import type {
 export type {
   Architecture,
   FleetEventType,
+  HardwareProfile,
   ProviderType,
   VideoJobStatus,
   VideoQualityLevel,
@@ -30,6 +32,12 @@ export interface VideoJobTable {
   attempts: Generated<number>;
   max_attempts: Generated<number>;
   error_message: string | null;
+  hardware_profile: HardwareProfile | null;
+  video_metadata: JSONColumnType<
+    Record<string, unknown>,
+    Record<string, unknown> | string,
+    Record<string, unknown> | string
+  > | null;
   created_at: Generated<Date>;
   started_at: Date | null;
   completed_at: Date | null;

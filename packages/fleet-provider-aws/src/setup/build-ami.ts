@@ -41,7 +41,7 @@ export async function runBuildAmi(): Promise<void> {
   const baseAmi = await resolveDebianAmiId(
     ssm,
     REGION,
-    ARCHITECTURE === "arm64" ? "ARM64" : "X86_64",
+    ARCHITECTURE === "arm64" ? "arm64" : "x86_64",
   );
   const instanceType = ARCHITECTURE === "arm64" ? "c7g.large" : "c6i.large";
   const amiName = `veolms-worker-ami-${ARCHITECTURE}-${Date.now()}`;

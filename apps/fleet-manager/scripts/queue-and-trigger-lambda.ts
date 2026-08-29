@@ -250,12 +250,7 @@ async function main(): Promise<void> {
       .selectFrom("video_jobs")
       .selectAll()
       .where("video_id", "=", videoId)
-      .where("status", "in", [
-        "QUEUED",
-        "CLAIMED",
-        "PROVISIONING",
-        "PROCESSING",
-      ])
+      .where("status", "in", ["queued", "provisioning", "processing"])
       .orderBy("created_at", "desc")
       .executeTakeFirst();
 
@@ -274,7 +269,7 @@ async function main(): Promise<void> {
         .values({
           id: jobId,
           video_id: videoId,
-          status: "QUEUED",
+          status: "queued",
           video_key: VIDEO_KEY,
           output_prefix: outputPrefix,
           video_size: videoSize,
@@ -309,7 +304,7 @@ async function main(): Promise<void> {
         LAMBDA_NAME,
         "--payload",
         JSON.stringify({
-          action: "CLAIM",
+          action: "claim",
           jobId: actualJobId,
           videoId,
           videoKey: VIDEO_KEY,

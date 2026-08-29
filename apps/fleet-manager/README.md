@@ -71,16 +71,16 @@ The **Fleet Manager** is the control-plane orchestrator responsible for managing
 The Fleet Manager actively reconciles state between the PostgreSQL database and real cloud instances:
 
 1. **Spot Interruption & Unexpected Worker Crash**:
-   - If a DB worker is in `PROVISIONING`, `STARTING`, `READY`, or `PROCESSING`, but its EC2 instance is terminated/missing in AWS (past a 30s launch grace period):
-   - The worker is marked `FAILED` with event `SPOT_INTERRUPTED`.
-   - The associated video job has its `attempts` incremented and is automatically reset to `QUEUED` if `attempts < max_attempts` (or marked `FAILED` if retries exhausted).
+   - If a DB worker is in `provisioning`, `starting`, `ready`, or `processing`, but its EC2 instance is terminated/missing in AWS (past a 30s launch grace period):
+   - The worker is marked `failed` with event `spot_interrupted`.
+   - The associated video job has its `attempts` incremented and is automatically reset to `queued` if `attempts < max_attempts` (or marked `failed` if retries exhausted).
 
 2. **Orphaned Cloud Instances (Zombie Cleanup)**:
    - If an EC2 instance tagged with `ManagedBy: veolms-fleet-manager` is running in AWS but has no matching active worker in the database (and is older than 3 minutes):
-   - Fleet Manager terminates the instance via `provider.terminateWorker()` and logs `ORPHAN_INSTANCE_TERMINATED` to prevent cost leaks.
+   - Fleet Manager terminates the instance via `provider.terminateWorker()` and logs `orphan_instance_terminated` to prevent cost leaks.
 
 3. **Storage Output Verification**:
-   - When a job completes, Fleet Manager verifies that the target `master.m3u8` playlist exists in S3 (with non-zero size) before finalizing `COMPLETED` status.
+   - When a job completes, Fleet Manager verifies that the target `master.m3u8` playlist exists in S3 (with non-zero size) before finalizing `completed` status.
 
 ---
 

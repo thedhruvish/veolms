@@ -25,9 +25,9 @@ const debianAmiCache = new Map<
 export function resolveDebianAmiId(
   ssm: SSMClient,
   region: string,
-  architecture: "ARM64" | "X86_64",
+  architecture: "arm64" | "x86_64",
 ): Promise<string> {
-  const debianArch = architecture === "ARM64" ? "arm64" : "amd64";
+  const debianArch = architecture === "arm64" ? "arm64" : "amd64";
   const parameterName = `/aws/service/debian/release/${DEBIAN_RELEASE}/latest/${debianArch}`;
   const cacheKey = `${region}:${parameterName}`;
 

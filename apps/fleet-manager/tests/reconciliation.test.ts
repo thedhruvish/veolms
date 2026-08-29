@@ -32,9 +32,9 @@ describe("Fleet Manager — State Reconciliation & Dynamic Scheduling", () => {
                 execute: async () => [
                   {
                     id: "w-spot-1",
-                    provider: "AWS",
+                    provider: "aws",
                     provider_worker_id: "i-spot123",
-                    status: "PROCESSING",
+                    status: "processing",
                     job_id: "job-100",
                     created_at: new Date(Date.now() - 60000), // 60s ago (past 30s grace)
                     last_heartbeat_at: new Date(),
@@ -54,7 +54,7 @@ describe("Fleet Manager — State Reconciliation & Dynamic Scheduling", () => {
                       id: "job-100",
                       attempts: 0,
                       max_attempts: 3,
-                      status: "PROCESSING",
+                      status: "processing",
                       worker_id: "w-spot-1",
                     }),
                   }),
@@ -116,19 +116,19 @@ describe("Fleet Manager — State Reconciliation & Dynamic Scheduling", () => {
 
     const terminatedInstances: string[] = [];
     const mockProvider: FleetProvider = {
-      name: "AWS",
+      name: "aws",
       createWorker: async () => ({}) as WorkerHandle,
       getWorker: async () => null,
-      getWorkerStatus: async () => "TERMINATED",
+      getWorkerStatus: async () => "terminated",
       terminateWorker: async (id) => {
         terminatedInstances.push(id);
       },
-      healthCheck: async () => ({ healthy: true, state: "READY" }),
+      healthCheck: async () => ({ healthy: true, state: "ready" }),
       listActiveInstances: async () => [
         // i-spot123 has terminated in AWS
         {
           providerWorkerId: "i-spot123",
-          status: "TERMINATED",
+          status: "terminated",
           launchTime: new Date(Date.now() - 60000),
           workerId: "w-spot-1",
         },
@@ -144,9 +144,9 @@ describe("Fleet Manager — State Reconciliation & Dynamic Scheduling", () => {
     const reconcileResult = await fleet.monitor.reconcileClusterState();
 
     assert.equal(reconcileResult.deadWorkersProcessed, 1);
-    assert.equal(workerUpdatedStatus, "FAILED");
-    assert.equal(jobUpdatedStatus, "QUEUED"); // Re-queued since attempts < max_attempts
-    assert.ok(recordedEvents.includes("SPOT_INTERRUPTED"));
+    assert.equal(workerUpdatedStatus, "failed");
+    assert.equal(jobUpdatedStatus, "queued"); // Re-queued since attempts < max_attempts
+    assert.ok(recordedEvents.includes("spot_interrupted"));
   });
 
   it("detects and terminates orphaned cloud instances not associated with active DB workers", async () => {
@@ -164,7 +164,7 @@ describe("Fleet Manager — State Reconciliation & Dynamic Scheduling", () => {
                   {
                     id: "w-valid-1",
                     provider_worker_id: "i-valid123",
-                    status: "PROCESSING",
+                    status: "processing",
                     created_at: new Date(),
                   },
                 ],
@@ -194,25 +194,25 @@ describe("Fleet Manager — State Reconciliation & Dynamic Scheduling", () => {
     } as any;
 
     const mockProvider: FleetProvider = {
-      name: "AWS",
+      name: "aws",
       createWorker: async () => ({}) as WorkerHandle,
       getWorker: async () => null,
-      getWorkerStatus: async () => "PROCESSING",
+      getWorkerStatus: async () => "processing",
       terminateWorker: async (id) => {
         terminatedZombieInstances.push(id);
       },
-      healthCheck: async () => ({ healthy: true, state: "PROCESSING" }),
+      healthCheck: async () => ({ healthy: true, state: "processing" }),
       listActiveInstances: async () => [
         {
           providerWorkerId: "i-valid123",
-          status: "PROCESSING",
+          status: "processing",
           launchTime: new Date(Date.now() - 60000),
           workerId: "w-valid-1",
         },
         {
           // Zombie instance: running in AWS, but not in DB
           providerWorkerId: "i-zombie999",
-          status: "PROCESSING",
+          status: "processing",
           launchTime: new Date(Date.now() - 300000), // 5 min ago (> 3 min grace)
           workerId: "w-deleted-or-completed",
         },
@@ -229,7 +229,7 @@ describe("Fleet Manager — State Reconciliation & Dynamic Scheduling", () => {
 
     assert.equal(reconcileResult.zombieInstancesTerminated, 1);
     assert.deepEqual(terminatedZombieInstances, ["i-zombie999"]);
-    assert.ok(recordedEvents.includes("ORPHAN_INSTANCE_TERMINATED"));
+    assert.ok(recordedEvents.includes("orphan_instance_terminated"));
   });
 
   it("synchronizes EventBridge wakeup schedule to the earliest next_check_at across active workers", async () => {
@@ -253,12 +253,12 @@ describe("Fleet Manager — State Reconciliation & Dynamic Scheduling", () => {
     } as any;
 
     const mockProvider: FleetProvider = {
-      name: "AWS",
+      name: "aws",
       createWorker: async () => ({}) as WorkerHandle,
       getWorker: async () => null,
-      getWorkerStatus: async () => "PROCESSING",
+      getWorkerStatus: async () => "processing",
       terminateWorker: async () => {},
-      healthCheck: async () => ({ healthy: true, state: "PROCESSING" }),
+      healthCheck: async () => ({ healthy: true, state: "processing" }),
       scheduleNextWakeup: async (target) => {
         scheduledWakeupTarget = target;
       },
@@ -301,12 +301,12 @@ describe("Fleet Manager — State Reconciliation & Dynamic Scheduling", () => {
     } as any;
 
     const mockProvider: FleetProvider = {
-      name: "AWS",
+      name: "aws",
       createWorker: async () => ({}) as WorkerHandle,
       getWorker: async () => null,
-      getWorkerStatus: async () => "PROCESSING",
+      getWorkerStatus: async () => "processing",
       terminateWorker: async () => {},
-      healthCheck: async () => ({ healthy: true, state: "PROCESSING" }),
+      healthCheck: async () => ({ healthy: true, state: "processing" }),
       scheduleNextWakeup: async () => {},
       cancelWakeup: async () => {
         cancelledWakeup = true;

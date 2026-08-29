@@ -7,6 +7,7 @@ import { bold, cyan, dim, green, yellow } from "@veolms/fleet-types/terminal";
 
 export interface BuildServerlessOptions {
   provider?: string;
+  entry?: "fleet" | "probe";
   target?: string;
   format?: "cjs" | "esm";
   outDir?: string;
@@ -120,21 +121,43 @@ export function bundleServerless(
     process.env.FLEET_PROVIDER ??
     "aws";
   const provider = rawProvider.trim().toLowerCase();
+  const entry = options.entry ?? "fleet";
   const target = options.target ?? "node22";
   const format = options.format ?? "cjs";
   const shouldZip = options.createZip ?? true;
 
-  const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  const repoRoot = path.resolve(__dirname, "..", "..", "..");
-
-  const entryPoint = path.join(
-    repoRoot,
-    "apps/fleet-manager/src/entrypoints/serverless.ts",
+  let repoRoot = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "..",
+    "..",
+    "..",
   );
+  try {
+    let currentDir = path.dirname(fileURLToPath(import.meta.url));
+    while (currentDir !== path.parse(currentDir).root) {
+      if (
+        fsSync.existsSync(path.join(currentDir, "pnpm-workspace.yaml")) ||
+        fsSync.existsSync(path.join(currentDir, "turbo.json"))
+      ) {
+        repoRoot = currentDir;
+        break;
+      }
+      currentDir = path.dirname(currentDir);
+    }
+  } catch {
+    // fallback to relative resolution
+  }
+
+  const entryPoint =
+    entry === "probe"
+      ? path.join(repoRoot, "packages/fleet-provider-aws/src/probe-lambda.ts")
+      : path.join(repoRoot, "apps/fleet-manager/src/entrypoints/serverless.ts");
 
   const distDir = options.outDir
     ? path.resolve(options.outDir)
-    : path.join(repoRoot, "dist/serverless");
+    : entry === "probe"
+      ? path.join(repoRoot, "dist/probe-lambda")
+      : path.join(repoRoot, "dist/serverless");
 
   if (!fsSync.existsSync(distDir)) {
     fsSync.mkdirSync(distDir, { recursive: true });
@@ -147,12 +170,13 @@ export function bundleServerless(
       `\n${bold(cyan("╔══════════════════════════════════════════════════════╗"))}`,
     );
     console.info(
-      `${bold(cyan("║"))}       ${bold("VeoLMS Universal Serverless Builder")}          ${bold(cyan("║"))}`,
+      `${bold(cyan("║"))}       ${bold(`VeoLMS Serverless Builder [${entry.toUpperCase()}]`)}          ${bold(cyan("║"))}`,
     );
     console.info(
       `${bold(cyan("╚══════════════════════════════════════════════════════╝"))}\n`,
     );
     console.info(`  Target Provider: ${bold(green(provider.toUpperCase()))}`);
+    console.info(`  Entry Mode:      ${cyan(entry)}`);
     console.info(`  Runtime Target:  ${cyan(target)}`);
     console.info(`  Module Format:   ${cyan(format)}`);
     console.info(`  Entrypoint:      ${dim(entryPoint)}`);
@@ -179,7 +203,7 @@ export function bundleServerless(
   }
 
   // 2. Mirror to dist/lambda for AWS backwards compatibility
-  if (provider === "aws" && !options.outDir) {
+  if (provider === "aws" && entry === "fleet" && !options.outDir) {
     const lambdaDir = path.join(repoRoot, "dist/lambda");
     if (!fsSync.existsSync(lambdaDir)) {
       fsSync.mkdirSync(lambdaDir, { recursive: true });
@@ -218,7 +242,7 @@ export function bundleServerless(
     }
 
     // If AWS, also mirror function.zip to dist/lambda
-    if (provider === "aws" && !options.outDir) {
+    if (provider === "aws" && entry === "fleet" && !options.outDir) {
       const lambdaZip = path.join(repoRoot, "dist/lambda/function.zip");
       fsSync.copyFileSync(zipPath, lambdaZip);
     }
@@ -253,6 +277,11 @@ export function parseBuildArgs(
       options.provider = arg.split("=")[1];
     } else if (arg === "--provider" && args[i + 1]) {
       options.provider = args[++i];
+    } else if (arg.startsWith("--entry=")) {
+      const e = arg.split("=")[1];
+      if (e === "fleet" || e === "probe") {
+        options.entry = e;
+      }
     } else if (arg.startsWith("--target=")) {
       options.target = arg.split("=")[1];
     } else if (arg.startsWith("--format=")) {

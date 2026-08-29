@@ -21,7 +21,7 @@ import {
   parseBuildArgs,
 } from "../scripts/build-serverless.ts";
 
-function createMockProvider(name = "LOCAL"): FleetProvider {
+function createMockProvider(name = "local"): FleetProvider {
   return {
     name: name as any,
     async createWorker(id: string): Promise<WorkerHandle> {
@@ -29,7 +29,7 @@ function createMockProvider(name = "LOCAL"): FleetProvider {
         id,
         providerWorkerId: `mock-${id}`,
         provider: name as any,
-        status: "PROCESSING" as WorkerStatus,
+        status: "processing" as WorkerStatus,
         privateIp: "127.0.0.1",
         publicIp: null,
         createdAt: new Date(),
@@ -39,11 +39,11 @@ function createMockProvider(name = "LOCAL"): FleetProvider {
       return null;
     },
     async getWorkerStatus(): Promise<WorkerStatus> {
-      return "PROCESSING";
+      return "processing";
     },
     async terminateWorker(): Promise<void> {},
     async healthCheck(): Promise<HealthStatus> {
-      return { healthy: true, state: "PROCESSING" };
+      return { healthy: true, state: "processing" };
     },
   };
 }
@@ -54,7 +54,7 @@ function createChainableMockDb(
   const mockJob = {
     id: "job-1",
     video_id: "vid-1",
-    status: "QUEUED",
+    status: "queued",
     video_key: "key.mp4",
     output_prefix: "out/",
     qualities: ["1080p"],
@@ -84,13 +84,13 @@ function createChainableMockDb(
 describe("Universal Serverless Entrypoint — Event Parsing", () => {
   it("should extract direct VideoJobEvent fields correctly", () => {
     const raw = {
-      action: "QUEUE",
+      action: "queue",
       videoKey: "raw/lecture.mp4",
       videoId: "vid-1",
       qualities: ["1080p", "720p"],
     };
     const event = extractVideoJobEvent(raw);
-    assert.equal(event.action, "QUEUE");
+    assert.equal(event.action, "queue");
     assert.equal(event.videoKey, "raw/lecture.mp4");
     assert.equal(event.videoId, "vid-1");
     assert.deepEqual(event.qualities, ["1080p", "720p"]);
@@ -99,17 +99,17 @@ describe("Universal Serverless Entrypoint — Event Parsing", () => {
   it("should extract JSON string payload from HTTP event.body (Function URL / API Gateway)", () => {
     const raw = {
       body: JSON.stringify({
-        action: "MONITOR",
+        action: "monitor",
       }),
       headers: { "content-type": "application/json" },
     };
     const event = extractVideoJobEvent(raw);
-    assert.equal(event.action, "MONITOR");
+    assert.equal(event.action, "monitor");
   });
 
   it("should extract base64-encoded body from HTTP event when isBase64Encoded is true", () => {
     const payload = JSON.stringify({
-      action: "QUEUE",
+      action: "queue",
       videoKey: "encoded.mp4",
     });
     const base64Body = Buffer.from(payload, "utf-8").toString("base64");
@@ -118,7 +118,7 @@ describe("Universal Serverless Entrypoint — Event Parsing", () => {
       isBase64Encoded: true,
     };
     const event = extractVideoJobEvent(raw);
-    assert.equal(event.action, "QUEUE");
+    assert.equal(event.action, "queue");
     assert.equal(event.videoKey, "encoded.mp4");
   });
 
@@ -136,7 +136,7 @@ describe("Universal Serverless Entrypoint — Execution Lifecycle", () => {
     const db = createChainableMockDb();
 
     const result = await runServerlessFleetCycle(
-      { action: "MONITOR" },
+      { action: "monitor" },
       { provider, db },
     );
 
@@ -163,7 +163,7 @@ describe("Universal Serverless Entrypoint — Execution Lifecycle", () => {
 
     const result = await runServerlessFleetCycle(
       {
-        action: "QUEUE",
+        action: "queue",
         videoKey: "courses/intro.mp4",
         videoId: "v-123",
         qualities: ["1080p"],

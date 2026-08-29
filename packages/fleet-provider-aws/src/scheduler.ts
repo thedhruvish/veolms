@@ -102,7 +102,7 @@ export function createAwsSchedulerManager(
           Arn: targetArn,
           RoleArn: roleArn,
           Input: JSON.stringify({
-            action: "TICK",
+            action: "tick",
             triggerReason: "DYNAMIC_CHECK",
             scheduledFor: effectiveTarget.toISOString(),
             ...payload,
