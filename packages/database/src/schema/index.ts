@@ -6,6 +6,7 @@ export * from "./courses.schema.ts";
 export * from "./media.schema.ts";
 export * from "./commerce.schema.ts";
 export * from "./webhooks.schema.ts";
+export * from "./json.schema.ts";
 
 // Import table interfaces to assemble unified Database schema
 import type {
