@@ -11,7 +11,7 @@ describe("AWS Instance Type Selector", () => {
     const nano = selectOptimalInstanceType({
       cpu: 1,
       memoryMb: 2048,
-      architecture: "ARM64",
+      architecture: "arm64",
       storageGb: 20,
       region: "us-east-1",
       environmentVariables: {},
@@ -22,7 +22,7 @@ describe("AWS Instance Type Selector", () => {
     const micro = selectOptimalInstanceType({
       cpu: 2,
       memoryMb: 4096,
-      architecture: "ARM64",
+      architecture: "arm64",
       storageGb: 30,
       region: "us-east-1",
       environmentVariables: {},
@@ -33,7 +33,7 @@ describe("AWS Instance Type Selector", () => {
     const small = selectOptimalInstanceType({
       cpu: 4,
       memoryMb: 8192,
-      architecture: "ARM64",
+      architecture: "arm64",
       storageGb: 50,
       region: "us-east-1",
       environmentVariables: {},
@@ -44,7 +44,7 @@ describe("AWS Instance Type Selector", () => {
     const medium = selectOptimalInstanceType({
       cpu: 8,
       memoryMb: 16384,
-      architecture: "ARM64",
+      architecture: "arm64",
       storageGb: 80,
       region: "us-east-1",
       environmentVariables: {},
@@ -56,7 +56,7 @@ describe("AWS Instance Type Selector", () => {
     const nano = selectOptimalInstanceType({
       cpu: 1,
       memoryMb: 2048,
-      architecture: "X86_64",
+      architecture: "x86_64",
       storageGb: 20,
       region: "us-east-1",
       environmentVariables: {},
@@ -64,7 +64,7 @@ describe("AWS Instance Type Selector", () => {
     const micro = selectOptimalInstanceType({
       cpu: 2,
       memoryMb: 4096,
-      architecture: "X86_64",
+      architecture: "x86_64",
       storageGb: 30,
       region: "us-east-1",
       environmentVariables: {},
@@ -75,7 +75,7 @@ describe("AWS Instance Type Selector", () => {
     const small = selectOptimalInstanceType({
       cpu: 4,
       memoryMb: 8192,
-      architecture: "X86_64",
+      architecture: "x86_64",
       storageGb: 50,
       region: "us-east-1",
       environmentVariables: {},

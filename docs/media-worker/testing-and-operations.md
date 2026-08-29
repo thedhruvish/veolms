@@ -17,20 +17,20 @@ handling, resource calculations, and incremental playlist refreshes.
 
 | Job state    | Meaning                                           |
 | ------------ | ------------------------------------------------- |
-| `QUEUED`     | Waiting for a compatible worker.                  |
-| `PROCESSING` | Claimed by a worker and actively being processed. |
-| `COMPLETED`  | Output persisted successfully.                    |
-| `FAILED`     | Retry limit reached or a final failure occurred.  |
-| `CANCELLED`  | Stopped by an external control-plane action.      |
+| `queued`     | Waiting for a compatible worker.                  |
+| `processing` | Claimed by a worker and actively being processed. |
+| `completed`  | Output persisted successfully.                    |
+| `failed`     | Retry limit reached or a final failure occurred.  |
+| `cancelled`  | Stopped by an external control-plane action.      |
 
 ## Troubleshooting
 
 | Symptom              | Inspect                                                                                                                             |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Job remains `QUEUED` | Compare `requirements.hardware` with available worker records; a reusable worker will not claim an incompatible job.                |
+| Job remains `queued` | Compare `requirements.hardware` with available worker records; a reusable worker will not claim an incompatible job.                |
 | Job retries or fails | Check `jobs.error_message`, worker logs, and `worker_events`.                                                                       |
 | Progress is stale    | Confirm FFmpeg is still running and inspect `worker_monitoring.last_progress_at`.                                                   |
-| Missing S3 output    | Check S3 permissions, endpoint/region/bucket values, and upload errors. A job should not be `COMPLETED` if the final upload failed. |
+| Missing S3 output    | Check S3 permissions, endpoint/region/bucket values, and upload errors. A job should not be `completed` if the final upload failed. |
 | HTTP source fails    | Check URL accessibility, redirect target, `HTTP_DOWNLOAD_TIMEOUT_MS`, and `HTTP_DOWNLOAD_MAX_BYTES`.                                |
 | Local output missing | Verify the output prefix is valid and inspect `s3-bucket/<output-prefix>`.                                                          |
 

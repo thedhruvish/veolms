@@ -13,11 +13,11 @@ describe("Fleet Manager Diagnostics and Health Metrics", () => {
               return {
                 async execute() {
                   return [
-                    { status: "QUEUED" },
-                    { status: "QUEUED" },
-                    { status: "PROCESSING" },
-                    { status: "COMPLETED" },
-                    { status: "FAILED" },
+                    { status: "queued" },
+                    { status: "queued" },
+                    { status: "processing" },
+                    { status: "completed" },
+                    { status: "failed" },
                   ];
                 },
               };
@@ -35,13 +35,13 @@ describe("Fleet Manager Diagnostics and Health Metrics", () => {
                       return [
                         {
                           id: "w1",
-                          status: "PROCESSING",
+                          status: "processing",
                           created_at: new Date(now - 10000),
                           last_heartbeat_at: new Date(now - 5000),
                         },
                         {
                           id: "w2",
-                          status: "PROCESSING",
+                          status: "processing",
                           created_at: new Date(now - 200000),
                           last_heartbeat_at: new Date(now - 120000), // > 90s ago -> stalled
                         },

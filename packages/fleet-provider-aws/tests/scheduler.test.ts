@@ -40,7 +40,7 @@ describe("AWS EventBridge Scheduler Manager", () => {
     assert.equal(sentCommands[0].input.FlexibleTimeWindow.Mode, "OFF");
 
     const payload = JSON.parse(sentCommands[0].input.Target.Input);
-    assert.equal(payload.action, "TICK");
+    assert.equal(payload.action, "tick");
     assert.equal(payload.triggerReason, "DYNAMIC_CHECK");
     assert.equal(payload.workerId, "w-1");
   });

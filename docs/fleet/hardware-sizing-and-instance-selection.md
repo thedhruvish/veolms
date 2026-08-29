@@ -4,8 +4,8 @@ This document explains two related pieces of the fleet manager: how a job's
 required worker hardware is decided, and how that requirement gets turned
 into an actual EC2 instance. Both live outside `apps/fleet-manager` in the
 places the top-level `apps/fleet-manager` vs. `packages/fleet-provider-aws`
-split already puts them — the machine-sizing *logic* is provider-agnostic
-(`@veolms/fleet-types`), and the EC2-specific *mechanics* live in
+split already puts them — the machine-sizing _logic_ is provider-agnostic
+(`@veolms/fleet-types`), and the EC2-specific _mechanics_ live in
 `@veolms/fleet-provider-aws`.
 
 ## Why this exists
@@ -13,12 +13,12 @@ split already puts them — the machine-sizing *logic* is provider-agnostic
 Two videos of the same file size and the same requested output qualities
 can need very different compute:
 
-| | Video A | Video B |
-|---|---|---|
-| Size | 2 GB | 2 GB |
-| Resolution | 1080p | 4K |
-| FPS | 30 | 60 |
-| Codec | H.264 | HEVC |
+|            | Video A | Video B |
+| ---------- | ------- | ------- |
+| Size       | 2 GB    | 2 GB    |
+| Resolution | 1080p   | 4K      |
+| FPS        | 30      | 60      |
+| Codec      | H.264   | HEVC    |
 
 Sizing a worker from `video_size` + `qualities` alone (the original
 heuristic) can't tell these apart. Video B needs meaningfully more CPU to
@@ -44,13 +44,13 @@ below.
 `packages/fleet-types/src/video-job.ts` resolves a job to one of five named
 tiers, from `resolveMachineProfile(qualities, videoMetadata?)`:
 
-| Tier | minCpu | minMemoryMb | storage floor |
-|--------|--------|-------------|----------------|
-| NANO | 1 | 2048 | 20 GB |
-| MICRO | 2 | 4096 | 30 GB |
-| SMALL | 4 | 8192 | 50 GB |
-| MEDIUM | 8 | 16384 | 80 GB |
-| LARGE | 16 | 32768 | 130 GB |
+| Tier   | minCpu | minMemoryMb | storage floor |
+| ------ | ------ | ----------- | ------------- |
+| NANO   | 1      | 2048        | 20 GB         |
+| MICRO  | 2      | 4096        | 30 GB         |
+| SMALL  | 4      | 8192        | 50 GB         |
+| MEDIUM | 8      | 16384       | 80 GB         |
+| LARGE  | 16     | 32768       | 130 GB        |
 
 MICRO/SMALL/MEDIUM are exact renames of the tiers this module used before
 named tiers existed (the old "baseline / 1440p+5-qualities / 2160p"
@@ -60,7 +60,7 @@ qualities alone never resolve to either.
 
 **Resolution order:**
 
-1. Start from the tier the *requested output qualities* alone imply
+1. Start from the tier the _requested output qualities_ alone imply
    (2160p → MEDIUM, 1440p or 5+ qualities → SMALL, otherwise MICRO). This
    is the exact legacy heuristic, unchanged.
 2. If metadata is present:
@@ -73,7 +73,7 @@ qualities alone never resolve to either.
    - **Codec bump** — HEVC/H.265/AV1/VP9 sources (materially more
      expensive to software-decode than H.264): +1 tier.
    - **NANO step-down** — only when qualities alone would already resolve
-     to MICRO, 2 or fewer qualities are requested, *and* metadata confirms
+     to MICRO, 2 or fewer qualities are requested, _and_ metadata confirms
      the source is small (largest dimension ≤ 854px). Metadata can lower
      the tier only when it actively confirms "this is simple," never as a
      default guess.
@@ -114,7 +114,7 @@ adds exactly two nullable columns to `video_jobs`:
 - **`hardware_profile`** (native Postgres enum `hardware_profile_enum`:
   `NANO`/`MICRO`/`SMALL`/`MEDIUM`/`LARGE`) — the resolved tier, persisted
   purely for observability (`SELECT * FROM video_jobs WHERE
-  hardware_profile = 'LARGE'`) and as the fast pre-filter in the claim
+hardware_profile = 'large'`) and as the fast pre-filter in the claim
   query above. No sizing logic reads it back — `video_metadata` alone is
   sufficient to recompute everything, including this same value.
 
@@ -127,13 +127,13 @@ Both are `NULL` for a job with no probe step; every reader already treats
 `{cpu, memoryMb}` requirement to an **ordered list** of same-size instance
 type candidates, not one hardcoded type:
 
-| Tier | ARM64 (Graviton) | X86_64 |
-|--------|---|---|
-| NANO | `c7g.medium`, `c8g.medium`, `c6g.medium` | *(same as MICRO — x86 has no `.medium` size)* |
-| MICRO | `c7g.large`, `c8g.large`, `c6g.large` | `c6i.large`, `c5.large`, `c7i.large` |
-| SMALL | `c7g.xlarge`, `c8g.xlarge`, `c6g.xlarge` | `c6i.xlarge`, `c5.xlarge`, `c7i.xlarge` |
-| MEDIUM | `c7g.2xlarge`, `c8g.2xlarge`, `c6g.2xlarge` | `c6i.2xlarge`, `c5.2xlarge`, `c7i.2xlarge` |
-| LARGE | `c7g.4xlarge`, `c8g.4xlarge`, `c6g.4xlarge` | `c6i.4xlarge`, `c5.4xlarge`, `c7i.4xlarge` |
+| Tier   | ARM64 (Graviton)                            | X86_64                                        |
+| ------ | ------------------------------------------- | --------------------------------------------- |
+| NANO   | `c7g.medium`, `c8g.medium`, `c6g.medium`    | _(same as MICRO — x86 has no `.medium` size)_ |
+| MICRO  | `c7g.large`, `c8g.large`, `c6g.large`       | `c6i.large`, `c5.large`, `c7i.large`          |
+| SMALL  | `c7g.xlarge`, `c8g.xlarge`, `c6g.xlarge`    | `c6i.xlarge`, `c5.xlarge`, `c7i.xlarge`       |
+| MEDIUM | `c7g.2xlarge`, `c8g.2xlarge`, `c6g.2xlarge` | `c6i.2xlarge`, `c5.2xlarge`, `c7i.2xlarge`    |
+| LARGE  | `c7g.4xlarge`, `c8g.4xlarge`, `c6g.4xlarge` | `c6i.4xlarge`, `c5.4xlarge`, `c7i.4xlarge`    |
 
 `packages/fleet-provider-aws/src/provider.ts`'s `createWorker` tries each
 candidate's `RunInstancesCommand` in order, moving to the next only on a

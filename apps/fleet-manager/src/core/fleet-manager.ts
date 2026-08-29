@@ -95,7 +95,7 @@ export function createFleetManager(
       try {
         const handle: WorkerHandle = await workerManager.provisionWorker(job);
         await jobManager.assignWorkerToJob(job.id, handle.id);
-        await workerManager.recordEvent("JOB_ASSIGNED", handle.id, job.id, {
+        await workerManager.recordEvent("job_assigned", handle.id, job.id, {
           providerWorkerId: handle.providerWorkerId,
         });
 
@@ -142,11 +142,11 @@ export function createFleetManager(
           eb.fn.min("worker_monitoring.next_check_at").as("earliestCheck"),
         )
         .where("workers.status", "in", [
-          "PENDING",
-          "PROVISIONING",
-          "STARTING",
-          "READY",
-          "PROCESSING",
+          "pending",
+          "provisioning",
+          "starting",
+          "ready",
+          "processing",
         ])
         .executeTakeFirst();
 
@@ -155,7 +155,7 @@ export function createFleetManager(
         : null;
 
       if (earliest) {
-        await provider.scheduleNextWakeup(earliest, { action: "TICK" });
+        await provider.scheduleNextWakeup(earliest, { action: "tick" });
         return earliest;
       } else if (typeof provider.cancelWakeup === "function") {
         await provider.cancelWakeup();

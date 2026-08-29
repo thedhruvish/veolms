@@ -23,7 +23,7 @@ describe("Worker Manager Spec Calculations", () => {
         id,
         providerWorkerId: `mock-${id}`,
         provider: "local",
-        status: "STARTING",
+        status: "starting",
         privateIp: "127.0.0.1",
         publicIp: null,
         createdAt: new Date(),
@@ -33,11 +33,11 @@ describe("Worker Manager Spec Calculations", () => {
       return null;
     },
     async getWorkerStatus(): Promise<WorkerStatus> {
-      return "PROCESSING";
+      return "processing";
     },
     async terminateWorker(): Promise<void> {},
     async healthCheck() {
-      return { healthy: true, state: "PROCESSING" as WorkerStatus };
+      return { healthy: true, state: "processing" as WorkerStatus };
     },
   };
 
@@ -55,7 +55,7 @@ describe("Worker Manager Spec Calculations", () => {
     const job4k: Selectable<VideoJobTable> = {
       id: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
       video_id: "media-4k-1",
-      status: "QUEUED",
+      status: "queued",
       video_key: "raw/4k-intro.mp4",
       output_prefix: "transcoded/4k-intro",
       video_size: 0,
@@ -78,14 +78,14 @@ describe("Worker Manager Spec Calculations", () => {
     assert.equal(spec.cpu, 8);
     assert.equal(spec.memoryMb, 16384);
     assert.equal(spec.storageGb, 80);
-    assert.equal(spec.architecture, "ARM64");
+    assert.equal(spec.architecture, "arm64");
   });
 
   it("should use standard hardware spec for standard 1080p / 720p requests", () => {
     const jobStandard: Selectable<VideoJobTable> = {
       id: "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
       video_id: "media-std-1",
-      status: "QUEUED",
+      status: "queued",
       video_key: "raw/lesson1.mp4",
       output_prefix: "transcoded/lesson1",
       video_size: 0,
@@ -114,7 +114,7 @@ describe("Worker Manager Spec Calculations", () => {
     const jobLowQualityRichSource: Selectable<VideoJobTable> = {
       id: "c2eebc99-9c0b-4ef8-bb6d-6bb9bd380a33",
       video_id: "media-4k-hevc-1",
-      status: "QUEUED",
+      status: "queued",
       video_key: "raw/drone-4k.mp4",
       output_prefix: "transcoded/drone-4k",
       video_size: 0,
@@ -142,16 +142,16 @@ describe("Worker Manager Spec Calculations", () => {
     };
 
     const spec = workerManager.calculateWorkerSpec(jobLowQualityRichSource);
-    // 4K resolution floor (MEDIUM) + codec bump (HEVC) clamps at LARGE.
+    // 4K resolution floor (medium) + codec bump (hevc) clamps at large.
     assert.equal(spec.cpu, 16);
     assert.equal(spec.memoryMb, 32768);
   });
 
-  it("steps a small, simple, low-quality-count job down to the NANO tier when metadata confirms it", () => {
+  it("steps a small, simple, low-quality-count job down to the nano tier when metadata confirms it", () => {
     const jobTinySource: Selectable<VideoJobTable> = {
       id: "d3eebc99-9c0b-4ef8-bb6d-6bb9bd380a44",
       video_id: "media-tiny-1",
-      status: "QUEUED",
+      status: "queued",
       video_key: "raw/tiny-clip.mp4",
       output_prefix: "transcoded/tiny-clip",
       video_size: 0,

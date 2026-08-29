@@ -43,42 +43,42 @@ export const ARM64_INSTANCE_PROFILES: readonly InstanceProfile[] = [
     instanceCandidates: ["c7g.medium", "c8g.medium", "c6g.medium"],
     cpu: 1,
     memoryMb: 2048,
-    architecture: "ARM64",
+    architecture: "arm64",
     isArm: true,
   },
   {
     instanceCandidates: ["c7g.large", "c8g.large", "c6g.large"],
     cpu: 2,
     memoryMb: 4096,
-    architecture: "ARM64",
+    architecture: "arm64",
     isArm: true,
   },
   {
     instanceCandidates: ["c7g.xlarge", "c8g.xlarge", "c6g.xlarge"],
     cpu: 4,
     memoryMb: 8192,
-    architecture: "ARM64",
+    architecture: "arm64",
     isArm: true,
   },
   {
     instanceCandidates: ["c7g.2xlarge", "c8g.2xlarge", "c6g.2xlarge"],
     cpu: 8,
     memoryMb: 16384,
-    architecture: "ARM64",
+    architecture: "arm64",
     isArm: true,
   },
   {
     instanceCandidates: ["c7g.4xlarge", "c8g.4xlarge", "c6g.4xlarge"],
     cpu: 16,
     memoryMb: 32768,
-    architecture: "ARM64",
+    architecture: "arm64",
     isArm: true,
   },
   {
     instanceCandidates: ["c7g.8xlarge", "c8g.8xlarge", "c6g.8xlarge"],
     cpu: 32,
     memoryMb: 65536,
-    architecture: "ARM64",
+    architecture: "arm64",
     isArm: true,
   },
 ];
@@ -93,35 +93,35 @@ export const X86_64_INSTANCE_PROFILES: readonly InstanceProfile[] = [
     instanceCandidates: ["c6i.large", "c5.large", "c7i.large"],
     cpu: 2,
     memoryMb: 4096,
-    architecture: "X86_64",
+    architecture: "x86_64",
     isArm: false,
   },
   {
     instanceCandidates: ["c6i.xlarge", "c5.xlarge", "c7i.xlarge"],
     cpu: 4,
     memoryMb: 8192,
-    architecture: "X86_64",
+    architecture: "x86_64",
     isArm: false,
   },
   {
     instanceCandidates: ["c6i.2xlarge", "c5.2xlarge", "c7i.2xlarge"],
     cpu: 8,
     memoryMb: 16384,
-    architecture: "X86_64",
+    architecture: "x86_64",
     isArm: false,
   },
   {
     instanceCandidates: ["c6i.4xlarge", "c5.4xlarge", "c7i.4xlarge"],
     cpu: 16,
     memoryMb: 32768,
-    architecture: "X86_64",
+    architecture: "x86_64",
     isArm: false,
   },
   {
     instanceCandidates: ["c6i.8xlarge", "c5.8xlarge", "c7i.8xlarge"],
     cpu: 32,
     memoryMb: 65536,
-    architecture: "X86_64",
+    architecture: "x86_64",
     isArm: false,
   },
 ];
@@ -133,10 +133,8 @@ export const X86_64_INSTANCE_PROFILES: readonly InstanceProfile[] = [
  * of hardcoding one exact type per size bucket and failing outright if
  * that one type has no Spot/On-Demand capacity in the target AZ.
  */
-export function selectOptimalInstanceType(
-  spec: WorkerSpec,
-): readonly string[] {
-  const isArm = spec.architecture === "ARM64";
+export function selectOptimalInstanceType(spec: WorkerSpec): readonly string[] {
+  const isArm = spec.architecture === "arm64";
   const profiles = isArm ? ARM64_INSTANCE_PROFILES : X86_64_INSTANCE_PROFILES;
 
   // Find the smallest tier meeting or exceeding CPU and memory requirements

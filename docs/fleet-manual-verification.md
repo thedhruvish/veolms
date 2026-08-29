@@ -45,10 +45,10 @@ refreshes their policies/Lambda code+config rather than erroring.
 
 - `processNextJob()` checks the current count of non-terminal workers
   against `MAX_WORKERS` before claiming a job. At capacity, it declines and
-  leaves the job `QUEUED` for a later check — it will _not_ over-provision
+  leaves the job `queued` for a later check — it will _not_ over-provision
   past the configured max.
 - A worker doesn't die after a single job. When it finishes one, it checks
-  the queue for the next `QUEUED` job and claims it directly (atomically,
+  the queue for the next `queued` job and claims it directly (atomically,
   same claim query the Lambda uses) — reusing the already-booted instance
   instead of paying the fresh-boot cost again. If the queue is empty, it
   waits `WORKER_IDLE_POLL_SECONDS`, checks exactly once more, and only then
@@ -123,9 +123,9 @@ job:
 VIDEO_KEY=raw/video-1min.mp4 QUALITIES=240p,360p,720p pnpm fleet:queue:trigger
 ```
 
-**What it does:** inserts a `QUEUED` row into the `jobs` table, then invokes
+**What it does:** inserts a `queued` row into the `jobs` table, then invokes
 the `veolms-fleet-manager` Lambda once. The Lambda claims the **oldest**
-`QUEUED` job in the table (FIFO) — not necessarily the one just inserted, if
+`queued` job in the table (FIFO) — not necessarily the one just inserted, if
 others are already waiting.
 
 Check on it afterward:
@@ -161,12 +161,12 @@ Output:
 Check status: pnpm fleet:cli status ba55b585-1ea8-4d09-a7e4-e802425e9dbd
 ```
 
-Because an older job was still `QUEUED` ahead of it, that invocation
+Because an older job was still `queued` ahead of it, that invocation
 actually claimed and ran the older job (`c7d02a9a`, full-length
 `raw/video.mp4`) — not `ba55b585` — which is the FIFO behavior noted above.
 That run completed successfully end to end: worker created → booted →
 FFmpeg transcoded 240p HLS → 91 segments + `master.m3u8` uploaded to
-`s3://veo-lms-test/hls/test-c7d02a9a/` → job marked `COMPLETED` → EC2
+`s3://veo-lms-test/hls/test-c7d02a9a/` → job marked `completed` → EC2
 instance self-terminated. Total wall time, worker creation to completion:
 under 3 minutes.
 

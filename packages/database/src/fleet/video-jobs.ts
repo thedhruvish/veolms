@@ -21,7 +21,7 @@ export async function claimNextQueuedVideoJob(
           .selectFrom("workers")
           .select(["id", "cpu", "memory_mb", "storage_gb", "architecture"])
           .where("id", "=", workerId)
-          .where("status", "=", "READY")
+          .where("status", "=", "ready")
           .forUpdate()
           .executeTakeFirst()
       : null;
@@ -36,7 +36,7 @@ export async function claimNextQueuedVideoJob(
     let query = trx
       .selectFrom("video_jobs")
       .selectAll()
-      .where("status", "=", "QUEUED")
+      .where("status", "=", "queued")
       .orderBy("created_at", "asc");
 
     if (worker) {
@@ -52,11 +52,11 @@ export async function claimNextQueuedVideoJob(
           sql<boolean>`
             COALESCE(
               CASE hardware_profile
-                WHEN 'NANO' THEN 1
-                WHEN 'MICRO' THEN 2
-                WHEN 'SMALL' THEN 4
-                WHEN 'MEDIUM' THEN 8
-                WHEN 'LARGE' THEN 16
+                WHEN 'nano' THEN 1
+                WHEN 'micro' THEN 2
+                WHEN 'small' THEN 4
+                WHEN 'medium' THEN 8
+                WHEN 'large' THEN 16
               END,
               CASE
                 WHEN qualities @> ARRAY['2160p'] THEN 8
@@ -70,11 +70,11 @@ export async function claimNextQueuedVideoJob(
           sql<boolean>`
             COALESCE(
               CASE hardware_profile
-                WHEN 'NANO' THEN 2048
-                WHEN 'MICRO' THEN 4096
-                WHEN 'SMALL' THEN 8192
-                WHEN 'MEDIUM' THEN 16384
-                WHEN 'LARGE' THEN 32768
+                WHEN 'nano' THEN 2048
+                WHEN 'micro' THEN 4096
+                WHEN 'small' THEN 8192
+                WHEN 'medium' THEN 16384
+                WHEN 'large' THEN 32768
               END,
               CASE
                 WHEN qualities @> ARRAY['2160p'] THEN 16384
@@ -88,11 +88,11 @@ export async function claimNextQueuedVideoJob(
           sql<boolean>`
             COALESCE(
               CASE hardware_profile
-                WHEN 'NANO' THEN 20
-                WHEN 'MICRO' THEN 30
-                WHEN 'SMALL' THEN 50
-                WHEN 'MEDIUM' THEN 80
-                WHEN 'LARGE' THEN 130
+                WHEN 'nano' THEN 20
+                WHEN 'micro' THEN 30
+                WHEN 'small' THEN 50
+                WHEN 'medium' THEN 80
+                WHEN 'large' THEN 130
               END,
               CASE
                 WHEN qualities @> ARRAY['2160p'] THEN 80
@@ -102,7 +102,7 @@ export async function claimNextQueuedVideoJob(
             ) <= ${worker.storage_gb}
           `,
         )
-        .where(sql<boolean>`${worker.architecture} in ('ARM64', 'X86_64')`);
+        .where(sql<boolean>`${worker.architecture} in ('arm64', 'x86_64')`);
     }
 
     const row = await query
@@ -118,7 +118,7 @@ export async function claimNextQueuedVideoJob(
     await trx
       .updateTable("video_jobs")
       .set({
-        status: "PROVISIONING",
+        status: "provisioning",
         ...(worker ? { worker_id: worker.id } : {}),
         started_at: new Date(),
         updated_at: new Date(),
@@ -130,7 +130,7 @@ export async function claimNextQueuedVideoJob(
       await trx
         .updateTable("workers")
         .set({
-          status: "PROCESSING",
+          status: "processing",
           job_id: row.id,
           updated_at: new Date(),
         })

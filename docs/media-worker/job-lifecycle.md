@@ -2,18 +2,18 @@
 
 ## 1. Job creation and worker provisioning
 
-The fleet manager creates a `QUEUED` job with its hardware requirements. It
+The fleet manager creates a `queued` job with its hardware requirements. It
 can provision a worker for that job and assigns `JOB_ID` and `WORKER_ID` to the
 worker process.
 
 An already-running worker can also look for more work. In that case, the
 shared claim query filters queued jobs by the worker's recorded capabilities
-and atomically sets both the job and worker to `PROCESSING`.
+and atomically sets both the job and worker to `processing`.
 
 ## 2. Worker startup
 
 `index.ts` loads configuration, creates a database connection, registers the
-worker as `READY`, starts the heartbeat timer, and installs SIGTERM/SIGINT
+worker as `ready`, starts the heartbeat timer, and installs SIGTERM/SIGINT
 handlers.
 
 The worker starts with `JOB_ID` when provisioned for a specific job. Without
@@ -27,9 +27,9 @@ Before source processing, the worker:
 1. Reads the job.
 2. Validates its requirements using the shared Zod schema.
 3. Verifies that the job is runnable and not owned by another worker.
-4. Marks the job and worker `PROCESSING`.
+4. Marks the job and worker `processing`.
 5. Resets the worker-monitoring progress row.
-6. Records `JOB_STARTED`.
+6. Records `job_started`.
 
 ## 4. Source acquisition
 
@@ -63,16 +63,16 @@ newer percentage.
 
 ## 7. Completion, retry, and reuse
 
-On success, a transaction marks the job `COMPLETED`, sets its completion time,
-and returns the worker to `READY` with no current `job_id`. The worker then
+On success, a transaction marks the job `completed`, sets its completion time,
+and returns the worker to `ready` with no current `job_id`. The worker then
 looks for another compatible job.
 
 On failure or cancellation, the worker stops incremental uploads without a
 final partial-output sweep. It increments `attempts` and:
 
 - requeues the job when `attempts < max_attempts`, returning the worker to
-  `READY`; or
-- marks the job and worker `FAILED` when the retry limit is reached.
+  `ready`; or
+- marks the job and worker `failed` when the retry limit is reached.
 
 Every path removes the job scratch directory. When no compatible work remains,
 the worker stops its heartbeat, marks itself completed when appropriate, and

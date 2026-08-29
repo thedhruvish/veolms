@@ -75,7 +75,7 @@ export interface FleetProvider {
 
 ### 4. Worker Specifications & Handles ([`src/worker.ts`](./src/worker.ts))
 
-- `WorkerSpec`: `cpu`, `memoryMb`, `architecture` (`ARM64` / `X86_64`), `storageGb`, `region`, `amiId`, `environmentVariables`, `tags`.
+- `WorkerSpec`: `cpu`, `memoryMb`, `architecture` (`arm64` / `x86_64`), `storageGb`, `region`, `amiId`, `environmentVariables`, `tags`.
 - `WorkerHandle`: `id`, `providerWorkerId`, `provider`, `status`, `privateIp`, `publicIp`, `createdAt`.
 
 ---

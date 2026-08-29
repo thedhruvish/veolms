@@ -19,7 +19,7 @@ The system decouples the **Control Plane** (Fleet Manager) from the **Worker Pla
  │                   PostgreSQL `jobs` Table                   │
  │       ACID Queue with SELECT ... FOR UPDATE SKIP LOCKED      │
  └──────────────────────────────┬──────────────────────────────┘
-                                │ (Picks QUEUED job)
+                                │ (Picks queued job)
                                 ▼
  ┌─────────────────────────────────────────────────────────────┐
  │                     apps/fleet-manager                      │
@@ -71,7 +71,7 @@ The system decouples the **Control Plane** (Fleet Manager) from the **Worker Pla
 | **`@veolms/fleet-types`**          | [`packages/fleet-types`](../packages/fleet-types)                   | Zero-`any` strict TypeScript contracts, Zod schemas, quality profiles (`VideoQualityLevel`), and hardware specs.                                                                                                     |
 | **`@veolms/database`**             | [`packages/database`](../packages/database)                         | Kysely database client, migration [`007-create-fleet-manager-tables.ts`](../packages/database/migrations/007-create-fleet-manager-tables.ts) with `video_jobs`, `workers`, `worker_monitoring`, and `worker_events`. |
 | **`@veolms/fleet-provider-local`** | [`packages/fleet-provider-local`](../packages/fleet-provider-local) | Manages local Node.js child processes with PID tracking and stdout/stderr prefix streaming.                                                                                                                          |
-| **`@veolms/fleet-provider-aws`**   | [`packages/fleet-provider-aws`](../packages/fleet-provider-aws)     | AWS EC2 provider with Graviton ARM64/x86 instance type selector and Debian 14 UserData bootstrapper.                                                                                                                 |
+| **`@veolms/fleet-provider-aws`**   | [`packages/fleet-provider-aws`](../packages/fleet-provider-aws)     | AWS EC2 provider with Graviton arm64/x86 instance type selector and Debian 14 UserData bootstrapper.                                                                                                                 |
 | **`apps/fleet-manager`**           | [`apps/fleet-manager`](../apps/fleet-manager)                       | Control plane engine, atomic queue claim loop, dynamic monitoring scheduler, CLI diagnostics, and zombie worker pruner.                                                                                              |
 | **`apps/media-worker`**            | [`apps/media-worker`](../apps/media-worker)                         | Autonomous transcode engine running FFmpeg, generating multi-quality HLS streams, direct heartbeats, and S3 uploads.                                                                                                 |
 
@@ -89,15 +89,15 @@ sequenceDiagram
     participant MW as Media Worker (apps/media-worker)
     participant S3 as Storage / S3
 
-    API->>DB: INSERT into `jobs` (video_key, qualities: ["240p", "144p"], status: "QUEUED")
+    API->>DB: INSERT into `jobs` (video_key, qualities: ["240p", "144p"], status: "queued")
     FM->>DB: claimNextJob() (SELECT ... FOR UPDATE SKIP LOCKED)
-    DB-->>FM: Returns claimed job & sets status: "PROCESSING"
+    DB-->>FM: Returns claimed job & sets status: "processing"
     FM->>FM: calculateWorkerSpec(qualities) -> 2 CPU, 2048 MB RAM
-    FM->>DB: INSERT into `workers` (status: "PENDING") & `worker_monitoring`
+    FM->>DB: INSERT into `workers` (status: "pending") & `worker_monitoring`
     FM->>FP: createWorker(workerId, spec)
     FP->>MW: Launch Worker Machine / Process
-    MW->>DB: UPDATE `workers` (status: "READY", last_heartbeat_at: NOW)
-    MW->>DB: INSERT `worker_events` (WORKER_READY)
+    MW->>DB: UPDATE `workers` (status: "ready", last_heartbeat_at: NOW)
+    MW->>DB: INSERT `worker_events` (worker_ready)
     MW->>MW: Probe Video & Build Dynamic FFmpeg HLS Command
     MW->>S3: Read Raw Video
     loop Transcoding & Progress
@@ -107,11 +107,11 @@ sequenceDiagram
         FM->>DB: Monitor Check (Dynamic Scheduler: 50% -> 75% -> 90%)
     end
     MW->>S3: Upload master.m3u8 & all rendition folders
-    MW->>DB: UPDATE `jobs` (status: "COMPLETED", progress: 100%)
-    MW->>DB: INSERT `worker_events` (JOB_COMPLETED)
+    MW->>DB: UPDATE `jobs` (status: "completed", progress: 100%)
+    MW->>DB: INSERT `worker_events` (job_completed)
     FM->>DB: Detect Job Complete
     FM->>FP: Terminate Worker Machine / Process
-    FM->>DB: UPDATE `workers` (status: "TERMINATED")
+    FM->>DB: UPDATE `workers` (status: "terminated")
 ```
 
 ---
@@ -125,7 +125,7 @@ Instead of adding external queue dependencies (`pg-boss`, `BullMQ`, `Redis`), Ve
 const row = await trx
   .selectFrom("jobs")
   .selectAll()
-  .where("status", "=", "QUEUED")
+  .where("status", "=", "queued")
   .orderBy("created_at", "asc")
   .limit(1)
   .forUpdate() // Locks row during transaction
@@ -207,7 +207,7 @@ Rather than constant naive polling, Fleet Manager uses a dynamic progress-aware 
 1. **Initial Check**: Scheduled at **$50\%$** of estimated job duration.
 2. **Intermediate Checks**: When progress is reported (e.g. $60\%$), calculates remaining time and checks at the halfway point of remaining work.
 3. **Clamping**: Near completion ($\ge 99\%$), check intervals tighten to the minimum interval (`MIN_CHECK_INTERVAL_SECONDS`, default 15s).
-4. **Heartbeat Timeout**: If a worker fails to write a direct heartbeat within `HEARTBEAT_TIMEOUT_SECONDS` (default: 90s), Fleet Manager marks it `FAILED` and re-queues the job.
+4. **Heartbeat Timeout**: If a worker fails to write a direct heartbeat within `HEARTBEAT_TIMEOUT_SECONDS` (default: 90s), Fleet Manager marks it `failed` and re-queues the job.
 5. **AWS EventBridge Scheduler (Serverless)**:
    - Evaluates $\min(\text{next\_check\_at})$ across all active workers.
    - Upserts a single one-shot schedule named `veolms-fleet-next-check` in AWS EventBridge Scheduler targeting the Lambda at that exact timestamp (`at(YYYY-MM-DDTHH:mm:ss)`).
@@ -220,16 +220,16 @@ Rather than constant naive polling, Fleet Manager uses a dynamic progress-aware 
 Fleet Manager actively reconciles database state with real cloud provider instances on every tick and serverless invocation:
 
 1. **Spot Interruption & Worker Crash Recovery**:
-   - If a DB worker is in `PROVISIONING`, `STARTING`, `READY`, or `PROCESSING`, but its EC2 instance is terminated/missing in AWS (past a 30s launch grace period):
-   - The worker is marked `FAILED` with event `SPOT_INTERRUPTED`.
-   - The job has its `attempts` incremented and is automatically reset to `QUEUED` if `attempts < max_attempts`.
+   - If a DB worker is in `provisioning`, `starting`, `ready`, or `processing`, but its EC2 instance is terminated/missing in AWS (past a 30s launch grace period):
+   - The worker is marked `failed` with event `spot_interrupted`.
+   - The job has its `attempts` incremented and is automatically reset to `queued` if `attempts < max_attempts`.
 
 2. **Orphaned Cloud Instances (Zombie Cleanup)**:
    - If an EC2 instance tagged with `ManagedBy: veolms-fleet-manager` is running in AWS without a matching active worker in the database (older than 3 minutes):
-   - Fleet Manager terminates the instance via `provider.terminateWorker()` and logs `ORPHAN_INSTANCE_TERMINATED`.
+   - Fleet Manager terminates the instance via `provider.terminateWorker()` and logs `orphan_instance_terminated`.
 
 3. **Storage Output Verification**:
-   - When a job reaches 100% progress or is marked completed, Fleet Manager verifies that the target `master.m3u8` playlist exists in S3 (non-zero size) before finalizing `COMPLETED` status.
+   - When a job reaches 100% progress or is marked completed, Fleet Manager verifies that the target `master.m3u8` playlist exists in S3 (non-zero size) before finalizing `completed` status.
 
 ---
 

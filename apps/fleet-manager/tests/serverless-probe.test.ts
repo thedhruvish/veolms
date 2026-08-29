@@ -13,7 +13,7 @@ import {
   runServerlessFleetCycle,
 } from "../src/entrypoints/serverless.ts";
 
-function createMockProvider(name = "LOCAL"): FleetProvider {
+function createMockProvider(name = "local"): FleetProvider {
   return {
     name: name as any,
     async createWorker(id: string): Promise<WorkerHandle> {
@@ -21,7 +21,7 @@ function createMockProvider(name = "LOCAL"): FleetProvider {
         id,
         providerWorkerId: `mock-${id}`,
         provider: name as any,
-        status: "PROCESSING" as WorkerStatus,
+        status: "processing" as WorkerStatus,
         privateIp: "127.0.0.1",
         publicIp: null,
         createdAt: new Date(),
@@ -31,11 +31,11 @@ function createMockProvider(name = "LOCAL"): FleetProvider {
       return null;
     },
     async getWorkerStatus(): Promise<WorkerStatus> {
-      return "PROCESSING";
+      return "processing";
     },
     async terminateWorker(): Promise<void> {},
     async healthCheck(): Promise<HealthStatus> {
-      return { healthy: true, state: "PROCESSING" };
+      return { healthy: true, state: "processing" };
     },
   };
 }
@@ -61,7 +61,7 @@ function createChainableMockDb(): Kysely<Database> {
 describe("Universal Serverless Entrypoint — Video Metadata Probe Support", () => {
   it("should extract videoMetadata from incoming direct event", () => {
     const raw = {
-      action: "QUEUE",
+      action: "queue",
       videoKey: "raw/test-video.mp4",
       videoMetadata: {
         width: 1920,
@@ -72,7 +72,7 @@ describe("Universal Serverless Entrypoint — Video Metadata Probe Support", () 
       },
     };
     const event = extractVideoJobEvent(raw);
-    assert.equal(event.action, "QUEUE");
+    assert.equal(event.action, "queue");
     assert.equal(event.videoKey, "raw/test-video.mp4");
     assert.ok(event.videoMetadata);
     assert.equal(event.videoMetadata.width, 1920);
@@ -84,7 +84,7 @@ describe("Universal Serverless Entrypoint — Video Metadata Probe Support", () 
   it("should extract videoMetadata from HTTP gateway JSON body", () => {
     const raw = {
       body: JSON.stringify({
-        action: "QUEUE",
+        action: "queue",
         videoKey: "raw/4k-drone.mp4",
         videoMetadata: {
           width: 3840,
@@ -94,7 +94,7 @@ describe("Universal Serverless Entrypoint — Video Metadata Probe Support", () 
       }),
     };
     const event = extractVideoJobEvent(raw);
-    assert.equal(event.action, "QUEUE");
+    assert.equal(event.action, "queue");
     assert.equal(event.videoKey, "raw/4k-drone.mp4");
     assert.ok(event.videoMetadata);
     assert.equal(event.videoMetadata.width, 3840);
@@ -103,11 +103,11 @@ describe("Universal Serverless Entrypoint — Video Metadata Probe Support", () 
 
   it("should execute serverless cycle seamlessly with pre-probed metadata payload", async () => {
     const mockDb = createChainableMockDb();
-    const mockProvider = createMockProvider("AWS");
+    const mockProvider = createMockProvider("aws");
 
     const result = await runServerlessFleetCycle(
       {
-        action: "QUEUE",
+        action: "queue",
         videoKey: "raw/lecture-1.mp4",
         qualities: ["1080p", "720p"],
         videoMetadata: {
@@ -128,11 +128,11 @@ describe("Universal Serverless Entrypoint — Video Metadata Probe Support", () 
 
   it("should execute serverless cycle seamlessly without videoMetadata (direct trigger backward compatibility)", async () => {
     const mockDb = createChainableMockDb();
-    const mockProvider = createMockProvider("AWS");
+    const mockProvider = createMockProvider("aws");
 
     const result = await runServerlessFleetCycle(
       {
-        action: "QUEUE",
+        action: "queue",
         videoKey: "raw/direct-trigger.mp4",
         qualities: ["720p"],
       },

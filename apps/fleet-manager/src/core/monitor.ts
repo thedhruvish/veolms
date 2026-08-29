@@ -38,7 +38,7 @@ export function createMonitor(options: {
       const orphanedJobs = await db
         .selectFrom("video_jobs")
         .select(["id", "video_key", "started_at"])
-        .where("status", "in", ["PROVISIONING", "PROCESSING"])
+        .where("status", "in", ["provisioning", "processing"])
         .where("worker_id", "is", null)
         .where((eb) =>
           eb.or([
@@ -69,11 +69,11 @@ export function createMonitor(options: {
         .selectFrom("workers")
         .select(["id", "job_id", "status", "last_heartbeat_at", "created_at"])
         .where("status", "in", [
-          "PENDING",
-          "PROVISIONING",
-          "STARTING",
-          "READY",
-          "PROCESSING",
+          "pending",
+          "provisioning",
+          "starting",
+          "ready",
+          "processing",
         ])
         .where((eb) =>
           eb.or([
@@ -92,7 +92,7 @@ export function createMonitor(options: {
         );
 
         await workerManager.recordEvent(
-          "HEARTBEAT_TIMEOUT",
+          "heartbeat_timeout",
           worker.id,
           worker.job_id,
           {
@@ -105,7 +105,7 @@ export function createMonitor(options: {
         await db
           .updateTable("workers")
           .set({
-            status: "FAILED",
+            status: "failed",
             updated_at: new Date(),
           })
           .where("id", "=", worker.id)
@@ -145,19 +145,19 @@ export function createMonitor(options: {
           "video_jobs.status as job_status",
         ])
         .where("worker_monitoring.next_check_at", "<=", now)
-        .where("workers.status", "not in", ["TERMINATING", "TERMINATED"])
+        .where("workers.status", "not in", ["terminating", "terminated"])
         .execute();
 
       for (const item of dueMonitoring) {
         if (
-          item.job_status === "COMPLETED" ||
-          item.worker_status === "COMPLETED"
+          item.job_status === "completed" ||
+          item.worker_status === "completed"
         ) {
           await workerManager.terminateWorker(item.worker_id);
           continue;
         }
 
-        if (item.job_status === "FAILED" || item.worker_status === "FAILED") {
+        if (item.job_status === "failed" || item.worker_status === "failed") {
           await workerManager.terminateWorker(item.worker_id);
           continue;
         }
@@ -202,11 +202,11 @@ export function createMonitor(options: {
             .selectFrom("workers")
             .selectAll()
             .where("status", "in", [
-              "PENDING",
-              "PROVISIONING",
-              "STARTING",
-              "READY",
-              "PROCESSING",
+              "pending",
+              "provisioning",
+              "starting",
+              "ready",
+              "processing",
             ])
             .execute();
 
@@ -221,8 +221,8 @@ export function createMonitor(options: {
               const cloudInst = cloudMap.get(worker.provider_worker_id);
               const isTerminatedInCloud =
                 !cloudInst ||
-                cloudInst.status === "TERMINATED" ||
-                cloudInst.status === "FAILED";
+                cloudInst.status === "terminated" ||
+                cloudInst.status === "failed";
 
               // 30-second grace period for newly provisioned workers
               const ageMs = now - new Date(worker.created_at).getTime();
@@ -232,7 +232,7 @@ export function createMonitor(options: {
                 );
 
                 await workerManager.recordEvent(
-                  "SPOT_INTERRUPTED",
+                  "spot_interrupted",
                   worker.id,
                   worker.job_id,
                   {
@@ -244,7 +244,7 @@ export function createMonitor(options: {
                 await db
                   .updateTable("workers")
                   .set({
-                    status: "FAILED",
+                    status: "failed",
                     updated_at: new Date(),
                   })
                   .where("id", "=", worker.id)
@@ -265,7 +265,7 @@ export function createMonitor(options: {
 
           // Check Cloud instances against DB active workers (Zombie instances)
           for (const cloudInst of cloudInstances) {
-            if (cloudInst.status !== "TERMINATED") {
+            if (cloudInst.status !== "terminated") {
               const matchingWorker = dbActiveWorkers.find(
                 (w) =>
                   w.provider_worker_id === cloudInst.providerWorkerId ||
@@ -286,7 +286,7 @@ export function createMonitor(options: {
                   try {
                     await provider.terminateWorker(cloudInst.providerWorkerId);
                     await workerManager.recordEvent(
-                      "ORPHAN_INSTANCE_TERMINATED",
+                      "orphan_instance_terminated",
                       null,
                       null,
                       {
@@ -320,7 +320,7 @@ export function createMonitor(options: {
             .selectAll()
             .where((eb) =>
               eb.or([
-                eb("status", "=", "COMPLETED"),
+                eb("status", "=", "completed"),
                 eb("progress_percent", ">=", 100),
               ]),
             )
@@ -330,11 +330,11 @@ export function createMonitor(options: {
           for (const job of completedJobs) {
             const verified = await provider.verifyJobOutput(job.output_prefix);
             if (verified) {
-              if (job.status !== "COMPLETED") {
+              if (job.status !== "completed") {
                 await jobManager.markJobCompleted(job.id);
               }
               await workerManager.recordEvent(
-                "JOB_OUTPUT_VERIFIED",
+                "job_output_verified",
                 job.worker_id,
                 job.id,
                 {
@@ -342,7 +342,7 @@ export function createMonitor(options: {
                 },
               );
               verifiedCompletedJobs++;
-            } else if (job.status === "COMPLETED") {
+            } else if (job.status === "completed") {
               console.warn(
                 `[reconciliation] Job ${job.id} marked completed but output verification failed for ${job.output_prefix}`,
               );
@@ -352,7 +352,7 @@ export function createMonitor(options: {
                 job.worker_id ?? undefined,
               );
               await workerManager.recordEvent(
-                "JOB_OUTPUT_VERIFICATION_FAILED",
+                "job_output_verification_failed",
                 job.worker_id,
                 job.id,
                 {

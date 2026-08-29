@@ -11,13 +11,13 @@ import {
 describe("Video Metadata Probe Lambda", () => {
   it("should extract event payload from direct invocation", () => {
     const raw = {
-      action: "QUEUE",
+      action: "queue",
       videoKey: "raw/test-video.mp4",
       qualities: ["1080p", "720p"],
     };
     const extracted = extractProbeEvent(raw);
     assert.equal(extracted.videoKey, "raw/test-video.mp4");
-    assert.equal(extracted.action, "QUEUE");
+    assert.equal(extracted.action, "queue");
   });
 
   it("should extract event payload from API Gateway proxy body string", () => {
@@ -46,7 +46,7 @@ describe("Video Metadata Probe Lambda", () => {
     const extracted = extractProbeEvent(s3Event);
     assert.equal(extracted.videoKey, "raw/sample video test.mp4");
     assert.equal(extracted.bucket, "my-video-bucket");
-    assert.equal(extracted.action, "QUEUE");
+    assert.equal(extracted.action, "queue");
   });
 
   it("should probe metadata and forward enriched payload to downstream Fleet Manager Lambda", async () => {
@@ -102,7 +102,7 @@ describe("Video Metadata Probe Lambda", () => {
     try {
       const result = await processProbeAndForward(
         {
-          action: "QUEUE",
+          action: "queue",
           videoKey: "https://my-bucket.s3.amazonaws.com/test.mp4",
           qualities: ["720p", "480p"],
         },
@@ -121,7 +121,7 @@ describe("Video Metadata Probe Lambda", () => {
 
       // Verify the downstream payload received the original fields PLUS videoMetadata
       assert.ok(sentPayload);
-      assert.equal(sentPayload.action, "QUEUE");
+      assert.equal(sentPayload.action, "queue");
       assert.equal(
         sentPayload.videoKey,
         "https://my-bucket.s3.amazonaws.com/test.mp4",

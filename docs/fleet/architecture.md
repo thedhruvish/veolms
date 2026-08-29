@@ -41,20 +41,21 @@ In AWS Serverless mode, the pipeline employs two specialized Lambda functions:
 ```
 
 ### Direct Trigger Fallback
+
 If the main `veolms-fleet-manager` is invoked directly (bypassing the Probe Lambda), or if metadata probing fails (e.g. invalid format or network timeouts), the control plane automatically falls back to sizing based on requested target qualities and byte size.
 
 ---
 
 ## Core Internal Modules
 
-| Module Path | Responsibility |
-|---|---|
-| `src/core/fleet-manager.ts` | Orchestrates single execution cycles (`runTick`), monitoring sweeps (`runMonitoringCycle`), and serverful polling loops (`startServerfulLoop`). |
-| `src/core/video-job-manager.ts` | Manages job queuing, active job deduplication, worker assignment, and completion/failure marking. |
-| `src/core/worker-manager.ts` | Calculates required hardware specs (`calculateWorkerSpec`), provisions worker handles via provider, tracks worker count capacity, and records audit events (`worker_events`). |
-| `src/core/monitor.ts` | Reconciles cloud instance state against DB, checks heartbeat timeouts, reclaims stalled jobs, reaps orphaned cloud instances, and verifies S3 outputs. |
-| `src/core/scheduler.ts` | Calculates dynamic adaptive check intervals based on job progress and estimated duration. |
-| `src/core/provider-resolver.ts` | Dynamically imports the configured `FleetProvider` (e.g. `@veolms/fleet-provider-aws` or `@veolms/fleet-provider-local`) at startup. |
+| Module Path                     | Responsibility                                                                                                                                                                |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/core/fleet-manager.ts`     | Orchestrates single execution cycles (`runTick`), monitoring sweeps (`runMonitoringCycle`), and serverful polling loops (`startServerfulLoop`).                               |
+| `src/core/video-job-manager.ts` | Manages job queuing, active job deduplication, worker assignment, and completion/failure marking.                                                                             |
+| `src/core/worker-manager.ts`    | Calculates required hardware specs (`calculateWorkerSpec`), provisions worker handles via provider, tracks worker count capacity, and records audit events (`worker_events`). |
+| `src/core/monitor.ts`           | Reconciles cloud instance state against DB, checks heartbeat timeouts, reclaims stalled jobs, reaps orphaned cloud instances, and verifies S3 outputs.                        |
+| `src/core/scheduler.ts`         | Calculates dynamic adaptive check intervals based on job progress and estimated duration.                                                                                     |
+| `src/core/provider-resolver.ts` | Dynamically imports the configured `FleetProvider` (e.g. `@veolms/fleet-provider-aws` or `@veolms/fleet-provider-local`) at startup.                                          |
 
 ---
 

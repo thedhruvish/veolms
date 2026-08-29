@@ -32,8 +32,8 @@ describe("Job & Worker Schemas and Contracts", () => {
     assert.equal(hw.minCpu, 2);
     assert.equal(hw.minMemoryMb, 4096);
     assert.equal(hw.storageGb, 30);
-    assert.equal(hw.architecture, "ARM64");
-    assert.equal(hw.profile, "MICRO");
+    assert.equal(hw.architecture, "arm64");
+    assert.equal(hw.profile, "micro");
   });
 
   it("scales cpu/memory/storage up for 2160p regardless of size", () => {
@@ -41,7 +41,7 @@ describe("Job & Worker Schemas and Contracts", () => {
     assert.equal(hw.minCpu, 8);
     assert.equal(hw.minMemoryMb, 16384);
     assert.equal(hw.storageGb, 80);
-    assert.equal(hw.profile, "MEDIUM");
+    assert.equal(hw.profile, "medium");
   });
 
   it("scales up when 5+ qualities are requested even without 1440p/2160p", () => {
@@ -54,16 +54,16 @@ describe("Job & Worker Schemas and Contracts", () => {
     ]);
     assert.equal(hw.minCpu, 4);
     assert.equal(hw.minMemoryMb, 8192);
-    assert.equal(hw.profile, "SMALL");
+    assert.equal(hw.profile, "small");
   });
 
   describe("resolveMachineProfile — metadata-driven sizing", () => {
     it("falls back to the exact legacy qualities-only profile when no metadata is available", () => {
-      assert.equal(resolveMachineProfile(["720p"]), "MICRO");
-      assert.equal(resolveMachineProfile(["1440p", "1080p"]), "SMALL");
-      assert.equal(resolveMachineProfile(["2160p"]), "MEDIUM");
-      assert.equal(resolveMachineProfile(["720p"], null), "MICRO");
-      assert.equal(resolveMachineProfile(["720p"], undefined), "MICRO");
+      assert.equal(resolveMachineProfile(["720p"]), "micro");
+      assert.equal(resolveMachineProfile(["1440p", "1080p"]), "small");
+      assert.equal(resolveMachineProfile(["2160p"]), "medium");
+      assert.equal(resolveMachineProfile(["720p"], null), "micro");
+      assert.equal(resolveMachineProfile(["720p"], undefined), "micro");
     });
 
     it("bumps a low-quality-count job up when the source is 4K/60fps/HEVC — a heavier decode than the requested output implies", () => {
@@ -73,43 +73,43 @@ describe("Job & Worker Schemas and Contracts", () => {
         fps: 60,
         codec: "hevc",
       });
-      assert.equal(profile, "LARGE");
+      assert.equal(profile, "large");
     });
 
-    it("never lets qualities alone imply NANO — only confirmed-small metadata can", () => {
+    it("never lets qualities alone imply nano — only confirmed-small metadata can", () => {
       // Same low qualities count, but no metadata: stays at the legacy
-      // MICRO floor, never guesses down to NANO.
-      assert.equal(resolveMachineProfile(["360p"]), "MICRO");
+      // micro floor, never guesses down to nano.
+      assert.equal(resolveMachineProfile(["360p"]), "micro");
     });
 
-    it("steps down to NANO only when metadata confirms a small, simple source with a low quality count", () => {
+    it("steps down to nano only when metadata confirms a small, simple source with a low quality count", () => {
       const profile = resolveMachineProfile(["360p"], {
         width: 640,
         height: 360,
         fps: 24,
         codec: "h264",
       });
-      assert.equal(profile, "NANO");
+      assert.equal(profile, "nano");
     });
 
-    it("does not step down to NANO when 3+ qualities are requested even for a small source", () => {
+    it("does not step down to nano when 3+ qualities are requested even for a small source", () => {
       const profile = resolveMachineProfile(["480p", "360p", "240p"], {
         width: 640,
         height: 360,
         fps: 24,
         codec: "h264",
       });
-      assert.equal(profile, "MICRO");
+      assert.equal(profile, "micro");
     });
 
-    it("clamps at LARGE instead of exceeding it for an extreme 8K/120fps/AV1 source", () => {
+    it("clamps at large instead of exceeding it for an extreme 8K/120fps/AV1 source", () => {
       const profile = resolveMachineProfile(["2160p"], {
         width: 7680,
         height: 4320,
         fps: 120,
         codec: "av1",
       });
-      assert.equal(profile, "LARGE");
+      assert.equal(profile, "large");
     });
   });
 
@@ -140,7 +140,7 @@ describe("Job & Worker Schemas and Contracts", () => {
       const first = resolveJobHardware(job);
       const second = resolveJobHardware(job);
       assert.deepEqual(first, second);
-      assert.equal(first.profile, "LARGE");
+      assert.equal(first.profile, "large");
     });
 
     it("treats a null video_metadata (not probed) the same as absent metadata", () => {
@@ -149,7 +149,7 @@ describe("Job & Worker Schemas and Contracts", () => {
         qualities: ["720p"],
         video_metadata: null,
       });
-      assert.equal(hw.profile, "MICRO");
+      assert.equal(hw.profile, "micro");
     });
   });
 
@@ -199,7 +199,7 @@ describe("Job & Worker Schemas and Contracts", () => {
     const spec = {
       cpu: 2,
       memoryMb: 4096,
-      architecture: "ARM64",
+      architecture: "arm64",
       storageGb: 30,
       region: "us-east-1",
       environmentVariables: {
@@ -210,7 +210,7 @@ describe("Job & Worker Schemas and Contracts", () => {
 
     const parsed = workerSpecSchema.parse(spec);
     assert.equal(parsed.cpu, 2);
-    assert.equal(parsed.architecture, "ARM64");
+    assert.equal(parsed.architecture, "arm64");
     assert.equal(
       parsed.environmentVariables["WORKER_ID"],
       "11111111-1111-1111-1111-111111111111",

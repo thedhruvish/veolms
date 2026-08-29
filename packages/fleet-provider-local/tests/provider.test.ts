@@ -36,7 +36,7 @@ describe("Local Fleet Provider", () => {
     const handle = await provider.createWorker(workerId, {
       cpu: 1,
       memoryMb: 512,
-      architecture: "ARM64",
+      architecture: "arm64",
       storageGb: 10,
       region: "local",
       environmentVariables: {
@@ -45,33 +45,33 @@ describe("Local Fleet Provider", () => {
     });
 
     assert.equal(handle.id, workerId);
-    assert.equal(handle.provider, "LOCAL");
+    assert.equal(handle.provider, "local");
     assert.ok(handle.providerWorkerId.startsWith("local-proc-"));
 
     // Check health while running
     const health = await provider.healthCheck(handle.providerWorkerId);
     assert.equal(health.healthy, true);
-    assert.equal(health.state, "PROCESSING");
+    assert.equal(health.state, "processing");
 
     // Terminate worker
     await provider.terminateWorker(handle.providerWorkerId);
 
     // A deliberate, successful termination must be reported as TERMINATED
-    // everywhere — not "FAILED", which is what a SIGTERM exit (exitCode
+    // everywhere — not "failed", which is what a SIGTERM exit (exitCode
     // null) would otherwise be misclassified as.
     const statusAfter = await provider.getWorkerStatus(handle.providerWorkerId);
-    assert.equal(statusAfter, "TERMINATED");
+    assert.equal(statusAfter, "terminated");
 
     const healthAfter = await provider.healthCheck(handle.providerWorkerId);
     assert.equal(healthAfter.healthy, false);
-    assert.equal(healthAfter.state, "TERMINATED");
+    assert.equal(healthAfter.state, "terminated");
 
     const workerAfter = await provider.getWorker(handle.providerWorkerId);
     assert.ok(
       workerAfter,
       "getWorker() should still find the just-terminated worker",
     );
-    assert.equal(workerAfter?.status, "TERMINATED");
+    assert.equal(workerAfter?.status, "terminated");
   });
 
   it("getWorker() does not report PROCESSING once a worker has exited, even if its PID is later reused", async () => {
@@ -93,7 +93,7 @@ describe("Local Fleet Provider", () => {
       const handle = await provider.createWorker(workerId, {
         cpu: 1,
         memoryMb: 512,
-        architecture: "ARM64",
+        architecture: "arm64",
         storageGb: 10,
         region: "local",
         environmentVariables: {},
@@ -102,7 +102,7 @@ describe("Local Fleet Provider", () => {
       // Wait for the process to exit on its own.
       for (let i = 0; i < 50; i++) {
         const status = await provider.getWorkerStatus(handle.providerWorkerId);
-        if (status !== "PROCESSING") break;
+        if (status !== "processing") break;
         await new Promise((resolve) => setTimeout(resolve, 20));
       }
 
@@ -112,8 +112,8 @@ describe("Local Fleet Provider", () => {
       // getWorker() must trust the recorded exit state, not a raw isAlive()
       // check against a PID that may have been reused by an unrelated
       // process in the meantime.
-      assert.notEqual(worker?.status, "PROCESSING");
-      assert.equal(worker?.status, "COMPLETED");
+      assert.notEqual(worker?.status, "processing");
+      assert.equal(worker?.status, "completed");
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

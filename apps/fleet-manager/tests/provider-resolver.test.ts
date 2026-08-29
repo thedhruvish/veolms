@@ -42,7 +42,7 @@ describe("Pluggable Provider Resolver", () => {
   it("should normalize uppercase provider names (e.g. AWS) to lowercase package names", async () => {
     const provider = await resolveFleetProvider("AWS");
     assert.ok(provider);
-    assert.equal(provider.name, "AWS");
+    assert.equal(provider.name, "aws");
     assert.equal(typeof provider.createWorker, "function");
     assert.equal(typeof provider.terminateWorker, "function");
   });

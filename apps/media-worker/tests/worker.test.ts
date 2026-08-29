@@ -213,9 +213,9 @@ describe("pollForNextJob", () => {
       cpu: 4,
       memory_mb: 8192,
       storage_gb: 100,
-      architecture: "ARM64",
+      architecture: "arm64",
     };
-    const jobRow = { id: "job-1", status: "QUEUED" };
+    const jobRow = { id: "job-1", status: "queued" };
 
     const db = {
       transaction() {
@@ -259,7 +259,7 @@ describe("pollForNextJob", () => {
       cpu: 4,
       memory_mb: 8192,
       storage_gb: 100,
-      architecture: "ARM64",
+      architecture: "arm64",
     };
 
     const db = {
@@ -311,7 +311,7 @@ describe("pollForNextJob", () => {
       cpu: 4,
       memory_mb: 8192,
       storage_gb: 100,
-      architecture: "ARM64",
+      architecture: "arm64",
     };
 
     const db = {
@@ -359,7 +359,7 @@ describe("pollForNextJob", () => {
     let attempts = 0;
     const workerRow = {
       id: WORKER_ID,
-      status: "FAILED",
+      status: "failed",
     };
 
     const db = {

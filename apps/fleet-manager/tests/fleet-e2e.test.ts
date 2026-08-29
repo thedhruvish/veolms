@@ -24,7 +24,7 @@ describe("Fleet Manager End-to-End Core Integration", () => {
           id,
           providerWorkerId: `local-proc-999`,
           provider: "local",
-          status: "STARTING",
+          status: "starting",
           privateIp: "127.0.0.1",
           publicIp: null,
           createdAt: new Date(),
@@ -34,11 +34,11 @@ describe("Fleet Manager End-to-End Core Integration", () => {
         return null;
       },
       async getWorkerStatus(): Promise<WorkerStatus> {
-        return "PROCESSING";
+        return "processing";
       },
       async terminateWorker(): Promise<void> {},
       async healthCheck() {
-        return { healthy: true, state: "PROCESSING" as WorkerStatus };
+        return { healthy: true, state: "processing" as WorkerStatus };
       },
     };
 
@@ -51,7 +51,7 @@ describe("Fleet Manager End-to-End Core Integration", () => {
 
     const job: Job = {
       id: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
-      status: "QUEUED",
+      status: "queued",
       videoKey: "videos/lecture.mp4",
       outputPrefix: "hls/lecture",
       videoSize: 0,
@@ -70,7 +70,7 @@ describe("Fleet Manager End-to-End Core Integration", () => {
     const spec = workerManager.calculateWorkerSpec(job);
     assert.equal(spec.cpu, 2);
     assert.equal(spec.memoryMb, 4096);
-    assert.equal(spec.architecture, "ARM64");
+    assert.equal(spec.architecture, "arm64");
     assert.equal(spec.environmentVariables["JOB_ID"], job.id);
   });
 });

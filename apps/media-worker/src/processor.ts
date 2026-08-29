@@ -244,9 +244,9 @@ export async function executeTranscodeJob(
     throwIfAborted(signal);
 
     if (
-      job.status !== "PROCESSING" &&
-      job.status !== "PROVISIONING" &&
-      job.status !== "QUEUED"
+      job.status !== "processing" &&
+      job.status !== "provisioning" &&
+      job.status !== "queued"
     ) {
       throw new Error(`Job ${jobId} is ${job.status}, not runnable`);
     }
@@ -287,7 +287,7 @@ export async function executeTranscodeJob(
       const claimResult = await trx
         .updateTable("video_jobs")
         .set({
-          status: "PROVISIONING",
+          status: "provisioning",
           worker_id: workerId,
           started_at: job.started_at ?? new Date(),
           updated_at: new Date(),
@@ -305,7 +305,7 @@ export async function executeTranscodeJob(
       await trx
         .updateTable("workers")
         .set({
-          status: "PROCESSING",
+          status: "processing",
           job_id: jobId,
           updated_at: new Date(),
         })
@@ -443,13 +443,13 @@ export async function executeTranscodeJob(
     await db
       .updateTable("video_jobs")
       .set({
-        status: "PROCESSING",
+        status: "processing",
         updated_at: new Date(),
       })
       .where("id", "=", jobId)
       .execute();
 
-    await recordEvent("JOB_STARTED", jobId, {
+    await recordEvent("job_started", jobId, {
       videoKey: job.video_key,
       outputPrefix: job.output_prefix,
       qualities: job.qualities,
@@ -582,7 +582,7 @@ export async function executeTranscodeJob(
       await trx
         .updateTable("video_jobs")
         .set({
-          status: "COMPLETED",
+          status: "completed",
           completed_at: new Date(),
           updated_at: new Date(),
         })
@@ -593,7 +593,7 @@ export async function executeTranscodeJob(
       await trx
         .updateTable("workers")
         .set({
-          status: "READY",
+          status: "ready",
           job_id: null,
           updated_at: new Date(),
         })
@@ -611,7 +611,7 @@ export async function executeTranscodeJob(
         .execute();
     });
 
-    await recordEvent("JOB_COMPLETED", jobId, {
+    await recordEvent("job_completed", jobId, {
       applicableQualities,
       outputPrefix: job.output_prefix,
     });
@@ -638,7 +638,7 @@ export async function executeTranscodeJob(
         .updateTable("video_jobs")
         .set({
           attempts: nextAttempts,
-          status: shouldRetry ? "QUEUED" : "FAILED",
+          status: shouldRetry ? "queued" : "failed",
           worker_id: null,
           error_message: errorMsg,
           failed_at: shouldRetry ? null : new Date(),
@@ -651,7 +651,7 @@ export async function executeTranscodeJob(
       await trx
         .updateTable("workers")
         .set({
-          status: shouldRetry ? "READY" : "FAILED",
+          status: shouldRetry ? "ready" : "failed",
           job_id: null,
           updated_at: new Date(),
         })
@@ -659,7 +659,7 @@ export async function executeTranscodeJob(
         .execute();
     });
 
-    await recordEvent("JOB_FAILED", jobId, {
+    await recordEvent("job_failed", jobId, {
       error: errorMsg,
       attempts: nextAttempts,
       willRetry: shouldRetry,

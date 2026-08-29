@@ -9,10 +9,10 @@ export async function up(database: Kysely<unknown>): Promise<void> {
     .addColumn("provider", "text", (column) => column.notNull())
     .addColumn("provider_worker_id", "text", (column) => column.notNull())
     .addColumn("status", "text", (column) =>
-      column.notNull().defaultTo("PENDING"),
+      column.notNull().defaultTo("pending"),
     )
     .addColumn("architecture", "text", (column) =>
-      column.notNull().defaultTo("ARM64"),
+      column.notNull().defaultTo("arm64"),
     )
     .addColumn("cpu", "integer", (column) => column.notNull())
     .addColumn("memory_mb", "integer", (column) => column.notNull())
@@ -39,15 +39,15 @@ export async function up(database: Kysely<unknown>): Promise<void> {
     )
     .addCheckConstraint(
       "workers_provider_valid",
-      sql`provider in ('LOCAL', 'AWS')`,
+      sql`provider in ('local', 'aws')`,
     )
     .addCheckConstraint(
       "workers_status_valid",
-      sql`status in ('PENDING', 'PROVISIONING', 'STARTING', 'READY', 'PROCESSING', 'COMPLETED', 'FAILED', 'TERMINATING', 'TERMINATED')`,
+      sql`status in ('pending', 'provisioning', 'starting', 'ready', 'processing', 'completed', 'failed', 'terminating', 'terminated')`,
     )
     .addCheckConstraint(
       "workers_architecture_valid",
-      sql`architecture in ('ARM64', 'X86_64')`,
+      sql`architecture in ('arm64', 'x86_64')`,
     )
     .execute();
 
@@ -121,25 +121,23 @@ export async function up(database: Kysely<unknown>): Promise<void> {
     .addCheckConstraint(
       "worker_events_event_valid",
       sql`event in (
-        'WORKER_CREATED',
-        'WORKER_PROVISIONING',
-        'WORKER_READY',
-        'JOB_ASSIGNED',
-        'JOB_STARTED',
-        'PROGRESS_UPDATED',
-        'HEARTBEAT_RECORDED',
-        'HEARTBEAT_TIMEOUT',
-        'JOB_COMPLETED',
-        'JOB_FAILED',
-        'WORKER_TERMINATION_REQUESTED',
-        'WORKER_TERMINATED',
-        'WORKER_ERROR',
-        'SPOT_INTERRUPTED',
-        'ORPHAN_INSTANCE_TERMINATED',
-        'JOB_OUTPUT_VERIFIED',
-        'JOB_OUTPUT_VERIFICATION_FAILED',
-        'SCHEDULE_UPDATED',
-        'SCHEDULE_CLEARED'
+        'worker_created',
+        'worker_provisioning',
+        'worker_ready',
+        'job_assigned',
+        'job_started',
+        'progress_updated',
+        'heartbeat_recorded',
+        'heartbeat_timeout',
+        'job_completed',
+        'job_failed',
+        'worker_termination_requested',
+        'worker_terminated',
+        'worker_error',
+        'spot_interrupted',
+        'orphan_instance_terminated',
+        'job_output_verified',
+        'job_output_verification_failed'
       )`,
     )
     .execute();

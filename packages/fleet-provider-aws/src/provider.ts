@@ -96,18 +96,18 @@ async function resolveRootDeviceName(
 export function mapEc2StateToWorkerStatus(stateName?: string): WorkerStatus {
   switch (stateName) {
     case "pending":
-      return "STARTING";
+      return "starting";
     case "running":
-      return "PROCESSING";
+      return "processing";
     case "shutting-down":
-      return "TERMINATING";
+      return "terminating";
     case "terminated":
-      return "TERMINATED";
+      return "terminated";
     case "stopping":
     case "stopped":
-      return "FAILED";
+      return "failed";
     default:
-      return "PENDING";
+      return "pending";
   }
 }
 
@@ -152,7 +152,7 @@ export function createAwsProvider(
   const defaultLocalStackAmi = "ami-df5de72bdb3b3";
 
   return {
-    name: "AWS",
+    name: "aws",
 
     async createWorker(id: string, spec: WorkerSpec): Promise<WorkerHandle> {
       const candidates = selectOptimalInstanceType(spec);
@@ -251,8 +251,8 @@ export function createAwsProvider(
           return {
             id,
             providerWorkerId: instance.InstanceId,
-            provider: "AWS",
-            status: "STARTING",
+            provider: "aws",
+            status: "starting",
             privateIp: instance.PrivateIpAddress ?? null,
             publicIp: instance.PublicIpAddress ?? null,
             createdAt: instance.LaunchTime
@@ -300,7 +300,7 @@ export function createAwsProvider(
         return {
           id: workerId,
           providerWorkerId: instance.InstanceId,
-          provider: "AWS",
+          provider: "aws",
           status: mapEc2StateToWorkerStatus(instance.State?.Name),
           privateIp: instance.PrivateIpAddress ?? null,
           publicIp: instance.PublicIpAddress ?? null,
@@ -324,12 +324,12 @@ export function createAwsProvider(
 
         const instance = response.Reservations?.[0]?.Instances?.[0];
         if (!instance) {
-          return "TERMINATED";
+          return "terminated";
         }
 
         return mapEc2StateToWorkerStatus(instance.State?.Name);
       } catch {
-        return "TERMINATED";
+        return "terminated";
       }
     },
 
@@ -358,7 +358,7 @@ export function createAwsProvider(
         if (!status) {
           return {
             healthy: false,
-            state: "TERMINATED",
+            state: "terminated",
             message: `Instance status not found for ${providerWorkerId}`,
           };
         }
@@ -366,7 +366,7 @@ export function createAwsProvider(
         const state = mapEc2StateToWorkerStatus(status.InstanceState?.Name);
         const systemOk = status.SystemStatus?.Status === "ok";
         const instanceOk = status.InstanceStatus?.Status === "ok";
-        const isHealthy = state === "PROCESSING" && systemOk && instanceOk;
+        const isHealthy = state === "processing" && systemOk && instanceOk;
 
         return {
           healthy: isHealthy,
@@ -377,7 +377,7 @@ export function createAwsProvider(
         const message = err instanceof Error ? err.message : String(err);
         return {
           healthy: false,
-          state: "FAILED",
+          state: "failed",
           message: `Health check failed: ${message}`,
         };
       }

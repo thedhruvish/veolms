@@ -61,7 +61,7 @@ export function createJobManager(options: {
       await db
         .updateTable("video_jobs")
         .set({
-          status: "COMPLETED",
+          status: "completed",
           completed_at: new Date(),
           updated_at: new Date(),
         })
@@ -81,13 +81,13 @@ export function createJobManager(options: {
 
       if (expectedWorkerId) {
         query = query
-          .where("status", "in", ["PROVISIONING", "PROCESSING"])
+          .where("status", "in", ["provisioning", "processing"])
           .where("worker_id", "=", expectedWorkerId);
       }
 
       const job = await query.executeTakeFirst();
 
-      if (!job || job.status === "COMPLETED") {
+      if (!job || job.status === "completed") {
         return false;
       }
 
@@ -98,7 +98,7 @@ export function createJobManager(options: {
         .updateTable("video_jobs")
         .set({
           attempts: nextAttempts,
-          status: shouldRetry ? "QUEUED" : "FAILED",
+          status: shouldRetry ? "queued" : "failed",
           worker_id: null,
           error_message: errorMessage,
           failed_at: shouldRetry ? null : new Date(),
@@ -108,7 +108,7 @@ export function createJobManager(options: {
 
       if (expectedWorkerId) {
         updateQuery = updateQuery
-          .where("status", "in", ["PROVISIONING", "PROCESSING"])
+          .where("status", "in", ["provisioning", "processing"])
           .where("worker_id", "=", expectedWorkerId);
       }
 
@@ -133,7 +133,7 @@ export function createJobManager(options: {
       let activeQuery = db
         .selectFrom("video_jobs")
         .selectAll()
-        .where("status", "in", ["QUEUED", "PROVISIONING", "PROCESSING"]);
+        .where("status", "in", ["queued", "provisioning", "processing"]);
 
       if (params.videoId) {
         const vid = params.videoId;
@@ -351,7 +351,7 @@ export function createJobManager(options: {
           .values({
             id,
             video_id: videoId,
-            status: "QUEUED",
+            status: "queued",
             video_key: params.videoKey,
             output_prefix: params.outputPrefix,
             video_size: videoSize,
@@ -375,7 +375,7 @@ export function createJobManager(options: {
           row ?? {
             id,
             video_id: videoId,
-            status: "QUEUED",
+            status: "queued",
             video_key: params.videoKey,
             output_prefix: params.outputPrefix,
             video_size: videoSize,

@@ -1,9 +1,12 @@
 import { z } from "zod";
 import {
+  HARDWARE_PROFILES,
+  hardwareProfileSchema,
   JOB_STATUSES,
   VIDEO_JOB_STATUSES,
   videoJobStatusSchema,
   videoMetadataSchema,
+  type HardwareProfile,
   type PersistedVideoMetadata,
   type VideoJobStatus,
   type VideoMetadata,
@@ -16,12 +19,23 @@ import {
 } from "./quality.ts";
 
 export {
+  HARDWARE_PROFILES,
+  hardwareProfileSchema,
   JOB_STATUSES,
   VIDEO_JOB_STATUSES,
   videoJobStatusSchema,
   videoMetadataSchema,
 };
-export type { VideoJobStatus, VideoMetadata, PersistedVideoMetadata };
+export type {
+  HardwareProfile,
+  VideoJobStatus,
+  VideoMetadata,
+  PersistedVideoMetadata,
+};
+
+// Aliases for backwards compatibility with existing imports
+export const MACHINE_PROFILES = HARDWARE_PROFILES;
+export type MachineProfile = HardwareProfile;
 
 // The codec/segment settings a job used to be able to override per-row were
 // never actually set by the real inserter (the backend API only ever writes
@@ -31,50 +45,36 @@ export const DEFAULT_VIDEO_CODEC = "h264";
 export const DEFAULT_AUDIO_CODEC = "aac";
 export const DEFAULT_SEGMENT_DURATION_SECONDS = 6;
 
-/**
- * Named worker-sizing tiers, ordered smallest to largest. A job's tier is
- * resolved once (see resolveMachineProfile()) from requested output
- * qualities and, when available, probed source metadata.
- */
-export const MACHINE_PROFILES = [
-  "NANO",
-  "MICRO",
-  "SMALL",
-  "MEDIUM",
-  "LARGE",
-] as const;
-export type MachineProfile = (typeof MACHINE_PROFILES)[number];
-
 export interface JobHardwareRequirements {
   minCpu: number;
   minMemoryMb: number;
-  architecture: "ARM64" | "X86_64";
+  architecture: "arm64" | "x86_64";
   storageGb: number;
   estimatedDurationSeconds: number;
   /** Informational only — logs/dashboards. Not used by any sizing logic. */
-  profile: MachineProfile;
+  profile: HardwareProfile;
 }
 
 const BASE_HARDWARE = {
-  architecture: "ARM64" as const,
+  architecture: "arm64" as const,
   estimatedDurationSeconds: 600,
 };
 
-// minCpu/minMemoryMb/storageGb per tier. MICRO/SMALL/MEDIUM are exact
+// minCpu/minMemoryMb/storageGb per tier. micro/small/medium are exact
 // renames of the values this module used before named tiers existed — the
 // qualities-only fallback path below reproduces the old baseline/1440p/
-// 2160p buckets bit-for-bit. NANO and LARGE are new tiers only reachable
+// 2160p buckets bit-for-bit. nano and large are new tiers only reachable
 // when probed source metadata confirms a source is unusually simple or
 // unusually demanding.
 const PROFILE_HARDWARE: Record<
-  MachineProfile,
+  HardwareProfile,
   { minCpu: number; minMemoryMb: number; storageGb: number }
 > = {
-  NANO: { minCpu: 1, minMemoryMb: 2048, storageGb: 20 },
-  MICRO: { minCpu: 2, minMemoryMb: 4096, storageGb: 30 },
-  SMALL: { minCpu: 4, minMemoryMb: 8192, storageGb: 50 },
-  MEDIUM: { minCpu: 8, minMemoryMb: 16384, storageGb: 80 },
-  LARGE: { minCpu: 16, minMemoryMb: 32768, storageGb: 130 },
+  nano: { minCpu: 1, minMemoryMb: 2048, storageGb: 20 },
+  micro: { minCpu: 2, minMemoryMb: 4096, storageGb: 30 },
+  small: { minCpu: 4, minMemoryMb: 8192, storageGb: 50 },
+  medium: { minCpu: 8, minMemoryMb: 16384, storageGb: 80 },
+  large: { minCpu: 16, minMemoryMb: 32768, storageGb: 130 },
 };
 
 // Codecs that cost materially more CPU to software-decode than H.264 —
@@ -193,8 +193,11 @@ export function estimateJobHardware(
   const architecture = BASE_HARDWARE.architecture;
 
   const profile = resolveMachineProfile(qualities, opts?.videoMetadata);
-  const { minCpu, minMemoryMb, storageGb: profileStorageFloor } =
-    PROFILE_HARDWARE[profile];
+  const {
+    minCpu,
+    minMemoryMb,
+    storageGb: profileStorageFloor,
+  } = PROFILE_HARDWARE[profile];
 
   const explicitDuration =
     typeof options === "number"
@@ -211,8 +214,7 @@ export function estimateJobHardware(
     if (!qualityProfile) return sum;
     return (
       sum +
-      (qualityProfile.videoBitrateKbps + qualityProfile.audioBitrateKbps) *
-        1000
+      (qualityProfile.videoBitrateKbps + qualityProfile.audioBitrateKbps) * 1000
     );
   }, 0);
   const totalOutputBytesPerSec = totalBitrateBps / 8;
@@ -268,8 +270,7 @@ export function resolveJobHardware(
 ): JobHardwareRequirements {
   return estimateJobHardware(job.video_size, job.qualities, {
     videoMetadata: (job.video_metadata ?? undefined) as
-      | PersistedVideoMetadata
-      | undefined,
+      PersistedVideoMetadata | undefined,
   });
 }
 

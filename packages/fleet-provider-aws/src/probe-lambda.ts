@@ -53,7 +53,7 @@ export function extractProbeEvent(rawEvent: unknown): Record<string, unknown> {
     if (objectKey) {
       const decodedKey = decodeURIComponent(objectKey.replace(/\+/g, " "));
       return {
-        action: "QUEUE",
+        action: "queue",
         videoKey: decodedKey,
         bucket,
       };

@@ -1,6 +1,6 @@
 # VeoLMS AWS Fleet Provider (`@veolms/fleet-provider-aws`)
 
-AWS infrastructure provider for the VeoLMS transcoding pipeline. Manages ephemeral **EC2 Spot/On-Demand Graviton ARM64 and x86_64 instances**, **AWS EventBridge Scheduler dynamic triggers**, **S3 bundle and output verification**, and automated setup CLI tooling.
+AWS infrastructure provider for the VeoLMS transcoding pipeline. Manages ephemeral **EC2 Spot/On-Demand Graviton arm64 and x86_64 instances**, **AWS EventBridge Scheduler dynamic triggers**, **S3 bundle and output verification**, and automated setup CLI tooling.
 
 ---
 
@@ -27,7 +27,7 @@ packages/fleet-provider-aws/
 │   ├── config.ts              # Zod environment & AWS configuration loader
 │   ├── debian-ami.ts          # Public Debian SSM AMI ID resolver with caching
 │   ├── index.ts               # Package public exports
-│   ├── instance-types.ts      # ARM64 & x86_64 EC2 profile matching table
+│   ├── instance-types.ts      # arm64 & x86_64 EC2 profile matching table
 │   ├── lambda.ts              # AWS Lambda entrypoint adapter
 │   ├── provider.ts            # FleetProvider implementation (EC2, SSM, S3, Scheduler)
 │   ├── scheduler.ts           # EventBridge Scheduler client & one-shot triggers

@@ -27,13 +27,13 @@ export interface LocalProviderConfig {
  * a WorkerStatus, used by getWorker/getWorkerStatus/healthCheck alike.
  * terminatedByRequest is checked first because a SIGTERM/SIGKILL exit
  * normally reports exitCode === null, which would otherwise fall through
- * to "FAILED" even for a deliberate, successful terminateWorker() call.
+ * to "failed" even for a deliberate, successful terminateWorker() call.
  */
 function deriveWorkerStatus(managed: ManagedProcess): WorkerStatus {
   if (managed.terminatedByRequest) {
-    return "TERMINATED";
+    return "terminated";
   }
-  return managed.exitCode === 0 ? "COMPLETED" : "FAILED";
+  return managed.exitCode === 0 ? "completed" : "failed";
 }
 
 export function parsePidFromWorkerId(providerWorkerId: string): number | null {
@@ -55,7 +55,7 @@ export function createLocalProvider(
   const gracePeriodMs = config.gracePeriodMs ?? 5000;
 
   return {
-    name: "LOCAL",
+    name: "local",
 
     async createWorker(id: string, spec: WorkerSpec): Promise<WorkerHandle> {
       const args: string[] = [];
@@ -67,7 +67,7 @@ export function createLocalProvider(
         ...config.defaultEnv,
         ...spec.environmentVariables,
         WORKER_ID: id,
-        PROVIDER: "LOCAL",
+        PROVIDER: "local",
       };
 
       const managed = registry.spawnProcess({
@@ -81,8 +81,8 @@ export function createLocalProvider(
       return {
         id,
         providerWorkerId: `local-proc-${managed.pid}`,
-        provider: "LOCAL",
-        status: "STARTING",
+        provider: "local",
+        status: "starting",
         privateIp: "127.0.0.1",
         publicIp: null,
         createdAt: managed.startedAt,
@@ -110,12 +110,12 @@ export function createLocalProvider(
       }
       const status: WorkerStatus = managed.terminated
         ? deriveWorkerStatus(managed)
-        : "PROCESSING";
+        : "processing";
 
       return {
         id: managed.workerId,
         providerWorkerId,
-        provider: "LOCAL",
+        provider: "local",
         status,
         privateIp: "127.0.0.1",
         publicIp: null,
@@ -126,12 +126,12 @@ export function createLocalProvider(
     async getWorkerStatus(providerWorkerId: string): Promise<WorkerStatus> {
       const pid = parsePidFromWorkerId(providerWorkerId);
       if (!pid) {
-        return "TERMINATED";
+        return "terminated";
       }
 
       const managed = registry.getByPid(pid);
       if (!managed) {
-        return registry.isAlive(pid) ? "PROCESSING" : "TERMINATED";
+        return registry.isAlive(pid) ? "processing" : "terminated";
       }
 
       if (managed.terminated) {
@@ -143,7 +143,7 @@ export function createLocalProvider(
         return deriveWorkerStatus(managed);
       }
 
-      return "PROCESSING";
+      return "processing";
     },
 
     async execute(
@@ -214,7 +214,7 @@ export function createLocalProvider(
       if (!pid) {
         return {
           healthy: false,
-          state: "TERMINATED",
+          state: "terminated",
           message: `Invalid PID for worker handle: ${providerWorkerId}`,
         };
       }
@@ -224,7 +224,7 @@ export function createLocalProvider(
         const managed = registry.getByPid(pid);
         return {
           healthy: false,
-          state: managed ? deriveWorkerStatus(managed) : "TERMINATED",
+          state: managed ? deriveWorkerStatus(managed) : "terminated",
           message: managed
             ? `Process ${pid} is not running. Exit code: ${managed.exitCode ?? "unknown"}${managed.terminatedByRequest ? " (terminated on request)" : ""}`
             : `Process ${pid} is not running and is no longer tracked.`,
@@ -233,7 +233,7 @@ export function createLocalProvider(
 
       return {
         healthy: true,
-        state: "PROCESSING",
+        state: "processing",
         message: `Process ${pid} is healthy and running`,
       };
     },
