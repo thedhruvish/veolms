@@ -132,6 +132,9 @@ importers:
       '@veolms/fleet-provider-aws':
         specifier: workspace:*
         version: link:../../packages/fleet-provider-aws
+      '@veolms/fleet-provider-docker':
+        specifier: workspace:*
+        version: link:../../packages/fleet-provider-docker
       '@veolms/fleet-provider-local':
         specifier: workspace:*
         version: link:../../packages/fleet-provider-local
@@ -489,6 +492,12 @@ importers:
       esbuild:
         specifier: ^0.25.0
         version: 0.25.12
+
+  packages/fleet-provider-docker:
+    dependencies:
+      '@veolms/fleet-types':
+        specifier: workspace:*
+        version: link:../fleet-types
 
   packages/fleet-provider-local:
     dependencies:

@@ -24,7 +24,7 @@ import {
   type IncrementalUploadHandle,
 } from "./incremental-upload.ts";
 import type { MediaWorkerConfig } from "@veolms/config";
-import type { MediaWorkerContext } from "./worker.ts";
+import { getRequestedTestFault, type MediaWorkerContext } from "./worker.ts";
 
 const execFileAsync = promisify(execFile);
 const FFMPEG_STDERR_TAIL_BYTES = 16 * 1024;
@@ -243,6 +243,10 @@ export async function executeTranscodeJob(
   try {
     throwIfAborted(signal);
 
+    if ((await getRequestedTestFault(ctx)) === "worker-failure") {
+      throw new Error("Test fault: worker-failure");
+    }
+
     if (
       job.status !== "processing" &&
       job.status !== "provisioning" &&
@@ -347,10 +351,11 @@ export async function executeTranscodeJob(
       });
     } else {
       const cleanVideoKey = job.video_key.replace(/^[/\\]+/, "");
+      const localStorageRoot = resolve(config.LOCAL_STORAGE_ROOT);
       const workspaceDir = process.cwd();
       const localCandidates = [
         resolveWithin(workspaceDir, cleanVideoKey),
-        resolveWithin(join(workspaceDir, "s3-bucket"), cleanVideoKey),
+        resolveWithin(localStorageRoot, cleanVideoKey),
         resolveWithin(join(workspaceDir, "scratch"), cleanVideoKey),
       ];
       let isLocalFile = false;
@@ -498,6 +503,9 @@ export async function executeTranscodeJob(
         progressWrite = progressWrite
           .catch(() => undefined)
           .then(async () => {
+            if ((await getRequestedTestFault(ctx)) === "progress-stall") {
+              return;
+            }
             await db
               .updateTable("worker_monitoring")
               .set({
@@ -548,9 +556,12 @@ export async function executeTranscodeJob(
     // removed in finally, so persistence failures must fail the job rather
     // than leaving a false COMPLETED result with no playable output.
     if (config.STORAGE_PROVIDER === "local") {
+      if ((await getRequestedTestFault(ctx)) === "storage-failure") {
+        throw new Error("Test fault: storage-failure");
+      }
       const cleanPrefix = job.output_prefix.replace(/^s3-bucket\//, "");
       const localTargetDir = resolveWithin(
-        join(process.cwd(), "s3-bucket"),
+        resolve(config.LOCAL_STORAGE_ROOT),
         cleanPrefix,
       );
       await mkdir(localTargetDir, { recursive: true });

@@ -30,6 +30,7 @@ export interface JobManager {
     jobId: string,
     errorMessage: string,
     expectedWorkerId?: string,
+    options?: { allowCompleted?: boolean },
   ): Promise<boolean>;
   queueJob(params: QueueJobParams): Promise<Selectable<VideoJobTable>>;
   getJob(jobId: string): Promise<Selectable<VideoJobTable> | null>;
@@ -73,6 +74,7 @@ export function createJobManager(options: {
       jobId: string,
       errorMessage: string,
       expectedWorkerId?: string,
+      options: { allowCompleted?: boolean } = {},
     ): Promise<boolean> {
       let query = db
         .selectFrom("video_jobs")
@@ -81,13 +83,19 @@ export function createJobManager(options: {
 
       if (expectedWorkerId) {
         query = query
-          .where("status", "in", ["provisioning", "processing"])
+          .where(
+            "status",
+            "in",
+            options.allowCompleted
+              ? ["provisioning", "processing", "completed"]
+              : ["provisioning", "processing"],
+          )
           .where("worker_id", "=", expectedWorkerId);
       }
 
       const job = await query.executeTakeFirst();
 
-      if (!job || job.status === "completed") {
+      if (!job || (job.status === "completed" && !options.allowCompleted)) {
         return false;
       }
 
@@ -108,7 +116,13 @@ export function createJobManager(options: {
 
       if (expectedWorkerId) {
         updateQuery = updateQuery
-          .where("status", "in", ["provisioning", "processing"])
+          .where(
+            "status",
+            "in",
+            options.allowCompleted
+              ? ["provisioning", "processing", "completed"]
+              : ["provisioning", "processing"],
+          )
           .where("worker_id", "=", expectedWorkerId);
       }
 

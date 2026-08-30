@@ -2,6 +2,27 @@
 
 The **Fleet Manager** is the control-plane orchestrator responsible for managing ephemeral video transcoding workers and job lifecycles. It supports both **serverful daemon mode** (long-running polling loop) and **serverless mode** (AWS Lambda / Cloud Functions triggered on-demand and via dynamic AWS EventBridge Scheduler one-shot timers).
 
+## Local Docker development
+
+Normal `docker compose up -d` starts PostgreSQL only. The optional local Fleet
+services are in [`compose.fleet.yaml`](../../compose.fleet.yaml):
+
+```bash
+pnpm fleet:images:build       # rebuild only after Fleet or worker changes
+pnpm fleet:db:migrate         # migrates the database in apps/fleet-manager/.env
+pnpm fleet:local:up           # persistent manager + one Docker worker per job
+pnpm fleet:localstack:prepare # Lambda bundle + worker image
+pnpm fleet:localstack:up      # LocalStack Lambda using Docker-socket fallback
+```
+
+Before either `up` command, set `FLEET_DATABASE_URL` to an existing local or
+remote PostgreSQL database. The Fleet Compose file never creates PostgreSQL;
+set `DOCKER_WORKER_DATABASE_URL` only when a worker needs a different database
+hostname.
+
+The Docker images contain only one built bundle each, not the repository or
+workspace dependencies. See the full [local Fleet guide](../../docs/fleet-local-testing.md).
+
 ---
 
 ## Architecture Overview
