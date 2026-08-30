@@ -8,6 +8,7 @@ export * from "./commerce.schema.ts";
 export * from "./learning-interactions.schema.ts";
 export * from "./webhooks.schema.ts";
 export * from "./json.schema.ts";
+export * from './fleet.schema.ts'
 
 // Import table interfaces to assemble unified Database schema
 import type {
@@ -40,11 +41,7 @@ import type {
   CourseDeletionStorageItemTable,
 } from "./courses.schema.ts";
 
-import type {
-  MediaAssetTable,
-  VideoJobTable,
-  VideoOutputTable,
-} from "./media.schema.ts";
+import type { MediaAssetTable, VideoOutputTable } from "./media.schema.ts";
 
 import type {
   CourseBundleTable,
@@ -86,6 +83,13 @@ import type {
   OutboxEventTable,
 } from "./webhooks.schema.ts";
 
+import type {
+  VideoJobTable,
+  WorkerEventTable,
+  WorkerMonitoringTable,
+  WorkerTable,
+} from "./fleet.schema.ts";
+
 export interface Database {
   // Auth & Academy
   academy: AcademyTable;
@@ -117,7 +121,6 @@ export interface Database {
 
   // Media & Video Processing
   media_assets: MediaAssetTable;
-  video_jobs: VideoJobTable;
   video_outputs: VideoOutputTable;
 
   // Commerce, Orders & Payments
@@ -156,6 +159,12 @@ export interface Database {
   webhook_events: WebhookEventTable;
   callback_inbox: CallbackInboxTable;
   outbox_events: OutboxEventTable;
+
+  // fleet & media worker
+  video_jobs: VideoJobTable;
+  workers: WorkerTable;
+  worker_monitoring: WorkerMonitoringTable;
+  worker_events: WorkerEventTable;
 }
 
 export type PurchaseTable = OrderTable;
