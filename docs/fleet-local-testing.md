@@ -23,6 +23,12 @@ The manager image contains `fleet-manager.cjs`; the worker image contains
 `media-worker.js`. Docker does not copy the complete repository or install
 workspace dependencies during image startup.
 
+`pnpm fleet:provider --provider=docker` detects the Docker socket group and
+writes `DOCKER_SOCKET_GID` for you. On Linux, this is the group id reported by
+`stat -c '%g' /var/run/docker.sock`; Docker Desktop maps the mounted socket to
+group `0`. The Compose manager runs as the non-root `node` user and receives
+only that socket group.
+
 ## Serverful daemon
 
 ```bash
@@ -128,5 +134,6 @@ pnpm fleet:cli test fault storage-failure --worker <worker-id>
 pnpm fleet:cli test watch --job <job-id>
 ```
 
-`interrupt` stops the container/instance without updating the database, so the
-normal fleet reconciliation and retry path remains visible in the job timeline.
+`interrupt` records its requested/applied audit events while leaving worker and
+job state unchanged before termination. The normal fleet reconciliation and
+retry path then remains visible in the job timeline.

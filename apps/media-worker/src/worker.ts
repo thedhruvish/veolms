@@ -28,15 +28,17 @@ export async function getRequestedTestFault(
   if (!control) return null;
 
   if (!control.applied_at) {
-    await ctx.db
+    const applied = await ctx.db
       .updateTable("fleet_test_controls")
       .set({ applied_at: new Date() })
       .where("worker_id", "=", ctx.workerId)
       .where("applied_at", "is", null)
-      .execute();
-    await ctx.recordEvent("test_fault_applied", undefined, {
-      fault: control.fault,
-    });
+      .executeTakeFirst();
+    if (applied.numUpdatedRows === 1n) {
+      await ctx.recordEvent("test_fault_applied", undefined, {
+        fault: control.fault,
+      });
+    }
   }
   return control.fault;
 }

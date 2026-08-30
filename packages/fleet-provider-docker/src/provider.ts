@@ -15,6 +15,7 @@ import type {
 
 const execFileAsync = promisify(execFile);
 const POST_TERMINATE_RETENTION_MS = 5 * 60 * 1000;
+const DOCKER_SOCKET_REQUEST_TIMEOUT_MS = 30_000;
 const MANAGED_LABEL = "veolms.managed=true";
 
 interface DockerWorkerRecord {
@@ -73,6 +74,25 @@ function mapDockerStatus(status: string): WorkerStatus {
   }
 }
 
+function isMissingDockerContainerError(error: unknown): boolean {
+  const candidate = error as {
+    code?: number | string;
+    stderr?: string | Buffer;
+    message?: string;
+  };
+  const details = [candidate.message, candidate.stderr?.toString()]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return (
+    candidate.code === 404 ||
+    candidate.code === "ENOENT" ||
+    details.includes("no such container") ||
+    details.includes("container not found") ||
+    details.includes("no such object")
+  );
+}
+
 export function buildDockerRunArgs(options: {
   workerId: string;
   spec: WorkerSpec;
@@ -82,17 +102,7 @@ export function buildDockerRunArgs(options: {
   defaultEnv?: Readonly<Record<string, string>>;
   workerDatabaseUrl?: string;
 }): string[] {
-  const env = {
-    ...options.defaultEnv,
-    ...options.spec.environmentVariables,
-    ...(options.workerDatabaseUrl
-      ? { DATABASE_URL: options.workerDatabaseUrl }
-      : {}),
-    WORKER_ID: options.workerId,
-    PROVIDER: "docker",
-    LOCAL_STORAGE_ROOT: "/app/s3-bucket",
-    WORKER_MAX_JOBS: "1",
-  };
+  const env = buildWorkerEnvironment(options);
   const args = [
     "run",
     "--detach",
@@ -198,8 +208,21 @@ export function createDockerProvider(
     body?: unknown,
   ): Promise<DockerApiResponse> =>
     await new Promise((resolveRequest, rejectRequest) => {
+      let settled = false;
+      let request: ReturnType<typeof httpRequest> | undefined;
+      const finish = (error?: Error, response?: DockerApiResponse) => {
+        if (settled) return;
+        settled = true;
+        if (request) request.setTimeout(0);
+        if (error) {
+          request?.destroy();
+          rejectRequest(error);
+        } else if (response) {
+          resolveRequest(response);
+        }
+      };
       const payload = body === undefined ? undefined : JSON.stringify(body);
-      const request = httpRequest(
+      request = httpRequest(
         {
           socketPath,
           method,
@@ -214,15 +237,23 @@ export function createDockerProvider(
         (response) => {
           const chunks: Buffer[] = [];
           response.on("data", (chunk: Buffer) => chunks.push(chunk));
+          response.on("error", (error) => finish(error));
           response.on("end", () =>
-            resolveRequest({
+            finish(undefined, {
               statusCode: response.statusCode ?? 500,
               body: Buffer.concat(chunks).toString("utf8"),
             }),
           );
         },
       );
-      request.on("error", rejectRequest);
+      request.on("error", (error) => finish(error));
+      request.setTimeout(DOCKER_SOCKET_REQUEST_TIMEOUT_MS, () =>
+        finish(
+          new Error(
+            `Docker Engine request timed out after ${DOCKER_SOCKET_REQUEST_TIMEOUT_MS}ms`,
+          ),
+        ),
+      );
       if (payload) request.write(payload);
       request.end();
     });
@@ -327,10 +358,13 @@ export function createDockerProvider(
           const { stdout } = await run([
             "inspect",
             "--format",
-            "{{.State.Status}}",
+            "{{json .}}",
             providerWorkerId,
           ]);
-          rawStatus = stdout.trim();
+          const inspect = JSON.parse(stdout.trim()) as DockerInspectResponse;
+          rawStatus = inspect.State?.Status ?? "dead";
+          createdAt = inspect.Created ? new Date(inspect.Created) : undefined;
+          discoveredWorkerId = inspect.Config?.Labels?.["veolms.worker-id"];
         }
         const status = mapDockerStatus(rawStatus);
         const worker = record ?? {
@@ -349,9 +383,12 @@ export function createDockerProvider(
           status === "completed";
         if (worker.terminated) workers.set(providerWorkerId, worker);
         return terminalHandle(providerWorkerId, worker);
-      } catch {
+      } catch (error) {
+        if (!isMissingDockerContainerError(error)) {
+          throw error;
+        }
         if (record) {
-          record.status = record.status === "failed" ? "failed" : "terminated";
+          record.status = "terminated";
           record.terminated = true;
           return terminalHandle(providerWorkerId, record);
         }

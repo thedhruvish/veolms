@@ -161,7 +161,7 @@ export async function runServerlessFleetCycle(
 
       const providerOpts =
         options.providerOptions ??
-        resolveFleetProviderOptions(config, workerScript);
+        resolveFleetProviderOptions(config, workerScript, targetProviderName);
 
       provider = await resolveFleetProvider(targetProviderName, providerOpts);
     }

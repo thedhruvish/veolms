@@ -30,8 +30,9 @@ The successful scenario outputs include non-empty `master.m3u8` files under
 ## What the Fleet does after a failure
 
 1. It writes `test_fault_requested`; software faults write
-   `test_fault_applied` when the worker observes the control. Interrupt now
-   writes both events after Docker termination succeeds.
+   `test_fault_applied` when the worker observes the control. Interrupt leaves
+   worker/job state unchanged before termination and writes both events after
+   Docker termination succeeds.
 2. Heartbeat loss, interruption, and abrupt worker exit are recovered by the
    heartbeat/reconciliation path. The worker is marked failed, the Docker
    container is terminated, and the job is returned to `queued` while

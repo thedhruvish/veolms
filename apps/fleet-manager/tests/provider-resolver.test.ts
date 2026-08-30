@@ -72,6 +72,20 @@ describe("Pluggable Provider Resolver", () => {
     });
   });
 
+  it("uses the effective provider override for serverless options", () => {
+    const config = loadFleetManagerConfig({ PROVIDER: "aws" });
+    const options = resolveFleetProviderOptions(
+      config,
+      undefined,
+      "docker",
+    ) as {
+      image: string;
+      defaultEnv: Record<string, string>;
+    };
+    assert.equal(options.image, "veolms-media-worker:local");
+    assert.equal(options.defaultEnv.HEARTBEAT_INTERVAL_MS, "45000");
+  });
+
   it("offers Docker through the interactive provider selector", () => {
     const docker = AVAILABLE_PROVIDERS.find(
       (provider) => provider.id === "docker",

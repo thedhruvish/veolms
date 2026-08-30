@@ -108,6 +108,8 @@ export function createJobManager(options: {
           attempts: nextAttempts,
           status: shouldRetry ? "queued" : "failed",
           worker_id: null,
+          completed_at: null,
+          ...(shouldRetry ? { progress_percent: 0 } : {}),
           error_message: errorMessage,
           failed_at: shouldRetry ? null : new Date(),
           updated_at: new Date(),

@@ -75,8 +75,9 @@ export async function resolveFleetProvider(
 export function resolveFleetProviderOptions(
   config: FleetManagerConfig,
   workerScriptPath?: string,
+  providerName: string = config.PROVIDER,
 ): unknown {
-  if (config.PROVIDER === "DOCKER") {
+  if (providerName.trim().toUpperCase() === "DOCKER") {
     return {
       image: config.DOCKER_WORKER_IMAGE,
       network: config.DOCKER_NETWORK,

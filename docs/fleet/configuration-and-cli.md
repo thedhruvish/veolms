@@ -8,15 +8,15 @@ The Fleet Manager provides unified configuration management, interactive provisi
 
 ### Fleet Manager Core Configuration (`apps/fleet-manager/.env`)
 
-| Variable                      | Type                           | Default        | Description                                                                |
-| ----------------------------- | ------------------------------ | -------------- | -------------------------------------------------------------------------- |
-| `DATABASE_URL`                | `string`                       | _required_     | PostgreSQL connection string with SSL mode.                                |
-| `FLEET_MODE`                  | `"serverless" \| "serverful"`  | `"serverless"` | Runtimes: Lambda event-driven (`serverless`) or daemon loop (`serverful`). |
-| `FLEET_PROVIDER` / `PROVIDER` | `"aws" \| "docker" \| "local"` | `"aws"`        | Compute provider package to load dynamically.                              |
-| `MAX_WORKERS`                 | `number`                       | `8`            | Maximum concurrent active worker instances allowed.                        |
-| `MAX_RETRIES`                 | `number`                       | `3`            | Maximum automatic retry attempts before marking a job `failed`.            |
-| `HEARTBEAT_TIMEOUT_SECONDS`   | `number`                       | `90`           | Seconds without a heartbeat before a worker is marked dead.                |
-| `POLL_INTERVAL_MS`            | `number`                       | `5000`         | Polling tick interval when running in serverful daemon mode.               |
+| Variable                      | Type                           | Default                                            | Description                                                                |
+| ----------------------------- | ------------------------------ | -------------------------------------------------- | -------------------------------------------------------------------------- |
+| `DATABASE_URL`                | `string`                       | `postgresql://veolms:veolms@localhost:5433/veolms` | PostgreSQL connection string.                                              |
+| `FLEET_MODE`                  | `"serverless" \| "serverful"`  | `"serverless"`                                     | Runtimes: Lambda event-driven (`serverless`) or daemon loop (`serverful`). |
+| `FLEET_PROVIDER` / `PROVIDER` | `"aws" \| "docker" \| "local"` | `"local"`                                          | Compute provider package to load dynamically.                              |
+| `MAX_WORKERS`                 | `number`                       | `8`                                                | Maximum concurrent active worker instances allowed.                        |
+| `MAX_RETRIES`                 | `number`                       | `3`                                                | Maximum automatic retry attempts before marking a job `failed`.            |
+| `HEARTBEAT_TIMEOUT_SECONDS`   | `number`                       | `90`                                               | Seconds without a heartbeat before a worker is marked dead.                |
+| `POLL_INTERVAL_MS`            | `number`                       | `2000`                                             | Polling tick interval when running in serverful daemon mode.               |
 
 ### Local Docker Fleet Configuration
 
@@ -27,6 +27,7 @@ The Fleet Manager provides unified configuration management, interactive provisi
 | `DOCKER_STORAGE_ROOT`              | `s3-bucket/`                | Host-visible shared input/output folder.                                       |
 | `DOCKER_VERIFICATION_STORAGE_ROOT` | `DOCKER_STORAGE_ROOT`       | Manager-visible mount used to verify `master.m3u8`.                            |
 | `DOCKER_TRANSPORT`                 | `cli`                       | `socket` for Compose/LocalStack; avoids requiring a Docker CLI in the runtime. |
+| `DOCKER_SOCKET_GID`                | `0`                         | Supplementary group for the Docker socket when the manager runs as `node`.     |
 | `FLEET_TEST_MODE`                  | `false`                     | Enables guarded fault controls.                                                |
 
 ### AWS Provider Configuration (`packages/fleet-provider-aws`)

@@ -79,6 +79,36 @@ function removeEnvValue(content: string, key: string): string {
   return content.replace(new RegExp(`^${key}=.*\\n?`, "gm"), "");
 }
 
+function detectDockerSocketGid(): string | undefined {
+  // Docker Desktop bind-mounts the host socket into the Linux VM as root:root,
+  // so the container must join group 0 even when the host-side socket has a
+  // different GID. Native Linux engines preserve the socket GID.
+  try {
+    const operatingSystem = execSync(
+      "docker info --format '{{.OperatingSystem}}'",
+      {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      },
+    ).trim();
+    if (/docker desktop/i.test(operatingSystem)) {
+      return "0";
+    }
+  } catch {
+    // Fall back to the host socket metadata when Docker info is unavailable.
+  }
+
+  try {
+    const gid = execSync("stat -c %g /var/run/docker.sock", {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    return /^\d+$/.test(gid) ? gid : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function runProviderSelection(
   requestedProviderId?: string,
 ): Promise<void> {
@@ -221,6 +251,12 @@ export async function runProviderSelection(
     if (!getEnvValue(envContent, "DOCKER_NETWORK")) {
       envContent = setEnvValue(envContent, "DOCKER_NETWORK", "veolms-fleet");
     }
+    if (!getEnvValue(envContent, "DOCKER_SOCKET_GID")) {
+      const socketGid = detectDockerSocketGid();
+      if (socketGid) {
+        envContent = setEnvValue(envContent, "DOCKER_SOCKET_GID", socketGid);
+      }
+    }
     if (!getEnvValue(envContent, "FLEET_TEST_MODE")) {
       envContent = setEnvValue(envContent, "FLEET_TEST_MODE", "true");
     }
@@ -257,7 +293,16 @@ export async function runProviderSelection(
 }
 
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1])) {
-  runProviderSelection(process.argv[2]).catch((err: unknown) => {
+  const providerArgument = process.argv.slice(2).find((argument) => {
+    if (argument.startsWith("--provider=")) {
+      return true;
+    }
+    return !argument.startsWith("-");
+  });
+  const requestedProvider = providerArgument?.startsWith("--provider=")
+    ? providerArgument.slice("--provider=".length)
+    : providerArgument;
+  runProviderSelection(requestedProvider).catch((err: unknown) => {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`\n✘ Provider selection failed: ${message}\n`);
     process.exit(1);

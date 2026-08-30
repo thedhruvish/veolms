@@ -39,6 +39,7 @@ import {
   type AwsSchedulerConfig,
   type AwsSchedulerManager,
 } from "./scheduler.ts";
+import { LOCALSTACK_DOCKER_AMI_ID } from "./localstack-constants.ts";
 
 // Capacity/availability-class RunInstances errors: worth trying the next
 // same-size candidate for. Everything else (bad AMI, IAM, subnet, etc.)
@@ -150,7 +151,6 @@ export function createAwsProvider(
   // Real AWS AMI IDs are API-only/mock resources in LocalStack and do not
   // create an instance container or execute UserData.
   const isLocalStack = Boolean(process.env.AWS_ENDPOINT_URL);
-  const defaultLocalStackAmi = "ami-0a11ce001";
 
   return {
     name: "aws",
@@ -170,7 +170,7 @@ export function createAwsProvider(
       const imageId =
         amiId ??
         (isLocalStack
-          ? defaultLocalStackAmi
+          ? LOCALSTACK_DOCKER_AMI_ID
           : await resolveDebianAmiId(ssm, region, spec.architecture));
       // LocalStack's EC2 mock doesn't model real AMI metadata (see the
       // isLocalStack comment above), so DescribeImages there wouldn't
