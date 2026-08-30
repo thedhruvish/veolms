@@ -7,7 +7,7 @@ export * from "./media.schema.ts";
 export * from "./commerce.schema.ts";
 export * from "./webhooks.schema.ts";
 export * from "./json.schema.ts";
-export * from './fleet.schema.ts'
+export * from "./fleet.schema.ts";
 
 // Import table interfaces to assemble unified Database schema
 import type {
@@ -73,6 +73,7 @@ import type {
   WorkerEventTable,
   WorkerMonitoringTable,
   WorkerTable,
+  FleetTestControlTable,
 } from "./fleet.schema.ts";
 
 export interface Database {
@@ -137,6 +138,7 @@ export interface Database {
   workers: WorkerTable;
   worker_monitoring: WorkerMonitoringTable;
   worker_events: WorkerEventTable;
+  fleet_test_controls: FleetTestControlTable;
 }
 
 export type PurchaseTable = OrderTable;
