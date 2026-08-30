@@ -92,3 +92,20 @@ export interface WorkerEventTable {
   >;
   created_at: Generated<Date>;
 }
+
+export interface FleetTestControlTable {
+  worker_id: string;
+  fault:
+    | "interrupt"
+    | "heartbeat-loss"
+    | "progress-stall"
+    | "worker-failure"
+    | "storage-failure";
+  requested_at: Generated<Date>;
+  applied_at: Date | null;
+  metadata: JSONColumnType<
+    Record<string, unknown>,
+    Record<string, unknown> | string,
+    Record<string, unknown> | string
+  >;
+}
