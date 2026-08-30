@@ -1,5 +1,7 @@
 import { sql, type Kysely } from "kysely";
 
+// Added after the shared database migrations that precede it in production.
+
 export async function up(database: Kysely<unknown>): Promise<void> {
   // 1. Create workers table
   await database.schema
