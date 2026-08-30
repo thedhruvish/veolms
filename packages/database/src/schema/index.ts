@@ -6,6 +6,7 @@ export * from "./courses.schema.ts";
 export * from "./media.schema.ts";
 export * from "./commerce.schema.ts";
 export * from "./webhooks.schema.ts";
+export * from "./notifications.schema.ts";
 export * from "./json.schema.ts";
 
 // Import table interfaces to assemble unified Database schema
@@ -70,6 +71,11 @@ import type {
   CallbackInboxTable,
   OutboxEventTable,
 } from "./webhooks.schema.ts";
+import type {
+  NotificationTable,
+  NotificationDeliveryTable,
+  NotificationPreferenceTable,
+} from "./notifications.schema.ts";
 
 export interface Database {
   // Auth & Academy
@@ -128,6 +134,11 @@ export interface Database {
   webhook_events: WebhookEventTable;
   callback_inbox: CallbackInboxTable;
   outbox_events: OutboxEventTable;
+
+  // Notifications
+  notifications: NotificationTable;
+  notification_deliveries: NotificationDeliveryTable;
+  notification_preferences: NotificationPreferenceTable;
 }
 
 export type PurchaseTable = OrderTable;
