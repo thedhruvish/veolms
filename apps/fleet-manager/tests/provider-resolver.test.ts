@@ -54,6 +54,7 @@ describe("Pluggable Provider Resolver", () => {
   it("passes Docker socket settings to the Docker provider", () => {
     const config = loadFleetManagerConfig({
       PROVIDER: "docker",
+      DATABASE_URL: "postgresql://worker-db.local/veolms",
       DOCKER_TRANSPORT: "socket",
       DOCKER_SOCKET_PATH: "/tmp/docker.sock",
     });
@@ -63,6 +64,7 @@ describe("Pluggable Provider Resolver", () => {
       network: undefined,
       storageRoot: undefined,
       verificationStorageRoot: undefined,
+      workerDatabaseUrl: "postgresql://worker-db.local/veolms",
       transport: "socket",
       socketPath: "/tmp/docker.sock",
       defaultEnv: {
@@ -80,9 +82,11 @@ describe("Pluggable Provider Resolver", () => {
       "docker",
     ) as {
       image: string;
+      workerDatabaseUrl: string;
       defaultEnv: Record<string, string>;
     };
     assert.equal(options.image, "veolms-media-worker:local");
+    assert.equal(options.workerDatabaseUrl, config.DATABASE_URL);
     assert.equal(options.defaultEnv.HEARTBEAT_INTERVAL_MS, "45000");
   });
 
