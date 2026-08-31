@@ -1,5 +1,7 @@
 import { sql, type Kysely } from "kysely";
 
+// Added after the shared database migrations that precede it in production.
+
 /**
  * Adds the two columns needed to size a worker from probed source metadata
  * instead of just requested output qualities + file size:
