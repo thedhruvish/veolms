@@ -16,7 +16,7 @@
     "provider": "node --env-file-if-exists=.env src/provider-select.ts",
     "infra": "node --env-file-if-exists=.env src/cli.ts infra",
     "destroy": "node --env-file-if-exists=.env src/destroy.ts",
-    "bundle:upload": "node --env-file-if-exists=.env scripts/upload-worker-bundle.ts",
+    "build:upload": "node --env-file-if-exists=.env scripts/upload-build-artifacts.ts",
     "queue:trigger": "node --env-file-if-exists=.env scripts/queue-and-trigger-lambda.ts",
     "test:pipeline": "node --env-file-if-exists=.env scripts/test-local-pipeline.ts"
   },

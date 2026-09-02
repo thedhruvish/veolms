@@ -66,6 +66,7 @@ export interface AwsProviderConfig {
   readonly useSpot?: boolean;
   readonly defaultEnv?: Readonly<Record<string, string>>;
   readonly s3BucketName?: string;
+  readonly s3BuildBucket?: string;
   readonly ec2Client?: EC2Client;
   readonly ssmClient?: SSMClient;
   readonly s3Client?: S3Client;
@@ -179,12 +180,15 @@ export function createAwsProvider(
         : await resolveRootDeviceName(ec2, imageId);
 
       const bucketName = config.s3BucketName ?? envConfig.S3_BUCKET;
+      const buildBucket =
+        config.s3BuildBucket ?? envConfig.S3_BUILD_BUCKET ?? bucketName;
       const defaultAwsEnv: Record<string, string> = {
         AWS_REGION: region,
         STORAGE_PROVIDER: envConfig.STORAGE_PROVIDER,
         ...(bucketName
           ? { S3_BUCKET: bucketName, S3_BUCKET_NAME: bucketName }
           : {}),
+        ...(buildBucket ? { S3_BUILD_BUCKET: buildBucket } : {}),
         ...config.defaultEnv,
       };
 

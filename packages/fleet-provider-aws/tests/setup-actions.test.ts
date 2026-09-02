@@ -21,6 +21,7 @@ describe("AWS Setup Module Interface", () => {
     assert.equal(typeof setupModule.checkOrCreateRole, "function");
     assert.equal(typeof setupModule.createInstanceProfile, "function");
     assert.equal(typeof setupModule.buildAndUploadWorkerBundle, "function");
+    assert.equal(typeof setupModule.buildAndUploadBuildArtifacts, "function");
     assert.equal(typeof setupModule.ensureSecurityGroup, "function");
     assert.equal(typeof setupModule.checkKeyPair, "function");
   });

@@ -10,7 +10,7 @@ import {
   yellow,
 } from "@veolms/fleet-types/terminal";
 import { isMainModule } from "@veolms/fleet-types";
-import { resolveS3BucketName } from "../config.ts";
+import { resolveS3BucketName, resolveS3BuildBucketName } from "../config.ts";
 
 const ROLE_NAME = "VeoLMSWorkerRole";
 const INSTANCE_PROFILE_NAME = "VeoLMSWorkerInstanceProfile";
@@ -21,6 +21,7 @@ export interface DestroyOptions {
   readonly region?: string;
   readonly endpointUrl?: string | null;
   readonly s3BucketName?: string | null;
+  readonly s3BuildBucket?: string | null;
 }
 
 function exec(cmd: string): string | null {
@@ -116,6 +117,10 @@ export async function runAwsInfraDestroy(
     options.s3BucketName !== undefined
       ? options.s3BucketName
       : resolveS3BucketName(process.env);
+  const s3BuildBucket =
+    options.s3BuildBucket !== undefined
+      ? options.s3BuildBucket
+      : resolveS3BuildBucketName(process.env);
 
   console.info(`
 ${bold(red("╔══════════════════════════════════════════════════════╗"))}
@@ -132,7 +137,7 @@ ${bold(red("╚═════════════════════�
   const rl = options.rl ?? readline.createInterface({ input, output });
 
   try {
-    await runDestroySteps(rl, { region, endpointUrl, s3BucketName });
+    await runDestroySteps(rl, { region, endpointUrl, s3BucketName, s3BuildBucket });
   } finally {
     if (ownRl) {
       rl.close();
@@ -146,9 +151,10 @@ async function runDestroySteps(
     readonly region: string;
     readonly endpointUrl: string | null;
     readonly s3BucketName: string | null;
+    readonly s3BuildBucket?: string | null;
   },
 ): Promise<void> {
-  const { region, s3BucketName } = config;
+  const { region, s3BucketName, s3BuildBucket } = config;
 
   // 1. Terminate any running EC2 instances
   console.info("[1/6] Terminating active EC2 worker instances...");
@@ -328,11 +334,16 @@ async function runDestroySteps(
     );
   }
 
-  // 8. Delete S3 bucket — asks for confirmation if it still holds data
+  // 8. Delete S3 bucket(s) — asks for confirmation if it still holds data
   if (s3BucketName) {
     await destroyS3Bucket(rl, s3BucketName, region);
   } else {
-    console.info(`\n[8/8] No S3_BUCKET_NAME configured — skipping S3 cleanup.`);
+    console.info(`\n[8/8] No S3_BUCKET configured — skipping S3 media bucket cleanup.`);
+  }
+
+  if (s3BuildBucket && s3BuildBucket !== s3BucketName) {
+    console.info(`\nChecking dedicated S3 build bucket ${bold(s3BuildBucket)}...`);
+    await destroyS3Bucket(rl, s3BuildBucket, region);
   }
 
   console.info(`

@@ -86,6 +86,6 @@ pnpm fleet:destroy
 pnpm build:serverless --entry=fleet
 pnpm build:serverless --entry=probe
 
-# Upload media worker bundle to S3
-pnpm fleet:bundle:upload
+# Upload build artifacts (media worker bundle & Lambda packages) to S3 build bucket
+pnpm fleet:build:upload
 ```
