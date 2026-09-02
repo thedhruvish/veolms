@@ -1,7 +1,46 @@
 import { buildAndUploadBuildArtifacts } from "@veolms/fleet-provider-aws/setup";
+import {
+  LambdaClient,
+  UpdateFunctionCodeCommand,
+  GetFunctionConfigurationCommand,
+} from "@aws-sdk/client-lambda";
 import { bold, cyan, green, red, yellow } from "@veolms/fleet-types/terminal";
 
+async function waitForLambdaUpdate(
+  lambda: LambdaClient,
+  functionName: string,
+  timeoutMs = 60_000,
+): Promise<void> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const config = await lambda.send(
+        new GetFunctionConfigurationCommand({ FunctionName: functionName }),
+      );
+      if (config.LastUpdateStatus !== "InProgress") {
+        return;
+      }
+    } catch {
+      // Ignore transient errors while waiting
+    }
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+}
+
 async function main(): Promise<void> {
+  const args = process.argv.slice(2);
+  const onlyWorker =
+    args.includes("--only-worker") ||
+    args.includes("--worker-only") ||
+    process.env["ONLY_WORKER"] === "true";
+  const onlyLambda =
+    args.includes("--only-lambda") ||
+    args.includes("--lambda-only") ||
+    process.env["ONLY_LAMBDA"] === "true";
+  const shouldUpdateLambda =
+    args.includes("--update-lambda") ||
+    process.env["UPDATE_LAMBDA"] === "true";
+
   const bucketName =
     process.env.S3_BUILD_BUCKET ||
     process.env.S3_BUCKET_NAME ||
@@ -11,8 +50,10 @@ async function main(): Promise<void> {
     process.env.FLEET_MANAGER_LAMBDA_REGION ||
     "us-east-1";
 
-  const includeProbe = process.env.SETUP_PROBE_LAMBDA !== "false";
-  const includeLambda = process.env.FLEET_MODE !== "serverful";
+  const includeWorker = !onlyLambda;
+  const includeProbe =
+    !onlyWorker && process.env.SETUP_PROBE_LAMBDA !== "false";
+  const includeLambda = !onlyWorker && process.env.FLEET_MODE !== "serverful";
 
   console.info(`\n╔══════════════════════════════════════════════════════╗`);
   console.info(`║       VeoLMS Build Artifacts S3 Uploader           ║`);
@@ -29,22 +70,28 @@ async function main(): Promise<void> {
 
   console.info(`  Target Build Bucket:  ${bold(cyan(bucketName))}`);
   console.info(`  Target Region:        ${bold(cyan(region))}`);
+  console.info(`  Build Worker:         ${includeWorker ? green("Yes") : yellow("Skipped")}`);
+  console.info(`  Build Lambdas:        ${includeLambda ? green("Yes") : yellow("Skipped")}`);
+  console.info(`  Update Lambda Code:   ${shouldUpdateLambda ? green("Yes") : yellow("No")}`);
   console.info(`  Building & uploading artifacts to S3...\n`);
 
   const result = await buildAndUploadBuildArtifacts({
     buildBucketName: bucketName,
     region,
+    includeWorker,
     includeLambda,
     includeProbe,
   });
 
   console.info(`\n${bold("Upload Summary:")}`);
-  if (result.workerBundleUploaded) {
-    console.info(
-      `  ${green("✔")} Media Worker:       ${bold(`s3://${bucketName}/bundles/media-worker.js`)}`,
-    );
-  } else {
-    console.info(`  ${yellow("⚠")} Media Worker:       Upload failed or skipped`);
+  if (includeWorker) {
+    if (result.workerBundleUploaded) {
+      console.info(
+        `  ${green("✔")} Media Worker:       ${bold(`s3://${bucketName}/bundles/media-worker.js`)}`,
+      );
+    } else {
+      console.info(`  ${yellow("⚠")} Media Worker:       Upload failed or skipped`);
+    }
   }
 
   if (includeLambda) {
@@ -67,13 +114,62 @@ async function main(): Promise<void> {
     }
   }
 
-  if (
-    result.workerBundleUploaded &&
+  // If requested, update deployed Lambda functions with new S3 zip bundles
+  if (shouldUpdateLambda && (result.lambdaZipUploaded || result.probeZipUploaded)) {
+    console.info(`\n${bold("Updating Deployed AWS Lambda Functions:")}`);
+    const lambda = new LambdaClient({ region });
+
+    if (result.lambdaZipUploaded) {
+      const fleetFunctionName =
+        process.env["FLEET_MANAGER_LAMBDA_NAME"] || "veolms-fleet-manager";
+      try {
+        console.info(`  Updating ${bold(fleetFunctionName)}...`);
+        await lambda.send(
+          new UpdateFunctionCodeCommand({
+            FunctionName: fleetFunctionName,
+            S3Bucket: bucketName,
+            S3Key: "bundles/fleet-manager.zip",
+          }),
+        );
+        await waitForLambdaUpdate(lambda, fleetFunctionName);
+        console.info(`  ${green("✔")} ${fleetFunctionName} updated successfully.`);
+      } catch (err: unknown) {
+        console.error(
+          red(`  ✘ Failed to update ${fleetFunctionName}: ${err instanceof Error ? err.message : String(err)}`),
+        );
+      }
+    }
+
+    if (result.probeZipUploaded) {
+      const probeFunctionName =
+        process.env["PROBE_LAMBDA_NAME"] || "veolms-video-metadata-probe";
+      try {
+        console.info(`  Updating ${bold(probeFunctionName)}...`);
+        await lambda.send(
+          new UpdateFunctionCodeCommand({
+            FunctionName: probeFunctionName,
+            S3Bucket: bucketName,
+            S3Key: "bundles/probe-lambda.zip",
+          }),
+        );
+        await waitForLambdaUpdate(lambda, probeFunctionName);
+        console.info(`  ${green("✔")} ${probeFunctionName} updated successfully.`);
+      } catch (err: unknown) {
+        console.error(
+          red(`  ✘ Failed to update ${probeFunctionName}: ${err instanceof Error ? err.message : String(err)}`),
+        );
+      }
+    }
+  }
+
+  const allExpectedUploaded =
+    (!includeWorker || result.workerBundleUploaded) &&
     (!includeLambda || result.lambdaZipUploaded) &&
-    (!includeProbe || result.probeZipUploaded)
-  ) {
+    (!includeProbe || result.probeZipUploaded);
+
+  if (allExpectedUploaded) {
     console.info(
-      `\n${green("✔")} All build artifacts successfully uploaded to S3 build bucket!\n`,
+      `\n${green("✔")} All requested build artifacts successfully processed!\n`,
     );
   } else {
     console.warn(

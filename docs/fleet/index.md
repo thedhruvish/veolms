@@ -16,6 +16,7 @@ It operates in two interchangeable runtimes:
 - [Job Lifecycle & Cluster Reconciliation](./job-lifecycle-and-reconciliation.md) — State transitions (`queued` $\rightarrow$ `provisioning` $\rightarrow$ `processing` $\rightarrow$ `completed`/`failed`), atomic locking (`SKIP LOCKED`), heartbeat monitoring, spot termination recovery, and output verification.
 - [Dynamic Wakeup Scheduling](./dynamic-scheduling.md) — Serverless self-pacing using Amazon EventBridge Scheduler, progress-based adaptive polling intervals, and scale-to-zero lifecycle.
 - [Configuration & CLI Reference](./configuration-and-cli.md) — Environment variables, provider selection, infra provisioning, fast bundling (`UPDATE_MODE=bundles`), CLI diagnostic commands, and health metrics.
+- [Infrastructure & CI/CD Deployment Guide](../video-fleet-infrastructure-and-cicd-guide.md) — End-to-end setup guide from provider selection and `fleet infra` provisioning to least-privilege IAM deployer user creation and GitHub Actions CI/CD automation.
 
 ---
 

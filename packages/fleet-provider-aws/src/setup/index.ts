@@ -70,6 +70,7 @@ import {
   HeadObjectCommand,
   PutPublicAccessBlockCommand,
   PutBucketPolicyCommand,
+  PutBucketCorsCommand,
   type BucketLocationConstraint,
 } from "@aws-sdk/client-s3";
 import {
@@ -1112,6 +1113,7 @@ export function buildProbeLambdaBundleZip(): Uint8Array {
 export interface BuildArtifactsOptions {
   readonly buildBucketName: string;
   readonly region: string;
+  readonly includeWorker?: boolean;
   readonly includeLambda?: boolean;
   readonly includeProbe?: boolean;
 }
@@ -1173,6 +1175,7 @@ export async function buildAndUploadBuildArtifacts(
   const {
     buildBucketName,
     region,
+    includeWorker = true,
     includeLambda = true,
     includeProbe = false,
   } = options;
@@ -1182,10 +1185,12 @@ export async function buildAndUploadBuildArtifacts(
   let probeZipUploaded = false;
 
   // 1. Build and upload media worker script bundle
-  workerBundleUploaded = await buildAndUploadWorkerBundle(
-    buildBucketName,
-    region,
-  );
+  if (includeWorker) {
+    workerBundleUploaded = await buildAndUploadWorkerBundle(
+      buildBucketName,
+      region,
+    );
+  }
 
   // 2. Build and upload Lambda package (fleet-manager)
   if (includeLambda) {
@@ -1929,8 +1934,23 @@ async function runSetupFlow(
             Policy: pubPolicy,
           }),
         );
+        await s3Client.send(
+          new PutBucketCorsCommand({
+            Bucket: bucketInput,
+            CORSConfiguration: {
+              CORSRules: [
+                {
+                  AllowedHeaders: ["*"],
+                  AllowedMethods: ["GET", "HEAD"],
+                  AllowedOrigins: ["*"],
+                  MaxAgeSeconds: 3600,
+                },
+              ],
+            },
+          }),
+        );
         s3BucketName = bucketInput;
-        ok(`Created S3 bucket ${bold(s3BucketName)} with public read enabled.`);
+        ok(`Created S3 bucket ${bold(s3BucketName)} with public read and CORS enabled.`);
         break;
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
