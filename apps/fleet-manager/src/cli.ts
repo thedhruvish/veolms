@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { createDatabase } from "@veolms/database";
 import {
   DEFAULT_QUALITIES,
+  isMainModule,
   videoQualityLevelSchema,
   type VideoQualityLevel,
 } from "@veolms/fleet-types";
@@ -400,11 +401,7 @@ Usage:
   }
 }
 
-if (
-  process.argv[1] &&
-  (import.meta.url.endsWith(process.argv[1]) ||
-    import.meta.url === `file://${resolve(process.argv[1])}`)
-) {
+if (isMainModule(import.meta.url)) {
   runCli().catch((err) => {
     console.error("[fleet-cli] Fatal error:", err);
     process.exit(1);

@@ -217,7 +217,7 @@ export function createJobManager(options: {
           }
         } else {
           videoId = randomUUID();
-          const filename = params.videoKey.split("/").pop() || "video.mp4";
+          const filename = params.videoKey.split(/[/\\]/).pop() || "video.mp4";
           const defaultOwnerId = "00000000-0000-4000-8000-000000000001";
           let ownerId = defaultOwnerId;
           try {
@@ -295,7 +295,7 @@ export function createJobManager(options: {
             }
           }
         } else {
-          const filename = params.videoKey.split("/").pop() || "video.mp4";
+          const filename = params.videoKey.split(/[/\\]/).pop() || "video.mp4";
           const defaultOwnerId = "00000000-0000-4000-8000-000000000001";
           let ownerId = defaultOwnerId;
           try {

@@ -12,6 +12,7 @@
  */
 
 import { bold, cyan, green } from "@veolms/fleet-types/terminal";
+import { isMainModule } from "@veolms/fleet-types";
 
 export async function runLocalInfraDestroy(): Promise<void> {
   console.info(`
@@ -25,7 +26,7 @@ ${bold(cyan("╚═════════════════════�
 `);
 }
 
-if (process.argv[1] && import.meta.url.endsWith(process.argv[1])) {
+if (isMainModule(import.meta.url)) {
   runLocalInfraDestroy().catch((err: unknown) => {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`\n✘ Local teardown failed: ${msg}\n`);

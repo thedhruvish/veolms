@@ -11,6 +11,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { SSMClient } from "@aws-sdk/client-ssm";
+import { isMainModule } from "@veolms/fleet-types";
 import { bold, cyan, dim, green, yellow } from "@veolms/fleet-types/terminal";
 import { resolveDebianAmiId } from "../debian-ami.ts";
 
@@ -115,7 +116,7 @@ shutdown -h now
       await new Promise((r) => setTimeout(r, 5000));
       elapsed += 5;
       const state = exec(
-        `aws ec2 describe-instances --instance-ids ${instanceId} --query 'Reservations[0].Instances[0].State.Name' --output text --region ${REGION}`,
+        `aws ec2 describe-instances --instance-ids ${instanceId} --query "Reservations[0].Instances[0].State.Name" --output text --region ${REGION}`,
       );
       process.stdout.write(
         `\r  [${elapsed}s] Instance State: ${bold(state)} (waiting for auto-shutdown)...   `,
@@ -223,7 +224,7 @@ Workers booted with this AMI will now start transcoding in <30 seconds!
 `);
 }
 
-if (process.argv[1] && import.meta.url.endsWith(process.argv[1])) {
+if (isMainModule(import.meta.url)) {
   runBuildAmi().catch((err: unknown) => {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`\n✘ AMI build failed: ${msg}\n`);

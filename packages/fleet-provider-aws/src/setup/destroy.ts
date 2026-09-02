@@ -9,6 +9,7 @@ import {
   red,
   yellow,
 } from "@veolms/fleet-types/terminal";
+import { isMainModule } from "@veolms/fleet-types";
 import { resolveS3BucketName } from "../config.ts";
 
 const ROLE_NAME = "VeoLMSWorkerRole";
@@ -51,14 +52,19 @@ async function destroyS3Bucket(
   // zero objects and skip the confirmation prompt below even when the
   // bucket holds real data. Counting `Contents` directly works identically
   // against real AWS and LocalStack.
-  // Note: the --query value must stay single-quoted — backticks inside a
-  // double-quoted shell argument trigger command substitution (`[]` is
-  // parsed as "run the command []"), which breaks the query and silently
-  // produces the same missing-count failure this replaced.
+  // We use JSON output to avoid shell quoting and escaping differences across platforms.
+  let objectCount = 0;
   const countRaw = exec(
-    `aws s3api list-objects-v2 --bucket "${bucketName}" --region ${region} --query 'length(Contents || \`[]\`)' --output text`,
+    `aws s3api list-objects-v2 --bucket "${bucketName}" --region ${region} --output json`,
   );
-  const objectCount = countRaw ? parseInt(countRaw, 10) || 0 : 0;
+  if (countRaw) {
+    try {
+      const parsed = JSON.parse(countRaw);
+      objectCount = Array.isArray(parsed.Contents) ? parsed.Contents.length : 0;
+    } catch {
+      objectCount = 0;
+    }
+  }
 
   if (objectCount > 0) {
     console.info(`
@@ -147,7 +153,7 @@ async function runDestroySteps(
   // 1. Terminate any running EC2 instances
   console.info("[1/6] Terminating active EC2 worker instances...");
   const instanceIds = exec(
-    `aws ec2 describe-instances --region ${region} --filters "Name=tag:ManagedBy,Values=veolms-fleet-manager,veolms-infra-setup" "Name=instance-state-name,Values=running,pending,stopped,stopping" --query 'Reservations[*].Instances[*].InstanceId' --output text`,
+    `aws ec2 describe-instances --region ${region} --filters "Name=tag:ManagedBy,Values=veolms-fleet-manager,veolms-infra-setup" "Name=instance-state-name,Values=running,pending,stopped,stopping" --query "Reservations[*].Instances[*].InstanceId" --output text`,
   );
   if (instanceIds) {
     const termRes = exec(
@@ -243,7 +249,7 @@ async function runDestroySteps(
   console.info("\n[5/6] Deleting IAM Role & Policies...");
   const inlinePolicies = (
     exec(
-      `aws iam list-role-policies --role-name ${ROLE_NAME} --query 'PolicyNames' --output text`,
+      `aws iam list-role-policies --role-name ${ROLE_NAME} --query "PolicyNames" --output text`,
     ) ?? ""
   )
     .split(/\s+/)
@@ -262,7 +268,7 @@ async function runDestroySteps(
 
   const attachedPolicies = (
     exec(
-      `aws iam list-attached-role-policies --role-name ${ROLE_NAME} --query 'AttachedPolicies[*].PolicyArn' --output text`,
+      `aws iam list-attached-role-policies --role-name ${ROLE_NAME} --query "AttachedPolicies[*].PolicyArn" --output text`,
     ) ?? ""
   )
     .split(/\s+/)
@@ -336,7 +342,7 @@ ${bold(green("╚═════════════════════
 `);
 }
 
-if (process.argv[1] && import.meta.url.endsWith(process.argv[1])) {
+if (isMainModule(import.meta.url)) {
   runAwsInfraDestroy().catch((err: unknown) => {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`\n✘ Destroy failed: ${msg}\n`);

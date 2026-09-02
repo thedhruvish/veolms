@@ -187,7 +187,7 @@ export async function runServerlessFleetCycle(
       const jobId =
         event.jobId && isUuid(event.jobId) ? event.jobId : undefined;
 
-      const filename = videoKey.split("/").pop() || "video.mp4";
+      const filename = videoKey.split(/[/\\]/).pop() || "video.mp4";
       const cleanFilename = filename.replace(/\.[^/.]+$/, "");
       const outputPrefix = event.outputPrefix ?? `transcoded/${cleanFilename}/`;
 

@@ -107,7 +107,7 @@ async function main() {
         .execute();
     }
 
-    const filename = videoKey.split("/").pop() || "sample-input.mp4";
+    const filename = videoKey.split(/[/\\]/).pop() || "sample-input.mp4";
     await db
       .insertInto("media_assets")
       .values({

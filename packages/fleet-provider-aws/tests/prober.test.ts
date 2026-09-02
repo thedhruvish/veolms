@@ -5,11 +5,31 @@ import * as path from "node:path";
 import * as os from "node:os";
 import { probeVideoMetadata } from "../src/prober.ts";
 
+function createMockExecutable(
+  dir: string,
+  baseName: string,
+  outputJson: unknown,
+): string {
+  const jsonString = JSON.stringify(outputJson);
+  if (process.platform === "win32") {
+    const jsPath = path.join(dir, `${baseName}.js`);
+    const cmdPath = path.join(dir, `${baseName}.cmd`);
+    fs.writeFileSync(jsPath, `console.log(${JSON.stringify(jsonString)});`);
+    fs.writeFileSync(
+      cmdPath,
+      `@echo off\r\n"${process.execPath}" "${jsPath}"\r\n`,
+    );
+    return cmdPath;
+  }
+  const shPath = path.join(dir, `${baseName}.sh`);
+  fs.writeFileSync(shPath, `#!/bin/sh\necho '${jsonString}'\n`, { mode: 0o755 });
+  return shPath;
+}
+
 describe("AWS ffprobe Video Metadata Prober", () => {
   it("should extract metadata correctly from ffprobe JSON stdout", async () => {
     // Create a temporary mock ffprobe executable that returns valid JSON
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "ffprobe-test-"));
-    const mockFfprobePath = path.join(tempDir, "mock-ffprobe.sh");
 
     const sampleFfprobeOutput = {
       streams: [
@@ -37,10 +57,10 @@ describe("AWS ffprobe Video Metadata Prober", () => {
       },
     };
 
-    fs.writeFileSync(
-      mockFfprobePath,
-      `#!/bin/sh\necho '${JSON.stringify(sampleFfprobeOutput)}'\n`,
-      { mode: 0o755 },
+    const mockFfprobePath = createMockExecutable(
+      tempDir,
+      "mock-ffprobe",
+      sampleFfprobeOutput,
     );
 
     try {
@@ -66,7 +86,6 @@ describe("AWS ffprobe Video Metadata Prober", () => {
 
   it("should calculate fractional fps correctly", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "ffprobe-fps-test-"));
-    const mockFfprobePath = path.join(tempDir, "mock-ffprobe.sh");
 
     const sampleFfprobeOutput = {
       streams: [
@@ -84,10 +103,10 @@ describe("AWS ffprobe Video Metadata Prober", () => {
       },
     };
 
-    fs.writeFileSync(
-      mockFfprobePath,
-      `#!/bin/sh\necho '${JSON.stringify(sampleFfprobeOutput)}'\n`,
-      { mode: 0o755 },
+    const mockFfprobePath = createMockExecutable(
+      tempDir,
+      "mock-ffprobe-fractional",
+      sampleFfprobeOutput,
     );
 
     try {

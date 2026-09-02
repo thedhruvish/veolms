@@ -12,7 +12,6 @@
     "typecheck": "tsc --noEmit",
     "test": "node --test tests/**/*.test.ts",
     "start": "node --env-file-if-exists=.env src/index.ts",
-    "run": "node --env-file-if-exists=.env src/cli.ts run",
     "cli": "node --env-file-if-exists=.env src/cli.ts",
     "provider": "node --env-file-if-exists=.env src/provider-select.ts",
     "infra": "node --env-file-if-exists=.env src/cli.ts infra",

@@ -1,4 +1,4 @@
-import { execFile, spawn } from "node:child_process";
+import { execFile, execSync, spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { copyFile, cp, mkdir, rm, stat, writeFile } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
@@ -80,6 +80,8 @@ async function runFfmpeg(options: {
   await new Promise<void>((resolve, reject) => {
     const child = spawn(executable, args, {
       stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+      shell: process.platform === "win32",
     });
     let settled = false;
     let stderrOutput = "";
@@ -95,8 +97,26 @@ async function runFfmpeg(options: {
     };
 
     const abortChild = () => {
+      if (process.platform === "win32" && child.pid) {
+        try {
+          execSync(`taskkill /pid ${child.pid} /T /F`, { stdio: "ignore" });
+          return;
+        } catch {
+          // Fallback
+        }
+      }
       child.kill("SIGTERM");
-      forceKillTimer = setTimeout(() => child.kill("SIGKILL"), 10_000);
+      forceKillTimer = setTimeout(() => {
+        if (process.platform === "win32" && child.pid) {
+          try {
+            execSync(`taskkill /pid ${child.pid} /T /F`, { stdio: "ignore" });
+            return;
+          } catch {
+            // Fallback
+          }
+        }
+        child.kill("SIGKILL");
+      }, 10_000);
       forceKillTimer.unref();
     };
 
@@ -151,15 +171,21 @@ export async function probeVideoMetadata(
   ffprobePath = "ffprobe",
 ): Promise<VideoMetadata> {
   try {
-    const { stdout } = await execFileAsync(ffprobePath, [
-      "-v",
-      "error",
-      "-show_entries",
-      "format=duration:stream=width,height,r_frame_rate",
-      "-of",
-      "json",
-      videoPath,
-    ]);
+    const { stdout } = await execFileAsync(
+      ffprobePath,
+      [
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration:stream=width,height,r_frame_rate",
+        "-of",
+        "json",
+        videoPath,
+      ],
+      {
+        shell: process.platform === "win32",
+      },
+    );
 
     const parsed = JSON.parse(stdout) as {
       format?: { duration?: string };

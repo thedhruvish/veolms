@@ -21,6 +21,7 @@ import {
   red,
   yellow,
 } from "@veolms/fleet-types/terminal";
+import { isMainModule } from "@veolms/fleet-types";
 
 function ok(msg: string): void {
   console.log(`  ${green("✔")} ${msg}`);
@@ -105,11 +106,12 @@ ${bold(cyan("╚═════════════════════�
   ${bold("Install FFmpeg:")}
     ${cyan("apt-get update && apt-get install -y ffmpeg")}   ${dim("# Debian / Ubuntu")}
     ${cyan("brew install ffmpeg")}                           ${dim("# macOS")}
+    ${cyan("winget install Gyan.FFmpeg")}                    ${dim("# Windows")}
 `);
     throw new Error("FFmpeg is required but not installed.");
   }
 
-  const ffmpegLine = ffmpegVersion.split("\n")[0] ?? "";
+  const ffmpegLine = ffmpegVersion.split(/\r?\n/)[0]?.trim() ?? "";
   ok(`FFmpeg found — ${bold(ffmpegLine.split(",")[0] ?? ffmpegLine)}`);
 
   console.log(`\n${bold(cyan("[3/3]"))} ${bold("Writing Per-App .env Files")}`);
@@ -156,4 +158,12 @@ ${bold("Next Steps:")}
   2. Or run the fleet daemon manually: ${cyan("pnpm fleet:run")}
   3. Monitor fleet health:            ${cyan("pnpm fleet:cli status")}
 `);
+}
+
+if (isMainModule(import.meta.url)) {
+  runLocalInfraSetup().catch((err: unknown) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`\n✘ Setup failed: ${msg}\n`);
+    process.exit(1);
+  });
 }

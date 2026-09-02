@@ -62,10 +62,14 @@ import {
 } from "@aws-sdk/client-cloudwatch-logs";
 import {
   S3Client,
+  CreateBucketCommand,
   HeadBucketCommand,
   GetBucketLocationCommand,
   PutObjectCommand,
   HeadObjectCommand,
+  PutPublicAccessBlockCommand,
+  PutBucketPolicyCommand,
+  type BucketLocationConstraint,
 } from "@aws-sdk/client-s3";
 import {
   bold,
@@ -75,6 +79,7 @@ import {
   red,
   yellow,
 } from "@veolms/fleet-types/terminal";
+import { isMainModule } from "@veolms/fleet-types";
 
 import { checkAwsCredentials } from "./aws-cli-check.ts";
 import { runAwsInfraDestroy } from "./destroy.ts";
@@ -1712,20 +1717,29 @@ async function runSetupFlow(
         `Bucket ${bold(bucketInput)} does not exist. Creating in ${region}...`,
       );
       try {
+        const s3Client = new S3Client({ region });
         if (region === "us-east-1") {
-          execSync(
-            `aws s3api create-bucket --bucket "${bucketInput}" --region "${region}"`,
-            { stdio: "pipe" },
-          );
+          await s3Client.send(new CreateBucketCommand({ Bucket: bucketInput }));
         } else {
-          execSync(
-            `aws s3api create-bucket --bucket "${bucketInput}" --region "${region}" --create-bucket-configuration LocationConstraint="${region}"`,
-            { stdio: "pipe" },
+          await s3Client.send(
+            new CreateBucketCommand({
+              Bucket: bucketInput,
+              CreateBucketConfiguration: {
+                LocationConstraint: region as BucketLocationConstraint,
+              },
+            }),
           );
         }
-        execSync(
-          `aws s3api put-public-access-block --bucket "${bucketInput}" --public-access-block-configuration "BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false" --region "${region}"`,
-          { stdio: "pipe" },
+        await s3Client.send(
+          new PutPublicAccessBlockCommand({
+            Bucket: bucketInput,
+            PublicAccessBlockConfiguration: {
+              BlockPublicAcls: false,
+              IgnorePublicAcls: false,
+              BlockPublicPolicy: false,
+              RestrictPublicBuckets: false,
+            },
+          }),
         );
         const pubPolicy = JSON.stringify({
           Version: "2012-10-17",
@@ -1739,9 +1753,11 @@ async function runSetupFlow(
             },
           ],
         });
-        execSync(
-          `aws s3api put-bucket-policy --bucket "${bucketInput}" --policy '${pubPolicy}' --region "${region}"`,
-          { stdio: "pipe" },
+        await s3Client.send(
+          new PutBucketPolicyCommand({
+            Bucket: bucketInput,
+            Policy: pubPolicy,
+          }),
         );
         s3BucketName = bucketInput;
         ok(`Created S3 bucket ${bold(s3BucketName)} with public read enabled.`);
@@ -2673,7 +2689,7 @@ export async function runAwsInfraSetup(): Promise<void> {
 
 export { runAwsInfraDestroy } from "./destroy.ts";
 
-if (process.argv[1] && import.meta.url.endsWith(process.argv[1])) {
+if (isMainModule(import.meta.url)) {
   runAwsInfraSetup().catch((err: unknown) => {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`\n✘ Setup failed: ${msg}\n`);

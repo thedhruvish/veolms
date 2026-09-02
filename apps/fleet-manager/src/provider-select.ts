@@ -3,6 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as readline from "node:readline/promises";
+import { isMainModule } from "@veolms/fleet-types";
 import { bold, cyan, dim, green, yellow } from "@veolms/fleet-types/terminal";
 
 interface ProviderOption {
@@ -179,7 +180,7 @@ export async function runProviderSelection(): Promise<void> {
   console.info(`\n      ${bold(cyan("pnpm fleet:infra"))}\n`);
 }
 
-if (process.argv[1] && import.meta.url.endsWith(process.argv[1])) {
+if (isMainModule(import.meta.url)) {
   runProviderSelection().catch((err: unknown) => {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`\n✘ Provider selection failed: ${message}\n`);

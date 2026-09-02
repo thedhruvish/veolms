@@ -49,11 +49,31 @@ describe("Video Metadata Probe Lambda", () => {
     assert.equal(extracted.action, "queue");
   });
 
+function createMockExecutable(
+  dir: string,
+  baseName: string,
+  outputJson: unknown,
+): string {
+  const jsonString = JSON.stringify(outputJson);
+  if (process.platform === "win32") {
+    const jsPath = path.join(dir, `${baseName}.js`);
+    const cmdPath = path.join(dir, `${baseName}.cmd`);
+    fs.writeFileSync(jsPath, `console.log(${JSON.stringify(jsonString)});`);
+    fs.writeFileSync(
+      cmdPath,
+      `@echo off\r\n"${process.execPath}" "${jsPath}"\r\n`,
+    );
+    return cmdPath;
+  }
+  const shPath = path.join(dir, `${baseName}.sh`);
+  fs.writeFileSync(shPath, `#!/bin/sh\necho '${jsonString}'\n`, { mode: 0o755 });
+  return shPath;
+}
+
   it("should probe metadata and forward enriched payload to downstream Fleet Manager Lambda", async () => {
     const tempDir = fs.mkdtempSync(
       path.join(os.tmpdir(), "probe-lambda-test-"),
     );
-    const mockFfprobePath = path.join(tempDir, "mock-ffprobe.sh");
 
     const sampleFfprobeOutput = {
       streams: [
@@ -74,10 +94,10 @@ describe("Video Metadata Probe Lambda", () => {
       },
     };
 
-    fs.writeFileSync(
-      mockFfprobePath,
-      `#!/bin/sh\necho '${JSON.stringify(sampleFfprobeOutput)}'\n`,
-      { mode: 0o755 },
+    const mockFfprobePath = createMockExecutable(
+      tempDir,
+      "mock-ffprobe",
+      sampleFfprobeOutput,
     );
 
     let sentPayload: any = null;

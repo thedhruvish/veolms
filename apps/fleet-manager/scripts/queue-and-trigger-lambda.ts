@@ -228,7 +228,7 @@ async function main(): Promise<void> {
           .execute();
       }
 
-      const filename = VIDEO_KEY.split("/").pop() || "video.mp4";
+      const filename = VIDEO_KEY.split(/[/\\]/).pop() || "video.mp4";
       await db
         .insertInto("media_assets")
         .values({
@@ -326,6 +326,7 @@ async function main(): Promise<void> {
       // {success, ...} shape a normal response has.
       const invokeResultRaw = execFileSync("aws", invokeArgs, {
         stdio: "pipe",
+        shell: process.platform === "win32",
       }).toString();
       const responseRaw = readFileSync(outFile, "utf-8").trim();
       unlinkSync(outFile);
@@ -450,7 +451,10 @@ async function main(): Promise<void> {
               "json",
             ]);
             const descOut = JSON.parse(
-              execFileSync("aws", descArgs, { stdio: "pipe" }).toString(),
+              execFileSync("aws", descArgs, {
+                stdio: "pipe",
+                shell: process.platform === "win32",
+              }).toString(),
             );
             const instance = descOut.Reservations?.[0]?.Instances?.[0];
             if (instance) {
