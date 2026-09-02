@@ -8,7 +8,8 @@ export * from "./commerce.schema.ts";
 export * from "./webhooks.schema.ts";
 export * from "./notifications.schema.ts";
 export * from "./json.schema.ts";
-export * from './fleet.schema.ts'
+export * from "./fleet.schema.ts";
+export * from "./learning-space.schema.ts";
 
 // Import table interfaces to assemble unified Database schema
 import type {
@@ -80,6 +81,7 @@ import type {
   WorkerMonitoringTable,
   WorkerTable,
 } from "./fleet.schema.ts";
+import type { LearningSpaceSessionTable } from "./learning-space.schema.ts";
 
 export interface Database {
   // Auth & Academy
@@ -148,6 +150,9 @@ export interface Database {
   workers: WorkerTable;
   worker_monitoring: WorkerMonitoringTable;
   worker_events: WorkerEventTable;
+
+  // Learner state
+  learning_space_sessions: LearningSpaceSessionTable;
 }
 
 export type PurchaseTable = OrderTable;
