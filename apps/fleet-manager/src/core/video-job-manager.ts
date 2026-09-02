@@ -395,13 +395,23 @@ export function createJobManager(options: {
           }
         );
       } catch (insertErr) {
-        // If a concurrent insert occurred (unique constraint violation), return the existing row
-        const raceWinner = await db
+        // If a concurrent insert occurred, check for the exact job ID or an active concurrent job
+        const exactWinner = await db
           .selectFrom("video_jobs")
           .selectAll()
+          .where("id", "=", id)
+          .executeTakeFirst();
+
+        if (exactWinner) {
+          return exactWinner;
+        }
+
+        const activeWinner = await db
+          .selectFrom("video_jobs")
+          .selectAll()
+          .where("status", "in", ["queued", "provisioning", "processing"])
           .where((eb) =>
             eb.or([
-              eb("id", "=", id),
               eb("video_id", "=", videoId),
               eb("video_key", "=", params.videoKey),
             ]),
@@ -409,8 +419,8 @@ export function createJobManager(options: {
           .orderBy("created_at", "desc")
           .executeTakeFirst();
 
-        if (raceWinner) {
-          return raceWinner;
+        if (activeWinner) {
+          return activeWinner;
         }
 
         throw insertErr;

@@ -56,9 +56,13 @@ function resolveWithin(root: string, candidate: string): string {
   const resolvedPath = resolve(resolvedRoot, candidate);
   const pathFromRoot = relative(resolvedRoot, resolvedPath);
   if (
+    isAbsolute(pathFromRoot) ||
     pathFromRoot === ".." ||
     pathFromRoot.startsWith("../") ||
-    pathFromRoot.startsWith("..\\")
+    pathFromRoot.startsWith("..\\") ||
+    (!resolvedPath.startsWith(resolvedRoot + "/") &&
+      !resolvedPath.startsWith(resolvedRoot + "\\") &&
+      resolvedPath !== resolvedRoot)
   ) {
     throw new Error(
       "Media job path must remain inside its configured directory",
@@ -81,7 +85,6 @@ async function runFfmpeg(options: {
     const child = spawn(executable, args, {
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
-      shell: process.platform === "win32",
     });
     let settled = false;
     let stderrOutput = "";
@@ -183,7 +186,7 @@ export async function probeVideoMetadata(
         videoPath,
       ],
       {
-        shell: process.platform === "win32",
+        windowsHide: true,
       },
     );
 
@@ -375,7 +378,6 @@ export async function executeTranscodeJob(
       const cleanVideoKey = job.video_key.replace(/^[/\\]+/, "");
       const workspaceDir = process.cwd();
       const localCandidates = [
-        resolveWithin(workspaceDir, cleanVideoKey),
         resolveWithin(join(workspaceDir, "s3-bucket"), cleanVideoKey),
         resolveWithin(join(workspaceDir, "scratch"), cleanVideoKey),
       ];

@@ -97,7 +97,8 @@ export async function runCli(
 
   const heartbeatTimeoutMs = config.HEARTBEAT_TIMEOUT_SECONDS * 1000;
 
-  switch (command) {
+  try {
+    switch (command) {
     case "run": {
       console.info("[fleet-cli] Starting Fleet Manager daemon...");
       const controller = new AbortController();
@@ -398,6 +399,15 @@ Usage:
   fleet infra                   Provision infrastructure for FLEET_PROVIDER
 `);
       break;
+    }
+  } finally {
+    if (dbInstance) {
+      try {
+        await dbInstance.destroy();
+      } catch {
+        // Ignore pool destruction errors during process exit
+      }
+    }
   }
 }
 

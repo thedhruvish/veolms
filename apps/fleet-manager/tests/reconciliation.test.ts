@@ -324,4 +324,96 @@ describe("Fleet Manager — State Reconciliation & Dynamic Scheduling", () => {
     assert.equal(scheduledDate, null);
     assert.equal(cancelledWakeup, true);
   });
+
+  it("only verifies jobs in processing status with 100% progress and avoids infinite verification on completed jobs", async () => {
+    let queriedJobStatusFilter = "";
+    let verifiedJobPrefix = "";
+    let jobMarkedCompleted = false;
+
+    const mockDb = {
+      selectFrom: (table: string) => {
+        const createChain = (rows: any[] = []) => {
+          const chain: any = {
+            select: () => chain,
+            selectAll: () => chain,
+            innerJoin: () => chain,
+            leftJoin: () => chain,
+            where: () => chain,
+            execute: async () => rows,
+            executeTakeFirst: async () => rows[0] ?? null,
+          };
+          return chain;
+        };
+
+        if (table === "video_jobs") {
+          return {
+            selectAll: () => ({
+              where: (col: string, _op: string, val: any) => {
+                if (col === "status") queriedJobStatusFilter = val;
+                return {
+                  where: () => ({
+                    where: () => ({
+                      execute: async () => [
+                        {
+                          id: "job-done-1",
+                          status: "processing",
+                          progress_percent: 100,
+                          worker_id: "w-1",
+                          output_prefix: "courses/c1/hls/",
+                        },
+                      ],
+                    }),
+                  }),
+                };
+              },
+            }),
+            select: () => createChain([]),
+          };
+        }
+        return createChain([]);
+      },
+      updateTable: (table: string) => ({
+        set: (values: any) => ({
+          where: () => ({
+            execute: async () => {
+              if (table === "video_jobs" && values.status === "completed") {
+                jobMarkedCompleted = true;
+              }
+            },
+          }),
+        }),
+      }),
+      insertInto: () => ({
+        values: () => ({
+          execute: async () => {},
+        }),
+      }),
+    } as any;
+
+    const mockProvider: FleetProvider = {
+      name: "aws",
+      createWorker: async () => ({}) as WorkerHandle,
+      getWorker: async () => null,
+      getWorkerStatus: async () => "ready",
+      terminateWorker: async () => {},
+      healthCheck: async () => ({ healthy: true, state: "ready" }),
+      verifyJobOutput: async (prefix: string) => {
+        verifiedJobPrefix = prefix;
+        return true;
+      },
+    };
+
+    const fleet = createFleetManager({
+      provider: mockProvider,
+      db: mockDb,
+      config: baseConfig,
+    });
+
+    const result = await fleet.runMonitoringCycle();
+
+    assert.equal(queriedJobStatusFilter, "processing");
+    assert.equal(verifiedJobPrefix, "courses/c1/hls/");
+    assert.equal(jobMarkedCompleted, true);
+    assert.equal(result.reconcileResult.verifiedCompletedJobs, 1);
+  });
 });
