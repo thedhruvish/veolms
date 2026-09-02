@@ -6,3 +6,4 @@ export * from "./discussion.ts";
 export * from "./notification.ts";
 export * from "./health.ts";
 export * from "./error.ts";
+export * from "./stream.ts";

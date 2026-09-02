@@ -1,0 +1,146 @@
+import type { Kysely } from "kysely";
+import type { Database } from "@veolms/database";
+import type { StreamResponse } from "@veolms/contracts";
+import { AppError } from "../../../lib/errors.ts";
+import { ADMIN_ROLE } from "../../auth/index.ts";
+import type { AppServices } from "../../../services/index.ts";
+import * as curriculumRepo from "../curriculum/curriculum.repository.ts";
+import * as courseRepo from "../course/course.repository.ts";
+import * as enrollmentRepo from "../../commerce/enrollments/enrollment.repository.ts";
+import {
+  createAccessService,
+  type AccessService,
+} from "../../access/access.service.ts";
+import * as mediaRepo from "../../media/media.repository.ts";
+import type { StreamUserContext } from "./stream.types.ts";
+
+export interface StreamServiceOptions {
+  database: Kysely<Database>;
+  services?: AppServices;
+  accessService?: AccessService;
+}
+
+export function createStreamService({
+  database,
+  accessService = createAccessService(),
+}: StreamServiceOptions) {
+  /**
+   * Retrieves the streaming URL for a lecture after verifying user enrollment.
+   */
+  async function getLectureStreamUrl(
+    lectureId: string,
+    user: StreamUserContext,
+    courseId?: string,
+  ): Promise<StreamResponse> {
+    // 1. Fetch the lecture from curriculum repository
+    const lesson = courseId
+      ? await curriculumRepo.findLessonById(database, lectureId, courseId)
+      : await curriculumRepo.findLessonByIdOnly(database, lectureId);
+    if (!lesson) {
+      throw new AppError(404, "LECTURE_NOT_FOUND", "Lecture not found.");
+    }
+
+    // 2. Fetch parent course from course repository
+    const course = await courseRepo.findCourseById(database, lesson.course_id);
+    if (!course) {
+      throw new AppError(404, "COURSE_NOT_FOUND", "Course not found.");
+    }
+
+    const isCreator = Boolean(
+      course.creator_id && course.creator_id === user.id,
+    );
+    const isAdmin = Boolean(user.roles && user.roles.includes(ADMIN_ROLE));
+
+    // 3. Course publication status check
+    if (course.status !== "published" && !isCreator && !isAdmin) {
+      throw new AppError(404, "COURSE_NOT_FOUND", "Course is not published.");
+    }
+
+    // 4. Enrollment & Access verification
+    if (!isCreator && !isAdmin) {
+      const enrollment = await enrollmentRepo.findActiveEnrollment(
+        database,
+        user.id,
+        course.id,
+      );
+
+      let hasAccess = Boolean(enrollment);
+      if (!hasAccess) {
+        hasAccess = await accessService.hasActiveAccess(
+          database,
+          user.id,
+          course.id,
+        );
+      }
+
+      if (!hasAccess) {
+        throw new AppError(
+          403,
+          "NOT_ENROLLED",
+          "You must be enrolled in this course to stream this lecture.",
+        );
+      }
+    }
+
+    // 5. Validate streamable media asset
+    if (lesson.content_type !== "video" || !lesson.content_media_id) {
+      throw new AppError(
+        400,
+        "LECTURE_NOT_STREAMABLE",
+        "Lecture does not have streamable video content.",
+      );
+    }
+
+    const mediaAsset = await mediaRepo.findMediaAssetById(
+      database,
+      lesson.content_media_id,
+    );
+    if (!mediaAsset) {
+      throw new AppError(
+        404,
+        "MEDIA_NOT_FOUND",
+        "Video media asset not found.",
+      );
+    }
+
+    // 6. Determine streaming playlist or video file key
+    const videoOutputs = await mediaRepo.findVideoOutputsByVideoIds(database, [
+      mediaAsset.id,
+    ]);
+    const videoOutput = videoOutputs[0];
+
+    let storageKey: string;
+    let format: "hls" | "mp4" = "mp4";
+
+    if (videoOutput?.master_playlist_path) {
+      storageKey = videoOutput.master_playlist_path;
+      format = "hls";
+    } else {
+      storageKey = mediaAsset.storage_key;
+      format = "mp4";
+    }
+
+    // 7. Direct stream URL
+    const streamUrl =
+      storageKey.startsWith("http://") ||
+      storageKey.startsWith("https://") ||
+      storageKey.startsWith("/")
+        ? storageKey
+        : `/${storageKey}`;
+
+    return {
+      streamUrl,
+      lectureId: lesson.id,
+      courseId: course.id,
+      mediaAssetId: mediaAsset.id,
+      contentType: lesson.content_type,
+      format,
+    };
+  }
+
+  return {
+    getLectureStreamUrl,
+  };
+}
+
+export type StreamService = ReturnType<typeof createStreamService>;

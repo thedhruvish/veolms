@@ -280,6 +280,19 @@ export class S3StorageService {
   }
 
   /**
+   * Generates a presigned GET URL for downloading or streaming an object from S3.
+   *
+   * The URL is temporary and expires after `expiresIn` seconds (default 3600).
+   */
+  async getPresignedGetUrl(key: string, expiresIn = 3600): Promise<string> {
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+    });
+    return getSignedUrl(this.client, command, { expiresIn });
+  }
+
+  /**
    * Deletes an object from S3.
    */
   async deleteObject(key: string): Promise<void> {
