@@ -37,6 +37,7 @@ const baseFleetManagerConfigSchema = z.object({
   MAX_RETRIES: z.coerce.number().int().min(0).default(3),
   MAX_WORKERS: z.coerce.number().int().min(1).default(8),
   MEDIA_WORKER_SCRIPT_PATH: z.string().optional(),
+  S3_BUILD_BUCKET: z.string().optional(),
 });
 
 export const fleetManagerConfigSchema = z.preprocess((raw) => {
