@@ -68,20 +68,31 @@ async function destroyS3Bucket(
   }
 
   if (objectCount > 0) {
+    const isNonInteractive =
+      process.argv.includes("--yes") ||
+      process.argv.includes("-y") ||
+      process.argv.includes("--force") ||
+      process.env["NON_INTERACTIVE"] === "true" ||
+      process.env["SETUP_NON_INTERACTIVE"] === "true";
+
     console.info(`
   ${bold(red("⚠ WARNING:"))} S3 bucket ${bold(bucketName)} contains ${bold(String(objectCount))} object(s)
   — transcoded videos, HLS playlists/segments, and worker bundles.
   Deleting this bucket will ${bold(red("PERMANENTLY DELETE ALL OF THAT DATA"))}.
   This cannot be undone.
 `);
-    const answer = await rl.question(
-      `  ${bold("?")} Type "yes" to permanently delete the bucket and all its data: `,
-    );
-    if (answer.trim().toLowerCase() !== "yes") {
-      console.info(
-        `  ${yellow("⚠")} Skipped — bucket ${bold(bucketName)} and its data were ${bold("NOT")} deleted.`,
+    if (!isNonInteractive) {
+      const answer = await rl.question(
+        `  ${bold("?")} Type "yes" to permanently delete the bucket and all its data: `,
       );
-      return;
+      if (answer.trim().toLowerCase() !== "yes") {
+        console.info(
+          `  ${yellow("⚠")} Skipped — bucket ${bold(bucketName)} and its data were ${bold("NOT")} deleted.`,
+        );
+        return;
+      }
+    } else {
+      console.info(`  ${yellow("⚠")} Non-interactive mode: proceeding with bucket deletion.`);
     }
   } else {
     console.info(`  ${dim("Bucket is empty — no confirmation needed.")}`);

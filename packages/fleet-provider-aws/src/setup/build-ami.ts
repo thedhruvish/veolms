@@ -28,7 +28,19 @@ function exec(cmd: string): string {
   }
 }
 
-export async function runBuildAmi(): Promise<void> {
+export interface BuildAmiOptions {
+  readonly region?: string;
+  readonly architecture?: "arm64" | "x86_64";
+}
+
+export async function runBuildAmi(options?: BuildAmiOptions): Promise<string> {
+  const region = options?.region || process.env.AWS_REGION || "us-east-1";
+  const architecture = (
+    options?.architecture ||
+    process.env.ARCHITECTURE ||
+    "arm64"
+  ).toLowerCase() as "arm64" | "x86_64";
+
   console.info(`
 ╔══════════════════════════════════════════════════════╗
 ║          VeoLMS Pre-Baked Worker AMI Builder         ║
@@ -36,27 +48,36 @@ export async function runBuildAmi(): Promise<void> {
 `);
 
   console.info(
-    `Resolving latest Debian ${DEBIAN_RELEASE} AMI for ${bold(ARCHITECTURE)} in ${bold(REGION)}...`,
+    `Resolving latest Debian ${DEBIAN_RELEASE} AMI for ${bold(architecture)} in ${bold(region)}...`,
   );
-  const ssm = new SSMClient({ region: REGION });
+  const ssm = new SSMClient({ region });
   const baseAmi = await resolveDebianAmiId(
     ssm,
-    REGION,
-    ARCHITECTURE === "arm64" ? "arm64" : "x86_64",
+    region,
+    architecture === "arm64" ? "arm64" : "x86_64",
   );
-  const instanceType = ARCHITECTURE === "arm64" ? "c7g.large" : "c6i.large";
-  const amiName = `veolms-worker-ami-${ARCHITECTURE}-${Date.now()}`;
+  const instanceType = architecture === "arm64" ? "c7g.large" : "c6i.large";
+  const amiName = `veolms-worker-ami-${architecture}-${Date.now()}`;
 
-  console.info(`Architecture:    ${bold(ARCHITECTURE)}`);
+  console.info(`Architecture:    ${bold(architecture)}`);
   console.info(
     `Base AMI:        ${bold(baseAmi)} ${dim(`(Debian ${DEBIAN_RELEASE})`)}`,
   );
   console.info(`Builder Type:    ${bold(instanceType)}`);
   console.info(`Target AMI Name: ${bold(amiName)}`);
-  console.info(`Region:          ${bold(REGION)}\n`);
+  console.info(`Region:          ${bold(region)}\n`);
+
+  console.info(`
+${bold(cyan("ℹ Why does building a Pre-baked AMI take ~3 to 5 minutes?"))}
+  ${dim("•")} ${bold("1. Launch temporary builder:")} AWS launches a clean EC2 instance (${bold(instanceType)}) (~30s).
+  ${dim("•")} ${bold("2. Dependency installation:")} Updates Debian packages and installs Node.js 24, FFmpeg, and AWS CLI v2 (~1.5-2m).
+  ${dim("•")} ${bold("3. Clean shutdown:")} The instance stops cleanly to sync filesystems and ensure zero EBS corruption (~15s).
+  ${dim("•")} ${bold("4. EBS snapshot & AMI registration:")} AWS creates an EBS snapshot and registers the AMI (~1.5-2m).
+  ${green("✔")} ${bold("One-time process:")} Every worker launched in the future will boot in ${bold("<30 seconds")}!
+`);
 
   const awsCliUrl =
-    ARCHITECTURE === "arm64"
+    architecture === "arm64"
       ? "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip"
       : "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip";
 
@@ -92,34 +113,53 @@ shutdown -h now
 `;
   const userDataBase64 = Buffer.from(installScript).toString("base64");
 
-  const runRes = JSON.parse(
-    exec(
-      `aws ec2 run-instances --image-id ${baseAmi} --instance-type ${instanceType} --user-data "${userDataBase64}" --iam-instance-profile Name=VeoLMSWorkerInstanceProfile --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=veolms-ami-builder},{Key=ManagedBy,Value=veolms-infra-setup}]' --output json --region ${REGION}`,
-    ),
-  );
+  let runRes: any = null;
+  const maxLaunchRetries = 8;
+  for (let attempt = 1; attempt <= maxLaunchRetries; attempt++) {
+    try {
+      runRes = JSON.parse(
+        exec(
+          `aws ec2 run-instances --image-id ${baseAmi} --instance-type ${instanceType} --user-data "${userDataBase64}" --iam-instance-profile Name=VeoLMSWorkerInstanceProfile --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=veolms-ami-builder},{Key=ManagedBy,Value=veolms-infra-setup}]' --output json --region ${region}`,
+        ),
+      );
+      break;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        (msg.includes("InvalidParameterValue") ||
+          msg.includes("Invalid IAM Instance Profile name") ||
+          msg.includes("cannot be assumed")) &&
+        attempt < maxLaunchRetries
+      ) {
+        console.info(
+          `  Waiting for IAM instance profile propagation in EC2 (attempt ${attempt}/${maxLaunchRetries})...`,
+        );
+        await new Promise((r) => setTimeout(r, 4000));
+        continue;
+      }
+      throw err;
+    }
+  }
 
   const instanceId = runRes.Instances[0].InstanceId;
   console.info(`✔ Launched builder instance: ${bold(cyan(instanceId))}\n`);
 
-  // Steps 2-4 run against the builder instance — if any of them fail, the
-  // instance must still be terminated so a failed build doesn't leave a
-  // billed, orphaned EC2 instance behind (it previously just leaked).
   let amiId: string;
   try {
     // Step 2: Wait for instance to finish installation and stop
     console.info(
-      "[2/5] Installing Node.js 24 + FFmpeg + AWS CLI (waiting for auto-shutdown ~1-2 min)...",
+      "[2/5] Installing Node.js 24 + FFmpeg + AWS CLI (waiting for auto-shutdown ~1.5-2 min)...",
     );
     let isStopped = false;
     let elapsed = 0;
-    while (!isStopped && elapsed < 300) {
+    while (!isStopped && elapsed < 360) {
       await new Promise((r) => setTimeout(r, 5000));
       elapsed += 5;
       const state = exec(
-        `aws ec2 describe-instances --instance-ids ${instanceId} --query "Reservations[0].Instances[0].State.Name" --output text --region ${REGION}`,
+        `aws ec2 describe-instances --instance-ids ${instanceId} --query "Reservations[0].Instances[0].State.Name" --output text --region ${region}`,
       );
       process.stdout.write(
-        `\r  [${elapsed}s] Instance State: ${bold(state)} (waiting for auto-shutdown)...   `,
+        `\r  [${elapsed}s] Instance State: ${bold(cyan(state))} (installing packages & waiting for shutdown)...   `,
       );
       if (state === "stopped") {
         isStopped = true;
@@ -131,7 +171,7 @@ shutdown -h now
 
     if (!isStopped) {
       throw new Error(
-        `Builder instance timed out after ${elapsed}s (still not stopped — the install script likely failed before reaching shutdown; check with: aws ec2 get-console-output --instance-id ${instanceId} --region ${REGION}).`,
+        `Builder instance timed out after ${elapsed}s (still not stopped — check console output with: aws ec2 get-console-output --instance-id ${instanceId} --region ${region}).`,
       );
     }
 
@@ -139,27 +179,45 @@ shutdown -h now
     console.info("\n[3/5] Creating pre-baked AMI from stopped instance...");
     const createAmiRes = JSON.parse(
       exec(
-        `aws ec2 create-image --instance-id ${instanceId} --name "${amiName}" --description "VeoLMS Pre-baked Worker AMI with Node.js 24 + FFmpeg + AWS CLI" --output json --region ${REGION}`,
+        `aws ec2 create-image --instance-id ${instanceId} --name "${amiName}" --description "VeoLMS Pre-baked Worker AMI with Node.js 24 + FFmpeg + AWS CLI" --output json --region ${region}`,
       ),
     );
     amiId = createAmiRes.ImageId;
     console.info(`✔ AMI Creation initiated: ${bold(green(amiId))}`);
 
-    // Step 4: Wait for AMI to be available
-    console.info("\n[4/5] Waiting for AMI to become available...");
-    exec(
-      `aws ec2 wait image-available --image-ids ${amiId} --region ${REGION}`,
-    );
-    console.info(
-      `✔ Pre-baked AMI is now ${bold(green("AVAILABLE"))}: ${bold(amiId)}`,
-    );
+    // Step 4: Wait for AMI to be available with active progress
+    console.info("\n[4/5] Waiting for AWS to snapshot EBS volume and register AMI (takes ~1.5-2 min)...");
+    let isAvailable = false;
+    let waitElapsed = 0;
+    while (!isAvailable && waitElapsed < 600) {
+      await new Promise((r) => setTimeout(r, 5000));
+      waitElapsed += 5;
+      const status = exec(
+        `aws ec2 describe-images --image-ids ${amiId} --query "Images[0].State" --output text --region ${region}`,
+      );
+      process.stdout.write(
+        `\r  [${waitElapsed}s] AMI State: ${bold(cyan(status))} (registering in AWS)...   `,
+      );
+      if (status === "available") {
+        isAvailable = true;
+        console.info(
+          `\n✔ Pre-baked AMI is now ${bold(green("AVAILABLE"))}: ${bold(amiId)}`,
+        );
+      } else if (status === "failed") {
+        throw new Error(`AMI creation failed with state: failed`);
+      }
+    }
+
+    if (!isAvailable) {
+      throw new Error(`Timed out waiting for AMI ${amiId} to become available.`);
+    }
   } catch (err: unknown) {
     console.error(
       `\n✘ Build step failed — terminating builder instance ${instanceId} before exiting...`,
     );
     try {
       exec(
-        `aws ec2 terminate-instances --instance-ids ${instanceId} --region ${REGION}`,
+        `aws ec2 terminate-instances --instance-ids ${instanceId} --region ${region}`,
       );
     } catch {
       console.error(
@@ -174,7 +232,7 @@ shutdown -h now
     "\n[5/5] Terminating builder instance and saving AMI_ID to .env...",
   );
   exec(
-    `aws ec2 terminate-instances --instance-ids ${instanceId} --region ${REGION}`,
+    `aws ec2 terminate-instances --instance-ids ${instanceId} --region ${region}`,
   );
   console.info(`✔ Terminated builder instance ${instanceId}`);
 
@@ -217,11 +275,12 @@ shutdown -h now
 ╚══════════════════════════════════════════════════════╝
 
   AMI ID:       ${bold(green(amiId))}
-  Architecture: ${bold(ARCHITECTURE)}
-  Region:       ${bold(REGION)}
+  Architecture: ${bold(architecture)}
+  Region:       ${bold(region)}
 
 Workers booted with this AMI will now start transcoding in <30 seconds!
 `);
+  return amiId;
 }
 
 if (isMainModule(import.meta.url)) {

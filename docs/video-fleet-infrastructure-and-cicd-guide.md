@@ -83,8 +83,16 @@ The interactive wizard guides you through provisioning and verifying all necessa
    - `veolms-video-metadata-probe`: Pre-probes video metadata (resolution, frame rate, codec) using `ffprobe` directly over S3 presigned URLs.
 6. **Initial Artifact Upload**:
    - Automatically bundles `apps/media-worker` and serverless entrypoints and uploads them to the S3 build bucket.
-7. **Environment File Generation**:
-   - Generates `.env` files in `apps/fleet-manager/.env` and `apps/media-worker/.env` with your region, bucket names, and role ARNs.
+### IAM Policies Reference for Infrastructure & Runtime
+
+All policy definitions live in [`packages/fleet-provider-aws/iam/`](file:///home/debian/Desktop/coding/veolms/veolms/packages/fleet-provider-aws/iam/):
+
+1. **Infrastructure Provisioning Policy** ([`infra-provisioner-policy.json`](file:///home/debian/Desktop/coding/veolms/veolms/packages/fleet-provider-aws/iam/infra-provisioner-policy.json)):
+   - Used by any engineer, admin, or script executing `pnpm --filter @veolms/fleet-manager infra`.
+   - Grants permissions to create S3 buckets, IAM roles/instance profiles, Lambda functions, CloudWatch log groups, and EventBridge schedules.
+2. **Worker Runtime Role Policy** ([`worker-runtime-policy.json`](file:///home/debian/Desktop/coding/veolms/veolms/packages/fleet-provider-aws/iam/worker-runtime-policy.json)) & Trust Policy ([`worker-runtime-trust-policy.json`](file:///home/debian/Desktop/coding/veolms/veolms/packages/fleet-provider-aws/iam/worker-runtime-trust-policy.json)):
+   - Attached to `VeoLMSWorkerRole` and assumed by EC2 transcode instances, Fleet Manager Lambdas, and EventBridge Scheduler.
+   - Allows reading raw video and writing HLS segments to S3, provisioning EC2 spot instances, reporting CloudWatch logs, and scheduling wakeups.
 
 ---
 

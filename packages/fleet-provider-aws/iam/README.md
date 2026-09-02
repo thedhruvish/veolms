@@ -1,58 +1,92 @@
-# VeoLMS Video Fleet CI/CD Infrastructure Setup
+# VeoLMS Video Fleet IAM Policies & Setup
 
-This directory contains the IAM least-privilege policy and automated provisioning scripts to create the dedicated CI/CD deployer user for GitHub Actions.
-
-## Files
-
-- **`cicd-infra-deployer-policy.json`**: Least-privilege IAM policy document scoping access strictly to:
-  - **S3 Build Bucket**: `s3:PutObject`, `s3:GetObject`, `s3:HeadObject`, `s3:ListBucket` on the build bucket (`s3://${S3_BUILD_BUCKET}/*`).
-  - **AWS Lambda Functions**: `lambda:UpdateFunctionCode`, `lambda:GetFunction`, `lambda:GetFunctionConfiguration`, `lambda:PublishVersion` on `veolms-fleet-manager` and `veolms-video-metadata-probe`.
-  - **CloudWatch Logs**: `logs:DescribeLogGroups`.
-  - No wildcard admin permissions (`*`).
-- **`setup-cicd-iam.sh`**: Automated bash script using AWS CLI to create the user, render & attach the policy, and generate access keys.
-- **`setup-cicd-iam.ts`**: Node.js/TypeScript script using AWS SDK (`@aws-sdk/client-iam`) for the same automation.
+This directory contains the complete set of IAM policies and automation scripts for the VeoLMS video transcoding infrastructure across all lifecycle stages: initial infrastructure provisioning, runtime worker execution, and automated CI/CD deployment.
 
 ---
 
-## One-Command Setup
+## Policy Inventory
 
-Run either the bash script or the Node script on your local machine where AWS CLI credentials are configured:
+| Policy File | Intended Target | Purpose | Scope |
+|---|---|---|---|
+| **`cicd-infra-deployer-policy.json`** | IAM User / GitHub Actions (`veolms-cicd-infra-deployer`) | Used by GitHub Actions to update Lambda function code and upload bundles to the S3 build bucket. | Least-privilege: S3 build bucket (`bundles/*`) & `veolms-*` Lambdas only. |
+| **`infra-provisioner-policy.json`** | IAM User / Admin / Provisioning Role | Used by the engineer or pipeline running `fleet infra` (`pnpm --filter @veolms/fleet-manager infra`) to create all resources from scratch. | Creates S3 buckets, IAM roles/instance profiles, Lambdas, CloudWatch log groups, and EventBridge schedules. |
+| **`worker-runtime-trust-policy.json`** | Trust Relationship on `VeoLMSWorkerRole` | Allows AWS services to assume the worker runtime role. | Trusted Services: `ec2.amazonaws.com`, `lambda.amazonaws.com`, `scheduler.amazonaws.com`. |
+| **`worker-runtime-policy.json`** | Permissions Policy attached to `VeoLMSWorkerRole` | Permissions used by EC2 transcode workers and Fleet Manager Lambdas during job processing. | Reads/writes video segments in S3, manages EC2 spot worker lifecycle, reports CloudWatch logs, and schedules wakeups. |
 
-### Option A: Using AWS CLI (Bash)
+---
+
+## 1. Infrastructure Provisioning Policy (`infra-provisioner-policy.json`)
+
+If you want to create an IAM User or Role specifically to run the setup tool `pnpm --filter @veolms/fleet-manager infra`, attach [`infra-provisioner-policy.json`](./infra-provisioner-policy.json).
+
+### Resources Managed:
+- **S3**: Creates media storage and build buckets with CORS configurations and public-read policies.
+- **IAM**: Creates `VeoLMSWorkerRole` and `VeoLMSWorkerInstanceProfile`.
+- **Lambda**: Creates `veolms-fleet-manager` and `veolms-video-metadata-probe`.
+- **CloudWatch Logs**: Creates log groups `/veolms/*` with retention policies.
+- **EventBridge**: Creates scheduler execution roles and schedule groups.
+- **EC2**: Creates security groups and key pairs.
+
+---
+
+## 2. Worker Runtime Role (`VeoLMSWorkerRole`)
+
+The setup wizard automatically creates this role and its instance profile (`VeoLMSWorkerInstanceProfile`). If you wish to create it manually:
+
+1. **Create the Role with the Trust Policy** ([`worker-runtime-trust-policy.json`](./worker-runtime-trust-policy.json)):
+   ```bash
+   aws iam create-role \
+     --role-name VeoLMSWorkerRole \
+     --assume-role-policy-document file://packages/fleet-provider-aws/iam/worker-runtime-trust-policy.json
+   ```
+
+2. **Attach AWS Managed Policies**:
+   ```bash
+   aws iam attach-role-policy --role-name VeoLMSWorkerRole --policy-arn arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+   aws iam attach-role-policy --role-name VeoLMSWorkerRole --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+   aws iam attach-role-policy --role-name VeoLMSWorkerRole --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+   ```
+
+3. **Attach Inline Permissions Policy** ([`worker-runtime-policy.json`](./worker-runtime-policy.json)):
+   ```bash
+   # Render variables (bucket names and region) and attach:
+   aws iam put-role-policy \
+     --role-name VeoLMSWorkerRole \
+     --policy-name VeoLMSWorkerRuntimePolicy \
+     --policy-document file://packages/fleet-provider-aws/iam/worker-runtime-policy.json
+   ```
+
+4. **Create the Instance Profile & Add Role**:
+   ```bash
+   aws iam create-instance-profile --instance-profile-name VeoLMSWorkerInstanceProfile
+   aws iam add-role-to-instance-profile --instance-profile-name VeoLMSWorkerInstanceProfile --role-name VeoLMSWorkerRole
+   ```
+
+---
+
+## 3. CI/CD Deployer User (`veolms-cicd-infra-deployer`)
+
+Used exclusively by GitHub Actions to deploy code updates safely without broad administrative rights.
+
+### Automated Provisioning Script:
+Run either script from your terminal:
+
+**Via pnpm**:
+```bash
+pnpm --filter @veolms/fleet-provider-aws setup:cicd
+```
+
+**Via Bash / AWS CLI**:
 ```bash
 S3_BUILD_BUCKET="<your-s3-build-bucket>" AWS_REGION="<your-region>" ./packages/fleet-provider-aws/iam/setup-cicd-iam.sh
 ```
 
-### Option B: Using Node.js
-```bash
-node --env-file-if-exists=apps/fleet-manager/.env packages/fleet-provider-aws/iam/setup-cicd-iam.ts
-```
+### GitHub Repository Secrets to Add:
+In **Settings** ➔ **Secrets and variables** ➔ **Actions**:
 
----
-
-## GitHub Repository Secrets Configuration
-
-Add the generated credentials in your GitHub repository:
-**Settings** -> **Secrets and variables** -> **Actions** -> **New repository secret**:
-
-| Secret Name | Description | Example |
+| Name | Type | Value |
 |---|---|---|
-| `AWS_ACCESS_KEY_ID` | Access Key ID for `veolms-cicd-infra-deployer` | `AKIA...` |
-| `AWS_SECRET_ACCESS_KEY` | Secret Access Key for the deployer user | `wJal...` |
-| `AWS_REGION` *(optional, can be a variable)* | AWS Region where resources reside | `ap-south-1` |
-| `S3_BUILD_BUCKET` *(optional, can be a variable)* | S3 bucket storing worker bundle and lambda packages | `my-media-bucket` |
-
----
-
-## CI/CD Workflow Lifecycle (`.github/workflows/deploy-video-fleet-infra.yml`)
-
-1. **Trigger Constraints**:
-   - Only triggers on push to the `development` branch when files in `apps/fleet-manager/**`, `apps/media-worker/**`, `packages/fleet-provider-aws/**`, `packages/fleet-types/**`, or the workflow file itself are modified.
-   - Can also be triggered manually on-demand via `workflow_dispatch`.
-2. **Phase 1: Test & Quality Gate**:
-   - Runs type-checking across all fleet packages.
-   - Runs all unit test suites (`@veolms/media-worker`, `@veolms/fleet-manager`, `@veolms/fleet-provider-aws`).
-   - If any test fails, deployment is aborted immediately.
-3. **Phase 2: Targeted Deployment**:
-   - **Worker changes**: Builds and uploads `s3://${S3_BUILD_BUCKET}/bundles/media-worker.js`.
-   - **Lambda changes**: Builds and uploads `s3://${S3_BUILD_BUCKET}/bundles/fleet-manager.zip` and `bundles/probe-lambda.zip`, then calls `aws lambda update-function-code` to update the running Lambdas.
+| `AWS_ACCESS_KEY_ID` | Secret | Access Key from setup output |
+| `AWS_SECRET_ACCESS_KEY` | Secret | Secret Key from setup output |
+| `S3_BUILD_BUCKET` | Variable / Secret | Your S3 build bucket name |
+| `AWS_REGION` | Variable *(optional)* | e.g. `ap-south-1` |

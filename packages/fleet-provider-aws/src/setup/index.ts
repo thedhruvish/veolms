@@ -92,6 +92,7 @@ import {
   resolveRepoRoot,
   type LambdaArchitecture,
 } from "./layer-builder.ts";
+import { runBuildAmi } from "./build-ami.ts";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -2207,9 +2208,84 @@ async function runSetupFlow(
     defaultBootMode === "fresh" ? 0 : 1,
   );
 
+  let amiId: string | null =
+    initialDefaults?.amiId ?? process.env["AMI_ID"] ?? null;
+
   if (bootMode === "ami") {
-    warn("Pre-baked AMI selected.");
-    info(`Build the AMI separately: ${cyan("pnpm fleet:build-ami")}`);
+    info("Pre-baked AMI selected.");
+    const amiChoice = await askChoice(
+      rl,
+      "Pre-baked AMI configuration:",
+      [
+        {
+          label:
+            "Build new Pre-baked AMI now (~3-5 min) — Automatically provisions IAM role, builds AMI, and integrates into setup",
+          value: "build_now",
+        },
+        {
+          label:
+            "Use existing AMI ID — Enter an AMI ID you already created in this region",
+          value: "existing",
+        },
+        {
+          label:
+            "Skip building for now — Leave empty (can build later with pnpm fleet:build-ami)",
+          value: "skip",
+        },
+      ],
+      amiId ? 1 : 0,
+    );
+
+    if (amiChoice === "existing") {
+      const enteredAmi = await ask(
+        rl,
+        "Enter existing AMI ID (e.g. ami-0123456789abcdef0)",
+        amiId || undefined,
+      );
+      amiId = enteredAmi.trim() || null;
+      if (amiId) {
+        ok(`Using existing AMI ID: ${bold(amiId)}`);
+      }
+    } else if (amiChoice === "build_now") {
+      info(
+        "Ensuring IAM Worker Role & Instance Profile exist before builder launch...",
+      );
+      const tempIam = new IAMClient({ region });
+      const workerRoleArn = await checkOrCreateRole(
+        tempIam,
+        storageProvider === "s3" && s3BucketName !== null,
+        s3BucketName,
+        s3BuildBucket,
+      );
+      await createInstanceProfile(tempIam, workerRoleArn);
+
+      const amiArch = allowedInstanceTypes.some((t) =>
+        t.startsWith("t4g") ||
+        t.startsWith("c7g") ||
+        t.startsWith("c8g") ||
+        t.startsWith("m7g"),
+      )
+        ? "arm64"
+        : "x86_64";
+
+      info(
+        `Building Pre-baked AMI for ${bold(amiArch)} in ${bold(region)}...`,
+      );
+      try {
+        amiId = await runBuildAmi({ region, architecture: amiArch });
+        ok(`Pre-baked AMI built successfully: ${bold(green(amiId))}`);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        warn(`Could not build AMI automatically: ${msg}`);
+        info(
+          `You can build it manually later: ${cyan("pnpm fleet:build-ami")}`,
+        );
+      }
+    } else {
+      info(
+        `Skipping AMI build. You can build it later with ${cyan("pnpm fleet:build-ami")}.`,
+      );
+    }
   }
 
   // ── Step 10: EC2 SSH Port / Security Group ──────────────────────────────────
@@ -2348,8 +2424,6 @@ async function runSetupFlow(
   info("Setting up CloudWatch log groups...");
   await ensureLogGroup(cw, LOG_GROUP_WORKERS);
   await ensureLogGroup(cw, LOG_GROUP_FLEET);
-
-  const amiId = initialDefaults?.amiId ?? process.env["AMI_ID"] ?? null;
 
   let lambdaFunctionArn: string | null = null;
   let probeLambdaArn: string | null = null;
