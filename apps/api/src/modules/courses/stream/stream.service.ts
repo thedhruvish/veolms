@@ -115,9 +115,17 @@ export function createStreamService({
     if (videoOutput?.master_playlist_path) {
       storageKey = videoOutput.master_playlist_path;
       format = "hls";
-    } else {
+    } else if (isCreator || isAdmin) {
+      // Creators and admins can preview direct raw upload before transcoding completes
       storageKey = mediaAsset.storage_key;
       format = "mp4";
+    } else {
+      // For enrolled learners and other users, return processing error until HLS is ready
+      throw new AppError(
+        409,
+        "VIDEO_PROCESSING",
+        "Video is currently processing. Please check back shortly.",
+      );
     }
 
     // 7. Direct stream URL

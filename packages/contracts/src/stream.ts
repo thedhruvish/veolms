@@ -49,9 +49,8 @@ export const streamResponseSchema = z.strictObject({
 
 export type StreamResponse = z.infer<typeof streamResponseSchema>;
 
-// Register schemas with OpenAPI registry
+// Register response schema with OpenAPI registry
 z.globalRegistry.add(streamResponseSchema, {
   id: "StreamResponse",
-  description:
-    "Streaming response containing secure playback URL and metadata.",
+  description: "Streaming response containing playback URL and metadata.",
 });

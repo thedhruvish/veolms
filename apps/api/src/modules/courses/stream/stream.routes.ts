@@ -45,6 +45,9 @@ const streamRoutes: RoutePlugin = async (app, options) => {
           401: errorResponse("Authentication required"),
           403: errorResponse("Forbidden - not enrolled in course"),
           404: errorResponse("Lecture or course not found"),
+          409: errorResponse(
+            "Video is currently processing and not ready for streaming",
+          ),
         },
       },
       preHandler: requireAuthenticated,
@@ -71,6 +74,9 @@ const streamRoutes: RoutePlugin = async (app, options) => {
           401: errorResponse("Authentication required"),
           403: errorResponse("Forbidden - not enrolled in course"),
           404: errorResponse("Lecture or course not found"),
+          409: errorResponse(
+            "Video is currently processing and not ready for streaming",
+          ),
         },
       },
       preHandler: requireAuthenticated,
