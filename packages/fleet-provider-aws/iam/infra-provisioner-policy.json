@@ -13,6 +13,8 @@
         "s3:GetBucketPolicy",
         "s3:PutBucketCors",
         "s3:GetBucketCors",
+        "s3:PutBucketPublicAccessBlock",
+        "s3:GetBucketPublicAccessBlock",
         "s3:PutPublicAccessBlock",
         "s3:GetPublicAccessBlock",
         "s3:PutObject",
@@ -41,9 +43,10 @@
         "iam:GetInstanceProfile",
         "iam:ListInstanceProfiles",
         "iam:AddRoleToInstanceProfile",
-        "iam:RemoveRoleFromInstanceProfile",
         "iam:PassRole",
-        "iam:TagRole"
+        "iam:TagRole",
+        "iam:TagInstanceProfile",
+        "iam:DeleteInstanceProfile"
       ],
       "Resource": [
         "arn:aws:iam::*:role/VeoLMS*",
@@ -63,11 +66,12 @@
         "lambda:PublishLayerVersion",
         "lambda:GetLayerVersion",
         "lambda:DeleteLayerVersion",
-        "lambda:TagResource"
+        "lambda:TagResource",
+        "lambda:InvokeFunction"
       ],
       "Resource": [
-        "arn:aws:lambda:*:*:function:veolms-*",
-        "arn:aws:lambda:*:*:layer:veolms-*"
+        "arn:aws:lambda:*:*:function:*",
+        "arn:aws:lambda:*:*:layer:*"
       ]
     },
     {
@@ -75,7 +79,6 @@
       "Effect": "Allow",
       "Action": [
         "logs:CreateLogGroup",
-        "logs:DescribeLogGroups",
         "logs:PutRetentionPolicy",
         "logs:DeleteLogGroup",
         "logs:TagResource"
@@ -84,6 +87,17 @@
         "arn:aws:logs:*:*:log-group:/veolms/*",
         "arn:aws:logs:*:*:log-group:/aws/lambda/veolms-*"
       ]
+    },
+    {
+      "Sid": "CloudWatchLogsInspection",
+      "Effect": "Allow",
+      "Action": [
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams",
+        "logs:GetLogEvents",
+        "logs:FilterLogEvents"
+      ],
+      "Resource": "*"
     },
     {
       "Sid": "EventBridgeSchedulerManagement",
@@ -115,7 +129,8 @@
         "ec2:CreateKeyPair",
         "ec2:CreateTags",
         "ec2:RunInstances",
-        "ec2:TerminateInstances"
+        "ec2:TerminateInstances",
+        "ec2:GetConsoleOutput"
       ],
       "Resource": "*"
     },

@@ -3092,7 +3092,9 @@ type SetupAction = "setup" | "update" | "destroy";
  *
  * Called by apps/fleet-manager/src/infra.ts when FLEET_PROVIDER=aws.
  */
-export async function runAwsInfraSetup(): Promise<void> {
+export async function runAwsInfraSetup(
+  existingRl?: readline.Interface,
+): Promise<void> {
   banner();
 
   // Resolve repo root relative to workspace markers
@@ -3117,7 +3119,8 @@ export async function runAwsInfraSetup(): Promise<void> {
           ? "setup"
           : undefined);
 
-  const rl = readline.createInterface({ input, output });
+  const ownRl = !existingRl;
+  const rl = existingRl ?? readline.createInterface({ input, output });
 
   try {
     const action =
@@ -3150,7 +3153,9 @@ export async function runAwsInfraSetup(): Promise<void> {
       await runDestroyFlow(rl, repoRoot);
     }
   } finally {
-    rl.close();
+    if (ownRl) {
+      rl.close();
+    }
   }
 }
 

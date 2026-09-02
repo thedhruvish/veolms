@@ -1,10 +1,18 @@
+import { createRequire } from "node:module";
 import { buildAndUploadBuildArtifacts } from "@veolms/fleet-provider-aws/setup";
-import {
+import { bold, cyan, green, red, yellow } from "@veolms/fleet-types/terminal";
+
+const _require = createRequire(import.meta.url);
+const {
   LambdaClient,
   UpdateFunctionCodeCommand,
   GetFunctionConfigurationCommand,
-} from "@aws-sdk/client-lambda";
-import { bold, cyan, green, red, yellow } from "@veolms/fleet-types/terminal";
+} = _require(
+  new URL(
+    "../../../packages/fleet-provider-aws/node_modules/@aws-sdk/client-lambda",
+    import.meta.url,
+  ).pathname,
+);
 
 async function waitForLambdaUpdate(
   lambda: LambdaClient,

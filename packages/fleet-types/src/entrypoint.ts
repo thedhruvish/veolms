@@ -13,11 +13,19 @@ import { fileURLToPath, pathToFileURL } from "node:url";
  * - Symlinks and pnpm virtual paths via realpath comparison
  */
 export function isMainModule(
-  importMetaUrl: string,
+  importMetaUrl?: string | null,
   argv1: string | undefined = process.argv[1],
 ): boolean {
   if (!argv1) {
     return false;
+  }
+
+  // CommonJS bundles (e.g. esbuild --format=cjs) where import.meta.url is undefined
+  if (!importMetaUrl) {
+    if (typeof require !== "undefined" && typeof module !== "undefined") {
+      return require.main === module;
+    }
+    return Boolean(argv1);
   }
 
   try {
@@ -62,7 +70,7 @@ export function isMainModule(
 
   // 5. Fallback for normalized path segment matching across platforms
   const normalizedArgv = argv1.replace(/\\/g, "/");
-  const normalizedUrl = importMetaUrl.replace(/\\/g, "/");
+  const normalizedUrl = (importMetaUrl ?? "").replace(/\\/g, "/");
   const cleanArgv = normalizedArgv.replace(/^\.?\//, "");
 
   return (

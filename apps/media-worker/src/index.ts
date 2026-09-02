@@ -90,7 +90,7 @@ export async function run(): Promise<void> {
   }
 }
 
-if (isMainModule(import.meta.url)) {
+if (isMainModule(import.meta?.url)) {
   run().catch((err) => {
     console.error("[media-worker] Fatal error during startup:", err);
     process.exit(1);
