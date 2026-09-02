@@ -1,6 +1,7 @@
 import type { Kysely } from "kysely";
 import type { Database } from "@veolms/database";
 import type { StreamResponse } from "@veolms/contracts";
+import type { S3StorageService } from "@veolms/storage";
 import { AppError } from "../../../lib/errors.ts";
 import { ADMIN_ROLE } from "../../auth/index.ts";
 import type { AppServices } from "../../../services/index.ts";
@@ -18,11 +19,16 @@ export interface StreamServiceOptions {
   database: Kysely<Database>;
   services?: AppServices;
   accessService?: AccessService;
+  storage?: S3StorageService;
+  storageService?: S3StorageService;
 }
 
 export function createStreamService({
   database,
+  services,
   accessService = createAccessService(),
+  storage,
+  storageService = storage ?? services?.storage,
 }: StreamServiceOptions) {
   /**
    * Retrieves the streaming URL for a lecture after verifying user enrollment.
@@ -82,7 +88,11 @@ export function createStreamService({
       }
     }
 
-    // 5. Validate streamable media asset
+    // 5. Validate streamable media asset & lesson publication
+    if (!lesson.is_published && !isCreator && !isAdmin) {
+      throw new AppError(404, "LECTURE_NOT_FOUND", "Lecture is not published.");
+    }
+
     if (lesson.content_type !== "video" || !lesson.content_media_id) {
       throw new AppError(
         400,
@@ -128,13 +138,42 @@ export function createStreamService({
       );
     }
 
-    // 7. Direct stream URL
-    const streamUrl =
-      storageKey.startsWith("http://") ||
-      storageKey.startsWith("https://") ||
-      storageKey.startsWith("/")
-        ? storageKey
-        : `/${storageKey}`;
+    // 7. Streaming URL resolution
+    let streamUrl: string;
+    if (storageKey.startsWith("https://")) {
+      streamUrl = storageKey;
+    } else {
+      if (!storageService) {
+        throw new AppError(
+          500,
+          "STORAGE_SERVICE_UNAVAILABLE",
+          "Storage service is not available to generate streaming URL.",
+        );
+      }
+
+      let key = storageKey;
+      if (key.startsWith("http://")) {
+        try {
+          const url = new URL(key);
+          let pathname = url.pathname.replace(/^\/+/, "");
+          const bucket = storageService.getBucket?.();
+          if (bucket && pathname.startsWith(`${bucket}/`)) {
+            pathname = pathname.slice(bucket.length + 1);
+          }
+          key = pathname;
+        } catch {
+          key = key.replace(/^http:\/\/[^/]+\/?/, "");
+        }
+      } else {
+        key = key.replace(/^\/+/, "");
+      }
+
+      let signedUrl = await storageService.getPresignedGetUrl(key);
+      if (signedUrl.startsWith("http://")) {
+        signedUrl = signedUrl.replace(/^http:\/\//i, "https://");
+      }
+      streamUrl = signedUrl;
+    }
 
     return {
       streamUrl,
