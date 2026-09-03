@@ -54,24 +54,78 @@ function resolveAwsRegion(): string {
   return "us-east-1";
 }
 
-function resolveLambdaName(): string {
-  if (process.env.LAMBDA_FUNCTION_NAME) {
-    return process.env.LAMBDA_FUNCTION_NAME;
-  }
-  if (process.env.FLEET_MANAGER_LAMBDA_NAME) {
-    return process.env.FLEET_MANAGER_LAMBDA_NAME;
-  }
-  if (process.env.LAMBDA_FUNCTION_ARN) {
-    const match = /:function:([^:]+)$/i.exec(process.env.LAMBDA_FUNCTION_ARN);
-    if (match?.[1]) {
-      return match[1];
+function resolveTargetLambda(): {
+  name: string;
+  isDirectFleetManager: boolean;
+} {
+  const args = process.argv.slice(2);
+  const isDirect =
+    args.includes("--fleet-manager") ||
+    args.includes("--direct") ||
+    args.includes("--target=fleet-manager") ||
+    args.includes("--target=fleet") ||
+    process.env["TRIGGER_TARGET"] === "fleet-manager" ||
+    process.env["TRIGGER_TARGET"] === "fleet" ||
+    process.env["TARGET"] === "fleet-manager" ||
+    process.env["TARGET"] === "fleet" ||
+    process.env["DIRECT"] === "true" ||
+    process.env["DIRECT_TRIGGER"] === "true";
+
+  for (const arg of args) {
+    if (arg.startsWith("--lambda=") || arg.startsWith("--function-name=")) {
+      const customName = arg.split("=")[1]?.trim();
+      if (customName) {
+        return { name: customName, isDirectFleetManager: isDirect };
+      }
     }
   }
-  return "veolms-fleet-manager";
+
+  if (isDirect) {
+    if (process.env.FLEET_MANAGER_LAMBDA_NAME) {
+      return {
+        name: process.env.FLEET_MANAGER_LAMBDA_NAME,
+        isDirectFleetManager: true,
+      };
+    }
+    if (process.env.LAMBDA_FUNCTION_NAME) {
+      return {
+        name: process.env.LAMBDA_FUNCTION_NAME,
+        isDirectFleetManager: true,
+      };
+    }
+    if (process.env.LAMBDA_FUNCTION_ARN) {
+      const match = /:function:([^:]+)$/i.exec(
+        process.env.LAMBDA_FUNCTION_ARN,
+      );
+      if (match?.[1]) {
+        return { name: match[1], isDirectFleetManager: true };
+      }
+    }
+    return { name: "veolms-fleet-manager", isDirectFleetManager: true };
+  }
+
+  // Default: veolms-video-metadata-probe
+  if (process.env.PROBE_LAMBDA_NAME) {
+    return {
+      name: process.env.PROBE_LAMBDA_NAME,
+      isDirectFleetManager: false,
+    };
+  }
+  if (process.env.PROBE_LAMBDA_ARN) {
+    const match = /:function:([^:]+)$/i.exec(process.env.PROBE_LAMBDA_ARN);
+    if (match?.[1]) {
+      return { name: match[1], isDirectFleetManager: false };
+    }
+  }
+  return {
+    name: "veolms-video-metadata-probe",
+    isDirectFleetManager: false,
+  };
 }
 
 const REGION = resolveAwsRegion();
-const LAMBDA_NAME = resolveLambdaName();
+const { name: LAMBDA_NAME, isDirectFleetManager: IS_DIRECT_FLEET_MANAGER } =
+  resolveTargetLambda();
 const PROFILE = process.env.AWS_PROFILE;
 const ENDPOINT_URL =
   process.env.AWS_ENDPOINT_URL || process.env.LOCALSTACK_ENDPOINT;
@@ -290,7 +344,7 @@ async function main(): Promise<void> {
     }
 
     console.info(
-      `[2/3] Invoking Lambda "${LAMBDA_NAME}" (region: ${REGION}${PROFILE ? `, profile: ${PROFILE}` : ""}) to claim and launch EC2 worker...`,
+      `[2/3] Invoking ${IS_DIRECT_FLEET_MANAGER ? "Fleet Manager Lambda (direct)" : "Probe Lambda (metadata probe & forward)"} "${LAMBDA_NAME}" (region: ${REGION}${PROFILE ? `, profile: ${PROFILE}` : ""})...`,
     );
     const outFile = join(
       tmpdir(),
@@ -370,8 +424,20 @@ async function main(): Promise<void> {
       }
 
       console.info(`✔ Lambda executed successfully.`);
+      if (parsedPayload.videoMetadata) {
+        const meta = parsedPayload.videoMetadata as Record<string, unknown>;
+        console.info(
+          `  Video Probed:  ${meta.width}x${meta.height} (${meta.durationSeconds}s, ${meta.fps} fps, codec: ${meta.codec})`,
+        );
+      }
+
+      const innerResponse =
+        (parsedPayload.targetLambdaResponse as Record<string, unknown> | undefined) ??
+        parsedPayload;
+
+      const isClaimed = Boolean(innerResponse.jobClaimed || parsedPayload.jobClaimed);
       console.info(
-        `  Claim Result: ${parsedPayload.jobClaimed ? "Job Claimed & EC2 Worker Launched" : "No job claimed (at worker capacity or queue empty)"}`,
+        `  Claim Result:  ${isClaimed ? "Job Claimed & EC2 Worker Launched" : "No job claimed (at worker capacity or queue empty)"}`,
       );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
