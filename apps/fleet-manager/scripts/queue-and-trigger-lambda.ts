@@ -34,6 +34,22 @@ import {
 } from "@veolms/fleet-types";
 
 function resolveAwsRegion(): string {
+  const args = process.argv.slice(2);
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg?.startsWith("--region=")) {
+      const val = arg.split("=")[1]?.trim();
+      if (val) return val;
+    }
+    if (
+      arg === "--region" &&
+      i + 1 < args.length &&
+      !args[i + 1]?.startsWith("-")
+    ) {
+      const val = args[i + 1]?.trim();
+      if (val) return val;
+    }
+  }
   if (process.env.AWS_REGION) {
     return process.env.AWS_REGION;
   }
@@ -52,6 +68,24 @@ function resolveAwsRegion(): string {
     }
   }
   return "us-east-1";
+}
+
+function resolveAwsProfile(): string | undefined {
+  const args = process.argv.slice(2);
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg?.startsWith("--profile=") || arg?.startsWith("--aws-profile=")) {
+      return arg.split("=")[1]?.trim();
+    }
+    if (
+      (arg === "--profile" || arg === "--aws-profile") &&
+      i + 1 < args.length &&
+      !args[i + 1]?.startsWith("-")
+    ) {
+      return args[i + 1]?.trim();
+    }
+  }
+  return process.env.AWS_PROFILE;
 }
 
 function resolveTargetLambda(): {
@@ -126,7 +160,7 @@ function resolveTargetLambda(): {
 const REGION = resolveAwsRegion();
 const { name: LAMBDA_NAME, isDirectFleetManager: IS_DIRECT_FLEET_MANAGER } =
   resolveTargetLambda();
-const PROFILE = process.env.AWS_PROFILE;
+const PROFILE = resolveAwsProfile();
 const ENDPOINT_URL =
   process.env.AWS_ENDPOINT_URL || process.env.LOCALSTACK_ENDPOINT;
 const DEFAULT_VIDEO_KEY = "raw/video.mp4";
@@ -229,7 +263,7 @@ async function main(): Promise<void> {
 
   try {
     const rawArgs = process.argv.slice(2);
-    const isCancel =
+    const isExplicitCancel =
       rawArgs.includes("--cancel") ||
       rawArgs.some(
         (a) =>
@@ -238,26 +272,79 @@ async function main(): Promise<void> {
           a.startsWith("--cancel="),
       );
 
-    if (isCancel) {
-      let targetJobId = "";
-      for (const arg of rawArgs) {
-        if (
-          arg.startsWith("--job-id=") ||
-          arg.startsWith("--jobId=") ||
-          arg.startsWith("--cancel-job=") ||
-          arg.startsWith("--cancel=")
-        ) {
-          targetJobId = arg.split("=")[1]?.trim() || "";
+    let targetJobId = "";
+    for (const arg of rawArgs) {
+      if (
+        arg.startsWith("--job-id=") ||
+        arg.startsWith("--jobId=") ||
+        arg.startsWith("--cancel-job=") ||
+        arg.startsWith("--cancel=")
+      ) {
+        targetJobId = arg.split("=")[1]?.trim() || "";
+      }
+    }
+
+    const hasExplicitFlags =
+      rawArgs.length > 0 ||
+      Boolean(process.env.VIDEO_KEY) ||
+      Boolean(process.env.QUALITIES) ||
+      Boolean(process.env.NON_INTERACTIVE);
+
+    let selectedAction: "queue" | "cancel" = isExplicitCancel
+      ? "cancel"
+      : "queue";
+
+    if (!isExplicitCancel && !hasExplicitFlags) {
+      const rl = readline.createInterface({ input, output });
+      try {
+        console.info(`\nSelect action:`);
+        console.info(`  1) Queue & trigger a new transcode job (default)`);
+        console.info(
+          `  2) Cancel an active or queued transcode job (with S3 cleanup)`,
+        );
+        const choice = (await rl.question(`Enter choice [1]: `)).trim();
+        if (choice === "2" || choice.toLowerCase().startsWith("c")) {
+          selectedAction = "cancel";
+        }
+      } finally {
+        rl.close();
+      }
+    }
+
+    if (selectedAction === "cancel") {
+      const recentJobs = await db
+        .selectFrom("video_jobs")
+        .select(["id", "status", "video_key", "created_at"])
+        .orderBy("created_at", "desc")
+        .limit(5)
+        .execute();
+
+      if (!targetJobId && recentJobs.length > 0 && !hasExplicitFlags) {
+        const rl = readline.createInterface({ input, output });
+        try {
+          console.info(`\nSelect job to cancel:`);
+          recentJobs.forEach((job, idx) => {
+            console.info(
+              `  ${idx + 1}) [${job.status}] ${job.video_key} (ID: ${job.id})`,
+            );
+          });
+          console.info(`  ${recentJobs.length + 1}) Enter custom Job ID...`);
+          const ans = (await rl.question(`Enter choice [1]: `)).trim();
+          const num = parseInt(ans, 10);
+          if (num >= 1 && num <= recentJobs.length) {
+            targetJobId = recentJobs[num - 1]!.id;
+          } else if (num === recentJobs.length + 1) {
+            targetJobId = (await rl.question(`Enter Job ID: `)).trim();
+          } else {
+            targetJobId = recentJobs[0]!.id;
+          }
+        } finally {
+          rl.close();
         }
       }
 
-      if (!targetJobId) {
-        const latestJob = await db
-          .selectFrom("video_jobs")
-          .select(["id", "status", "video_key"])
-          .orderBy("created_at", "desc")
-          .executeTakeFirst();
-        targetJobId = latestJob?.id ?? "";
+      if (!targetJobId && recentJobs.length > 0) {
+        targetJobId = recentJobs[0]!.id;
       }
 
       if (!targetJobId) {
@@ -617,8 +704,14 @@ async function main(): Promise<void> {
               const state = instance.State?.Name ?? "unknown";
               const publicIp = instance.PublicIpAddress;
               const privateIp = instance.PrivateIpAddress;
+              const rawKeyName = instance.KeyName || process.env.KEY_NAME;
               const keyName =
-                instance.KeyName || process.env.KEY_NAME || "mykey";
+                rawKeyName &&
+                rawKeyName !== "null" &&
+                rawKeyName !== "undefined" &&
+                rawKeyName.trim() !== ""
+                  ? rawKeyName.trim()
+                  : null;
 
               console.info(`\n  EC2 Instance Details:`);
               console.info(`    Instance ID:       ${ec2InstanceId}`);
@@ -630,16 +723,11 @@ async function main(): Promise<void> {
               console.info(
                 `    Private IP:        ${privateIp || "(assigning...)"}`,
               );
-              console.info(`    Key Pair:          ${keyName}`);
+              console.info(
+                `    Key Pair:          ${keyName || "(None — using EC2 Instance Connect / SSM)"}`,
+              );
 
-              if (publicIp) {
-                // Find the matching .pem key file, checked only once we
-                // actually need it (the common case right after launch is
-                // "IP still being allocated," which never reaches here).
-                // The instance's real key name is checked before the
-                // generic "mykey.pem" fallback, so a stale/unrelated
-                // mykey.pem left over from another instance is never
-                // picked over the key that actually matches this one.
+              if (publicIp && keyName) {
                 const repoRoot = resolve(process.cwd(), "../..");
                 const possibleKeys = [
                   join(process.cwd(), `${keyName}.pem`),
@@ -657,6 +745,15 @@ async function main(): Promise<void> {
                 console.info(`\n  Live Worker Logs:`);
                 console.info(
                   `    ssh ${keyArg} ${target} ${shellQuote("tail -f /var/log/veolms-bootstrap.log /var/log/veolms-worker.log")}`,
+                );
+              } else if (publicIp && !keyName) {
+                console.info(`\n  Browser Terminal & AWS Console Connect:`);
+                console.info(
+                  `    AWS Console -> EC2 -> Instances -> ${ec2InstanceId} -> Connect -> EC2 Instance Connect`,
+                );
+                console.info(`\n  AWS Systems Manager (SSM) Session Manager:`);
+                console.info(
+                  `    aws ssm start-session --target ${ec2InstanceId} --region ${REGION}`,
                 );
               } else {
                 console.info(

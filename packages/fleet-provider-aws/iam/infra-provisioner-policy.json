@@ -54,6 +54,17 @@
       ]
     },
     {
+      "Sid": "EC2SpotServiceLinkedRole",
+      "Effect": "Allow",
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": "arn:aws:iam::*:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot",
+      "Condition": {
+        "StringLike": {
+          "iam:AWSServiceName": "spot.amazonaws.com"
+        }
+      }
+    },
+    {
       "Sid": "LambdaFunctionAndLayerManagement",
       "Effect": "Allow",
       "Action": [

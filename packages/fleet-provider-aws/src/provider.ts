@@ -128,7 +128,14 @@ export function createAwsProvider(
     config.iamInstanceProfile ?? envConfig.EC2_IAM_INSTANCE_PROFILE;
   const useSpot = config.useSpot ?? envConfig.EC2_USE_SPOT;
   const subnetId = config.subnetId ?? envConfig.SUBNET_ID;
-  const keyName = config.keyName ?? envConfig.KEY_NAME;
+  const rawKeyName = config.keyName ?? envConfig.KEY_NAME;
+  const keyName =
+    rawKeyName &&
+    rawKeyName.trim() !== "" &&
+    rawKeyName !== "null" &&
+    rawKeyName !== "undefined"
+      ? rawKeyName.trim()
+      : undefined;
   const securityGroupIds =
     config.securityGroupIds ??
     (envConfig.SECURITY_GROUP_IDS

@@ -37,6 +37,7 @@ import {
   PutRolePolicyCommand,
   GetRoleCommand,
   UpdateAssumeRolePolicyCommand,
+  CreateServiceLinkedRoleCommand,
 } from "@aws-sdk/client-iam";
 import {
   EC2Client,
@@ -83,8 +84,9 @@ import {
 } from "@veolms/fleet-types/terminal";
 import { isMainModule } from "@veolms/fleet-types";
 
-import { checkAwsCredentials } from "./aws-cli-check.ts";
+import { checkAwsCredentials, listAvailableAwsProfiles } from "./aws-cli-check.ts";
 import { runAwsInfraDestroy } from "./destroy.ts";
+import { runSetupCicdIam } from "../../iam/setup-cicd-iam.ts";
 import {
   isDockerRunning,
   buildFfprobeLayer,
@@ -121,6 +123,7 @@ const DEFAULT_LOCALSTACK_ENDPOINT = "http://localhost.localstack.cloud:4566";
 interface SetupAnswers {
   readonly targetEnv: TargetEnv;
   readonly endpointUrl: string | null;
+  readonly profile?: string | null;
   readonly region: string;
   readonly accountId: string;
   readonly databaseUrl: string;
@@ -294,6 +297,30 @@ async function createRole(iam: IAMClient): Promise<string> {
 
   ok(`Created IAM role: ${bold(ROLE_NAME)}`);
   return roleArn;
+}
+
+export async function ensureSpotServiceLinkedRole(iam: IAMClient): Promise<void> {
+  try {
+    await iam.send(
+      new CreateServiceLinkedRoleCommand({
+        AWSServiceName: "spot.amazonaws.com",
+      }),
+    );
+    ok("Created AWSServiceRoleForEC2Spot service-linked role for EC2 Spot instances");
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (
+      msg.includes("has been taken") ||
+      msg.includes("already exists") ||
+      msg.includes("InvalidInput")
+    ) {
+      return;
+    }
+    warn(
+      `Could not ensure EC2 Spot service-linked role automatically: ${msg}.\n` +
+        `  If using EC2 Spot instances, run: aws iam create-service-linked-role --aws-service-name spot.amazonaws.com`,
+    );
+  }
 }
 
 export async function checkOrCreateRole(
@@ -476,6 +503,9 @@ export async function checkOrCreateRole(
     }),
   );
   ok("Attached EC2 worker control + PassRole inline policy");
+
+  // Ensure the AWS EC2 Spot service-linked role exists in the account
+  await ensureSpotServiceLinkedRole(iam);
 
   return roleArn;
 }
@@ -1415,6 +1445,9 @@ async function generateEnvFiles(
     STORAGE_PROVIDER: answers.storageProvider,
   };
 
+  if (answers.profile) {
+    fleetEnv["AWS_PROFILE"] = answers.profile;
+  }
   if (answers.s3BucketName) {
     fleetEnv["S3_BUCKET_NAME"] = answers.s3BucketName;
     fleetEnv["S3_BUCKET"] = answers.s3BucketName;
@@ -1470,6 +1503,9 @@ async function generateEnvFiles(
     WORKER_IDLE_POLL_SECONDS: String(answers.workerIdlePollSeconds),
   };
 
+  if (answers.profile) {
+    workerEnv["AWS_PROFILE"] = answers.profile;
+  }
   if (answers.s3BucketName) {
     workerEnv["S3_BUCKET_NAME"] = answers.s3BucketName;
     workerEnv["S3_BUCKET"] = answers.s3BucketName;
@@ -1524,7 +1560,7 @@ function parseEnvFile(filePath: string): Record<string, string> {
 }
 
 function parseSetupCliArgs(): Partial<SetupAnswers> & {
-  action?: "setup" | "update" | "destroy";
+  action?: "setup" | "update" | "destroy" | "cicd";
 } {
   const result: Record<string, unknown> = {};
   for (const arg of process.argv.slice(2)) {
@@ -1532,6 +1568,8 @@ function parseSetupCliArgs(): Partial<SetupAnswers> & {
     const val = eqIdx >= 0 ? arg.slice(eqIdx + 1).trim() : "";
     if (arg.startsWith("--region=")) {
       result.region = val;
+    } else if (arg.startsWith("--profile=") || arg.startsWith("--aws-profile=")) {
+      result.profile = val;
     } else if (arg.startsWith("--bucket=") || arg.startsWith("--s3-bucket=")) {
       result.s3BucketName = val;
       result.storageProvider = "s3";
@@ -1564,10 +1602,12 @@ function parseSetupCliArgs(): Partial<SetupAnswers> & {
       result.action = "destroy";
     } else if (arg === "--setup") {
       result.action = "setup";
+    } else if (arg === "--cicd" || arg === "--setup-cicd") {
+      result.action = "cicd";
     }
   }
   return result as Partial<SetupAnswers> & {
-    action?: "setup" | "update" | "destroy";
+    action?: "setup" | "update" | "destroy" | "cicd";
   };
 }
 
@@ -1583,6 +1623,7 @@ function loadExistingConfig(repoRoot: string): Partial<SetupAnswers> {
     ...process.env,
   };
   if (cliArgs.region) combined["AWS_REGION"] = cliArgs.region;
+  if (cliArgs.profile) combined["AWS_PROFILE"] = cliArgs.profile;
   if (cliArgs.s3BucketName) {
     combined["S3_BUCKET"] = cliArgs.s3BucketName;
     combined["S3_BUCKET_NAME"] = cliArgs.s3BucketName;
@@ -1604,6 +1645,7 @@ function loadExistingConfig(repoRoot: string): Partial<SetupAnswers> {
     ? "localstack"
     : "aws";
   const endpointUrl = combined["AWS_ENDPOINT_URL"] || null;
+  const profile = combined["AWS_PROFILE"] || null;
   const region = combined["AWS_REGION"] || "us-east-1";
   const fleetMode: FleetMode =
     combined["FLEET_MODE"] === "serverful" ? "serverful" : "serverless";
@@ -1614,6 +1656,11 @@ function loadExistingConfig(repoRoot: string): Partial<SetupAnswers> {
       : "s3";
   const s3BucketName = resolveS3BucketName(combined);
   const s3BuildBucket = resolveS3BuildBucketName(combined);
+  const rawBucketAccess = combined["S3_BUCKET_ACCESS"]?.toLowerCase().trim();
+  const s3BucketAccess: "private" | "public" | undefined =
+    rawBucketAccess === "public" || rawBucketAccess === "private"
+      ? rawBucketAccess
+      : undefined;
   const s3CredentialMode: CredentialMode =
     combined["S3_USE_INSTANCE_ROLE"] === "true" ? "automatic" : "manual";
   const allowedInstanceTypes = combined["EC2_ALLOWED_INSTANCE_TYPES"]
@@ -1625,6 +1672,7 @@ function loadExistingConfig(repoRoot: string): Partial<SetupAnswers> {
   const bootMode: BootMode =
     combined["EC2_BOOT_MODE"] === "ami" || combined["AMI_ID"] ? "ami" : "fresh";
   const amiId = combined["AMI_ID"] || null;
+  const amiName = combined["AMI_NAME"]?.trim() || null;
   const maxWorkers = parseInt(combined["MAX_WORKERS"] || "8", 10) || 8;
   const workerIdlePollSeconds =
     parseInt(combined["WORKER_IDLE_POLL_SECONDS"] || "15", 10) || 15;
@@ -1649,6 +1697,7 @@ function loadExistingConfig(repoRoot: string): Partial<SetupAnswers> {
   return {
     targetEnv,
     endpointUrl,
+    profile,
     region,
     fleetMode,
     lambdaArch,
@@ -1656,10 +1705,12 @@ function loadExistingConfig(repoRoot: string): Partial<SetupAnswers> {
     storageProvider,
     s3BucketName,
     s3BuildBucket,
+    s3BucketAccess,
     s3CredentialMode,
     allowedInstanceTypes,
     bootMode,
     amiId,
+    amiName,
     maxWorkers,
     workerIdlePollSeconds,
     useSpot,
@@ -1686,7 +1737,7 @@ async function runSetupFlow(
     rl,
     "Where should this provision resources?",
     [
-      { label: "Real AWS (production, billed)", value: "aws" as TargetEnv },
+      { label: "Cloud AWS (production, billed)", value: "aws" as TargetEnv },
       {
         label: "LocalStack (local testing, free — requires LocalStack running)",
         value: "localstack" as TargetEnv,
@@ -1696,6 +1747,9 @@ async function runSetupFlow(
   );
 
   let endpointUrl: string | null = null;
+  let awsProfile: string | null =
+    initialDefaults?.profile ?? process.env["AWS_PROFILE"] ?? null;
+
   if (targetEnv === "aws") {
     delete process.env.AWS_ENDPOINT_URL;
     if (process.env.AWS_ACCESS_KEY_ID === "test") {
@@ -1703,6 +1757,61 @@ async function runSetupFlow(
     }
     if (process.env.AWS_SECRET_ACCESS_KEY === "test") {
       delete process.env.AWS_SECRET_ACCESS_KEY;
+    }
+
+    const availableProfiles = listAvailableAwsProfiles();
+    const cliArgs = parseSetupCliArgs();
+
+    if (!cliArgs.profile && !isNonInteractive()) {
+      if (availableProfiles.length > 0) {
+        const choices = availableProfiles.map((p) => ({
+          label: p === "default" ? "default (Default AWS credentials)" : p,
+          value: p,
+        }));
+        choices.push({
+          label: "Enter a custom profile name...",
+          value: "__custom__",
+        });
+        choices.push({
+          label:
+            "Use Environment Variables (AWS_ACCESS_KEY_ID / SECRET_ACCESS_KEY)",
+          value: "__env__",
+        });
+
+        const defaultIdx =
+          awsProfile && availableProfiles.includes(awsProfile)
+            ? availableProfiles.indexOf(awsProfile)
+            : 0;
+
+        const chosen = await askChoice(
+          rl,
+          "Which AWS profile should be used for this setup?",
+          choices,
+          defaultIdx,
+        );
+
+        if (chosen === "__custom__") {
+          const customName = await ask(rl, "AWS profile name", "default");
+          awsProfile = customName.trim() || null;
+        } else if (chosen === "__env__") {
+          awsProfile = null;
+          delete process.env.AWS_PROFILE;
+        } else {
+          awsProfile = chosen;
+        }
+      } else {
+        const customName = await ask(
+          rl,
+          "AWS profile name (leave empty for default/env vars)",
+          awsProfile ?? "",
+        );
+        awsProfile = customName.trim() || null;
+      }
+    }
+
+    if (awsProfile) {
+      process.env.AWS_PROFILE = awsProfile;
+      info(`Active AWS profile: ${bold(awsProfile)}`);
     }
   } else if (targetEnv === "localstack") {
     const defaultEndpoint =
@@ -1725,7 +1834,7 @@ async function runSetupFlow(
 
   // ── AWS Credential Pre-flight Check ────────────────────────────────────────
   info("Checking AWS credentials...");
-  const identity = await checkAwsCredentials(region);
+  const identity = await checkAwsCredentials(region, awsProfile ?? undefined);
   const accountId = identity.accountId;
 
   // ── Step 3: Fleet Manager Mode ─────────────────────────────────────────────
@@ -2392,7 +2501,9 @@ async function runSetupFlow(
   if (allowSsh) {
     step(11, TOTAL_STEPS, "EC2 SSH Key Pair");
     info(
-      "Specifying an SSH Key Pair allows you to SSH into EC2 worker instances (e.g. debian@<ip>).",
+      "Specifying an SSH Key Pair allows direct `ssh -i <key>.pem admin@<ip>` access.\n" +
+        "  If you do NOT have an SSH key, leave this empty — you can still connect via AWS Console\n" +
+        "  using EC2 Instance Connect (browser terminal) or AWS Systems Manager (SSM Session Manager).",
     );
     const defaultKeyName =
       initialDefaults?.keyName ??
@@ -2401,7 +2512,7 @@ async function runSetupFlow(
       "";
     const keyNameInput = await ask(
       rl,
-      "EC2 SSH Key Pair Name (leave empty to skip, must be in same region)",
+      "EC2 SSH Key Pair Name (leave empty to use EC2 Instance Connect / SSM)",
       defaultKeyName || undefined,
     );
     keyName = keyNameInput.trim() || null;
@@ -2412,12 +2523,15 @@ async function runSetupFlow(
       if (keyExists) {
         ok(`Found EC2 Key Pair: ${bold(keyName)} in region ${bold(region)}`);
       } else {
-        info(
-          `EC2 Key Pair configured as ${bold(keyName)} (ensure it exists in AWS).`,
+        warn(
+          `EC2 Key Pair "${keyName}" was not found in AWS region ${region}.\n` +
+            `  Ensure this key pair is created in AWS EC2 Console before SSHing, or leave blank to use EC2 Instance Connect.`,
         );
       }
     } else {
-      info("No SSH Key Pair configured — skipping key assignment.");
+      info(
+        "No SSH Key Pair configured — workers will launch with EC2 Instance Connect & SSM Session Manager access.",
+      );
     }
   } else {
     info("SSH access disabled — skipping SSH Key Pair configuration.");
@@ -2523,6 +2637,10 @@ async function runSetupFlow(
       SCHEDULER_ROLE_ARN: workerRoleArn,
       LAMBDA_FUNCTION_ARN: lambdaArn,
     };
+    if (allowedInstanceTypes.length > 0) {
+      lambdaEnvVars["EC2_ALLOWED_INSTANCE_TYPES"] =
+        allowedInstanceTypes.join(",");
+    }
     if (s3BucketName) {
       lambdaEnvVars["S3_BUCKET"] = s3BucketName;
       lambdaEnvVars["S3_BUCKET_NAME"] = s3BucketName;
@@ -2639,6 +2757,7 @@ async function runSetupFlow(
   const answers: SetupAnswers = {
     targetEnv,
     endpointUrl,
+    profile: awsProfile,
     region,
     accountId,
     databaseUrl,
@@ -2809,7 +2928,10 @@ async function runUpdateFlow(
   }
 
   step(2, 3, "Checking AWS Credentials");
-  const identity = await checkAwsCredentials(region);
+  const identity = await checkAwsCredentials(
+    region,
+    existing.profile ?? undefined,
+  );
   const accountId = identity.accountId;
 
   step(3, 3, "Applying Infrastructure Updates");
@@ -2934,6 +3056,10 @@ ${bold("Next Steps:")}
       MAX_WORKERS: String(maxWorkers),
       WORKER_IDLE_POLL_SECONDS: String(workerIdlePollSeconds),
     };
+    if (allowedInstanceTypes.length > 0) {
+      lambdaEnvVars["EC2_ALLOWED_INSTANCE_TYPES"] =
+        allowedInstanceTypes.join(",");
+    }
     if (s3BucketName) {
       lambdaEnvVars["S3_BUCKET"] = s3BucketName;
       lambdaEnvVars["S3_BUCKET_NAME"] = s3BucketName;
@@ -3036,6 +3162,7 @@ ${bold("Next Steps:")}
   const answers: SetupAnswers = {
     targetEnv,
     endpointUrl,
+    profile: existing.profile,
     region,
     accountId,
     databaseUrl,
@@ -3161,14 +3288,15 @@ async function runDestroyFlow(
 
 // ─── Exported Entry Point ─────────────────────────────────────────────────────
 
-type SetupAction = "setup" | "update" | "destroy";
+type SetupAction = "setup" | "update" | "cicd" | "destroy";
 
 /**
  * Main entry point for AWS infrastructure setup.
  * Interactively prompts user to choose between:
  *  1. Setup Infrastructure
  *  2. Update Infrastructure
- *  3. Destroy Infrastructure
+ *  3. Setup CI/CD Deployer User (GitHub Actions)
+ *  4. Destroy Infrastructure
  *
  * Called by apps/fleet-manager/src/infra.ts when FLEET_PROVIDER=aws.
  */
@@ -3195,9 +3323,11 @@ export async function runAwsInfraSetup(
       ? "update"
       : process.argv.includes("--destroy")
         ? "destroy"
-        : process.argv.includes("--setup")
-          ? "setup"
-          : undefined);
+        : process.argv.includes("--cicd") || process.argv.includes("--setup-cicd")
+          ? "cicd"
+          : process.argv.includes("--setup")
+            ? "setup"
+            : undefined);
 
   const ownRl = !existingRl;
   const rl = existingRl ?? readline.createInterface({ input, output });
@@ -3210,15 +3340,19 @@ export async function runAwsInfraSetup(
         "What infrastructure action would you like to perform?",
         [
           {
-            label: `Setup Infrastructure   ${dim("— Provision fresh AWS resources and generate .env")}`,
+            label: `Setup Infrastructure      ${dim("— Provision fresh AWS resources and generate .env")}`,
             value: "setup",
           },
           {
-            label: `Update Infrastructure  ${dim("— Sync IAM, update Lambda code/config, worker bundle, .env")}`,
+            label: `Update Infrastructure     ${dim("— Sync IAM, update Lambda code/config, worker bundle, .env")}`,
             value: "update",
           },
           {
-            label: `Destroy Infrastructure ${dim("— Teardown and delete all AWS resources")}`,
+            label: `Setup CI/CD Deployer User ${dim("— Create IAM user & secrets for GitHub Actions CI/CD")}`,
+            value: "cicd",
+          },
+          {
+            label: `Destroy Infrastructure    ${dim("— Teardown and delete all AWS resources")}`,
             value: "destroy",
           },
         ],
@@ -3229,6 +3363,12 @@ export async function runAwsInfraSetup(
       await runSetupFlow(rl, repoRoot, existingConfig);
     } else if (action === "update") {
       await runUpdateFlow(rl, repoRoot);
+    } else if (action === "cicd") {
+      await runSetupCicdIam({
+        region: existingConfig.region ?? undefined,
+        bucketName: existingConfig.s3BuildBucket ?? existingConfig.s3BucketName ?? undefined,
+        profile: existingConfig.profile ?? undefined,
+      });
     } else if (action === "destroy") {
       await runDestroyFlow(rl, repoRoot);
     }
@@ -3241,11 +3381,14 @@ export async function runAwsInfraSetup(
 
 export { runAwsInfraDestroy } from "./destroy.ts";
 export { runBuildAmi } from "./build-ami.ts";
+export { runSetupCicdIam } from "../../iam/setup-cicd-iam.ts";
+export { listAvailableAwsProfiles, checkAwsCredentials } from "./aws-cli-check.ts";
+export { parseEnvFile, loadExistingConfig, generateEnvFiles };
 
 if (isMainModule(import.meta.url)) {
   runAwsInfraSetup().catch((err: unknown) => {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error(`\n✘ Setup failed: ${msg}\n`);
+    console.error(`\n${red("✘")} ${bold("Setup failed:")} ${msg}\n`);
     process.exit(1);
   });
 }

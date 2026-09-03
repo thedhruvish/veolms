@@ -6,7 +6,7 @@
  * to .env files.
  */
 
-import { execSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,8 +15,6 @@ import { isMainModule } from "@veolms/fleet-types";
 import { bold, cyan, dim, green, yellow } from "@veolms/fleet-types/terminal";
 import { resolveDebianAmiId } from "../debian-ami.ts";
 
-const REGION = process.env.AWS_REGION || "us-east-1";
-const ARCHITECTURE = (process.env.ARCHITECTURE || "arm64").toLowerCase();
 const DEBIAN_RELEASE = "13";
 
 function exec(cmd: string): string {
@@ -195,9 +193,24 @@ shutdown -h now
     // Step 3: Create AMI from stopped instance
     console.info("\n[3/5] Creating pre-baked AMI from stopped instance...");
     const createAmiRes = JSON.parse(
-      exec(
-        `aws ec2 create-image --instance-id ${instanceId} --name "${amiName}" --description "VeoLMS Pre-baked Worker AMI with Node.js 24 + FFmpeg + AWS CLI" --output json --region ${region}`,
-      ),
+      execFileSync(
+        "aws",
+        [
+          "ec2",
+          "create-image",
+          "--instance-id",
+          instanceId,
+          "--name",
+          amiName,
+          "--description",
+          "VeoLMS Pre-baked Worker AMI with Node.js 24 + FFmpeg + AWS CLI",
+          "--output",
+          "json",
+          "--region",
+          region,
+        ],
+        { encoding: "utf-8", stdio: "pipe" },
+      ).trim(),
     );
     amiId = createAmiRes.ImageId;
     console.info(`✔ AMI Creation initiated: ${bold(green(amiId))}`);
