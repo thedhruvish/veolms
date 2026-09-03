@@ -240,6 +240,8 @@ export async function pruneZombieWorkers(
               updated_at: new Date(),
             })
             .where("id", "=", job.id)
+            .where("status", "in", ["provisioning", "processing"])
+            .where("worker_id", "=", worker.id)
             .execute();
         }
       } catch (jobErr) {

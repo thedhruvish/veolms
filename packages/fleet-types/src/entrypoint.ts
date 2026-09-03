@@ -65,16 +65,8 @@ export function isMainModule(
       }
     }
   } catch {
-    // Ignore URL/path parsing errors and fallback to normalized segment matching
+    // Ignore URL/path parsing errors
   }
 
-  // 5. Fallback for normalized path segment matching across platforms
-  const normalizedArgv = argv1.replace(/\\/g, "/");
-  const normalizedUrl = (importMetaUrl ?? "").replace(/\\/g, "/");
-  const cleanArgv = normalizedArgv.replace(/^\.?\//, "");
-
-  return (
-    normalizedUrl.toLowerCase().endsWith(`/${cleanArgv.toLowerCase()}`) ||
-    normalizedUrl.toLowerCase() === cleanArgv.toLowerCase()
-  );
+  return false;
 }

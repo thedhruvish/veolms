@@ -346,16 +346,21 @@ export function createMonitor(options: {
           for (const job of unverifiedJobs) {
             const verified = await provider.verifyJobOutput(job.output_prefix);
             if (verified) {
-              await jobManager.markJobCompleted(job.id);
-              await workerManager.recordEvent(
-                "job_output_verified",
-                job.worker_id,
+              const completed = await jobManager.markJobCompleted(
                 job.id,
-                {
-                  outputPrefix: job.output_prefix,
-                },
+                job.worker_id ?? undefined,
               );
-              verifiedCompletedJobs++;
+              if (completed) {
+                await workerManager.recordEvent(
+                  "job_output_verified",
+                  job.worker_id,
+                  job.id,
+                  {
+                    outputPrefix: job.output_prefix,
+                  },
+                );
+                verifiedCompletedJobs++;
+              }
             } else {
               console.warn(
                 `[reconciliation] Job ${job.id} reached 100% progress but output verification failed for ${job.output_prefix}`,

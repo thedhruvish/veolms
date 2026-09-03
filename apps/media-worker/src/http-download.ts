@@ -1,3 +1,4 @@
+import dns from "node:dns/promises";
 import { createWriteStream } from "node:fs";
 import { isIP } from "node:net";
 import { Readable, Transform } from "node:stream";
@@ -15,7 +16,17 @@ export interface HttpDownloadOptions extends DownloadLimitOptions {
 }
 
 export function isPrivateOrReservedHost(hostname: string): boolean {
-  const host = hostname.toLowerCase().trim();
+  let host = hostname.toLowerCase().trim();
+
+  // Normalize IPv6 brackets
+  if (host.startsWith("[") && host.endsWith("]")) {
+    host = host.slice(1, -1);
+  }
+
+  // Normalize trailing DNS dot
+  if (host.endsWith(".")) {
+    host = host.slice(0, -1);
+  }
 
   if (
     host === "localhost" ||
@@ -55,6 +66,7 @@ export function isPrivateOrReservedHost(hostname: string): boolean {
     const lower = host.toLowerCase();
     if (
       lower === "::1" ||
+      lower === "::" ||
       lower.startsWith("fe80:") ||
       lower.startsWith("fc00:") ||
       lower.startsWith("fd00:")
@@ -80,7 +92,15 @@ export function validateHttpVideoUrl(urlString: string): URL {
     );
   }
 
-  if (isPrivateOrReservedHost(parsed.hostname)) {
+  let normalizedHost = parsed.hostname.toLowerCase().trim();
+  if (normalizedHost.startsWith("[") && normalizedHost.endsWith("]")) {
+    normalizedHost = normalizedHost.slice(1, -1);
+  }
+  if (normalizedHost.endsWith(".")) {
+    normalizedHost = normalizedHost.slice(0, -1);
+  }
+
+  if (isPrivateOrReservedHost(normalizedHost)) {
     throw new Error(
       `Access to private, loopback, or cloud metadata network addresses is prohibited: "${parsed.hostname}"`,
     );
@@ -113,9 +133,51 @@ export async function downloadHttpFile(
     let response: Response | undefined;
 
     while (redirectCount <= maxRedirects) {
-      response = await fetch(currentUrl, {
+      const parsedUrl = validateHttpVideoUrl(currentUrl);
+      let host = parsedUrl.hostname.toLowerCase().trim();
+      if (host.startsWith("[") && host.endsWith("]")) {
+        host = host.slice(1, -1);
+      }
+      if (host.endsWith(".")) {
+        host = host.slice(0, -1);
+      }
+
+      let destinationAddress = host;
+      if (!isIP(host)) {
+        const records = await dns.lookup(host, { all: true });
+        if (!records || records.length === 0) {
+          throw new Error(`Could not resolve host "${host}"`);
+        }
+        for (const record of records) {
+          if (isPrivateOrReservedHost(record.address)) {
+            throw new Error(
+              `Access to private, loopback, or cloud metadata network addresses is prohibited: "${record.address}"`,
+            );
+          }
+        }
+        const firstRecord = records[0];
+        if (!firstRecord) {
+          throw new Error(`Could not resolve host "${host}"`);
+        }
+        destinationAddress = firstRecord.address;
+      } else if (isPrivateOrReservedHost(destinationAddress)) {
+        throw new Error(
+          `Access to private, loopback, or cloud metadata network addresses is prohibited: "${destinationAddress}"`,
+        );
+      }
+
+      const connectUrl = new URL(currentUrl);
+      connectUrl.hostname =
+        isIP(destinationAddress) === 6
+          ? `[${destinationAddress}]`
+          : destinationAddress;
+
+      response = await fetch(connectUrl.toString(), {
         signal: controller.signal,
         redirect: "manual",
+        headers: {
+          Host: parsedUrl.host,
+        },
       });
 
       // Handle HTTP redirects safely with target validation

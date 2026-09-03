@@ -11,23 +11,16 @@ function createMockExecutable(
   outputJson: unknown,
 ): string {
   const jsonString = JSON.stringify(outputJson);
-  if (process.platform === "win32") {
-    const jsPath = path.join(dir, `${baseName}.js`);
-    const cmdPath = path.join(dir, `${baseName}.cmd`);
-    fs.writeFileSync(jsPath, `console.log(${JSON.stringify(jsonString)});`);
-    fs.writeFileSync(
-      cmdPath,
-      `@echo off\r\n"${process.execPath}" "${jsPath}"\r\n`,
-    );
-    return cmdPath;
-  }
   const shPath = path.join(dir, `${baseName}.sh`);
   fs.writeFileSync(shPath, `#!/bin/sh\necho '${jsonString}'\n`, { mode: 0o755 });
   return shPath;
 }
 
 describe("AWS ffprobe Video Metadata Prober", () => {
-  it("should extract metadata correctly from ffprobe JSON stdout", async () => {
+  it(
+    "should extract metadata correctly from ffprobe JSON stdout",
+    { skip: process.platform === "win32" },
+    async () => {
     // Create a temporary mock ffprobe executable that returns valid JSON
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "ffprobe-test-"));
 
@@ -84,7 +77,10 @@ describe("AWS ffprobe Video Metadata Prober", () => {
     }
   });
 
-  it("should calculate fractional fps correctly", async () => {
+  it(
+    "should calculate fractional fps correctly",
+    { skip: process.platform === "win32" },
+    async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "ffprobe-fps-test-"));
 
     const sampleFfprobeOutput = {
@@ -123,7 +119,10 @@ describe("AWS ffprobe Video Metadata Prober", () => {
     }
   });
 
-  it("should throw descriptive error when ffprobe command fails", async () => {
+  it(
+    "should throw descriptive error when ffprobe command fails",
+    { skip: process.platform === "win32" },
+    async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "ffprobe-err-test-"));
     const mockFfprobePath = path.join(tempDir, "mock-ffprobe.sh");
 

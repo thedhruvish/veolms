@@ -108,7 +108,11 @@ jobs:
               BEFORE_SHA="HEAD~1"
             fi
 
-            DIFF=$(git diff --name-only "$BEFORE_SHA" HEAD || true)
+            if ! git rev-parse --verify --quiet "$BEFORE_SHA^{commit}" >/dev/null 2>&1; then
+              git fetch origin "$BEFORE_SHA" || git fetch --unshallow || true
+            fi
+
+            DIFF=$(git diff --name-only "$BEFORE_SHA" HEAD)
             echo "Changed files since $BEFORE_SHA:"
             echo "$DIFF"
 

@@ -25,7 +25,10 @@ export interface QueueJobParams {
 export interface JobManager {
   claimNextJob(): Promise<Selectable<VideoJobTable> | null>;
   assignWorkerToJob(jobId: string, workerId: string): Promise<void>;
-  markJobCompleted(jobId: string): Promise<void>;
+  markJobCompleted(
+    jobId: string,
+    expectedWorkerId?: string,
+  ): Promise<boolean>;
   markJobFailed(
     jobId: string,
     errorMessage: string,
@@ -57,16 +60,27 @@ export function createJobManager(options: {
         .execute();
     },
 
-    async markJobCompleted(jobId: string): Promise<void> {
-      await db
+    async markJobCompleted(
+      jobId: string,
+      expectedWorkerId?: string,
+    ): Promise<boolean> {
+      let query = db
         .updateTable("video_jobs")
         .set({
           status: "completed",
           completed_at: new Date(),
           updated_at: new Date(),
         })
-        .where("id", "=", jobId)
-        .execute();
+        .where("id", "=", jobId);
+
+      if (expectedWorkerId) {
+        query = query
+          .where("status", "=", "processing")
+          .where("worker_id", "=", expectedWorkerId);
+      }
+
+      const result = await query.executeTakeFirst();
+      return (result.numUpdatedRows ?? 0n) === 1n;
     },
 
     async markJobFailed(

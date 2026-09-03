@@ -1,4 +1,5 @@
 import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 import { buildAndUploadBuildArtifacts } from "@veolms/fleet-provider-aws/setup";
 import { bold, cyan, green, red, yellow } from "@veolms/fleet-types/terminal";
 
@@ -8,31 +9,45 @@ const {
   UpdateFunctionCodeCommand,
   GetFunctionConfigurationCommand,
 } = _require(
-  new URL(
-    "../../../packages/fleet-provider-aws/node_modules/@aws-sdk/client-lambda",
-    import.meta.url,
-  ).pathname,
+  fileURLToPath(
+    new URL(
+      "../../../packages/fleet-provider-aws/node_modules/@aws-sdk/client-lambda",
+      import.meta.url,
+    ),
+  ),
 );
 
 async function waitForLambdaUpdate(
-  lambda: LambdaClient,
+  lambda: InstanceType<typeof LambdaClient>,
   functionName: string,
   timeoutMs = 60_000,
 ): Promise<void> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
+    let config;
     try {
-      const config = await lambda.send(
+      config = await lambda.send(
         new GetFunctionConfigurationCommand({ FunctionName: functionName }),
       );
-      if (config.LastUpdateStatus !== "InProgress") {
-        return;
-      }
     } catch {
       // Ignore transient errors while waiting
     }
+
+    if (config) {
+      if (config.LastUpdateStatus === "Successful") {
+        return;
+      }
+      if (config.LastUpdateStatus === "Failed") {
+        throw new Error(
+          `Lambda update failed for ${functionName}: ${config.LastUpdateStatusReason || "Unknown failure"}`,
+        );
+      }
+    }
     await new Promise((resolve) => setTimeout(resolve, 2000));
   }
+  throw new Error(
+    `Timeout waiting for Lambda update for ${functionName} after ${timeoutMs}ms`,
+  );
 }
 
 async function main(): Promise<void> {
@@ -123,6 +138,7 @@ async function main(): Promise<void> {
   }
 
   // If requested, update deployed Lambda functions with new S3 zip bundles
+  let lambdaUpdatesSuccessful = true;
   if (shouldUpdateLambda && (result.lambdaZipUploaded || result.probeZipUploaded)) {
     console.info(`\n${bold("Updating Deployed AWS Lambda Functions:")}`);
     const lambda = new LambdaClient({ region });
@@ -142,6 +158,7 @@ async function main(): Promise<void> {
         await waitForLambdaUpdate(lambda, fleetFunctionName);
         console.info(`  ${green("✔")} ${fleetFunctionName} updated successfully.`);
       } catch (err: unknown) {
+        lambdaUpdatesSuccessful = false;
         console.error(
           red(`  ✘ Failed to update ${fleetFunctionName}: ${err instanceof Error ? err.message : String(err)}`),
         );
@@ -163,6 +180,7 @@ async function main(): Promise<void> {
         await waitForLambdaUpdate(lambda, probeFunctionName);
         console.info(`  ${green("✔")} ${probeFunctionName} updated successfully.`);
       } catch (err: unknown) {
+        lambdaUpdatesSuccessful = false;
         console.error(
           red(`  ✘ Failed to update ${probeFunctionName}: ${err instanceof Error ? err.message : String(err)}`),
         );
@@ -175,7 +193,9 @@ async function main(): Promise<void> {
     (!includeLambda || result.lambdaZipUploaded) &&
     (!includeProbe || result.probeZipUploaded);
 
-  if (allExpectedUploaded) {
+  const deploymentSuccessful = allExpectedUploaded && lambdaUpdatesSuccessful;
+
+  if (deploymentSuccessful) {
     console.info(
       `\n${green("✔")} All requested build artifacts successfully processed!\n`,
     );
@@ -183,6 +203,7 @@ async function main(): Promise<void> {
     console.warn(
       yellow("\n⚠ Some build artifacts could not be uploaded. Check logs above.\n"),
     );
+    process.exitCode = 1;
   }
 }
 

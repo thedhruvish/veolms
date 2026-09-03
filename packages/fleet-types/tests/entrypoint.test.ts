@@ -25,51 +25,69 @@ describe("isMainModule", () => {
     );
   });
 
-  it("detects match for POSIX relative paths via segment matching", () => {
-    assert.equal(isMainModule(sampleLinuxUrl, "src/cli.ts"), true);
-    assert.equal(isMainModule(sampleLinuxUrl, "./src/cli.ts"), true);
-    assert.equal(
-      isMainModule(sampleLinuxUrl, "apps/fleet-manager/src/cli.ts"),
-      true,
-    );
+  it("detects match for relative paths resolving to the current module", () => {
+    const cwd = process.cwd();
+    const targetFile = resolve(cwd, "src/entrypoint.ts");
+    const targetUrl = pathToFileURL(targetFile).href;
+    assert.equal(isMainModule(targetUrl, "src/entrypoint.ts"), true);
+    assert.equal(isMainModule(targetUrl, "./src/entrypoint.ts"), true);
   });
 
-  it("detects match for Windows backward slash paths", () => {
-    assert.equal(
-      isMainModule(
-        sampleWindowsUrl,
-        "C:\\Users\\developer\\project\\apps\\fleet-manager\\src\\cli.ts",
-      ),
-      true,
-    );
-    assert.equal(isMainModule(sampleWindowsUrl, "src\\cli.ts"), true);
-    assert.equal(isMainModule(sampleWindowsUrl, ".\\src\\cli.ts"), true);
-    assert.equal(
-      isMainModule(sampleWindowsUrl, "apps\\fleet-manager\\src\\cli.ts"),
-      true,
-    );
-  });
-
-  it("handles case-insensitivity in Windows paths and drive letters", () => {
-    assert.equal(
-      isMainModule(
-        sampleWindowsUrl,
-        "c:\\users\\developer\\project\\apps\\fleet-manager\\src\\cli.ts",
-      ),
-      true,
-    );
-    assert.equal(isMainModule(sampleWindowsUrl, "SRC\\CLI.TS"), true);
-  });
+  it(
+    "detects match for Windows backward slash paths and handles case-insensitivity",
+    { skip: process.platform !== "win32" },
+    () => {
+      assert.equal(
+        isMainModule(
+          sampleWindowsUrl,
+          "C:\\Users\\developer\\project\\apps\\fleet-manager\\src\\cli.ts",
+        ),
+        true,
+      );
+      assert.equal(
+        isMainModule(
+          sampleWindowsUrl,
+          "c:\\users\\developer\\project\\apps\\fleet-manager\\src\\cli.ts",
+        ),
+        true,
+      );
+    },
+  );
 
   it("returns false for different files", () => {
-    assert.equal(isMainModule(sampleLinuxUrl, "src/index.ts"), false);
-    assert.equal(isMainModule(sampleWindowsUrl, "src\\index.ts"), false);
-    assert.equal(isMainModule(sampleLinuxUrl, "src/other-cli.ts"), false);
+    assert.equal(
+      isMainModule(
+        sampleLinuxUrl,
+        "/home/debian/project/apps/fleet-manager/src/index.ts",
+      ),
+      false,
+    );
+    assert.equal(
+      isMainModule(
+        sampleLinuxUrl,
+        "/home/debian/project/apps/fleet-manager/src/other-cli.ts",
+      ),
+      false,
+    );
   });
 
   it("does not false-positive on substring prefix without segment boundary", () => {
     assert.equal(isMainModule(sampleLinuxUrl, "manager/src/cli.ts.bak"), false);
     assert.equal(isMainModule(sampleLinuxUrl, "fake-cli.ts"), false);
+  });
+
+  it("does not match different files that share the same basename (regression test)", () => {
+    const fileA = resolve("/workspace/project/apps/fleet-manager/src/cli.ts");
+    const fileB = resolve("/workspace/project/apps/media-worker/src/cli.ts");
+    const urlA = pathToFileURL(fileA).href;
+    const urlB = pathToFileURL(fileB).href;
+
+    // fileA executed, urlA matches
+    assert.equal(isMainModule(urlA, fileA), true);
+    // fileA executed, urlB (different file with same basename 'cli.ts') must NOT match
+    assert.equal(isMainModule(urlB, fileA), false);
+    // fileB executed, urlA must NOT match
+    assert.equal(isMainModule(urlA, fileB), false);
   });
 
   it("works with real current module and process.argv[1]", () => {

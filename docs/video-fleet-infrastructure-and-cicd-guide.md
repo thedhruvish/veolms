@@ -85,12 +85,12 @@ The interactive wizard guides you through provisioning and verifying all necessa
    - Automatically bundles `apps/media-worker` and serverless entrypoints and uploads them to the S3 build bucket.
 ### IAM Policies Reference for Infrastructure & Runtime
 
-All policy definitions live in [`packages/fleet-provider-aws/iam/`](file:///home/debian/Desktop/coding/veolms/veolms/packages/fleet-provider-aws/iam/):
+All policy definitions live in [`packages/fleet-provider-aws/iam/`](../packages/fleet-provider-aws/iam/):
 
-1. **Infrastructure Provisioning Policy** ([`infra-provisioner-policy.json`](file:///home/debian/Desktop/coding/veolms/veolms/packages/fleet-provider-aws/iam/infra-provisioner-policy.json)):
+1. **Infrastructure Provisioning Policy** ([`infra-provisioner-policy.json`](../packages/fleet-provider-aws/iam/infra-provisioner-policy.json)):
    - Used by any engineer, admin, or script executing `pnpm --filter @veolms/fleet-manager infra`.
    - Grants permissions to create S3 buckets, IAM roles/instance profiles, Lambda functions, CloudWatch log groups, and EventBridge schedules.
-2. **Worker Runtime Role Policy** ([`worker-runtime-policy.json`](file:///home/debian/Desktop/coding/veolms/veolms/packages/fleet-provider-aws/iam/worker-runtime-policy.json)) & Trust Policy ([`worker-runtime-trust-policy.json`](file:///home/debian/Desktop/coding/veolms/veolms/packages/fleet-provider-aws/iam/worker-runtime-trust-policy.json)):
+2. **Worker Runtime Role Policy** ([`worker-runtime-policy.json`](../packages/fleet-provider-aws/iam/worker-runtime-policy.json)) & Trust Policy ([`worker-runtime-trust-policy.json`](../packages/fleet-provider-aws/iam/worker-runtime-trust-policy.json)):
    - Attached to `VeoLMSWorkerRole` and assumed by EC2 transcode instances, Fleet Manager Lambdas, and EventBridge Scheduler.
    - Allows reading raw video and writing HLS segments to S3, provisioning EC2 spot instances, reporting CloudWatch logs, and scheduling wakeups.
 
@@ -102,7 +102,7 @@ To automate updates securely without exposing root or administrative AWS credent
 
 ### Automated Setup Command
 
-Run the setup script located in [`packages/fleet-provider-aws/iam/`](file:///home/debian/Desktop/coding/veolms/veolms/packages/fleet-provider-aws/iam/):
+Run the setup script located in [`packages/fleet-provider-aws/iam/`](../packages/fleet-provider-aws/iam/):
 
 #### Option A: Via pnpm (Recommended)
 ```bash
@@ -117,7 +117,7 @@ S3_BUILD_BUCKET="<your-build-bucket>" AWS_REGION="<your-region>" ./packages/flee
 ### What This Script Does:
 1. Queries your current AWS Account ID dynamically via `aws sts get-caller-identity`.
 2. Creates an IAM User named **`veolms-cicd-infra-deployer`**.
-3. Creates and attaches the least-privilege policy **`veolms-cicd-infra-deployer-policy`** defined in [`packages/fleet-provider-aws/iam/cicd-infra-deployer-policy.json`](file:///home/debian/Desktop/coding/veolms/veolms/packages/fleet-provider-aws/iam/cicd-infra-deployer-policy.json).
+3. Creates and attaches the least-privilege policy **`veolms-cicd-infra-deployer-policy`** defined in [`packages/fleet-provider-aws/iam/cicd-infra-deployer-policy.json`](../packages/fleet-provider-aws/iam/cicd-infra-deployer-policy.json).
 4. Generates an Access Key pair and outputs the exact values to paste into GitHub.
 
 ### Permissions Granted by the CI/CD Policy:
@@ -153,7 +153,7 @@ In your GitHub repository, navigate to:
 
 ## Step 5: How the CI/CD Workflow Operates
 
-The workflow file is located at [`.github/workflows/deploy-video-fleet-infra.yml`](file:///home/debian/Desktop/coding/veolms/veolms/.github/workflows/deploy-video-fleet-infra.yml).
+The workflow file is located at [`.github/workflows/deploy-video-fleet-infra.yml`](../.github/workflows/deploy-video-fleet-infra.yml).
 
 ### 1. Trigger Conditions:
 - **Branch**: Push to `development`.

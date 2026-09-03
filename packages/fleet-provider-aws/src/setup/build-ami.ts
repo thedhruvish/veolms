@@ -34,12 +34,27 @@ export interface BuildAmiOptions {
 }
 
 export async function runBuildAmi(options?: BuildAmiOptions): Promise<string> {
-  const region = options?.region || process.env.AWS_REGION || "us-east-1";
-  const architecture = (
+  const rawRegion = options?.region || process.env.AWS_REGION || "us-east-1";
+  const rawArchitecture = (
     options?.architecture ||
     process.env.ARCHITECTURE ||
     "arm64"
-  ).toLowerCase() as "arm64" | "x86_64";
+  ).toLowerCase();
+
+  if (!/^[a-z]{2,}(?:-[a-z0-9]+)+-\d+$/.test(rawRegion)) {
+    throw new Error(
+      `Invalid AWS region "${rawRegion}". Must match standard AWS region format (e.g., us-east-1).`,
+    );
+  }
+
+  if (rawArchitecture !== "arm64" && rawArchitecture !== "x86_64") {
+    throw new Error(
+      `Invalid architecture "${rawArchitecture}". Supported architectures: arm64, x86_64.`,
+    );
+  }
+
+  const region = rawRegion;
+  const architecture: "arm64" | "x86_64" = rawArchitecture;
 
   console.info(`
 ╔══════════════════════════════════════════════════════╗

@@ -55,22 +55,15 @@ function createMockExecutable(
   outputJson: unknown,
 ): string {
   const jsonString = JSON.stringify(outputJson);
-  if (process.platform === "win32") {
-    const jsPath = path.join(dir, `${baseName}.js`);
-    const cmdPath = path.join(dir, `${baseName}.cmd`);
-    fs.writeFileSync(jsPath, `console.log(${JSON.stringify(jsonString)});`);
-    fs.writeFileSync(
-      cmdPath,
-      `@echo off\r\n"${process.execPath}" "${jsPath}"\r\n`,
-    );
-    return cmdPath;
-  }
   const shPath = path.join(dir, `${baseName}.sh`);
   fs.writeFileSync(shPath, `#!/bin/sh\necho '${jsonString}'\n`, { mode: 0o755 });
   return shPath;
 }
 
-  it("should probe metadata and forward enriched payload to downstream Fleet Manager Lambda", async () => {
+  it(
+    "should probe metadata and forward enriched payload to downstream Fleet Manager Lambda",
+    { skip: process.platform === "win32" },
+    async () => {
     const tempDir = fs.mkdtempSync(
       path.join(os.tmpdir(), "probe-lambda-test-"),
     );

@@ -5,6 +5,8 @@ import {
   CreatePolicyCommand,
   GetPolicyCommand,
   CreatePolicyVersionCommand,
+  ListPolicyVersionsCommand,
+  DeletePolicyVersionCommand,
   AttachUserPolicyCommand,
   CreateAccessKeyCommand,
   ListAccessKeysCommand,
@@ -113,7 +115,20 @@ async function main(): Promise<void> {
   console.info(`\n2. Setting up policy: ${POLICY_NAME}...`);
   try {
     await iam.send(new GetPolicyCommand({ PolicyArn: policyArn }));
-    console.info(`  Policy exists, adding new policy version...`);
+    console.info(`  Policy exists, cleaning up old versions and adding new policy version...`);
+    const versionsRes = await iam.send(
+      new ListPolicyVersionsCommand({ PolicyArn: policyArn }),
+    );
+    for (const v of versionsRes.Versions || []) {
+      if (!v.IsDefaultVersion && v.VersionId) {
+        await iam.send(
+          new DeletePolicyVersionCommand({
+            PolicyArn: policyArn,
+            VersionId: v.VersionId,
+          }),
+        );
+      }
+    }
     await iam.send(
       new CreatePolicyVersionCommand({
         PolicyArn: policyArn,

@@ -135,21 +135,21 @@ describe("Fleet Manager Diagnostics and Health Metrics", () => {
       updateTable(table: string) {
         return {
           set(values: any) {
-            return {
+            const chain: any = {
               where() {
-                return {
-                  async execute() {
-                    if (table === "workers") {
-                      workerStatusUpdated = values.status;
-                    }
-                    if (table === "video_jobs") {
-                      jobStatusUpdated = values.status;
-                      jobErrorMessage = values.error_message;
-                    }
-                  },
-                };
+                return chain;
+              },
+              async execute() {
+                if (table === "workers") {
+                  workerStatusUpdated = values.status;
+                }
+                if (table === "video_jobs") {
+                  jobStatusUpdated = values.status;
+                  jobErrorMessage = values.error_message;
+                }
               },
             };
+            return chain;
           },
         };
       },
