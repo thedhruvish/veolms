@@ -32,56 +32,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  test-video-pipeline:
-    name: Test Video Pipeline & Fleet
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 11.18.0
-          run_install: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Type-check video pipeline packages
-        run: |
-          pnpm --filter @veolms/fleet-types typecheck
-          pnpm --filter @veolms/config typecheck
-          pnpm --filter @veolms/database typecheck
-          pnpm --filter @veolms/media-worker typecheck
-          pnpm --filter @veolms/fleet-manager typecheck
-          pnpm --filter @veolms/fleet-provider-aws typecheck
-
-      - name: Run media-worker unit tests
-        run: pnpm --filter @veolms/media-worker test
-
-      - name: Run fleet-manager unit tests
-        run: pnpm --filter @veolms/fleet-manager test
-
-      - name: Run fleet-provider-aws unit tests
-        run: pnpm --filter @veolms/fleet-provider-aws test
-
   deploy-video-fleet:
-    name: Build & Deploy Artifacts to AWS
-    needs: [test-video-pipeline]
+    name: Test & Deploy Video Fleet
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     environment:
       name: development
@@ -156,7 +110,26 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Type-check video pipeline packages
+        run: |
+          pnpm --filter @veolms/fleet-types typecheck
+          pnpm --filter @veolms/config typecheck
+          pnpm --filter @veolms/database typecheck
+          pnpm --filter @veolms/media-worker typecheck
+          pnpm --filter @veolms/fleet-manager typecheck
+          pnpm --filter @veolms/fleet-provider-aws typecheck
+
+      - name: Run media-worker unit tests
+        run: pnpm --filter @veolms/media-worker test
+
+      - name: Run fleet-manager unit tests
+        run: pnpm --filter @veolms/fleet-manager test
+
+      - name: Run fleet-provider-aws unit tests
+        run: pnpm --filter @veolms/fleet-provider-aws test
+
       - name: Configure AWS credentials
+        if: ${{ steps.changes.outputs.worker_changed == 'true' || steps.changes.outputs.lambda_changed == 'true' }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
