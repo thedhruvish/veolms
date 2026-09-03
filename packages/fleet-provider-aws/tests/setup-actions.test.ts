@@ -24,5 +24,6 @@ describe("AWS Setup Module Interface", () => {
     assert.equal(typeof setupModule.buildAndUploadBuildArtifacts, "function");
     assert.equal(typeof setupModule.ensureSecurityGroup, "function");
     assert.equal(typeof setupModule.checkKeyPair, "function");
+    assert.equal(typeof setupModule.runBuildAmi, "function");
   });
 });

@@ -31,6 +31,7 @@ function exec(cmd: string): string {
 export interface BuildAmiOptions {
   readonly region?: string;
   readonly architecture?: "arm64" | "x86_64";
+  readonly amiName?: string;
 }
 
 export async function runBuildAmi(options?: BuildAmiOptions): Promise<string> {
@@ -72,14 +73,15 @@ export async function runBuildAmi(options?: BuildAmiOptions): Promise<string> {
     architecture === "arm64" ? "arm64" : "x86_64",
   );
   const instanceType = architecture === "arm64" ? "c7g.large" : "c6i.large";
-  const amiName = `veolms-worker-ami-${architecture}-${Date.now()}`;
+  const defaultAmiName = `veolms-worker-ami-${architecture}-${Date.now()}`;
+  const amiName = (options?.amiName || process.env.AMI_NAME || defaultAmiName).trim();
 
   console.info(`Architecture:    ${bold(architecture)}`);
   console.info(
     `Base AMI:        ${bold(baseAmi)} ${dim(`(Debian ${DEBIAN_RELEASE})`)}`,
   );
   console.info(`Builder Type:    ${bold(instanceType)}`);
-  console.info(`Target AMI Name: ${bold(amiName)}`);
+  console.info(`Target AMI Name: ${bold(cyan(amiName))}`);
   console.info(`Region:          ${bold(region)}\n`);
 
   console.info(`
@@ -298,8 +300,53 @@ Workers booted with this AMI will now start transcoding in <30 seconds!
   return amiId;
 }
 
+async function cliMain(): Promise<void> {
+  const args = process.argv.slice(2);
+  let region = process.env.AWS_REGION || "us-east-1";
+  let architecture: "arm64" | "x86_64" =
+    (process.env.ARCHITECTURE as "arm64" | "x86_64") || "arm64";
+  let amiName = process.env.AMI_NAME;
+
+  for (const arg of args) {
+    if (arg.startsWith("--region=")) {
+      region = arg.slice(9).trim();
+    } else if (arg.startsWith("--arch=") || arg.startsWith("--architecture=")) {
+      const a = arg.split("=")[1]?.trim().toLowerCase();
+      if (a === "arm64" || a === "x86_64") architecture = a;
+    } else if (arg.startsWith("--name=") || arg.startsWith("--ami-name=")) {
+      amiName = arg.split("=")[1]?.trim();
+    }
+  }
+
+  const isNonInteractive =
+    process.argv.includes("--yes") ||
+    process.argv.includes("-y") ||
+    process.argv.includes("--non-interactive") ||
+    process.env["NON_INTERACTIVE"] === "true";
+
+  if (!amiName && !isNonInteractive) {
+    const defaultAmiName = `veolms-worker-ami-${architecture}-${Date.now()}`;
+    const rl = (await import("node:readline/promises")).createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+    try {
+      const answer = (
+        await rl.question(
+          `  ${bold("?")} Pre-baked AMI name ${dim(`(default: ${defaultAmiName})`)}: `,
+        )
+      ).trim();
+      amiName = answer || defaultAmiName;
+    } finally {
+      rl.close();
+    }
+  }
+
+  await runBuildAmi({ region, architecture, amiName });
+}
+
 if (isMainModule(import.meta.url)) {
-  runBuildAmi().catch((err: unknown) => {
+  cliMain().catch((err: unknown) => {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`\n✘ AMI build failed: ${msg}\n`);
     process.exit(1);

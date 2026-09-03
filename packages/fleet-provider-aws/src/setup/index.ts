@@ -130,10 +130,12 @@ interface SetupAnswers {
   readonly storageProvider: StorageProvider;
   readonly s3BucketName: string | null;
   readonly s3BuildBucket?: string | null;
+  readonly s3BucketAccess?: "private" | "public";
   readonly s3CredentialMode: CredentialMode | null;
   readonly allowedInstanceTypes: readonly string[];
   readonly bootMode: BootMode;
   readonly amiId: string | null;
+  readonly amiName?: string | null;
   readonly maxWorkers: number;
   readonly workerIdlePollSeconds: number;
   readonly useSpot: boolean;
@@ -1538,6 +1540,20 @@ function parseSetupCliArgs(): Partial<SetupAnswers> & {
       arg.startsWith("--s3-build-bucket=")
     ) {
       result.s3BuildBucket = val;
+    } else if (
+      arg.startsWith("--bucket-access=") ||
+      arg.startsWith("--s3-bucket-access=")
+    ) {
+      const access = val.toLowerCase();
+      if (access === "private" || access === "public") {
+        result.s3BucketAccess = access;
+      }
+    } else if (arg === "--private-bucket" || arg === "--private") {
+      result.s3BucketAccess = "private";
+    } else if (arg === "--public-bucket" || arg === "--public") {
+      result.s3BucketAccess = "public";
+    } else if (arg.startsWith("--ami-name=") || arg.startsWith("--name=")) {
+      result.amiName = val;
     } else if (arg.startsWith("--db=") || arg.startsWith("--database-url=")) {
       result.databaseUrl = val;
     } else if (arg.startsWith("--mode=") || arg.startsWith("--fleet-mode=")) {
@@ -1574,6 +1590,12 @@ function loadExistingConfig(repoRoot: string): Partial<SetupAnswers> {
   }
   if (cliArgs.s3BuildBucket) {
     combined["S3_BUILD_BUCKET"] = cliArgs.s3BuildBucket;
+  }
+  if (cliArgs.s3BucketAccess) {
+    combined["S3_BUCKET_ACCESS"] = cliArgs.s3BucketAccess;
+  }
+  if (cliArgs.amiName) {
+    combined["AMI_NAME"] = cliArgs.amiName;
   }
   if (cliArgs.databaseUrl) combined["DATABASE_URL"] = cliArgs.databaseUrl;
   if (cliArgs.fleetMode) combined["FLEET_MODE"] = cliArgs.fleetMode;
@@ -1809,6 +1831,8 @@ async function runSetupFlow(
 
   let s3BucketName: string | null = null;
   let s3BuildBucket: string | null = null;
+  let s3BucketAccess: "private" | "public" =
+    initialDefaults?.s3BucketAccess ?? "private";
   let s3CredentialMode: CredentialMode | null = null;
 
   if (storageProvider === "s3") {
@@ -1889,6 +1913,26 @@ async function runSetupFlow(
         continue;
       }
 
+      const defaultBucketAccess: "private" | "public" =
+        initialDefaults?.s3BucketAccess ?? "private";
+      const bucketAccess = await askChoice<"private" | "public">(
+        rl,
+        "Media storage bucket access policy:",
+        [
+          {
+            label:
+              "Private (recommended — all public access blocked, IAM access only)",
+            value: "private",
+          },
+          {
+            label:
+              "Public (allows direct public read for HLS streams via S3 URLs)",
+            value: "public",
+          },
+        ],
+        defaultBucketAccess === "public" ? 1 : 0,
+      );
+
       info(
         `Bucket ${bold(bucketInput)} does not exist. Creating in ${region}...`,
       );
@@ -1906,35 +1950,51 @@ async function runSetupFlow(
             }),
           );
         }
-        await s3Client.send(
-          new PutPublicAccessBlockCommand({
-            Bucket: bucketInput,
-            PublicAccessBlockConfiguration: {
-              BlockPublicAcls: false,
-              IgnorePublicAcls: false,
-              BlockPublicPolicy: false,
-              RestrictPublicBuckets: false,
-            },
-          }),
-        );
-        const pubPolicy = JSON.stringify({
-          Version: "2012-10-17",
-          Statement: [
-            {
-              Sid: "PublicReadGetObject",
-              Effect: "Allow",
-              Principal: "*",
-              Action: "s3:GetObject",
-              Resource: `arn:aws:s3:::${bucketInput}/*`,
-            },
-          ],
-        });
-        await s3Client.send(
-          new PutBucketPolicyCommand({
-            Bucket: bucketInput,
-            Policy: pubPolicy,
-          }),
-        );
+
+        if (bucketAccess === "private") {
+          await s3Client.send(
+            new PutPublicAccessBlockCommand({
+              Bucket: bucketInput,
+              PublicAccessBlockConfiguration: {
+                BlockPublicAcls: true,
+                IgnorePublicAcls: true,
+                BlockPublicPolicy: true,
+                RestrictPublicBuckets: true,
+              },
+            }),
+          );
+        } else {
+          await s3Client.send(
+            new PutPublicAccessBlockCommand({
+              Bucket: bucketInput,
+              PublicAccessBlockConfiguration: {
+                BlockPublicAcls: false,
+                IgnorePublicAcls: false,
+                BlockPublicPolicy: false,
+                RestrictPublicBuckets: false,
+              },
+            }),
+          );
+          const pubPolicy = JSON.stringify({
+            Version: "2012-10-17",
+            Statement: [
+              {
+                Sid: "PublicReadGetObject",
+                Effect: "Allow",
+                Principal: "*",
+                Action: "s3:GetObject",
+                Resource: `arn:aws:s3:::${bucketInput}/*`,
+              },
+            ],
+          });
+          await s3Client.send(
+            new PutBucketPolicyCommand({
+              Bucket: bucketInput,
+              Policy: pubPolicy,
+            }),
+          );
+        }
+
         await s3Client.send(
           new PutBucketCorsCommand({
             Bucket: bucketInput,
@@ -1951,7 +2011,12 @@ async function runSetupFlow(
           }),
         );
         s3BucketName = bucketInput;
-        ok(`Created S3 bucket ${bold(s3BucketName)} with public read and CORS enabled.`);
+        s3BucketAccess = bucketAccess;
+        ok(
+          bucketAccess === "private"
+            ? `Created private S3 bucket ${bold(s3BucketName)} (all public access blocked, CORS enabled).`
+            : `Created public S3 bucket ${bold(s3BucketName)} with public read and CORS enabled.`,
+        );
         break;
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -2210,6 +2275,7 @@ async function runSetupFlow(
 
   let amiId: string | null =
     initialDefaults?.amiId ?? process.env["AMI_ID"] ?? null;
+  let customAmiName: string | null = initialDefaults?.amiName ?? null;
 
   if (bootMode === "ami") {
     info("Pre-baked AMI selected.");
@@ -2267,12 +2333,24 @@ async function runSetupFlow(
       )
         ? "arm64"
         : "x86_64";
+      const defaultAmiName =
+        initialDefaults?.amiName ||
+        `veolms-worker-ami-${amiArch}-${Date.now()}`;
+      customAmiName = await ask(
+        rl,
+        "Pre-baked AMI name",
+        defaultAmiName,
+      );
 
       info(
-        `Building Pre-baked AMI for ${bold(amiArch)} in ${bold(region)}...`,
+        `Building Pre-baked AMI "${bold(customAmiName)}" for ${bold(amiArch)} in ${bold(region)}...`,
       );
       try {
-        amiId = await runBuildAmi({ region, architecture: amiArch });
+        amiId = await runBuildAmi({
+          region,
+          architecture: amiArch,
+          amiName: customAmiName,
+        });
         ok(`Pre-baked AMI built successfully: ${bold(green(amiId))}`);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -2570,10 +2648,12 @@ async function runSetupFlow(
     storageProvider,
     s3BucketName,
     s3BuildBucket,
+    s3BucketAccess,
     s3CredentialMode,
     allowedInstanceTypes,
     bootMode,
     amiId,
+    amiName: customAmiName,
     maxWorkers,
     workerIdlePollSeconds,
     useSpot,
@@ -3160,6 +3240,7 @@ export async function runAwsInfraSetup(
 }
 
 export { runAwsInfraDestroy } from "./destroy.ts";
+export { runBuildAmi } from "./build-ami.ts";
 
 if (isMainModule(import.meta.url)) {
   runAwsInfraSetup().catch((err: unknown) => {
