@@ -147,4 +147,47 @@ function createMockExecutable(
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
   });
+
+  it("should forward cancellation request directly to Fleet Manager without probing", async () => {
+    let sentPayload: any = null;
+    const mockLambdaClient = {
+      send: async (command: any) => {
+        if (command.input?.Payload) {
+          sentPayload = JSON.parse(
+            Buffer.from(command.input.Payload).toString("utf-8"),
+          );
+        }
+        return {
+          Payload: Buffer.from(
+            JSON.stringify({
+              statusCode: 200,
+              body: JSON.stringify({
+                success: true,
+                status: "cancelled",
+                cancelled: true,
+              }),
+            }),
+          ),
+        };
+      },
+    } as any;
+
+    const result = await processProbeAndForward(
+      {
+        jobId: "00000000-0000-4000-8000-000000000001",
+        status: "cancelled",
+      },
+      {
+        lambdaClient: mockLambdaClient,
+        targetLambdaName: "test-fleet-manager",
+      },
+    );
+
+    assert.equal(result.success, true);
+    assert.equal(result.probed, false);
+    assert.ok(sentPayload);
+    assert.equal(sentPayload.jobId, "00000000-0000-4000-8000-000000000001");
+    assert.equal(sentPayload.status, "cancelled");
+    assert.equal(sentPayload.deleteFiles, true);
+  });
 });

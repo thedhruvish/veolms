@@ -108,6 +108,54 @@ export async function processProbeAndForward(
       ...(endpoint ? { endpoint, forcePathStyle: true } : {}),
     });
 
+  if (payload.status === "cancelled") {
+    const cancelPayload = {
+      jobId: payload.jobId,
+      status: "cancelled",
+      deleteFiles:
+        payload.deleteFiles !== false && payload.deleteMedia !== false,
+      ...(payload.videoId ? { videoId: payload.videoId } : {}),
+      ...(payload.videoKey ? { videoKey: payload.videoKey } : {}),
+    };
+
+    console.info(
+      `[probe-lambda] Forwarding cancellation request for job ${cancelPayload.jobId ?? "(unknown)"} to Fleet Manager Lambda: ${targetLambdaName}`,
+    );
+
+    const invokeResponse = await lambda.send(
+      new InvokeCommand({
+        FunctionName: targetLambdaName,
+        InvocationType: "RequestResponse",
+        Payload: Buffer.from(JSON.stringify(cancelPayload)),
+      }),
+    );
+
+    let targetResult: unknown = {};
+    if (invokeResponse.Payload) {
+      try {
+        const responseString = Buffer.from(invokeResponse.Payload).toString(
+          "utf-8",
+        );
+        targetResult = JSON.parse(responseString);
+      } catch {
+        // Non-JSON response
+      }
+    }
+
+    if (invokeResponse.FunctionError) {
+      console.error(
+        `[probe-lambda] Downstream Lambda error (${invokeResponse.FunctionError}):`,
+        targetResult,
+      );
+    }
+
+    return {
+      success: !invokeResponse.FunctionError,
+      probed: false,
+      targetLambdaResponse: targetResult,
+    };
+  }
+
   const videoKey =
     typeof payload.videoKey === "string"
       ? payload.videoKey

@@ -228,6 +228,96 @@ async function main(): Promise<void> {
   const db = createDatabase(config.DATABASE_URL);
 
   try {
+    const rawArgs = process.argv.slice(2);
+    const isCancel =
+      rawArgs.includes("--cancel") ||
+      rawArgs.some(
+        (a) =>
+          a.startsWith("--status=cancel") ||
+          a.startsWith("--cancel-job=") ||
+          a.startsWith("--cancel="),
+      );
+
+    if (isCancel) {
+      let targetJobId = "";
+      for (const arg of rawArgs) {
+        if (
+          arg.startsWith("--job-id=") ||
+          arg.startsWith("--jobId=") ||
+          arg.startsWith("--cancel-job=") ||
+          arg.startsWith("--cancel=")
+        ) {
+          targetJobId = arg.split("=")[1]?.trim() || "";
+        }
+      }
+
+      if (!targetJobId) {
+        const latestJob = await db
+          .selectFrom("video_jobs")
+          .select(["id", "status", "video_key"])
+          .orderBy("created_at", "desc")
+          .executeTakeFirst();
+        targetJobId = latestJob?.id ?? "";
+      }
+
+      if (!targetJobId) {
+        console.error("✘ No job found in database to cancel.");
+        process.exitCode = 1;
+        return;
+      }
+
+      console.info(
+        `\n╔══════════════════════════════════════════════════════════════╗`,
+      );
+      console.info(
+        `║     VeoLMS Video Job Cancellation & Storage Deletion         ║`,
+      );
+      console.info(
+        `╚══════════════════════════════════════════════════════════════╝\n`,
+      );
+      console.info(
+        `[1/2] Sending cancellation request for Job [${targetJobId}] to Lambda "${LAMBDA_NAME}"...`,
+      );
+      const cancelPayload = {
+        jobId: targetJobId,
+        status: "cancelled",
+        deleteFiles: true,
+      };
+
+      const outFile = join(
+        tmpdir(),
+        `lambda-cancel-${targetJobId.slice(0, 8)}.json`,
+      );
+      const invokeArgs = [
+        ...buildAwsCliArgs([
+          "lambda",
+          "invoke",
+          "--function-name",
+          LAMBDA_NAME,
+          "--payload",
+          JSON.stringify(cancelPayload),
+          "--cli-binary-format",
+          "raw-in-base64-out",
+        ]),
+        outFile,
+      ];
+
+      try {
+        execFileSync("aws", invokeArgs, {
+          stdio: "pipe",
+          shell: process.platform === "win32",
+        });
+        const responseRaw = readFileSync(outFile, "utf-8").trim();
+        unlinkSync(outFile);
+        console.info(`✔ Cancellation successfully dispatched to Lambda.`);
+        console.info(`  Response: ${responseRaw}\n`);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`✘ Lambda cancel invoke failed: ${msg}`);
+      }
+      return;
+    }
+
     const { videoKey: VIDEO_KEY, qualities: QUALITIES } =
       await resolveVideoKeyAndQualities();
     const jobId = randomUUID();

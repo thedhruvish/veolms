@@ -28,6 +28,7 @@
     "@veolms/fleet-provider-aws": "workspace:*",
     "@veolms/fleet-provider-local": "workspace:*",
     "@veolms/fleet-types": "workspace:*",
+    "@veolms/storage": "workspace:*",
     "kysely": "catalog:",
     "pg": "^8.22.0",
     "zod": "catalog:"

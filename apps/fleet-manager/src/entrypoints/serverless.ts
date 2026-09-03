@@ -32,6 +32,12 @@ export interface ServerlessFleetOptions {
 
 export interface ServerlessExecutionResult {
   readonly success: boolean;
+  readonly status?: string;
+  readonly cancelled?: boolean;
+  readonly filesDeleted?: boolean;
+  readonly jobId?: string;
+  readonly deletedKeys?: readonly string[];
+  readonly deletedPrefix?: string;
   readonly jobClaimed?: boolean;
   readonly monitorResult?: MonitorCycleResult;
   readonly nextWakeupScheduledAt?: string | null;
@@ -84,6 +90,9 @@ export function extractVideoJobEvent(rawEvent: unknown): VideoJobEvent {
       result.action = action;
     }
   }
+  if (typeof candidate.status === "string") {
+    result.status = candidate.status.toLowerCase();
+  }
   if (typeof candidate.jobId === "string") result.jobId = candidate.jobId;
   if (typeof candidate.videoId === "string") result.videoId = candidate.videoId;
   if (typeof candidate.videoKey === "string")
@@ -100,6 +109,12 @@ export function extractVideoJobEvent(rawEvent: unknown): VideoJobEvent {
   }
   if (candidate.videoMetadata && typeof candidate.videoMetadata === "object") {
     result.videoMetadata = candidate.videoMetadata as Record<string, unknown>;
+  }
+  if (candidate.deleteFiles !== undefined) {
+    result.deleteFiles = Boolean(candidate.deleteFiles);
+  }
+  if (candidate.deleteMedia !== undefined) {
+    result.deleteMedia = Boolean(candidate.deleteMedia);
   }
 
   return result as VideoJobEvent;
@@ -169,7 +184,65 @@ export async function runServerlessFleetCycle(
       config,
     });
 
-    // 1. If action is QUEUE and video parameters are provided, ensure job is queued (idempotent)
+    // 1. If status is CANCELLED:
+    if (event.status === "cancelled") {
+      let targetJobId = event.jobId;
+
+      if (!targetJobId && (event.videoId || event.videoKey)) {
+        const foundJob = await db
+          .selectFrom("video_jobs")
+          .select("id")
+          .where((eb) =>
+            eb.or([
+              ...(event.videoId ? [eb("video_id", "=", event.videoId)] : []),
+              ...(event.videoKey ? [eb("video_key", "=", event.videoKey)] : []),
+            ]),
+          )
+          .orderBy("created_at", "desc")
+          .executeTakeFirst();
+        targetJobId = foundJob?.id;
+      }
+
+      if (targetJobId) {
+        const shouldDeleteFiles =
+          event.deleteFiles !== false && event.deleteMedia !== false;
+        console.info(
+          `[serverless-fleet] Processing cancellation for job ${targetJobId} (deleteFiles: ${shouldDeleteFiles})...`,
+        );
+
+        const cancelResult = await fleet.cancelJob({
+          jobId: targetJobId,
+          deleteFiles: shouldDeleteFiles,
+        });
+
+        // Run monitoring cycle to reconcile cluster state and sync schedule
+        const monitorResult = await fleet.runMonitoringCycle();
+        const nextWakeup = await fleet.syncWakeupSchedule();
+
+        return {
+          success: true,
+          status: "cancelled",
+          cancelled: cancelResult.cancelled,
+          filesDeleted: cancelResult.filesDeleted,
+          jobId: targetJobId,
+          deletedKeys: cancelResult.deletedKeys,
+          deletedPrefix: cancelResult.deletedPrefix,
+          monitorResult,
+          nextWakeupScheduledAt: nextWakeup ? nextWakeup.toISOString() : null,
+          timestamp: new Date().toISOString(),
+        };
+      }
+
+      return {
+        success: false,
+        status: "cancelled",
+        cancelled: false,
+        error: "Job ID not found for cancellation",
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    // 2. If action is QUEUE and video parameters are provided, ensure job is queued (idempotent)
     if (event.action === "queue" && event.videoKey) {
       const videoKey = event.videoKey;
       const isUuid = (val: string) =>
@@ -209,7 +282,7 @@ export async function runServerlessFleetCycle(
       });
     }
 
-    // 2. Run monitoring cycle first to clean up stale/timed-out workers and free capacity
+    // 3. Run monitoring cycle first to clean up stale/timed-out workers and free capacity
     const monitorResult = await fleet.runMonitoringCycle();
 
     if (event.action === "monitor") {
@@ -222,10 +295,10 @@ export async function runServerlessFleetCycle(
       };
     }
 
-    // 3. Claim and provision next queued job
+    // 4. Claim and provision next queued job
     const jobClaimed = await fleet.processNextJob();
 
-    // 4. Synchronize dynamic EventBridge wakeup schedule
+    // 5. Synchronize dynamic EventBridge wakeup schedule
     const nextWakeup = await fleet.syncWakeupSchedule();
 
     return {

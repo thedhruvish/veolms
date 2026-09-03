@@ -12,6 +12,8 @@ import {
 } from "@veolms/fleet-types";
 import type { FleetManagerConfig } from "@veolms/config";
 
+import { S3StorageService } from "@veolms/storage";
+
 export interface QueueJobParams {
   jobId?: string;
   videoId?: string;
@@ -20,6 +22,21 @@ export interface QueueJobParams {
   qualities: readonly VideoQualityLevel[];
   videoSize?: number;
   videoMetadata?: VideoMetadata;
+}
+
+export interface CancelJobParams {
+  jobId: string;
+  deleteFiles?: boolean;
+  s3Bucket?: string;
+  storage?: S3StorageService;
+}
+
+export interface CancelJobResult {
+  job: Selectable<VideoJobTable> | null;
+  cancelled: boolean;
+  filesDeleted: boolean;
+  deletedKeys?: string[];
+  deletedPrefix?: string;
 }
 
 export interface JobManager {
@@ -34,6 +51,7 @@ export interface JobManager {
     errorMessage: string,
     expectedWorkerId?: string,
   ): Promise<boolean>;
+  cancelJob(params: CancelJobParams): Promise<CancelJobResult>;
   queueJob(params: QueueJobParams): Promise<Selectable<VideoJobTable>>;
   getJob(jobId: string): Promise<Selectable<VideoJobTable> | null>;
 }
@@ -439,6 +457,100 @@ export function createJobManager(options: {
 
         throw insertErr;
       }
+    },
+
+    async cancelJob(params: CancelJobParams): Promise<CancelJobResult> {
+      const { jobId, deleteFiles = true, s3Bucket, storage } = params;
+
+      const job = await db
+        .selectFrom("video_jobs")
+        .selectAll()
+        .where("id", "=", jobId)
+        .executeTakeFirst();
+
+      if (!job) {
+        return { job: null, cancelled: false, filesDeleted: false };
+      }
+
+      // Update job status to cancelled in PostgreSQL
+      await db
+        .updateTable("video_jobs")
+        .set({
+          status: "cancelled",
+          updated_at: new Date(),
+        })
+        .where("id", "=", jobId)
+        .execute();
+
+      // If worker was assigned, reset worker's job_id and mark worker ready
+      if (job.worker_id) {
+        await db
+          .updateTable("workers")
+          .set({
+            job_id: null,
+            status: "ready",
+            updated_at: new Date(),
+          })
+          .where("id", "=", job.worker_id)
+          .where("job_id", "=", jobId)
+          .execute();
+      }
+
+      let filesDeleted = false;
+      const deletedKeys: string[] = [];
+      let deletedPrefix: string | undefined;
+
+      if (
+        deleteFiles &&
+        (storage ||
+          s3Bucket ||
+          process.env.S3_BUCKET ||
+          process.env.S3_BUCKET_NAME)
+      ) {
+        const bucket =
+          s3Bucket ||
+          process.env.S3_BUCKET ||
+          process.env.S3_BUCKET_NAME ||
+          "veolms-media";
+        const s3Storage =
+          storage ??
+          new S3StorageService({
+            bucket,
+            region: process.env.AWS_REGION || "us-east-1",
+            endpoint:
+              process.env.AWS_ENDPOINT_URL || process.env.LOCALSTACK_ENDPOINT,
+            forcePathStyle: Boolean(process.env.AWS_ENDPOINT_URL),
+          });
+
+        try {
+          // 1. Delete raw source video
+          if (job.video_key) {
+            await s3Storage.deleteObject(job.video_key);
+            deletedKeys.push(job.video_key);
+          }
+
+          // 2. Delete generated HLS segments and playlists
+          if (job.output_prefix) {
+            await s3Storage.deletePrefix(job.output_prefix);
+            deletedPrefix = job.output_prefix;
+          }
+
+          filesDeleted = true;
+        } catch (s3Err) {
+          console.warn(
+            `[job-manager] Warning: Could not delete S3 files for cancelled job ${jobId}:`,
+            s3Err,
+          );
+        }
+      }
+
+      return {
+        job,
+        cancelled: true,
+        filesDeleted,
+        deletedKeys,
+        deletedPrefix,
+      };
     },
 
     async getJob(jobId: string): Promise<Selectable<VideoJobTable> | null> {

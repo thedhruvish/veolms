@@ -243,9 +243,23 @@ export async function probeVideoMetadata(
 export async function executeTranscodeJob(
   ctx: MediaWorkerContext,
   jobId: string,
-  signal?: AbortSignal,
+  externalSignal?: AbortSignal,
 ): Promise<void> {
   const { db, config, workerId, recordEvent } = ctx;
+  const jobAbortController = new AbortController();
+
+  const handleExternalAbort = () => {
+    jobAbortController.abort();
+  };
+  if (externalSignal?.aborted) {
+    jobAbortController.abort();
+  } else {
+    externalSignal?.addEventListener("abort", handleExternalAbort, {
+      once: true,
+    });
+  }
+
+  const signal = jobAbortController.signal;
 
   // 1. Fetch Job from DB
   const job = await db
@@ -526,6 +540,21 @@ export async function executeTranscodeJob(
         progressWrite = progressWrite
           .catch(() => undefined)
           .then(async () => {
+            // Check if job status has been changed to "cancelled" in the database
+            const checkJob = await db
+              .selectFrom("video_jobs")
+              .select("status")
+              .where("id", "=", jobId)
+              .executeTakeFirst();
+
+            if (checkJob?.status === "cancelled") {
+              console.info(
+                `[media-worker] Job ${jobId} was cancelled in database. Aborting transcode...`,
+              );
+              jobAbortController.abort();
+              return;
+            }
+
             await db
               .updateTable("worker_monitoring")
               .set({
@@ -659,6 +688,46 @@ export async function executeTranscodeJob(
       uploadHandle = null;
     }
 
+    const isCancelled =
+      jobAbortController.signal.aborted ||
+      externalSignal?.aborted ||
+      errorMsg.toLowerCase().includes("cancelled");
+
+    if (isCancelled) {
+      console.info(
+        `[media-worker] Job ${jobId} was cancelled. Resetting worker state...`,
+      );
+      await db.transaction().execute(async (trx) => {
+        await trx
+          .updateTable("video_jobs")
+          .set({
+            status: "cancelled",
+            worker_id: null,
+            error_message: "Job was cancelled",
+            updated_at: new Date(),
+          })
+          .where("id", "=", jobId)
+          .where("worker_id", "=", workerId)
+          .execute();
+
+        await trx
+          .updateTable("workers")
+          .set({
+            status: "ready",
+            job_id: null,
+            updated_at: new Date(),
+          })
+          .where("id", "=", workerId)
+          .execute();
+      });
+
+      await recordEvent("job_cancelled", jobId, {
+        reason: errorMsg,
+      });
+
+      throw error;
+    }
+
     const nextAttempts = job.attempts + 1;
     const shouldRetry = nextAttempts < job.max_attempts;
     await db.transaction().execute(async (trx) => {
@@ -695,6 +764,9 @@ export async function executeTranscodeJob(
 
     throw error;
   } finally {
+    if (externalSignal) {
+      externalSignal.removeEventListener("abort", handleExternalAbort);
+    }
     // Clean up scratch files
     try {
       await rm(jobScratchDir, { recursive: true, force: true });

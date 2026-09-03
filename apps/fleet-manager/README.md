@@ -82,6 +82,18 @@ The Fleet Manager actively reconciles state between the PostgreSQL database and 
 3. **Storage Output Verification**:
    - When a job completes, Fleet Manager verifies that the target `master.m3u8` playlist exists in S3 (with non-zero size) before finalizing `completed` status.
 
+4. **Job Cancellation & S3 Storage Cleanup**:
+   - To cancel an in-progress or queued transcode job, send the cancellation payload with `status: "cancelled"`:
+     ```json
+     {
+       "jobId": "00000000-0000-4000-8000-000000000001",
+       "status": "cancelled",
+       "deleteFiles": true
+     }
+     ```
+   - Fleet Manager marks `video_jobs.status = "cancelled"` in PostgreSQL, unassigns the worker, and deletes both the source video (`video_key`) and all generated HLS playlists/segments (`output_prefix`) from S3.
+   - Active EC2 workers polling DB during progress updates immediately abort FFmpeg, purge local `/tmp` files, and terminate after idle timeout.
+
 ---
 
 ## Dynamic EventBridge Scheduler Integration
@@ -104,6 +116,15 @@ pnpm fleet run
 
 # Queue a transcoding job
 pnpm fleet queue my-video.mp4 --qualities=1080p,720p,480p --prefix=transcoded/my-video/
+
+# Queue & trigger video via Probe Lambda (default)
+pnpm fleet:queue:trigger
+
+# Queue & trigger directly via Fleet Manager Lambda
+pnpm fleet:queue:trigger --fleet-manager
+
+# Cancel an active/queued job and purge its S3 files
+pnpm fleet:queue:trigger --cancel --job-id=<job-uuid>
 
 # View job status, worker handle, and diagnostic events
 pnpm fleet status <job-id>
