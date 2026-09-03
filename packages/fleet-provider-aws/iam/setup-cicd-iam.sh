@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-USER_NAME="veolms-cicd-infra-deployer"
-POLICY_NAME="veolms-cicd-infra-deployer-policy"
+USER_NAME="${CICD_USER_NAME:-veolms-fleet-infra-action}"
+POLICY_NAME="${CICD_POLICY_NAME:-veolms-fleet-infra-action-policy}"
 REGION="${AWS_REGION:-${FLEET_MANAGER_LAMBDA_REGION:-ap-south-1}}"
 
 # Attempt to load S3_BUILD_BUCKET from apps/fleet-manager/.env if not in environment
@@ -75,30 +75,44 @@ aws iam attach-user-policy \
 echo "✔ Attached policy to ${USER_NAME}."
 
 # 5. Access Key
-EXISTING_KEYS=$(aws iam list-access-keys --user-name "${USER_NAME}" --query 'AccessKeyMetadata[*].AccessKeyId' --output text)
+EXISTING_KEYS=$(aws iam list-access-keys --user-name "${USER_NAME}" --query 'AccessKeyMetadata[*].AccessKeyId' --output text 2>/dev/null || true)
 if [ -n "${EXISTING_KEYS}" ]; then
-  echo "✔ User already has access key: ${EXISTING_KEYS}"
-  echo ""
-  echo "============================================================="
-  echo "  Configure these in GitHub Repository Secrets:"
-  echo "============================================================="
-  echo "  AWS_ACCESS_KEY_ID:     ${EXISTING_KEYS}"
-  echo "  AWS_SECRET_ACCESS_KEY: <your-existing-secret-key>"
-  echo "  AWS_REGION:            ${REGION}"
-  echo "  S3_BUILD_BUCKET:       ${BUCKET_NAME}"
-  echo "============================================================="
-else
+  echo "✔ User already has access key(s): ${EXISTING_KEYS}"
+fi
+
+GENERATE_KEY="no"
+if [ -t 0 ]; then
+  read -rp "? Do you want to generate a new AWS Access Key for ${USER_NAME}? (y/N) " ASK_KEYS
+  if [[ "${ASK_KEYS}" =~ ^[Yy] ]]; then
+    GENERATE_KEY="yes"
+  fi
+elif [ -z "${EXISTING_KEYS}" ]; then
+  GENERATE_KEY="yes"
+fi
+
+ACCESS_KEY_ID="${EXISTING_KEYS%% *}"
+SECRET_ACCESS_KEY=""
+
+if [ "${GENERATE_KEY}" = "yes" ]; then
   KEY_JSON=$(aws iam create-access-key --user-name "${USER_NAME}")
   ACCESS_KEY_ID=$(echo "${KEY_JSON}" | grep -o '"AccessKeyId": "[^"]*' | cut -d'"' -f4)
   SECRET_ACCESS_KEY=$(echo "${KEY_JSON}" | grep -o '"SecretAccessKey": "[^"]*' | cut -d'"' -f4)
-
-  echo ""
-  echo "============================================================="
-  echo "  Configure these in GitHub Repository Secrets:"
-  echo "============================================================="
-  echo "  AWS_ACCESS_KEY_ID:     ${ACCESS_KEY_ID}"
-  echo "  AWS_SECRET_ACCESS_KEY: ${SECRET_ACCESS_KEY}"
-  echo "  AWS_REGION:            ${REGION}"
-  echo "  S3_BUILD_BUCKET:       ${BUCKET_NAME}"
-  echo "============================================================="
+  echo "✔ Created new access key for ${USER_NAME}."
+else
+  echo "ℹ Skipped generating new access keys."
 fi
+
+echo ""
+echo "============================================================="
+echo "  Configure these in GitHub Repository Secrets:"
+echo "============================================================="
+echo "  AWS_ACCESS_KEY_ID:     ${ACCESS_KEY_ID:-<not-generated>}"
+if [ -n "${SECRET_ACCESS_KEY}" ]; then
+  echo "  AWS_SECRET_ACCESS_KEY: ${SECRET_ACCESS_KEY}"
+  echo "  (Save Secret Access Key now — it cannot be viewed again!)"
+else
+  echo "  AWS_SECRET_ACCESS_KEY: <existing-secret-key-or-not-generated>"
+fi
+echo "  AWS_REGION:            ${REGION}"
+echo "  S3_BUILD_BUCKET:       ${BUCKET_NAME}"
+echo "============================================================="

@@ -29,6 +29,7 @@ describe("AWS Setup Module Interface", () => {
     assert.equal(typeof setupModule.checkKeyPair, "function");
     assert.equal(typeof setupModule.runBuildAmi, "function");
     assert.equal(typeof setupModule.ensureSpotServiceLinkedRole, "function");
+    assert.equal(typeof setupModule.runSetupCicdIam, "function");
   });
 
   it("should discover available AWS profiles without throwing", () => {
@@ -184,5 +185,21 @@ describe("AWS Setup Module Interface", () => {
       process.argv = origArgv;
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
+  });
+
+  it("should have s3:DeleteObject and s3:DeleteObjectVersion in cicd-infra-deployer-policy.json", () => {
+    const policyPath = path.join(
+      import.meta.dirname,
+      "..",
+      "iam",
+      "cicd-infra-deployer-policy.json",
+    );
+    const policy = JSON.parse(fs.readFileSync(policyPath, "utf-8"));
+    const s3Statement = policy.Statement.find(
+      (s: { Sid: string }) => s.Sid === "S3BuildBucketUploadAndRead",
+    );
+    assert.ok(s3Statement, "S3BuildBucketUploadAndRead statement should exist");
+    assert.ok(s3Statement.Action.includes("s3:DeleteObject"));
+    assert.ok(s3Statement.Action.includes("s3:DeleteObjectVersion"));
   });
 });

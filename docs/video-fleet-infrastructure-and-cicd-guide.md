@@ -116,12 +116,12 @@ S3_BUILD_BUCKET="<your-build-bucket>" AWS_REGION="<your-region>" ./packages/flee
 
 ### What This Script Does:
 1. Queries your current AWS Account ID dynamically via `aws sts get-caller-identity`.
-2. Creates an IAM User named **`veolms-cicd-infra-deployer`**.
-3. Creates and attaches the least-privilege policy **`veolms-cicd-infra-deployer-policy`** defined in [`packages/fleet-provider-aws/iam/cicd-infra-deployer-policy.json`](../packages/fleet-provider-aws/iam/cicd-infra-deployer-policy.json).
-4. Generates an Access Key pair and outputs the exact values to paste into GitHub.
+2. Creates an IAM User named **`veolms-fleet-infra-action`**.
+3. Creates and attaches the least-privilege policy **`veolms-fleet-infra-action-policy`** defined in [`packages/fleet-provider-aws/iam/cicd-infra-deployer-policy.json`](../packages/fleet-provider-aws/iam/cicd-infra-deployer-policy.json).
+4. Generates or preserves an Access Key pair and outputs the exact values to paste into GitHub.
 
 ### Permissions Granted by the CI/CD Policy:
-- **S3 Build Bucket**: `s3:PutObject`, `s3:GetObject`, `s3:HeadObject`, `s3:ListBucket` strictly scoped to `arn:aws:s3:::${S3_BUILD_BUCKET}/*`.
+- **S3 Build Bucket**: `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject`, `s3:DeleteObjectVersion`, `s3:HeadObject`, `s3:ListBucket` strictly scoped to `arn:aws:s3:::${S3_BUILD_BUCKET}/*`.
 - **AWS Lambda**: `lambda:UpdateFunctionCode`, `lambda:GetFunction`, `lambda:GetFunctionConfiguration`, `lambda:PublishVersion` on `veolms-fleet-manager` and `veolms-video-metadata-probe`.
 - **CloudWatch Logs**: `logs:DescribeLogGroups`.
 - **Zero Wildcard Admin**: Cannot modify billing, IAM, VPC, or other AWS services.
@@ -137,8 +137,8 @@ In your GitHub repository, navigate to:
 
 | Secret Name | Required | Description | Example |
 |---|---|---|---|
-| `AWS_ACCESS_KEY_ID` | **Yes** | Access Key ID for `veolms-cicd-infra-deployer` | `AKIAIOSFODNN7EXAMPLE` |
-| `AWS_SECRET_ACCESS_KEY` | **Yes** | Secret Access Key for `veolms-cicd-infra-deployer` | `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY` |
+| `AWS_ACCESS_KEY_ID` | **Yes** | Access Key ID for `veolms-fleet-infra-action` | `AKIAIOSFODNN7EXAMPLE` |
+| `AWS_SECRET_ACCESS_KEY` | **Yes** | Secret Access Key for `veolms-fleet-infra-action` | `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY` |
 
 ### 2. Repository Variables (Click "New repository variable")
 
