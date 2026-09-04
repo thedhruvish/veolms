@@ -48,6 +48,14 @@ export function listAvailableAwsProfiles(): string[] {
           if (isConfig && section.startsWith("profile ")) {
             const p = section.slice("profile ".length).trim();
             if (p) profiles.add(p);
+          if (isConfig) {
+            const p =
+              section === "default"
+                ? "default"
+                : section.startsWith("profile ")
+                  ? section.slice("profile ".length).trim()
+                  : undefined;
+            if (p) profiles.add(p);
           } else if (section) {
             profiles.add(section);
           }
