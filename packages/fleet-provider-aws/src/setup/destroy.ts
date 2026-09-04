@@ -9,7 +9,11 @@ import {
   red,
   yellow,
 } from "@veolms/fleet-types/terminal";
-import { isMainModule } from "@veolms/fleet-types";
+import {
+  isMainModule,
+  type ProviderDestroyOptions,
+  type ProviderDestroyResult,
+} from "@veolms/fleet-types";
 import { resolveS3BucketName, resolveS3BuildBucketName } from "../config.ts";
 
 const ROLE_NAME = "VeoLMSWorkerRole";
@@ -22,6 +26,7 @@ export interface DestroyOptions {
   readonly endpointUrl?: string | null;
   readonly s3BucketName?: string | null;
   readonly s3BuildBucket?: string | null;
+  readonly nonInteractive?: boolean;
 }
 
 function exec(cmd: string): string | null {
@@ -92,7 +97,9 @@ async function destroyS3Bucket(
         return;
       }
     } else {
-      console.info(`  ${yellow("⚠")} Non-interactive mode: proceeding with bucket deletion.`);
+      console.info(
+        `  ${yellow("⚠")} Non-interactive mode: proceeding with bucket deletion.`,
+      );
     }
   } else {
     console.info(`  ${dim("Bucket is empty — no confirmation needed.")}`);
@@ -148,7 +155,12 @@ ${bold(red("╚═════════════════════�
   const rl = options.rl ?? readline.createInterface({ input, output });
 
   try {
-    await runDestroySteps(rl, { region, endpointUrl, s3BucketName, s3BuildBucket });
+    await runDestroySteps(rl, {
+      region,
+      endpointUrl,
+      s3BucketName,
+      s3BuildBucket,
+    });
   } finally {
     if (ownRl) {
       rl.close();
@@ -349,11 +361,15 @@ async function runDestroySteps(
   if (s3BucketName) {
     await destroyS3Bucket(rl, s3BucketName, region);
   } else {
-    console.info(`\n[8/8] No S3_BUCKET configured — skipping S3 media bucket cleanup.`);
+    console.info(
+      `\n[8/8] No S3_BUCKET configured — skipping S3 media bucket cleanup.`,
+    );
   }
 
   if (s3BuildBucket && s3BuildBucket !== s3BucketName) {
-    console.info(`\nChecking dedicated S3 build bucket ${bold(s3BuildBucket)}...`);
+    console.info(
+      `\nChecking dedicated S3 build bucket ${bold(s3BuildBucket)}...`,
+    );
     await destroyS3Bucket(rl, s3BuildBucket, region);
   }
 
@@ -364,8 +380,32 @@ ${bold(green("╚═════════════════════
 `);
 }
 
+export async function destroyInfra(
+  options: ProviderDestroyOptions = {},
+): Promise<ProviderDestroyResult> {
+  const isNonInteractive =
+    options.nonInteractive === true ||
+    options.interactive === false ||
+    process.env.CI === "true" ||
+    process.argv.includes("--yes") ||
+    process.argv.includes("-y") ||
+    process.argv.includes("--non-interactive");
+
+  await runAwsInfraDestroy({
+    nonInteractive: isNonInteractive,
+  });
+
+  return {
+    success: true,
+    provider: "aws",
+  };
+}
+
+export const runDestroy = destroyInfra;
+export default destroyInfra;
+
 if (isMainModule(import.meta.url)) {
-  runAwsInfraDestroy().catch((err: unknown) => {
+  destroyInfra().catch((err: unknown) => {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`\n✘ Destroy failed: ${msg}\n`);
     process.exit(1);

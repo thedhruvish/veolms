@@ -82,9 +82,18 @@ import {
   red,
   yellow,
 } from "@veolms/fleet-types/terminal";
-import { isMainModule } from "@veolms/fleet-types";
+import {
+  isMainModule,
+  type ProviderConfigOptions,
+  type ProviderConfigResult,
+  type ProviderInfraOptions,
+  type ProviderInfraResult,
+} from "@veolms/fleet-types";
 
-import { checkAwsCredentials, listAvailableAwsProfiles } from "./aws-cli-check.ts";
+import {
+  checkAwsCredentials,
+  listAvailableAwsProfiles,
+} from "./aws-cli-check.ts";
 import { runAwsInfraDestroy } from "./destroy.ts";
 import { runSetupCicdIam } from "../../iam/setup-cicd-iam.ts";
 import {
@@ -211,6 +220,15 @@ function isNonInteractive(): boolean {
   );
 }
 
+function isReadlineInterface(obj: unknown): obj is readline.Interface {
+  return (
+    typeof obj === "object" &&
+    obj !== null &&
+    "question" in obj &&
+    typeof (obj as any).question === "function"
+  );
+}
+
 async function ask(
   rl: readline.Interface,
   question: string,
@@ -299,14 +317,18 @@ async function createRole(iam: IAMClient): Promise<string> {
   return roleArn;
 }
 
-export async function ensureSpotServiceLinkedRole(iam: IAMClient): Promise<void> {
+export async function ensureSpotServiceLinkedRole(
+  iam: IAMClient,
+): Promise<void> {
   try {
     await iam.send(
       new CreateServiceLinkedRoleCommand({
         AWSServiceName: "spot.amazonaws.com",
       }),
     );
-    ok("Created AWSServiceRoleForEC2Spot service-linked role for EC2 Spot instances");
+    ok(
+      "Created AWSServiceRoleForEC2Spot service-linked role for EC2 Spot instances",
+    );
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     if (
@@ -1568,7 +1590,10 @@ function parseSetupCliArgs(): Partial<SetupAnswers> & {
     const val = eqIdx >= 0 ? arg.slice(eqIdx + 1).trim() : "";
     if (arg.startsWith("--region=")) {
       result.region = val;
-    } else if (arg.startsWith("--profile=") || arg.startsWith("--aws-profile=")) {
+    } else if (
+      arg.startsWith("--profile=") ||
+      arg.startsWith("--aws-profile=")
+    ) {
       result.profile = val;
     } else if (arg.startsWith("--bucket=") || arg.startsWith("--s3-bucket=")) {
       result.s3BucketName = val;
@@ -1733,18 +1758,21 @@ async function runSetupFlow(
   // ── Step 1: Target Environment ─────────────────────────────────────────────
   step(1, TOTAL_STEPS, "Target Environment");
   const defaultTargetEnv = initialDefaults?.targetEnv ?? "aws";
-  const targetEnv = await askChoice(
-    rl,
-    "Where should this provision resources?",
-    [
-      { label: "Cloud AWS (production, billed)", value: "aws" as TargetEnv },
-      {
-        label: "LocalStack (local testing, free — requires LocalStack running)",
-        value: "localstack" as TargetEnv,
-      },
-    ],
-    defaultTargetEnv === "localstack" ? 1 : 0,
-  );
+  const targetEnv=defaultTargetEnv
+
+  // TEMP: disable localstack as of now we need a implment of that .
+  // const targetEnv = await askChoice(
+  //   rl,
+  //   "Where should this provision resources?",
+  //   [
+  //     { label: "Cloud AWS (production, billed)", value: "aws" as TargetEnv },
+  //     {
+  //       label: "LocalStack (local testing, free — requires LocalStack running)",
+  //       value: "localstack" as TargetEnv,
+  //     },
+  //   ],
+  //   defaultTargetEnv === "localstack" ? 1 : 0,
+  // );
 
   let endpointUrl: string | null = null;
   let awsProfile: string | null =
@@ -2434,22 +2462,19 @@ async function runSetupFlow(
       );
       await createInstanceProfile(tempIam, workerRoleArn);
 
-      const amiArch = allowedInstanceTypes.some((t) =>
-        t.startsWith("t4g") ||
-        t.startsWith("c7g") ||
-        t.startsWith("c8g") ||
-        t.startsWith("m7g"),
+      const amiArch = allowedInstanceTypes.some(
+        (t) =>
+          t.startsWith("t4g") ||
+          t.startsWith("c7g") ||
+          t.startsWith("c8g") ||
+          t.startsWith("m7g"),
       )
         ? "arm64"
         : "x86_64";
       const defaultAmiName =
         initialDefaults?.amiName ||
         `veolms-worker-ami-${amiArch}-${Date.now()}`;
-      customAmiName = await ask(
-        rl,
-        "Pre-baked AMI name",
-        defaultAmiName,
-      );
+      customAmiName = await ask(rl, "Pre-baked AMI name", defaultAmiName);
 
       info(
         `Building Pre-baked AMI "${bold(customAmiName)}" for ${bold(amiArch)} in ${bold(region)}...`,
@@ -2588,6 +2613,76 @@ async function runSetupFlow(
   );
   const useSpot = pricingModel === "spot";
   ok(useSpot ? "Spot Instances selected." : "On-Demand Instances selected.");
+
+  // ── Pre-Provisioning .env Check & User Confirmation ────────────────────────
+  const preAnswers: SetupAnswers = {
+    targetEnv,
+    endpointUrl,
+    profile: awsProfile,
+    region,
+    accountId: accountId ?? "",
+    databaseUrl,
+    fleetMode,
+    lambdaArch,
+    setupProbeLambda: shouldSetupProbeLambda,
+    storageProvider,
+    s3BucketName,
+    s3BuildBucket,
+    s3BucketAccess,
+    s3CredentialMode,
+    allowedInstanceTypes,
+    bootMode,
+    amiId,
+    amiName: customAmiName,
+    maxWorkers,
+    workerIdlePollSeconds,
+    useSpot,
+    allowSsh,
+    keyName,
+    securityGroupId: null,
+  };
+
+  const preResult: SetupResult = {
+    workerRoleArn: "",
+    instanceProfileArn: "",
+    logGroupWorkers: LOG_GROUP_WORKERS,
+    logGroupFleet: LOG_GROUP_FLEET,
+    lambdaFunctionArn: null,
+    probeLambdaArn: null,
+    ffprobeLayerArn: null,
+    s3BucketName,
+    s3BuildBucket,
+    securityGroupId: null,
+    keyName,
+  };
+
+  await generateEnvFiles(preAnswers, preResult, repoRoot);
+
+  const isNonInteractiveMode = isNonInteractive();
+  if (!isNonInteractiveMode && process.stdin.isTTY) {
+    console.log(`
+${bold(cyan("--------------------------------------------------"))}
+${bold(green("✔ Configuration saved!"))}
+Please check envs on the paths:
+  ${cyan("• apps/fleet-manager/.env")}
+  ${cyan("• apps/media-worker/.env")}
+You can change them if needed.
+`);
+    const proceedChoice = (
+      await ask(
+        rl,
+        bold(yellow("Proceed to create infrastructure resources? (yes/no)")),
+        "yes",
+      )
+    )
+      .trim()
+      .toLowerCase();
+
+    if (proceedChoice !== "yes" && proceedChoice !== "y") {
+      console.log(yellow("Infrastructure provisioning cancelled by user."));
+      return;
+    }
+  }
 
   // ── Step 15: Create AWS Resources ─────────────────────────────────────────
   step(15, TOTAL_STEPS, "Creating AWS Resources");
@@ -2731,7 +2826,9 @@ async function runSetupFlow(
 
   const targetBuildBucket = s3BuildBucket || s3BucketName;
   if (storageProvider === "s3" && targetBuildBucket) {
-    info("Building and uploading media worker script and Lambda packages to S3 build bucket...");
+    info(
+      "Building and uploading media worker script and Lambda packages to S3 build bucket...",
+    );
     await buildAndUploadBuildArtifacts({
       buildBucketName: targetBuildBucket,
       region,
@@ -2804,7 +2901,7 @@ ${bold("Generated .env Files:")}
 ${bold("Next Steps:")}${bootMode === "ami" ? `\n  1. Build the worker AMI:   ${cyan("pnpm fleet:build-ami")}` : ""}
   ${bootMode === "ami" ? "2" : "1"}. Upload build artifacts:  ${cyan("pnpm fleet:build:upload")}
   ${bootMode === "ami" ? "3" : "2"}. Queue & trigger a job:   ${cyan("pnpm fleet:queue:trigger")}
-  ${bootMode === "ami" ? "4" : "3"}. Run the fleet daemon:    ${cyan("pnpm fleet:run")}
+  ${bootMode === "ami" ? "4" : "3"}. Run the fleet daemon:    ${cyan("pnpm fleet:cli run")}
   ${bootMode === "ami" ? "5" : "4"}. Monitor fleet health:    ${cyan("pnpm fleet:cli health")}
   ${bootMode === "ami" ? "6" : "5"}. Teardown AWS resources:  ${cyan("pnpm fleet:destroy")}
 `);
@@ -2813,8 +2910,11 @@ ${bold("Next Steps:")}${bootMode === "ami" ? `\n  1. Build the worker AMI:   ${c
 // ─── Update Flow ──────────────────────────────────────────────────────────────
 
 export async function runAwsInfraUpdate(
-  existingRl?: readline.Interface,
+  existingRlOrOptions?: readline.Interface | ProviderInfraOptions,
 ): Promise<void> {
+  const existingRl = isReadlineInterface(existingRlOrOptions)
+    ? existingRlOrOptions
+    : undefined;
   const ownRl = !existingRl;
   const rl = existingRl ?? readline.createInterface({ input, output });
 
@@ -3301,8 +3401,15 @@ type SetupAction = "setup" | "update" | "cicd" | "destroy";
  * Called by apps/fleet-manager/src/infra.ts when FLEET_PROVIDER=aws.
  */
 export async function runAwsInfraSetup(
-  existingRl?: readline.Interface,
+  existingRlOrOptions?: readline.Interface | ProviderInfraOptions,
 ): Promise<void> {
+  const existingRl = isReadlineInterface(existingRlOrOptions)
+    ? existingRlOrOptions
+    : undefined;
+  const options = isReadlineInterface(existingRlOrOptions)
+    ? undefined
+    : existingRlOrOptions;
+
   banner();
 
   // Resolve repo root relative to workspace markers
@@ -3311,11 +3418,17 @@ export async function runAwsInfraSetup(
   const cliArgs = parseSetupCliArgs();
 
   const isNonInteractive =
+    options?.nonInteractive === true ||
+    options?.interactive === false ||
     process.argv.includes("--yes") ||
     process.argv.includes("-y") ||
     process.argv.includes("--non-interactive") ||
     process.env["NON_INTERACTIVE"] === "true" ||
     process.env["SETUP_NON_INTERACTIVE"] === "true";
+
+  if (isNonInteractive) {
+    process.env["SETUP_NON_INTERACTIVE"] = "true";
+  }
 
   const requestedAction =
     cliArgs.action ??
@@ -3323,7 +3436,8 @@ export async function runAwsInfraSetup(
       ? "update"
       : process.argv.includes("--destroy")
         ? "destroy"
-        : process.argv.includes("--cicd") || process.argv.includes("--setup-cicd")
+        : process.argv.includes("--cicd") ||
+            process.argv.includes("--setup-cicd")
           ? "cicd"
           : process.argv.includes("--setup")
             ? "setup"
@@ -3366,7 +3480,10 @@ export async function runAwsInfraSetup(
     } else if (action === "cicd") {
       await runSetupCicdIam({
         region: existingConfig.region ?? undefined,
-        bucketName: existingConfig.s3BuildBucket ?? existingConfig.s3BucketName ?? undefined,
+        bucketName:
+          existingConfig.s3BuildBucket ??
+          existingConfig.s3BucketName ??
+          undefined,
         profile: existingConfig.profile ?? undefined,
       });
     } else if (action === "destroy") {
@@ -3382,8 +3499,37 @@ export async function runAwsInfraSetup(
 export { runAwsInfraDestroy } from "./destroy.ts";
 export { runBuildAmi } from "./build-ami.ts";
 export { runSetupCicdIam } from "../../iam/setup-cicd-iam.ts";
-export { listAvailableAwsProfiles, checkAwsCredentials } from "./aws-cli-check.ts";
+export {
+  listAvailableAwsProfiles,
+  checkAwsCredentials,
+} from "./aws-cli-check.ts";
 export { parseEnvFile, loadExistingConfig, generateEnvFiles };
+
+export async function configureEnv(
+  _options: ProviderConfigOptions = {},
+): Promise<ProviderConfigResult> {
+  const repoRoot = resolveRepoRoot();
+  return {
+    provider: "aws",
+    envFiles: [
+      path.join(repoRoot, "apps", "fleet-manager", ".env"),
+      path.join(repoRoot, "apps", "media-worker", ".env"),
+    ],
+  };
+}
+
+export async function provisionInfra(
+  options: ProviderInfraOptions = {},
+): Promise<ProviderInfraResult> {
+  await runAwsInfraSetup(options);
+  return {
+    success: true,
+    provider: "aws",
+  };
+}
+
+export const runInfraSetup = runAwsInfraSetup;
+export default runAwsInfraSetup;
 
 if (isMainModule(import.meta.url)) {
   runAwsInfraSetup().catch((err: unknown) => {

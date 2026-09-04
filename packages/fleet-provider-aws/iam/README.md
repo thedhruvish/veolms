@@ -9,7 +9,7 @@ This directory contains the complete set of IAM policies and automation scripts 
 | Policy File | Intended Target | Purpose | Scope |
 |---|---|---|---|
 | **`cicd-infra-deployer-policy.json`** | IAM User / GitHub Actions (`veolms-fleet-infra-action`) | Used by GitHub Actions to update Lambda function code and upload bundles to the S3 build bucket. | Least-privilege: S3 build bucket (`bundles/*`) & `veolms-*` Lambdas only. |
-| **`infra-provisioner-policy.json`** | IAM User / Admin / Provisioning Role | Used by the engineer or pipeline running `fleet infra` (`pnpm --filter @veolms/fleet-manager infra`) to create all resources from scratch. | Creates S3 buckets, IAM roles/instance profiles, Lambdas, CloudWatch log groups, and EventBridge schedules. |
+| **`infra-provisioner-policy.json`** | IAM User / Admin / Provisioning Role | Used by the engineer or pipeline running `pnpm fleet:infra` to create all resources from scratch. | Creates S3 buckets, IAM roles/instance profiles, Lambdas, CloudWatch log groups, and EventBridge schedules. |
 | **`worker-runtime-trust-policy.json`** | Trust Relationship on `VeoLMSWorkerRole` | Allows AWS services to assume the worker runtime role. | Trusted Services: `ec2.amazonaws.com`, `lambda.amazonaws.com`, `scheduler.amazonaws.com`. |
 | **`worker-runtime-policy.json`** | Permissions Policy attached to `VeoLMSWorkerRole` | Permissions used by EC2 transcode workers and Fleet Manager Lambdas during job processing. | Reads/writes video segments in S3, manages EC2 spot worker lifecycle, reports CloudWatch logs, and schedules wakeups. |
 
@@ -17,7 +17,7 @@ This directory contains the complete set of IAM policies and automation scripts 
 
 ## 1. Infrastructure Provisioning Policy (`infra-provisioner-policy.json`)
 
-If you want to create an IAM User or Role specifically to run the setup tool `pnpm --filter @veolms/fleet-manager infra`, attach [`infra-provisioner-policy.json`](./infra-provisioner-policy.json).
+If you want to create an IAM User or Role specifically to run the setup tool `pnpm fleet:infra`, attach [`infra-provisioner-policy.json`](./infra-provisioner-policy.json).
 
 ### Resources Managed:
 - **S3**: Creates media storage and build buckets with CORS configurations and public-read policies.
@@ -73,7 +73,7 @@ Run either script from your terminal:
 
 **Via pnpm**:
 ```bash
-pnpm --filter @veolms/fleet-provider-aws setup:cicd
+pnpm fleet:cicd
 ```
 
 **Via Bash / AWS CLI**:

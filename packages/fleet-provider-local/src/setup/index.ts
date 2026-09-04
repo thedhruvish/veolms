@@ -12,7 +12,15 @@
 import { execSync } from "node:child_process";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { stdin as input, stdout as output } from "node:process";
+import * as readline from "node:readline/promises";
 import { fileURLToPath } from "node:url";
+import type {
+  ProviderConfigOptions,
+  ProviderConfigResult,
+  ProviderInfraOptions,
+  ProviderInfraResult,
+} from "@veolms/fleet-types";
 import {
   bold,
   cyan,
@@ -88,10 +96,11 @@ async function writeEnvFile(
 }
 
 /**
- * Main entry point for local infrastructure setup.
- * Called by apps/fleet-manager/src/infra.ts when FLEET_PROVIDER=local.
+ * Configures the environment and generates .env files for local provider.
  */
-export async function runLocalInfraSetup(): Promise<void> {
+export async function configureEnv(
+  _options: ProviderConfigOptions = {},
+): Promise<ProviderConfigResult> {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const repoRoot = path.resolve(__dirname, "..", "..", "..", "..");
 
@@ -147,13 +156,12 @@ ${bold(cyan("╚═════════════════════�
   console.log(`\n${bold(cyan("[3/3]"))} ${bold("Writing Per-App .env Files")}`);
   console.log(dim("─".repeat(52)));
 
+  const fleetEnvPath = path.join(repoRoot, "apps", "fleet-manager", ".env");
+  const workerEnvPath = path.join(repoRoot, "apps", "media-worker", ".env");
+
   const rootEnv = await readExistingEnv(path.join(repoRoot, ".env"));
-  const existingFleetEnv = await readExistingEnv(
-    path.join(repoRoot, "apps", "fleet-manager", ".env"),
-  );
-  const existingWorkerEnv = await readExistingEnv(
-    path.join(repoRoot, "apps", "media-worker", ".env"),
-  );
+  const existingFleetEnv = await readExistingEnv(fleetEnvPath);
+  const existingWorkerEnv = await readExistingEnv(workerEnvPath);
 
   const resolvedDatabaseUrl =
     process.env.DATABASE_URL ||
@@ -177,23 +185,35 @@ ${bold(cyan("╚═════════════════════�
     ...(resolvedDatabaseUrl ? { DATABASE_URL: resolvedDatabaseUrl } : {}),
   };
 
-  await writeEnvFile(
-    path.join(repoRoot, "apps", "fleet-manager", ".env"),
-    fleetEnv,
-  );
-  await writeEnvFile(
-    path.join(repoRoot, "apps", "media-worker", ".env"),
-    workerEnv,
+  await writeEnvFile(fleetEnvPath, fleetEnv);
+  await writeEnvFile(workerEnvPath, workerEnv);
+
+  return {
+    provider: "local",
+    envFiles: [fleetEnvPath, workerEnvPath],
+  };
+}
+
+/**
+ * Provisions local infrastructure (storage directories and verification).
+ */
+export async function provisionInfra(
+  _options: ProviderInfraOptions = {},
+): Promise<ProviderInfraResult> {
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const repoRoot = path.resolve(__dirname, "..", "..", "..", "..");
+
+  const s3BucketDir = path.join(repoRoot, "s3-bucket");
+  await fs.mkdir(path.join(s3BucketDir, "raw"), { recursive: true });
+  await fs.mkdir(path.join(s3BucketDir, "output"), { recursive: true });
+  ok(
+    `Local storage directory verified at ${bold(path.relative(process.cwd(), s3BucketDir))}`,
   );
 
   console.log(`
 ${bold(cyan("╔══════════════════════════════════════════════════════╗"))}
 ${bold(cyan("║"))}            ${bold(green("Local Setup Complete!"))}                ${bold(cyan("║"))}
 ${bold(cyan("╚══════════════════════════════════════════════════════╝"))}
-
-${bold("Verified:")}
-  ${green("✔")} Node.js ${nodeVersion ?? ""}
-  ${green("✔")} FFmpeg
 
 ${bold("Generated .env Files:")}
   ${green("✔")} apps/fleet-manager/.env
@@ -203,10 +223,70 @@ ${bold("Next Steps:")}
   1. Queue & trigger a test transcoding job: ${cyan("pnpm fleet:queue:trigger")}
   2. Monitor fleet health & status:         ${cyan("pnpm fleet:cli status")}
 `);
+
+  return {
+    success: true,
+    provider: "local",
+  };
 }
 
+/**
+ * Full infrastructure setup workflow:
+ * 1. Runs configureEnv()
+ * 2. Prompts user to check .env files and confirm
+ * 3. Runs provisionInfra()
+ */
+export async function runInfraSetup(
+  options: ProviderInfraOptions = {},
+): Promise<void> {
+  const isNonInteractive =
+    options.nonInteractive === true ||
+    options.interactive === false ||
+    process.env.CI === "true" ||
+    process.argv.includes("--yes") ||
+    process.argv.includes("-y") ||
+    process.argv.includes("--non-interactive");
+
+  if (!options.skipEnvConfig) {
+    const configResult = await configureEnv(options);
+
+    if (!isNonInteractive && process.stdin.isTTY) {
+      console.log(`
+${bold(cyan("--------------------------------------------------"))}
+${bold(green("✔ Configuration saved!"))}
+Please check envs on the paths:
+${configResult.envFiles.map((f) => `  ${cyan("• " + path.relative(process.cwd(), f))}`).join("\n")}
+You can change them if needed.
+`);
+      const rl = readline.createInterface({ input, output });
+      const answer = (
+        await rl.question(
+          bold(
+            yellow(
+              "Proceed with infrastructure provisioning? (yes/no) [yes]: ",
+            ),
+          ),
+        )
+      )
+        .trim()
+        .toLowerCase();
+      rl.close();
+
+      if (answer && answer !== "yes" && answer !== "y") {
+        console.log(yellow("Infrastructure provisioning cancelled by user."));
+        return;
+      }
+    }
+  }
+
+  await provisionInfra(options);
+}
+
+export const runLocalInfraSetup = runInfraSetup;
+export default runInfraSetup;
+
 if (isMainModule(import.meta.url)) {
-  runLocalInfraSetup().catch((err: unknown) => {
+  runInfraSetup().catch((err: unknown) => {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`\n✘ Setup failed: ${msg}\n`);
     process.exit(1);

@@ -69,13 +69,16 @@ packages/fleet-provider-aws/
 
 ```bash
 # Interactive setup: provisions IAM roles, profiles, S3 bucket permissions, log groups, and builds bundles
-pnpm --filter @veolms/fleet-manager infra --provider=aws
+pnpm fleet:infra --provider=aws
 
 # Build custom pre-baked AMI for instant boot times
-pnpm --filter @veolms/fleet-provider-aws build:ami
+pnpm fleet:build-ami
+
+# Queue and trigger end-to-end transcode task
+pnpm fleet:queue:trigger --provider=aws --key=raw/video.mp4 --qty=240p
 
 # Teardown: safely terminates instances, deletes Lambda, log groups, and IAM roles
-pnpm --filter @veolms/fleet-manager destroy --provider=aws
+pnpm fleet:destroy --provider=aws
 ```
 
 ---

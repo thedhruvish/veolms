@@ -15,11 +15,9 @@
     "cli": "node --env-file-if-exists=.env src/cli.ts",
     "provider": "node --env-file-if-exists=.env src/provider-select.ts",
     "infra": "node --env-file-if-exists=.env src/cli.ts infra",
-    "destroy": "node --env-file-if-exists=.env src/destroy.ts",
+    "destroy": "node --env-file-if-exists=.env src/cli.ts destroy",
     "build:upload": "node --env-file-if-exists=.env scripts/upload-build-artifacts.ts",
-    "queue:trigger": "node --env-file-if-exists=.env scripts/queue-and-trigger-lambda.ts",
-    "test:pipeline": "node --env-file-if-exists=.env scripts/test-local-pipeline.ts",
-    "setup:cicd": "node --env-file-if-exists=.env ../../packages/fleet-provider-aws/iam/setup-cicd-iam.ts"
+    "queue:trigger": "node --env-file-if-exists=.env src/cli.ts trigger"
   },
   "dependencies": {
     "@veolms/database": "workspace:*",

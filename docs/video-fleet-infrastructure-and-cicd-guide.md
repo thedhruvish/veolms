@@ -9,8 +9,8 @@ This document provides a comprehensive, step-by-step walkthrough for setting up 
 ```mermaid
 flowchart TD
     subgraph Local["1. Developer / Host Environment"]
-        A["Choose Provider<br/>(FLEET_PROVIDER=aws)"] --> B["Run Infra Setup<br/>(pnpm --filter @veolms/fleet-manager infra)"]
-        B --> C["Run IAM CI/CD Setup<br/>(pnpm --filter @veolms/fleet-provider-aws setup:cicd)"]
+        A["Choose Provider<br/>(FLEET_PROVIDER=aws)"] --> B["Run Infra Setup<br/>(pnpm fleet:infra)"]
+        B --> C["Run IAM CI/CD Setup<br/>(pnpm fleet:cicd)"]
         C --> D["Configure GitHub Secrets<br/>(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, S3_BUILD_BUCKET)"]
     end
 
@@ -23,7 +23,7 @@ flowchart TD
     end
 
     subgraph GitHubActions["3. GitHub Actions CI/CD (.github/workflows/deploy-video-fleet-infra.yml)"]
-        D --> Push["Push to 'development' (or workflow_dispatch)"]
+        Push["Push to 'development' (or workflow_dispatch)"]
         Push --> Filter{"Path Filter Match?<br/>(apps/fleet-manager, apps/media-worker, packages/fleet-*)`"}
         Filter -- No --> Skip["Skip run (No redundant triggers)"]
         Filter -- Yes --> TestGate["Test & Quality Gate<br/>(130 unit tests + typechecks)"]
@@ -43,7 +43,7 @@ VeoLMS features a pluggable provider architecture supporting both `aws` (product
 Run the provider selection tool from the workspace root:
 
 ```bash
-pnpm --filter @veolms/fleet-manager provider
+pnpm fleet:provider
 ```
 
 Choose **`AWS (Amazon Web Services)`**. This configures `FLEET_PROVIDER=aws` across your environment.
@@ -55,7 +55,7 @@ Choose **`AWS (Amazon Web Services)`**. This configures `FLEET_PROVIDER=aws` acr
 Run the infrastructure setup CLI:
 
 ```bash
-pnpm --filter @veolms/fleet-manager infra
+pnpm fleet:infra
 ```
 
 The interactive wizard guides you through provisioning and verifying all necessary AWS resources:
@@ -88,7 +88,7 @@ The interactive wizard guides you through provisioning and verifying all necessa
 All policy definitions live in [`packages/fleet-provider-aws/iam/`](../packages/fleet-provider-aws/iam/):
 
 1. **Infrastructure Provisioning Policy** ([`infra-provisioner-policy.json`](../packages/fleet-provider-aws/iam/infra-provisioner-policy.json)):
-   - Used by any engineer, admin, or script executing `pnpm --filter @veolms/fleet-manager infra`.
+   - Used by any engineer, admin, or script executing `pnpm fleet:infra`.
    - Grants permissions to create S3 buckets, IAM roles/instance profiles, Lambda functions, CloudWatch log groups, and EventBridge schedules.
 2. **Worker Runtime Role Policy** ([`worker-runtime-policy.json`](../packages/fleet-provider-aws/iam/worker-runtime-policy.json)) & Trust Policy ([`worker-runtime-trust-policy.json`](../packages/fleet-provider-aws/iam/worker-runtime-trust-policy.json)):
    - Attached to `VeoLMSWorkerRole` and assumed by EC2 transcode instances, Fleet Manager Lambdas, and EventBridge Scheduler.
@@ -106,7 +106,7 @@ Run the setup script located in [`packages/fleet-provider-aws/iam/`](../packages
 
 #### Option A: Via pnpm (Recommended)
 ```bash
-pnpm --filter @veolms/fleet-provider-aws setup:cicd
+pnpm fleet:cicd
 ```
 
 #### Option B: Via Bash / AWS CLI
@@ -212,11 +212,11 @@ Once tests pass, the deploy job detects which components actually changed in git
 You can also build and upload artifacts manually from your terminal at any time:
 ```bash
 # Upload only worker bundle
-pnpm --filter @veolms/fleet-manager build:upload --only-worker
+pnpm fleet:build:upload --only-worker
 
 # Upload only lambda packages and update AWS Lambda functions
-pnpm --filter @veolms/fleet-manager build:upload --only-lambda --update-lambda
+pnpm fleet:build:upload --only-lambda --update-lambda
 
 # Upload and update everything
-pnpm --filter @veolms/fleet-manager build:upload --update-lambda
+pnpm fleet:build:upload --update-lambda
 ```
