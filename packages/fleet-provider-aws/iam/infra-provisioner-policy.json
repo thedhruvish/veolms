@@ -81,8 +81,8 @@
         "lambda:InvokeFunction"
       ],
       "Resource": [
-        "arn:aws:lambda:*:*:function:*",
-        "arn:aws:lambda:*:*:layer:*"
+        "arn:aws:lambda:*:*:function:veolms-*",
+        "arn:aws:lambda:*:*:layer:veolms-*"
       ]
     },
     {
@@ -120,7 +120,10 @@
         "scheduler:DeleteSchedule",
         "scheduler:CreateScheduleGroup"
       ],
-      "Resource": "arn:aws:scheduler:*:*:schedule/*"
+      "Resource": [
+        "arn:aws:scheduler:*:*:schedule/*/*veolms*",
+        "arn:aws:scheduler:*:*:schedule-group/*veolms*"
+      ]
     },
     {
       "Sid": "EC2InfraInspectionAndNetworking",
@@ -148,10 +151,7 @@
     {
       "Sid": "CallerIdentityAndSSMLookup",
       "Effect": "Allow",
-      "Action": [
-        "sts:GetCallerIdentity",
-        "ssm:GetParameter"
-      ],
+      "Action": ["sts:GetCallerIdentity", "ssm:GetParameter"],
       "Resource": "*"
     }
   ]

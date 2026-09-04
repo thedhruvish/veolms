@@ -23,7 +23,7 @@ import * as fs from "node:fs/promises";
 import * as fsSync from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { execSync } from "node:child_process";
+import { execSync, execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import * as esbuild from "esbuild";
 import { resolveS3BucketName, resolveS3BuildBucketName } from "../config.ts";
@@ -94,6 +94,7 @@ import {
   checkAwsCredentials,
   listAvailableAwsProfiles,
 } from "./aws-cli-check.ts";
+import { isNonInteractive } from "./common.ts";
 import { runAwsInfraDestroy } from "./destroy.ts";
 import { runSetupCicdIam } from "../../iam/setup-cicd-iam.ts";
 import {
@@ -207,16 +208,6 @@ function isValidS3BucketName(name: string): boolean {
     S3_BUCKET_NAME_PATTERN.test(name) &&
     !name.includes("..") &&
     !/^\d+\.\d+\.\d+\.\d+$/.test(name)
-  );
-}
-
-function isNonInteractive(): boolean {
-  return (
-    process.argv.includes("--yes") ||
-    process.argv.includes("-y") ||
-    process.argv.includes("--non-interactive") ||
-    process.env["NON_INTERACTIVE"] === "true" ||
-    process.env["SETUP_NON_INTERACTIVE"] === "true"
   );
 }
 
@@ -966,8 +957,16 @@ export async function buildAndUploadWorkerBundle(
 
     // 2. Fallback via aws s3 cp if SDK upload didn't succeed
     if (!uploaded) {
-      execSync(
-        `aws s3 cp "${outfile}" "s3://${s3BucketName}/bundles/media-worker.js" --region "${region}"`,
+      execFileSync(
+        "aws",
+        [
+          "s3",
+          "cp",
+          outfile,
+          `s3://${s3BucketName}/bundles/media-worker.js`,
+          "--region",
+          region,
+        ],
         { stdio: "pipe" },
       );
       uploaded = true;
@@ -1206,20 +1205,29 @@ export async function uploadFileOrBufferToS3(
   } catch (sdkErr: unknown) {
     const sdkMsg = sdkErr instanceof Error ? sdkErr.message : String(sdkErr);
     warn(`S3 SDK upload to ${bucket}/${key} notice: ${sdkMsg}`);
+    let tempPath: string | null = null;
     try {
-      const tempPath = path.join(
+      tempPath = path.join(
         os.tmpdir(),
         `veolms-upload-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       );
       fsSync.writeFileSync(tempPath, body);
-      execSync(
-        `aws s3 cp "${tempPath}" "s3://${bucket}/${key}" --region "${region}"`,
+      execFileSync(
+        "aws",
+        ["s3", "cp", tempPath, `s3://${bucket}/${key}`, "--region", region],
         { stdio: "pipe" },
       );
-      fsSync.unlinkSync(tempPath);
       return true;
     } catch {
       return false;
+    } finally {
+      if (tempPath && fsSync.existsSync(tempPath)) {
+        try {
+          fsSync.unlinkSync(tempPath);
+        } catch {
+          // Ignore temp cleanup error
+        }
+      }
     }
   }
 }
@@ -1758,7 +1766,7 @@ async function runSetupFlow(
   // ── Step 1: Target Environment ─────────────────────────────────────────────
   step(1, TOTAL_STEPS, "Target Environment");
   const defaultTargetEnv = initialDefaults?.targetEnv ?? "aws";
-  const targetEnv=defaultTargetEnv
+  const targetEnv = defaultTargetEnv;
 
   // TEMP: disable localstack as of now we need a implment of that .
   // const targetEnv = await askChoice(

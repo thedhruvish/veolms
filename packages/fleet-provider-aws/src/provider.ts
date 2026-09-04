@@ -129,12 +129,12 @@ export function createAwsProvider(
   const useSpot = config.useSpot ?? envConfig.EC2_USE_SPOT;
   const subnetId = config.subnetId ?? envConfig.SUBNET_ID;
   const rawKeyName = config.keyName ?? envConfig.KEY_NAME;
+  const normalizedKeyName = rawKeyName?.trim();
   const keyName =
-    rawKeyName &&
-    rawKeyName.trim() !== "" &&
-    rawKeyName !== "null" &&
-    rawKeyName !== "undefined"
-      ? rawKeyName.trim()
+    normalizedKeyName &&
+    normalizedKeyName !== "null" &&
+    normalizedKeyName !== "undefined"
+      ? normalizedKeyName
       : undefined;
   const securityGroupIds =
     config.securityGroupIds ??

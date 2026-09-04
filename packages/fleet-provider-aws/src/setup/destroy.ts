@@ -15,6 +15,7 @@ import {
   type ProviderDestroyResult,
 } from "@veolms/fleet-types";
 import { resolveS3BucketName, resolveS3BuildBucketName } from "../config.ts";
+import { isNonInteractive } from "./common.ts";
 
 const ROLE_NAME = "VeoLMSWorkerRole";
 const INSTANCE_PROFILE_NAME = "VeoLMSWorkerInstanceProfile";
@@ -73,12 +74,7 @@ async function destroyS3Bucket(
   }
 
   if (objectCount > 0) {
-    const isNonInteractive =
-      process.argv.includes("--yes") ||
-      process.argv.includes("-y") ||
-      process.argv.includes("--force") ||
-      process.env["NON_INTERACTIVE"] === "true" ||
-      process.env["SETUP_NON_INTERACTIVE"] === "true";
+    const nonInteractiveMode = isNonInteractive();
 
     console.info(`
   ${bold(red("⚠ WARNING:"))} S3 bucket ${bold(bucketName)} contains ${bold(String(objectCount))} object(s)
@@ -86,7 +82,7 @@ async function destroyS3Bucket(
   Deleting this bucket will ${bold(red("PERMANENTLY DELETE ALL OF THAT DATA"))}.
   This cannot be undone.
 `);
-    if (!isNonInteractive) {
+    if (!nonInteractiveMode) {
       const answer = await rl.question(
         `  ${bold("?")} Type "yes" to permanently delete the bucket and all its data: `,
       );

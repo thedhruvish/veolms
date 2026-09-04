@@ -110,11 +110,23 @@ export function extractVideoJobEvent(rawEvent: unknown): VideoJobEvent {
   if (candidate.videoMetadata && typeof candidate.videoMetadata === "object") {
     result.videoMetadata = candidate.videoMetadata as Record<string, unknown>;
   }
-  if (candidate.deleteFiles !== undefined) {
-    result.deleteFiles = Boolean(candidate.deleteFiles);
+  const parseBool = (val: unknown): boolean | undefined => {
+    if (typeof val === "boolean") return val;
+    if (typeof val === "string") {
+      const lower = val.trim().toLowerCase();
+      if (lower === "true") return true;
+      if (lower === "false") return false;
+    }
+    return undefined;
+  };
+
+  const parsedDeleteFiles = parseBool(candidate.deleteFiles);
+  if (parsedDeleteFiles !== undefined) {
+    result.deleteFiles = parsedDeleteFiles;
   }
-  if (candidate.deleteMedia !== undefined) {
-    result.deleteMedia = Boolean(candidate.deleteMedia);
+  const parsedDeleteMedia = parseBool(candidate.deleteMedia);
+  if (parsedDeleteMedia !== undefined) {
+    result.deleteMedia = parsedDeleteMedia;
   }
 
   return result as VideoJobEvent;

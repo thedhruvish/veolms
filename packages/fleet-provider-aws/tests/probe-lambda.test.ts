@@ -7,6 +7,7 @@ import {
   extractProbeEvent,
   processProbeAndForward,
 } from "../src/probe-lambda.ts";
+import { createMockExecutable } from "./helpers.ts";
 
 describe("Video Metadata Probe Lambda", () => {
   it("should extract event payload from direct invocation", () => {
@@ -49,104 +50,94 @@ describe("Video Metadata Probe Lambda", () => {
     assert.equal(extracted.action, "queue");
   });
 
-function createMockExecutable(
-  dir: string,
-  baseName: string,
-  outputJson: unknown,
-): string {
-  const jsonString = JSON.stringify(outputJson);
-  const shPath = path.join(dir, `${baseName}.sh`);
-  fs.writeFileSync(shPath, `#!/bin/sh\necho '${jsonString}'\n`, { mode: 0o755 });
-  return shPath;
-}
-
   it(
     "should probe metadata and forward enriched payload to downstream Fleet Manager Lambda",
     { skip: process.platform === "win32" },
     async () => {
-    const tempDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), "probe-lambda-test-"),
-    );
+      const tempDir = fs.mkdtempSync(
+        path.join(os.tmpdir(), "probe-lambda-test-"),
+      );
 
-    const sampleFfprobeOutput = {
-      streams: [
-        {
-          codec_type: "video",
-          codec_name: "h264",
-          width: 1280,
-          height: 720,
-          r_frame_rate: "30/1",
+      const sampleFfprobeOutput = {
+        streams: [
+          {
+            codec_type: "video",
+            codec_name: "h264",
+            width: 1280,
+            height: 720,
+            r_frame_rate: "30/1",
+            duration: "60.0",
+            bit_rate: "2500000",
+          },
+        ],
+        format: {
           duration: "60.0",
           bit_rate: "2500000",
+          format_name: "mp4",
         },
-      ],
-      format: {
-        duration: "60.0",
-        bit_rate: "2500000",
-        format_name: "mp4",
-      },
-    };
+      };
 
-    const mockFfprobePath = createMockExecutable(
-      tempDir,
-      "mock-ffprobe",
-      sampleFfprobeOutput,
-    );
-
-    let sentPayload: any = null;
-    const mockLambdaClient = {
-      send: async (command: any) => {
-        if (command.input?.Payload) {
-          sentPayload = JSON.parse(
-            Buffer.from(command.input.Payload).toString("utf-8"),
-          );
-        }
-        return {
-          Payload: Buffer.from(
-            JSON.stringify({
-              statusCode: 200,
-              body: JSON.stringify({ success: true }),
-            }),
-          ),
-        };
-      },
-    } as any;
-
-    try {
-      const result = await processProbeAndForward(
-        {
-          action: "queue",
-          videoKey: "https://my-bucket.s3.amazonaws.com/test.mp4",
-          qualities: ["720p", "480p"],
-        },
-        {
-          lambdaClient: mockLambdaClient,
-          targetLambdaName: "test-fleet-manager",
-          ffprobePath: mockFfprobePath,
-        },
+      const mockFfprobePath = createMockExecutable(
+        tempDir,
+        "mock-ffprobe",
+        sampleFfprobeOutput,
       );
 
-      assert.equal(result.success, true);
-      assert.equal(result.probed, true);
-      assert.equal(result.videoMetadata?.width, 1280);
-      assert.equal(result.videoMetadata?.height, 720);
-      assert.equal(result.videoMetadata?.durationSeconds, 60.0);
+      let sentPayload: any = null;
+      const mockLambdaClient = {
+        send: async (command: any) => {
+          if (command.input?.Payload) {
+            sentPayload = JSON.parse(
+              Buffer.from(command.input.Payload).toString("utf-8"),
+            );
+          }
+          return {
+            Payload: Buffer.from(
+              JSON.stringify({
+                statusCode: 200,
+                body: JSON.stringify({ success: true }),
+              }),
+            ),
+          };
+        },
+      } as any;
 
-      // Verify the downstream payload received the original fields PLUS videoMetadata
-      assert.ok(sentPayload);
-      assert.equal(sentPayload.action, "queue");
-      assert.equal(
-        sentPayload.videoKey,
-        "https://my-bucket.s3.amazonaws.com/test.mp4",
-      );
-      assert.deepEqual(sentPayload.qualities, ["720p", "480p"]);
-      assert.ok(sentPayload.videoMetadata);
-      assert.equal(sentPayload.videoMetadata.width, 1280);
-      assert.equal(sentPayload.videoMetadata.height, 720);
-    } finally {
-      fs.rmSync(tempDir, { recursive: true, force: true });
-    }
-  });
+      try {
+        const result = await processProbeAndForward(
+          {
+            action: "queue",
+            videoKey: "https://my-bucket.s3.amazonaws.com/test.mp4",
+            qualities: ["720p", "480p"],
+          },
+          {
+            lambdaClient: mockLambdaClient,
+            targetLambdaName: "test-fleet-manager",
+            ffprobePath: mockFfprobePath,
+          },
+        );
+
+        assert.equal(result.success, true);
+        assert.equal(result.probed, true);
+        assert.equal(result.videoMetadata?.width, 1280);
+        assert.equal(result.videoMetadata?.height, 720);
+        assert.equal(result.videoMetadata?.durationSeconds, 60.0);
+
+        // Verify the downstream payload received the original fields PLUS videoMetadata
+        assert.ok(sentPayload);
+        assert.equal(sentPayload.action, "queue");
+        assert.equal(
+          sentPayload.videoKey,
+          "https://my-bucket.s3.amazonaws.com/test.mp4",
+        );
+        assert.deepEqual(sentPayload.qualities, ["720p", "480p"]);
+        assert.ok(sentPayload.videoMetadata);
+        assert.equal(sentPayload.videoMetadata.width, 1280);
+        assert.equal(sentPayload.videoMetadata.height, 720);
+      } finally {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
+    },
+  );
 
   it("should forward cancellation request directly to Fleet Manager without probing", async () => {
     let sentPayload: any = null;

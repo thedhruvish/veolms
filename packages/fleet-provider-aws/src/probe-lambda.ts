@@ -109,11 +109,15 @@ export async function processProbeAndForward(
     });
 
   if (payload.status === "cancelled") {
+    const isExplicitlyFalse = (val: unknown) =>
+      val === false ||
+      (typeof val === "string" && val.trim().toLowerCase() === "false");
     const cancelPayload = {
       jobId: payload.jobId,
       status: "cancelled",
       deleteFiles:
-        payload.deleteFiles !== false && payload.deleteMedia !== false,
+        !isExplicitlyFalse(payload.deleteFiles) &&
+        !isExplicitlyFalse(payload.deleteMedia),
       ...(payload.videoId ? { videoId: payload.videoId } : {}),
       ...(payload.videoKey ? { videoKey: payload.videoKey } : {}),
     };

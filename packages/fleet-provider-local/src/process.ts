@@ -1,4 +1,4 @@
-import { execSync, spawn, type ChildProcess } from "node:child_process";
+import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 
 export interface ManagedProcess {
   readonly workerId: string;
@@ -120,7 +120,9 @@ export class LocalProcessRegistry {
     } else {
       try {
         // On Windows, taskkill /T terminates the process and any spawned child processes (e.g. ffmpeg)
-        execSync(`taskkill /pid ${pid} /T /F`, { stdio: "ignore" });
+        execFileSync("taskkill", ["/pid", String(pid), "/T", "/F"], {
+          stdio: "ignore",
+        });
         return;
       } catch {
         // Fallback to direct PID kill if taskkill is unavailable

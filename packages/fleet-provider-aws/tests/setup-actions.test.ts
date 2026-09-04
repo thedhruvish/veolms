@@ -65,19 +65,30 @@ describe("AWS Setup Module Interface", () => {
 
       const initialResult: any = {
         workerRoleArn: "arn:aws:iam::123456789012:role/VeoLMSWorkerRole",
-        instanceProfileArn: "arn:aws:iam::123456789012:instance-profile/VeoLMSWorkerInstanceProfile",
+        instanceProfileArn:
+          "arn:aws:iam::123456789012:instance-profile/VeoLMSWorkerInstanceProfile",
         logGroupWorkers: "/veolms/workers",
         logGroupFleet: "/veolms/fleet-manager",
-        lambdaFunctionArn: "arn:aws:lambda:ap-south-1:123456789012:function:veolms-fleet-manager",
-        probeLambdaArn: "arn:aws:lambda:ap-south-1:123456789012:function:veolms-video-metadata-probe",
+        lambdaFunctionArn:
+          "arn:aws:lambda:ap-south-1:123456789012:function:veolms-fleet-manager",
+        probeLambdaArn:
+          "arn:aws:lambda:ap-south-1:123456789012:function:veolms-video-metadata-probe",
         s3BucketName: "veolms-media-initial",
         s3BuildBucket: "veolms-build-initial",
       };
 
-      await setupModule.generateEnvFiles(initialAnswers, initialResult, tempDir);
+      await setupModule.generateEnvFiles(
+        initialAnswers,
+        initialResult,
+        tempDir,
+      );
 
-      const fleetEnvInitial = setupModule.parseEnvFile(path.join(fleetEnvDir, ".env"));
-      const workerEnvInitial = setupModule.parseEnvFile(path.join(workerEnvDir, ".env"));
+      const fleetEnvInitial = setupModule.parseEnvFile(
+        path.join(fleetEnvDir, ".env"),
+      );
+      const workerEnvInitial = setupModule.parseEnvFile(
+        path.join(workerEnvDir, ".env"),
+      );
 
       assert.equal(fleetEnvInitial["AWS_REGION"], "ap-south-1");
       assert.equal(fleetEnvInitial["AWS_PROFILE"], "initial-profile");
@@ -106,19 +117,30 @@ describe("AWS Setup Module Interface", () => {
 
       const updatedResult: any = {
         workerRoleArn: "arn:aws:iam::123456789012:role/VeoLMSWorkerRole",
-        instanceProfileArn: "arn:aws:iam::123456789012:instance-profile/VeoLMSWorkerInstanceProfile",
+        instanceProfileArn:
+          "arn:aws:iam::123456789012:instance-profile/VeoLMSWorkerInstanceProfile",
         logGroupWorkers: "/veolms/workers",
         logGroupFleet: "/veolms/fleet-manager",
-        lambdaFunctionArn: "arn:aws:lambda:us-east-1:123456789012:function:veolms-fleet-manager",
-        probeLambdaArn: "arn:aws:lambda:us-east-1:123456789012:function:veolms-video-metadata-probe",
+        lambdaFunctionArn:
+          "arn:aws:lambda:us-east-1:123456789012:function:veolms-fleet-manager",
+        probeLambdaArn:
+          "arn:aws:lambda:us-east-1:123456789012:function:veolms-video-metadata-probe",
         s3BucketName: "veolms-media-updated",
         s3BuildBucket: "veolms-build-updated",
       };
 
-      await setupModule.generateEnvFiles(updatedAnswers, updatedResult, tempDir);
+      await setupModule.generateEnvFiles(
+        updatedAnswers,
+        updatedResult,
+        tempDir,
+      );
 
-      const fleetEnvUpdated = setupModule.parseEnvFile(path.join(fleetEnvDir, ".env"));
-      const workerEnvUpdated = setupModule.parseEnvFile(path.join(workerEnvDir, ".env"));
+      const fleetEnvUpdated = setupModule.parseEnvFile(
+        path.join(fleetEnvDir, ".env"),
+      );
+      const workerEnvUpdated = setupModule.parseEnvFile(
+        path.join(workerEnvDir, ".env"),
+      );
 
       // Verify that re-running infra setup updated all .env values correctly
       assert.equal(fleetEnvUpdated["AWS_REGION"], "us-east-1");
@@ -143,8 +165,12 @@ describe("AWS Setup Module Interface", () => {
     fs.mkdirSync(fleetEnvDir, { recursive: true });
 
     const origArgv = [...process.argv];
+    const origBucketAccess = process.env.S3_BUCKET_ACCESS;
+    const origAmiName = process.env.AMI_NAME;
     try {
       process.argv = ["node", "setup.ts"];
+      delete process.env.S3_BUCKET_ACCESS;
+      delete process.env.AMI_NAME;
       fs.writeFileSync(
         path.join(fleetEnvDir, ".env"),
         "S3_BUCKET_ACCESS=public\nAMI_NAME=my-prebaked-ami\n",
@@ -155,6 +181,10 @@ describe("AWS Setup Module Interface", () => {
       assert.equal(config.amiName, "my-prebaked-ami");
     } finally {
       process.argv = origArgv;
+      if (origBucketAccess === undefined) delete process.env.S3_BUCKET_ACCESS;
+      else process.env.S3_BUCKET_ACCESS = origBucketAccess;
+      if (origAmiName === undefined) delete process.env.AMI_NAME;
+      else process.env.AMI_NAME = origAmiName;
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
   });
@@ -165,7 +195,11 @@ describe("AWS Setup Module Interface", () => {
     fs.mkdirSync(fleetEnvDir, { recursive: true });
 
     const origArgv = [...process.argv];
+    const origBucketAccess = process.env.S3_BUCKET_ACCESS;
+    const origAmiName = process.env.AMI_NAME;
     try {
+      delete process.env.S3_BUCKET_ACCESS;
+      delete process.env.AMI_NAME;
       fs.writeFileSync(
         path.join(fleetEnvDir, ".env"),
         "S3_BUCKET_ACCESS=private\nAMI_NAME=env-ami-name\n",
@@ -183,6 +217,10 @@ describe("AWS Setup Module Interface", () => {
       assert.equal(config.amiName, "cli-custom-ami");
     } finally {
       process.argv = origArgv;
+      if (origBucketAccess === undefined) delete process.env.S3_BUCKET_ACCESS;
+      else process.env.S3_BUCKET_ACCESS = origBucketAccess;
+      if (origAmiName === undefined) delete process.env.AMI_NAME;
+      else process.env.AMI_NAME = origAmiName;
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
   });

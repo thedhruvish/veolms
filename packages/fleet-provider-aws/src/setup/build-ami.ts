@@ -72,7 +72,11 @@ export async function runBuildAmi(options?: BuildAmiOptions): Promise<string> {
   );
   const instanceType = architecture === "arm64" ? "c7g.large" : "c6i.large";
   const defaultAmiName = `veolms-worker-ami-${architecture}-${Date.now()}`;
-  const amiName = (options?.amiName || process.env.AMI_NAME || defaultAmiName).trim();
+  const amiName = (
+    options?.amiName ||
+    process.env.AMI_NAME ||
+    defaultAmiName
+  ).trim();
 
   console.info(`Architecture:    ${bold(architecture)}`);
   console.info(
@@ -141,9 +145,12 @@ shutdown -h now
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       if (
-        (msg.includes("InvalidParameterValue") ||
-          msg.includes("Invalid IAM Instance Profile name") ||
-          msg.includes("cannot be assumed")) &&
+        (msg.includes("Invalid IAM Instance Profile name") ||
+          msg.includes("cannot be assumed") ||
+          (msg.includes("InvalidParameterValue") &&
+            (msg.includes("Instance Profile") ||
+              msg.includes("instance-profile") ||
+              msg.includes("IAM")))) &&
         attempt < maxLaunchRetries
       ) {
         console.info(
@@ -216,7 +223,9 @@ shutdown -h now
     console.info(`✔ AMI Creation initiated: ${bold(green(amiId))}`);
 
     // Step 4: Wait for AMI to be available with active progress
-    console.info("\n[4/5] Waiting for AWS to snapshot EBS volume and register AMI (takes ~1.5-2 min)...");
+    console.info(
+      "\n[4/5] Waiting for AWS to snapshot EBS volume and register AMI (takes ~1.5-2 min)...",
+    );
     let isAvailable = false;
     let waitElapsed = 0;
     while (!isAvailable && waitElapsed < 600) {
@@ -239,7 +248,9 @@ shutdown -h now
     }
 
     if (!isAvailable) {
-      throw new Error(`Timed out waiting for AMI ${amiId} to become available.`);
+      throw new Error(
+        `Timed out waiting for AMI ${amiId} to become available.`,
+      );
     }
   } catch (err: unknown) {
     console.error(

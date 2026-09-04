@@ -723,7 +723,8 @@ export async function executeTranscodeJob(
     const isCancelled =
       jobAbortController.signal.aborted ||
       externalSignal?.aborted ||
-      errorMsg.toLowerCase().includes("cancelled");
+      (error instanceof Error &&
+        (error.name === "AbortError" || (error as any).code === "ABORT_ERR"));
 
     if (isCancelled) {
       console.info(

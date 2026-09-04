@@ -5,21 +5,21 @@ on:
     branches:
       - development
     paths:
-      - 'apps/fleet-manager/**'
-      - 'apps/media-worker/**'
-      - 'packages/fleet-provider-aws/**'
-      - 'packages/fleet-types/**'
-      - 'packages/config/**'
-      - 'packages/database/**'
-      - '.github/workflows/deploy-video-fleet-infra.yml'
+      - "apps/fleet-manager/**"
+      - "apps/media-worker/**"
+      - "packages/fleet-provider-aws/**"
+      - "packages/fleet-types/**"
+      - "packages/config/**"
+      - "packages/database/**"
+      - ".github/workflows/deploy-video-fleet-infra.yml"
   workflow_dispatch:
     inputs:
       deploy_worker:
-        description: 'Build & upload media-worker bundle to S3'
+        description: "Build & upload media-worker bundle to S3"
         type: boolean
         default: true
       deploy_lambda:
-        description: 'Build & update AWS Lambda functions'
+        description: "Build & update AWS Lambda functions"
         type: boolean
         default: true
 
@@ -161,6 +161,8 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION || 'ap-south-1' }}
           FLEET_MANAGER_LAMBDA_NAME: ${{ vars.FLEET_MANAGER_LAMBDA_NAME || 'veolms-fleet-manager' }}
           PROBE_LAMBDA_NAME: ${{ vars.PROBE_LAMBDA_NAME || 'veolms-video-metadata-probe' }}
+          FLEET_MODE: ${{ vars.FLEET_MODE || 'serverless' }}
+          SETUP_PROBE_LAMBDA: ${{ vars.SETUP_PROBE_LAMBDA || 'true' }}
         run: |
           set -Eeuo pipefail
           if [ -z "${S3_BUILD_BUCKET:-}" ]; then
@@ -175,7 +177,7 @@ jobs:
         run: |
           cat << 'EOF' >> "$GITHUB_STEP_SUMMARY"
           ## 🚀 VeoLMS Video Fleet CI/CD Deployment Summary
-          
+
           | Step | Status |
           |---|---|
           | **Tests & Quality Gate** | ✅ Passed |
