@@ -23,15 +23,22 @@ import { randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { stdin as input, stdout as output } from "node:process";
 import * as readline from "node:readline/promises";
+import { fileURLToPath } from "node:url";
 import { createDatabase } from "@veolms/database";
-import { loadServerConfig } from "@veolms/config";
+import {
+  loadFleetManagerConfig,
+  loadServerConfig,
+  resolveProviderName,
+} from "@veolms/config";
 import {
   videoQualityLevelSchema,
   type VideoQualityLevel,
 } from "@veolms/fleet-types";
+import { createFleetManager } from "../src/core/fleet-manager.ts";
+import { resolveFleetProvider } from "../src/core/provider-resolver.ts";
 
 function resolveAwsRegion(): string {
   const args = process.argv.slice(2);
@@ -261,6 +268,11 @@ async function main(): Promise<void> {
   const config = loadServerConfig(process.env);
   const db = createDatabase(config.DATABASE_URL);
 
+  const providerName = (
+    resolveProviderName(undefined, process.env) ?? "local"
+  ).toLowerCase();
+  const isLocalProvider = providerName === "local";
+
   try {
     const rawArgs = process.argv.slice(2);
     const isExplicitCancel =
@@ -362,6 +374,17 @@ async function main(): Promise<void> {
       console.info(
         `╚══════════════════════════════════════════════════════════════╝\n`,
       );
+      if (isLocalProvider) {
+        console.info(`[1/2] Cancelling Job [${targetJobId}] in database...`);
+        await db
+          .updateTable("video_jobs")
+          .set({ status: "cancelled", updated_at: new Date() })
+          .where("id", "=", targetJobId)
+          .execute();
+        console.info(`✔ Job [${targetJobId}] successfully marked CANCELLED in database.\n`);
+        return;
+      }
+
       console.info(
         `[1/2] Sending cancellation request for Job [${targetJobId}] to Lambda "${LAMBDA_NAME}"...`,
       );
@@ -415,11 +438,31 @@ async function main(): Promise<void> {
       `\n╔══════════════════════════════════════════════════════════════╗`,
     );
     console.info(
-      `║     VeoLMS AWS Queue & Trigger (Serverless Fleet Manager)    ║`,
+      `║     VeoLMS ${isLocalProvider ? "Local" : "AWS"} Queue & Trigger (${isLocalProvider ? "Local Fleet Manager" : "Serverless Fleet Manager"})      ║`,
     );
     console.info(
       `╚══════════════════════════════════════════════════════════════╝\n`,
     );
+
+    if (isLocalProvider) {
+      await db
+        .updateTable("video_jobs")
+        .set({ status: "cancelled", updated_at: new Date() })
+        .where("status", "in", ["queued", "provisioning", "processing"])
+        .execute();
+      await db
+        .updateTable("workers")
+        .set({ status: "terminated", updated_at: new Date() })
+        .where("provider", "=", "local")
+        .where("status", "in", [
+          "pending",
+          "provisioning",
+          "starting",
+          "ready",
+          "processing",
+        ])
+        .execute();
+    }
 
     console.info(`[1/3] Adding job to PostgreSQL database...`);
     console.info(`  Job ID:        ${jobId}`);
@@ -518,6 +561,129 @@ async function main(): Promise<void> {
         .execute();
 
       console.info(`✔ Job [${jobId}] queued.\n`);
+    }
+
+    if (isLocalProvider) {
+      console.info(
+        `[2/3] Starting Local Fleet Manager daemon to process job [${actualJobId}]...`,
+      );
+
+      const repoRoot = join(
+        dirname(fileURLToPath(import.meta.url)),
+        "..",
+        "..",
+        "..",
+      );
+      const defaultWorkerScript = join(
+        repoRoot,
+        "apps/media-worker/src/index.ts",
+      );
+      const workerScript = existsSync(defaultWorkerScript)
+        ? defaultWorkerScript
+        : undefined;
+
+      // Cancel stale pending jobs from prior runs so the worker focuses on this job
+      await db
+        .updateTable("video_jobs")
+        .set({ status: "cancelled", updated_at: new Date() })
+        .where("status", "in", ["queued", "processing"])
+        .where("id", "!=", actualJobId)
+        .execute();
+
+      const fleetConfig = loadFleetManagerConfig({
+        ...process.env,
+        PROVIDER: "LOCAL",
+        POLL_INTERVAL_MS: 1000,
+        HEARTBEAT_TIMEOUT_SECONDS: 90,
+      });
+
+      const provider = await resolveFleetProvider("local", {
+        workerScriptPath: workerScript,
+        cwd: repoRoot,
+        defaultEnv: {
+          DATABASE_URL: config.DATABASE_URL,
+        },
+      });
+
+      const fleet = createFleetManager({
+        provider,
+        db,
+        config: fleetConfig,
+      });
+
+      const abortController = new AbortController();
+      const fleetLoopPromise = fleet.startServerfulLoop(abortController.signal);
+
+      console.info(`[3/3] Watching job progress in database...`);
+      const startTime = Date.now();
+      let completed = false;
+
+      while (!completed) {
+        await new Promise((res) => setTimeout(res, 1000));
+
+        const currentJob = await db
+          .selectFrom("video_jobs")
+          .select(["status", "worker_id", "error_message"])
+          .where("id", "=", actualJobId)
+          .executeTakeFirst();
+
+        if (!currentJob) continue;
+
+        if (currentJob.worker_id) {
+          const monitoring = await db
+            .selectFrom("worker_monitoring")
+            .select(["progress_percent", "check_interval_sec"])
+            .where("worker_id", "=", currentJob.worker_id)
+            .executeTakeFirst();
+
+          const progress = monitoring?.progress_percent ?? 0;
+          process.stdout.write(
+            `\r  [Progress] Status: ${currentJob.status} | Worker: ${currentJob.worker_id.slice(0, 8)} | Progress: ${Number(progress).toFixed(1)}%   `,
+          );
+        }
+
+        if (currentJob.status === "completed") {
+          completed = true;
+          console.info("\n\n✔ Job successfully COMPLETED!");
+          break;
+        }
+
+        if (currentJob.status === "failed") {
+          abortController.abort();
+          await fleetLoopPromise.catch(() => {});
+          throw new Error(`Job FAILED: ${currentJob.error_message}`);
+        }
+
+        // Safety timeout: 600s
+        if (Date.now() - startTime > 600000) {
+          abortController.abort();
+          await fleetLoopPromise.catch(() => {});
+          throw new Error("Timeout: Job took longer than 600s");
+        }
+      }
+
+      abortController.abort();
+      await fleetLoopPromise.catch(() => {});
+
+      // Verify generated HLS files on disk
+      const cleanPrefix = actualOutputPrefix.replace(/^s3-bucket[/\\]/, "");
+      const outputDir = resolve(repoRoot, "s3-bucket", cleanPrefix);
+      if (existsSync(outputDir)) {
+        console.info(`\n✔ Verified HLS output directory: ${outputDir}`);
+        const masterPlaylist = join(outputDir, "master.m3u8");
+        if (existsSync(masterPlaylist)) {
+          console.info(`  - master.m3u8 found`);
+        }
+        for (const q of QUALITIES) {
+          const qDir = join(outputDir, q);
+          if (existsSync(qDir)) {
+            console.info(`  - Rendition ${q} created`);
+          }
+        }
+      }
+
+      console.info("\n🎉 Local transcode pipeline completed successfully!\n");
+      return;
     }
 
     console.info(

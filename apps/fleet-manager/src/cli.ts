@@ -193,8 +193,38 @@ export async function runCli(
     case "status": {
       const jobId = positional[0] ?? (flags["id"] as string);
       if (!jobId) {
-        console.error("Error: Missing Job ID. Usage: fleet status <job-id>");
-        process.exit(1);
+        const summary = await getFleetHealthSummary(
+          getDb(),
+          heartbeatTimeoutMs,
+        );
+        console.info(`\n=== FLEET HEALTH & STATUS ===`);
+        console.info(`Queued Jobs:     ${summary.queuedJobsCount}`);
+        console.info(`Processing Jobs: ${summary.processingJobsCount}`);
+        console.info(`Completed Jobs:  ${summary.completedJobsCount}`);
+        console.info(`Failed Jobs:     ${summary.failedJobsCount}`);
+        console.info(`Active Workers:  ${summary.activeWorkersCount}`);
+        console.info(`Stalled Workers: ${summary.stalledWorkersCount}`);
+
+        const recentJobs = await getDb()
+          .selectFrom("video_jobs")
+          .selectAll()
+          .orderBy("created_at", "desc")
+          .limit(5)
+          .execute();
+
+        if (recentJobs.length > 0) {
+          console.info(`\nRecent Jobs (${recentJobs.length}):`);
+          for (const j of recentJobs) {
+            console.info(
+              `  - ID: ${j.id} | Status: ${j.status} | Key: ${j.video_key} | Qualities: ${j.qualities.join(", ")}`,
+            );
+          }
+        }
+
+        console.info(
+          `\nTip: To inspect a specific job, run: ${cyan("pnpm fleet:cli status <job-id>")}`,
+        );
+        break;
       }
 
       const diagnostics = await getJobDiagnostics(getDb(), jobId);

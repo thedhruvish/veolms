@@ -1,8 +1,11 @@
 import { execFile, execSync, spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { copyFile, cp, mkdir, rm, stat, writeFile } from "node:fs/promises";
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 import {
   ARCHITECTURES,
   DEFAULT_SEGMENT_DURATION_SECONDS,
@@ -390,11 +393,36 @@ export async function executeTranscodeJob(
       });
     } else {
       const cleanVideoKey = job.video_key.replace(/^[/\\]+/, "");
+      const keyWithoutBucketPrefix = cleanVideoKey.replace(
+        /^s3-bucket[/\\]/,
+        "",
+      );
       const workspaceDir = process.cwd();
-      const localCandidates = [
-        resolveWithin(join(workspaceDir, "s3-bucket"), cleanVideoKey),
-        resolveWithin(join(workspaceDir, "scratch"), cleanVideoKey),
+
+      const candidateRoots = [
+        join(workspaceDir, "s3-bucket"),
+        join(repoRoot, "s3-bucket"),
+        join(workspaceDir, "scratch"),
+        join(repoRoot, "scratch"),
+        workspaceDir,
+        repoRoot,
       ];
+      const candidateKeys = [cleanVideoKey, keyWithoutBucketPrefix];
+
+      const localCandidates: string[] = [];
+      for (const root of candidateRoots) {
+        for (const k of candidateKeys) {
+          try {
+            const pathCandidate = resolveWithin(root, k);
+            if (!localCandidates.includes(pathCandidate)) {
+              localCandidates.push(pathCandidate);
+            }
+          } catch {
+            // Path was outside candidate root, skip
+          }
+        }
+      }
+
       let isLocalFile = false;
       for (const candidate of localCandidates) {
         if (existsSync(candidate)) {
@@ -417,13 +445,17 @@ export async function executeTranscodeJob(
             ) {
               throw error;
             }
-            // Candidate disappeared or could not be read; try the next
-            // configured local location, then S3.
+            // Candidate disappeared or could not be read; try next candidate
           }
         }
       }
 
       if (!isLocalFile) {
+        if (config.STORAGE_PROVIDER === "local") {
+          throw new Error(
+            `Local source video not found for key "${job.video_key}". Checked: ${localCandidates.slice(0, 4).join(", ")}`,
+          );
+        }
         await storage.downloadObject(cleanVideoKey, inputVideoPath, {
           signal,
         });
@@ -605,11 +637,11 @@ export async function executeTranscodeJob(
     // removed in finally, so persistence failures must fail the job rather
     // than leaving a false COMPLETED result with no playable output.
     if (config.STORAGE_PROVIDER === "local") {
-      const cleanPrefix = job.output_prefix.replace(/^s3-bucket\//, "");
-      const localTargetDir = resolveWithin(
-        join(process.cwd(), "s3-bucket"),
-        cleanPrefix,
-      );
+      const cleanPrefix = job.output_prefix.replace(/^s3-bucket[/\\]/, "");
+      const baseBucketDir = existsSync(join(repoRoot, "s3-bucket"))
+        ? join(repoRoot, "s3-bucket")
+        : join(process.cwd(), "s3-bucket");
+      const localTargetDir = resolveWithin(baseBucketDir, cleanPrefix);
       await mkdir(localTargetDir, { recursive: true });
       await cp(outputHlsDir, localTargetDir, {
         recursive: true,
