@@ -5,10 +5,12 @@ export * from "./auth.schema.ts";
 export * from "./courses.schema.ts";
 export * from "./media.schema.ts";
 export * from "./commerce.schema.ts";
+export * from "./learning-interactions.schema.ts";
 export * from "./webhooks.schema.ts";
 export * from "./notifications.schema.ts";
 export * from "./json.schema.ts";
-export * from './fleet.schema.ts'
+export * from "./fleet.schema.ts";
+export * from "./learning-space.schema.ts";
 
 // Import table interfaces to assemble unified Database schema
 import type {
@@ -64,6 +66,20 @@ import type {
 } from "./commerce.schema.ts";
 
 import type {
+  LearningThreadTable,
+  LearningReplyTable,
+  LearningLikeTable,
+  LearningBookmarkTable,
+  LearningFollowTable,
+  LearningMentionTable,
+  LearningNoteTable,
+  LearningAttachmentTable,
+  LearningReportTable,
+  LearningSuspensionTable,
+  LearningAuditLogTable,
+} from "./learning-interactions.schema.ts";
+
+import type {
   WebhookEventTable,
   CallbackInboxTable,
   OutboxEventTable,
@@ -80,6 +96,7 @@ import type {
   WorkerMonitoringTable,
   WorkerTable,
 } from "./fleet.schema.ts";
+import type { LearningSpaceSessionTable } from "./learning-space.schema.ts";
 
 export interface Database {
   // Auth & Academy
@@ -133,6 +150,19 @@ export interface Database {
   manual_payment_requests: ManualPaymentRequestTable;
   credit_notes: CreditNoteTable;
 
+  // Learning Interactions
+  learning_threads: LearningThreadTable;
+  learning_replies: LearningReplyTable;
+  learning_likes: LearningLikeTable;
+  learning_bookmarks: LearningBookmarkTable;
+  learning_follows: LearningFollowTable;
+  learning_mentions: LearningMentionTable;
+  learning_notes: LearningNoteTable;
+  learning_attachments: LearningAttachmentTable;
+  learning_reports: LearningReportTable;
+  learning_suspensions: LearningSuspensionTable;
+  learning_audit_logs: LearningAuditLogTable;
+
   // Webhooks & Outbox
   webhook_events: WebhookEventTable;
   callback_inbox: CallbackInboxTable;
@@ -148,6 +178,9 @@ export interface Database {
   workers: WorkerTable;
   worker_monitoring: WorkerMonitoringTable;
   worker_events: WorkerEventTable;
+
+  // Learner state
+  learning_space_sessions: LearningSpaceSessionTable;
 }
 
 export type PurchaseTable = OrderTable;
