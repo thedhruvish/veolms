@@ -106,6 +106,7 @@ import {
   hasAdminRole,
   resolveWorkspaceRole,
   getWorkspaceRoleStorageKey,
+  getRoleDisplayName,
 } from "./shell/workspaceRole";
 import {
   SIDEBAR_DEFAULT_WIDTH,
@@ -3310,6 +3311,7 @@ export function CoursesPage({
         <SettingsPage
           tab={surfaceSettingsTab}
           role={role}
+          userRoles={userRoles}
           isAuthenticated={isAuthenticated}
           onNavigatePage={onNavigatePage}
           onExitSettings={onExitSettings}
@@ -3421,13 +3423,20 @@ export function CoursesPage({
       );
     }
     if (surfacePage === "placeholder") {
-      return <PlaceholderPage section={surfaceActiveSection} role={role} />;
+      return (
+        <PlaceholderPage
+          section={surfaceActiveSection}
+          role={role}
+          userRoles={userRoles}
+        />
+      );
     }
     return (
       <CourseCatalogue
         activeSection={surfaceActiveSection}
         role={effectiveRole}
         isAdmin={isAdmin}
+        currentUserId={activeUser?.id}
         isLoading={isLoadingCourses}
         wishlisted={wishlisted}
         enrollmentFilter={enrollmentFilter}
@@ -3744,6 +3753,7 @@ export function CoursesPage({
                 <ProfileMenu
                   role={role}
                   allowedRoles={allowedWorkspaceRoles}
+                  userRoles={userRoles}
                   sidebarHidden={sidebarPresentedAsOverlay}
                   includeSidebarControl={!compactNavigation}
                   onClose={() => setProfileMenu(false)}
@@ -3759,9 +3769,10 @@ export function CoursesPage({
                 <button
                   type="button"
                   className="courses-profile__button"
-                  aria-label={`${shellProfileDisplayName}, ${
-                    role === "creator" ? "Instructor" : "Student"
-                  }. Open role and appearance menu`}
+                  aria-label={`${shellProfileDisplayName}, ${getRoleDisplayName(
+                    role,
+                    userRoles,
+                  )}. Open role and appearance menu`}
                   aria-expanded={profileMenu}
                   onClick={() => setProfileMenu((current) => !current)}
                 >
@@ -3769,10 +3780,10 @@ export function CoursesPage({
                   <span>
                     <strong>{shellProfileDisplayName}</strong>
                     <small>
-                      {role === "creator" ? "Instructor" : "Student"} <i />
+                      {getRoleDisplayName(role, userRoles)} <i />
                     </small>
                   </span>
-                  <CaretDown size={16} />
+                  <CaretDown size={17} aria-hidden="true" />
                 </button>
               ) : (
                 <LoginProfileButton
@@ -4277,14 +4288,14 @@ export function CoursesPage({
                   aria-haspopup="menu"
                   aria-expanded={profileMenu}
                   aria-controls="mobile-profile-menu"
-                  aria-label={`${shellProfileDisplayName}, ${role === "creator" ? "Instructor" : "Student"}. Open role menu`}
+                  aria-label={`${shellProfileDisplayName}, ${getRoleDisplayName(role, userRoles)}. Open role menu`}
                   onClick={() => setProfileMenu((current) => !current)}
                 >
                   <ShellProfileAvatar avatarUrl={shellProfileAvatarUrl} />
                   <span>
                     <strong>{shellProfileDisplayName}</strong>
                     <small>
-                      {role === "creator" ? "Instructor" : "Student"}
+                      {getRoleDisplayName(role, userRoles)}
                     </small>
                   </span>
                   <CaretDown size={17} aria-hidden="true" />
@@ -4302,6 +4313,7 @@ export function CoursesPage({
                   className="mobile-menu-sheet__profile-menu"
                   role={role}
                   allowedRoles={allowedWorkspaceRoles}
+                  userRoles={userRoles}
                   includeSidebarControl={false}
                   onClose={() => setProfileMenu(false)}
                   onRoleChange={setRole}
