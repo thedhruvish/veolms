@@ -62,6 +62,7 @@ import { FloatingScrollbar } from "./shell/FloatingScrollbar";
 import { LogoutConfirmModal } from "./shell/LogoutConfirmModal";
 import { ProfileMenu, ShellProfileAvatar } from "./shell/ProfileMenu";
 import { SidebarToggleIcon } from "./shell/SidebarToggleIcon";
+import { resolveMediaAssetUrl } from "./lib/mediaUrl";
 import { autosyncManager } from "./lib/autosync";
 import { useCurrentUser, useSignOut } from "./services/auth";
 import { useSidenav } from "./services/navigation";
@@ -822,7 +823,9 @@ export function CoursesPage({
 
   const shellProfileDisplayName =
     activeUser?.displayName?.trim() || "Your name";
-  const shellProfileAvatarUrl = activeUser?.avatarDataUrl ?? null;
+  const shellProfileAvatarUrl = resolveMediaAssetUrl(
+    activeUser?.avatarDataUrl ?? null,
+  );
   const profileRef = useRef<HTMLDivElement>(null);
   const coursesAppRef = useRef<HTMLDivElement>(null);
   const appliedThemeRef = useRef<"light" | "dark" | null>(null);

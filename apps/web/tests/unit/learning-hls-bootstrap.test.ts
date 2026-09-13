@@ -121,6 +121,12 @@ describe("learning HLS bootstrap", () => {
 
     expect(
       resolveVideoPlaybackApiUrl(
+        "/m/11111111-1111-1111-1111-111111111111/hls/master.m3u8",
+      ),
+    ).toBe("/api/v1/m/11111111-1111-1111-1111-111111111111/hls/master.m3u8");
+
+    expect(
+      resolveVideoPlaybackApiUrl(
         "/api/v1/media/11111111-1111-1111-1111-111111111111/hls/master.m3u8",
       ),
     ).toBe("/api/v1/media/11111111-1111-1111-1111-111111111111/hls/master.m3u8");

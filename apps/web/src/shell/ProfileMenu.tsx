@@ -6,6 +6,7 @@ import { UserCircleIcon as UserCircle } from "@phosphor-icons/react/UserCircle";
 import { UsersIcon as Users } from "@phosphor-icons/react/Users";
 import { useEffect, useState } from "react";
 import type { CourseRole } from "../courses/catalogue";
+import { resolveMediaAssetUrl } from "../lib/mediaUrl";
 
 const FALLBACK_AVATAR_CLASS =
   "shell-profile-avatar shell-profile-avatar--fallback";
@@ -15,23 +16,24 @@ export function ShellProfileAvatar({
 }: {
   avatarUrl: string | null;
 }) {
+  const resolvedUrl = resolveMediaAssetUrl(avatarUrl);
   const [imageFailed, setImageFailed] = useState(false);
-  const showImage = Boolean(avatarUrl) && !imageFailed;
+  const showImage = Boolean(resolvedUrl) && !imageFailed;
 
   useEffect(() => {
     setImageFailed(false);
-  }, [avatarUrl]);
+  }, [resolvedUrl]);
 
   return (
     <i
       className={
-        showImage && avatarUrl ? "shell-profile-avatar" : FALLBACK_AVATAR_CLASS
+        showImage && resolvedUrl ? "shell-profile-avatar" : FALLBACK_AVATAR_CLASS
       }
       aria-hidden="true"
     >
-      {showImage && avatarUrl ? (
+      {showImage && resolvedUrl ? (
         <img
-          src={avatarUrl}
+          src={resolvedUrl}
           alt=""
           width={43}
           height={43}

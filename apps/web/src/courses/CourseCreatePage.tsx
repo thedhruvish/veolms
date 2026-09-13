@@ -65,6 +65,7 @@ import {
 } from "../keyboardShortcuts";
 import { SwipeableTabPanel } from "../navigation/SwipeableTabPanel";
 import { ConfirmDeleteModal } from "../ConfirmDeleteModal";
+import { resolveMediaAssetUrl } from "../lib/mediaUrl";
 import {
   coursesService,
   useCategories,
@@ -2833,7 +2834,7 @@ export function CourseCreatePage({
       courseVersionRef.current = updated.version;
       thumbnailMediaIdRef.current = presigned.mediaAssetId;
       setThumbnailMediaId(presigned.mediaAssetId);
-      setThumbnail(`/api/v1/media/${presigned.mediaAssetId}`);
+      setThumbnail(resolveMediaAssetUrl(presigned.mediaAssetId));
       thumbnailDirtyRef.current = false;
       setThumbnailUploadProgress(100);
       setThumbnailUploadStatus("idle");
@@ -4468,9 +4469,7 @@ export function CourseCreatePage({
         thumbnailMediaIdRef.current = confirmedThumbnailMediaId;
         setThumbnailMediaId(confirmedThumbnailMediaId);
         setThumbnail(
-          confirmedThumbnailMediaId
-            ? `/api/v1/media/${confirmedThumbnailMediaId}`
-            : null,
+          resolveMediaAssetUrl(confirmedThumbnailMediaId),
         );
       }
 

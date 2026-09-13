@@ -176,6 +176,9 @@ export default defineConfig(({ mode }) => {
       "import.meta.env.VITE_COURSE_MEDIA_BASE_URL": JSON.stringify(
         config.VITE_COURSE_MEDIA_BASE_URL ?? "",
       ),
+      "import.meta.env.VITE_STREAMING_URL": JSON.stringify(
+        config.VITE_STREAMING_URL ?? "",
+      ),
     },
     plugins: [earlyHlsPreloadPlugin(), tailwindcss(), reactRouter()],
     resolve: {
@@ -234,6 +237,26 @@ export default defineConfig(({ mode }) => {
       },
       proxy: {
         "/api": {
+          target: config.STATIC_BUILD_API_URL
+            ? new URL(config.STATIC_BUILD_API_URL).origin.replace(
+                "localhost",
+                "127.0.0.1",
+              )
+            : "http://127.0.0.1:4000",
+          changeOrigin: true,
+          secure: false,
+        },
+        "/media": {
+          target: config.STATIC_BUILD_API_URL
+            ? new URL(config.STATIC_BUILD_API_URL).origin.replace(
+                "localhost",
+                "127.0.0.1",
+              )
+            : "http://127.0.0.1:4000",
+          changeOrigin: true,
+          secure: false,
+        },
+        "/m": {
           target: config.STATIC_BUILD_API_URL
             ? new URL(config.STATIC_BUILD_API_URL).origin.replace(
                 "localhost",

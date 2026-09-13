@@ -11,6 +11,7 @@ import type {
   CourseLifecycleStatus,
   CoursePricing,
 } from "./catalogue";
+import { resolveMediaAssetUrl } from "../lib/mediaUrl";
 
 export function formatDuration(seconds: number): string {
   if (!seconds || seconds <= 0) return "0h 0m";
@@ -122,9 +123,8 @@ export function adaptCourseSummaryToCatalogueCourse(
  * consumed by CourseCatalogue and CourseCard.
  */
 export function adaptApiCourseToCatalogueCourse(apiCourse: ApiCourse): Course {
-  const thumbnail = apiCourse.thumbnailMediaId
-    ? `/api/v1/media/${apiCourse.thumbnailMediaId}`
-    : "";
+  const thumbnail =
+    resolveMediaAssetUrl(apiCourse.thumbnailMediaId) || "";
 
   const validStatus: CourseLifecycleStatus =
     apiCourse.status === "published" ||

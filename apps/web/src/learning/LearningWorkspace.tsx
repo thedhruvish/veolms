@@ -70,6 +70,7 @@ import {
 } from "./coursePlayerAccess";
 import { useAuthStore } from "../store/auth.store";
 import { useCourseOverview } from "../services/courses";
+import { resolveMediaAssetUrl } from "../lib/mediaUrl";
 import { adaptCourseOverviewToCurriculum } from "./courseCurriculumAdapter";
 import { getVideoPlaybackBootstrap } from "./videoPlaybackBootstrap";
 import { Discussion, PrerenderedMobileCommentComposer } from "./Discussion";
@@ -699,9 +700,10 @@ export function LearningWorkspace({
       : undefined;
   const courseThumbnail = useMemo(() => {
     if (courseOverview) {
-      return courseOverview.course.thumbnailMediaId
-        ? `/api/v1/media/${courseOverview.course.thumbnailMediaId}`
-        : undefined;
+      return (
+        resolveMediaAssetUrl(courseOverview.course.thumbnailMediaId) ??
+        undefined
+      );
     }
     if (isCourseOverviewError) {
       return undefined;

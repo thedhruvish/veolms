@@ -59,6 +59,7 @@ import { CircularCheckbox } from "../components/CircularCheckbox";
 import { AutosaveStatus, useAutosync } from "../lib/autosync";
 import { authKeys, authService } from "../services/auth";
 import { useQueryClient } from "@tanstack/react-query";
+import { resolveMediaAssetUrl } from "../lib/mediaUrl";
 
 type EditableProfile = ProfilePreferences & {
   bio: string;
@@ -953,7 +954,7 @@ export function ProfileSettings({
     <span className={className} aria-hidden="true">
       {showAvatar ? (
         <img
-          src={draftProfile.avatarDataUrl ?? undefined}
+          src={resolveMediaAssetUrl(draftProfile.avatarDataUrl) ?? undefined}
           alt=""
           width={160}
           height={160}

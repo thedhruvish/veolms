@@ -104,6 +104,30 @@ export async function createApp({
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   });
 
+  // Support direct root-level requests when /media or a custom relative STREAMING_URL (e.g. /m) is configured
+  const customPrefix = config.STREAMING_URL.startsWith("/")
+    ? config.STREAMING_URL.replace(/\/+$/, "")
+    : null;
+
+  app.addHook("onRequest", async (request) => {
+    const rawUrl = request.raw.url ?? request.url;
+    if (
+      request.url.startsWith("/media/") &&
+      !request.url.startsWith(`${API_ROUTE_PREFIX}/media/`)
+    ) {
+      request.raw.url = `${API_ROUTE_PREFIX}${rawUrl}`;
+      return;
+    }
+    if (
+      customPrefix &&
+      customPrefix !== "/media" &&
+      request.url.startsWith(`${customPrefix}/`) &&
+      !request.url.startsWith(`${API_ROUTE_PREFIX}${customPrefix}/`)
+    ) {
+      request.raw.url = `${API_ROUTE_PREFIX}${rawUrl}`;
+    }
+  });
+
   // Centralized bootstrap for every commerce background poller (fulfillment
   // scheduler, payment event queue) — see background-jobs.ts for why this
   // isn't started inside a route plugin file instead.

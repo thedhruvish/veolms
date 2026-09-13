@@ -25,6 +25,8 @@ import {
   createAuthService,
   type AuthService,
 } from "../../auth/index.ts";
+import { config } from "../../../config.ts";
+import { formatMediaAssetUrl } from "../../media/index.ts";
 import * as courseRepo from "./course.repository.ts";
 import {
   createCategoryService,
@@ -123,7 +125,7 @@ export function createCourseService({
           };
 
       const thumbnailUrl = row.thumbnail_media_id
-        ? `/api/v1/media/${row.thumbnail_media_id}`
+        ? formatMediaAssetUrl(row.thumbnail_media_id, config.STREAMING_URL)
         : null;
 
       const instructorName =

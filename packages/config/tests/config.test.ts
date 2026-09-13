@@ -20,15 +20,50 @@ describe("packages/config", () => {
       assert.equal(config.API_PORT, 4000);
       assert.equal(config.NODE_ENV, "development");
       assert.equal(config.EMAIL_TRANSPORT, "console");
+      assert.equal(config.STREAMING_URL, "/m");
+    });
+
+    it("should accept valid STREAMING_URL options (http(s) and /path)", () => {
+      const configWithPrefix = loadServerConfig({
+        SESSION_SECRET: "12345678901234567890123456789012",
+        MFA_ENCRYPTION_KEY: "12345678901234567890123456789012",
+        SETUP_TOKEN: "custom_setup_token",
+        STREAMING_URL: "/m",
+      });
+      assert.equal(configWithPrefix.STREAMING_URL, "/m");
+
+      const configWithHttp = loadServerConfig({
+        SESSION_SECRET: "12345678901234567890123456789012",
+        MFA_ENCRYPTION_KEY: "12345678901234567890123456789012",
+        SETUP_TOKEN: "custom_setup_token",
+        STREAMING_URL: "https://streaming.example.com",
+      });
+      assert.equal(
+        configWithHttp.STREAMING_URL,
+        "https://streaming.example.com",
+      );
+
+      assert.throws(
+        () =>
+          loadServerConfig({
+            SESSION_SECRET: "12345678901234567890123456789012",
+            MFA_ENCRYPTION_KEY: "12345678901234567890123456789012",
+            SETUP_TOKEN: "custom_setup_token",
+            STREAMING_URL: "invalid-streaming-url",
+          }),
+        /STREAMING_URL must start with/,
+      );
     });
 
     it("should load web configuration", () => {
       const config = loadWebConfig({
         WEB_PORT: "8080",
         VITE_API_BASE_URL: "https://api.example.com",
+        VITE_STREAMING_URL: "/m",
       });
       assert.equal(config.WEB_PORT, 8080);
       assert.equal(config.VITE_API_BASE_URL, "https://api.example.com");
+      assert.equal(config.VITE_STREAMING_URL, "/m");
     });
   });
 

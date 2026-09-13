@@ -36,6 +36,7 @@ import {
   type CourseRole,
 } from "./catalogue";
 import { CourseThumbnailPlaceholder } from "./CourseThumbnailPlaceholder";
+import { resolveMediaAssetUrl } from "../lib/mediaUrl";
 import type { CourseSection } from "../learning/courseContent";
 import type { NavigateTo } from "../routing/navigation";
 import { useAuthStore } from "../store/auth.store";
@@ -1256,9 +1257,8 @@ export function adaptCourseOverviewResponse(
   );
   const resolvedDuration = formatDuration(resolvedDurationSeconds);
 
-  const resolvedThumbnail = c.thumbnailMediaId
-    ? `/api/v1/media/${c.thumbnailMediaId}`
-    : "";
+  const resolvedThumbnail =
+    resolveMediaAssetUrl(c.thumbnailMediaId) || "";
 
   const adaptedCourse: Course = {
     id: c.id,
@@ -1393,9 +1393,7 @@ export function adaptPreviewDataToOverview(
     enrolled: false,
     duration: formatDuration(totalDurationSeconds),
     students: 0,
-    thumbnail: c.thumbnailMediaId
-      ? `/api/v1/media/${c.thumbnailMediaId}`
-      : "",
+    thumbnail: resolveMediaAssetUrl(c.thumbnailMediaId) || "",
     lifecycleStatus: (c.status === "published"
       ? "published"
       : "draft") as CourseLifecycleStatus,

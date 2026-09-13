@@ -133,6 +133,18 @@ const serverConfigSchema = z.object({
   // Optional public CDN origin for published free/preview HLS output. Keep
   // this separate from STORAGE_ENDPOINT because the latter is private.
   STORAGE_PUBLIC_BASE_URL: z.url().optional(),
+  // Streaming URL base for HLS playback. Supports full URLs (e.g. http://... or https://...)
+  // or relative path prefixes (e.g. /m).
+  STREAMING_URL: z
+    .string()
+    .refine(
+      (val) => val === "" || /^https?:\/\//i.test(val) || val.startsWith("/"),
+      {
+        message:
+          'STREAMING_URL must start with "http://", "https://", or "/" (e.g. "/m" or "https://streaming.example.com")',
+      },
+    )
+    .default("/m"),
   STORAGE_REGION: z.string().default("us-east-1"),
   STORAGE_ACCESS_KEY_ID: z.string().optional(),
   STORAGE_SECRET_ACCESS_KEY: z.string().optional(),
@@ -158,6 +170,7 @@ const webConfigSchema = z.object({
   WEB_PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   VITE_API_BASE_URL: z.string().default("http://localhost:4000/api/v1"),
   VITE_COURSE_MEDIA_BASE_URL: z.url().optional(),
+  VITE_STREAMING_URL: z.string().optional(),
   STATIC_BUILD_API_URL: z.url().default("http://localhost:4000/api/v1"),
 });
 

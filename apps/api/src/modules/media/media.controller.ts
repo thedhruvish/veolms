@@ -175,12 +175,40 @@ export function createMediaController({ service }: { service: MediaService }) {
     return reply.send(result.stream);
   }
 
+  async function streamDirectStorageResource(
+    request: FastifyRequest<{ Params: { "*": string } }>,
+    reply: FastifyReply,
+  ) {
+    const user = request.user
+      ? { id: request.user.id, roles: request.user.roles }
+      : undefined;
+    const result = await service.getDirectStorageStream(
+      request.params["*"],
+      user,
+    );
+    reply.header("Content-Type", result.contentType);
+    if (result.contentLength !== undefined) {
+      reply.header("Content-Length", result.contentLength);
+    }
+    reply.header(
+      "Cache-Control",
+      result.isPublic
+        ? "public, max-age=60, s-maxage=60, stale-while-revalidate=300"
+        : result.isManifest
+          ? "private, no-store"
+          : "public, max-age=86400, immutable",
+    );
+    reply.header("X-Content-Type-Options", "nosniff");
+    return reply.send(result.stream);
+  }
+
   return {
     presignMediaUpload,
     confirmMediaUpload,
     getVideoJobProgress,
     getPlaybackBootstrap,
     streamHlsResource,
+    streamDirectStorageResource,
     retryVideoJob,
     cancelVideoJob,
     streamVideoJobProgress,

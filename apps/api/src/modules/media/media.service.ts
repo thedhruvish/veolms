@@ -19,6 +19,80 @@ import * as mediaRepo from "./media.repository.ts";
 export interface MediaServiceOptions {
   database: Kysely<Database>;
   services: AppServices;
+  streamingUrl?: string;
+}
+
+export function formatStreamingManifestUrl(
+  pathOrMediaId: string,
+  streamingUrl?: string,
+): string {
+  const raw = pathOrMediaId.trim();
+  if (/^https?:\/\//i.test(raw)) {
+    return raw;
+  }
+
+  const url = streamingUrl?.trim() || "";
+  const isFullPath = raw.includes("/") || raw.endsWith(".m3u8");
+
+  if (/^https?:\/\//i.test(url)) {
+    const trimmed = url.replace(/\/+$/, "");
+    if (isFullPath) {
+      const cleanPath = raw.startsWith("/") ? raw : `/${raw}`;
+      return `${trimmed}${cleanPath}`;
+    }
+    return `${trimmed}/${encodeURIComponent(raw)}/hls/master.m3u8`;
+  }
+
+  if (url.startsWith("/")) {
+    const cleanPrefix = url.replace(/\/+$/, "");
+    if (isFullPath) {
+      if (raw.startsWith(`${cleanPrefix}/`)) {
+        return raw.startsWith("/") ? raw : `/${raw}`;
+      }
+      const cleanPath = raw.startsWith("/") ? raw : `/${raw}`;
+      return `${cleanPrefix}${cleanPath}`;
+    }
+    return `${cleanPrefix}/${encodeURIComponent(raw)}/hls/master.m3u8`;
+  }
+
+  if (isFullPath) {
+    return raw.startsWith("/") ? raw : `/${raw}`;
+  }
+
+  return `/${encodeURIComponent(raw)}/hls/master.m3u8`;
+}
+
+export function formatMediaAssetUrl(
+  pathOrMediaId: string,
+  streamingUrl?: string,
+): string {
+  const raw = pathOrMediaId.trim();
+  if (/^https?:\/\//i.test(raw)) {
+    return raw;
+  }
+
+  const url = streamingUrl?.trim() || "";
+  const isFullPath = raw.includes("/");
+
+  if (/^https?:\/\//i.test(url)) {
+    const trimmed = url.replace(/\/+$/, "");
+    if (isFullPath) {
+      const cleanPath = raw.startsWith("/") ? raw : `/${raw}`;
+      return `${trimmed}${cleanPath}`;
+    }
+    return `${trimmed}/${encodeURIComponent(raw)}`;
+  }
+
+  if (url.startsWith("/")) {
+    const cleanPrefix = url.replace(/\/+$/, "");
+    if (raw.startsWith(`${cleanPrefix}/`)) {
+      return raw.startsWith("/") ? raw : `/${raw}`;
+    }
+    const cleanPath = raw.startsWith("/") ? raw : `/${raw}`;
+    return `${cleanPrefix}${cleanPath}`;
+  }
+
+  return raw.startsWith("/") ? raw : `/${raw}`;
 }
 
 const VIDEO_QUALITIES: VideoQualityLevel[] = ["360p", "720p", "1080p"];
@@ -40,7 +114,7 @@ function isSafeHlsPath(path: string): boolean {
     segments.every(
       (segment) => segment.length > 0 && segment !== "." && segment !== "..",
     ) &&
-    /\.(?:m3u8|ts|m4s|mp4|aac|vtt)$/i.test(path)
+    /\.(?:m3u8|ts|m4s|mp4|aac|vtt|webp|png|jpe?g|gif|svg)$/i.test(path)
   );
 }
 
@@ -51,6 +125,10 @@ function hlsContentType(path: string): string {
   if (/\.mp4$/i.test(path)) return "video/mp4";
   if (/\.aac$/i.test(path)) return "audio/aac";
   if (/\.vtt$/i.test(path)) return "text/vtt";
+  if (/\.webp$/i.test(path)) return "image/webp";
+  if (/\.png$/i.test(path)) return "image/png";
+  if (/\.jpe?g$/i.test(path)) return "image/jpeg";
+  if (/\.svg$/i.test(path)) return "image/svg+xml";
   return "application/octet-stream";
 }
 
@@ -67,6 +145,7 @@ function isUniqueViolation(err: unknown): boolean {
 export function createMediaService({
   database,
   services,
+  streamingUrl = "/media",
 }: MediaServiceOptions) {
   /**
    * Pre-signs an S3/storage upload URL for media asset creation.
@@ -588,18 +667,25 @@ export function createMediaService({
     // The transcode worker only marks a job completed after publishing its
     // output. Avoid an extra storage HEAD round-trip on every first play;
     // the manifest request itself remains the authoritative final check.
-    const { media } = await getReadyPlaybackOutput(context.content_media_id, {
-      verifyManifest: false,
-    });
-    // TEMP: free/preview lessons also route through the protected /api/v1
-    // stream instead of the public CDN URL, until the CDN branch is
-    // revisited. See media.service.ts history for the public-CDN path.
+    const { media, outputPrefix, manifestKey } = await getReadyPlaybackOutput(
+      context.content_media_id,
+      { verifyManifest: false },
+    );
+    const videoOutputs = await mediaRepo.findVideoOutputsByVideoIds(database, [
+      context.content_media_id,
+    ]);
+    const tableHlsPath =
+      videoOutputs[0]?.master_playlist_path ||
+      manifestKey ||
+      media.storage_key ||
+      `${outputPrefix}/master.m3u8`;
+
     return {
       version: 1,
       courseSlug: context.course_slug,
       lessonId: context.lesson_id,
       mediaKey: `${encodeURIComponent(context.course_slug)}-lesson-${lessonNumber}`,
-      manifestUrl: `/media/${encodeURIComponent(media.id)}/hls/master.m3u8`,
+      manifestUrl: formatStreamingManifestUrl(tableHlsPath, streamingUrl),
       ...(media.duration_seconds !== null &&
       media.duration_seconds !== undefined
         ? { duration: Number(media.duration_seconds) }
@@ -690,6 +776,45 @@ export function createMediaService({
     };
   }
 
+  async function getDirectStorageStream(
+    storagePath: string,
+    user?: PlaybackUser,
+  ) {
+    const cleanPath = storagePath.replace(/^\/+/, "");
+    if (!isSafeHlsPath(cleanPath)) {
+      throw new AppError(404, "MEDIA_NOT_FOUND", "HLS resource not found.");
+    }
+
+    let file = await services.storage.getObject(cleanPath);
+    if (!file && cleanPath.startsWith("cdn/")) {
+      file = await services.storage.getObject(cleanPath.replace(/^cdn\//, ""));
+    }
+    if (!file) {
+      throw new AppError(404, "MEDIA_NOT_FOUND", "HLS resource not found.");
+    }
+
+    const uuidMatch = cleanPath.match(
+      /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i,
+    );
+    let isPublic = false;
+    if (uuidMatch) {
+      const mediaId = uuidMatch[0];
+      const context = await mediaRepo.findPlaybackMediaContext(database, mediaId);
+      if (context) {
+        await assertPlaybackAccess(context, user);
+        isPublic = context.is_preview || context.pricing_type === "free";
+      }
+    }
+
+    return {
+      stream: file.body,
+      contentType: hlsContentType(cleanPath),
+      contentLength: file.contentLength,
+      isManifest: /\.m3u8$/i.test(cleanPath),
+      isPublic,
+    };
+  }
+
   return {
     presignMediaUpload,
     confirmUpload,
@@ -701,6 +826,7 @@ export function createMediaService({
     getVideoJobProgress,
     getPlaybackBootstrap,
     getHlsStream,
+    getDirectStorageStream,
     getMediaStream,
   };
 }
