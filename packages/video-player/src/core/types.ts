@@ -3,12 +3,7 @@ export type MaybePromise<Value> = Value | Promise<Value>;
 export type VideoSourceKind = "auto" | "dash" | "hls" | "file";
 
 export type VideoRequestKind =
-  | "manifest"
-  | "segment"
-  | "license"
-  | "text"
-  | "thumbnail"
-  | "other";
+  "manifest" | "segment" | "license" | "text" | "thumbnail" | "other";
 
 export type VideoEngineName = "native" | "shaka" | (string & {});
 
@@ -157,7 +152,10 @@ export interface DrmConfiguration {
   widevine?: DrmSystemConfiguration;
   playready?: DrmSystemConfiguration;
   fairplay?: FairPlayDrmConfiguration;
-  preferredSystems?: readonly ("widevine" | "playready" | "fairplay")[];
+  preferredSystems?: readonly (
+    "widevine" | "playready" | "fairplay" | "clearkey"
+  )[];
+  clearKey?: DrmSystemConfiguration;
   clearKeys?: Record<string, string>;
 }
 

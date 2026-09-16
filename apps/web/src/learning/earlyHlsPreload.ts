@@ -57,6 +57,8 @@ function startPreloadForBootstrap(
       manifestUrl: bootstrap.manifestUrl,
       mediaKey: bootstrap.mediaKey || undefined,
       protectedPlayback,
+      manifestType: bootstrap.manifestType,
+      drm: bootstrap.drm,
       segmentToken: bootstrap.segmentToken,
       segmentTokenExpiresAt: bootstrap.segmentTokenExpiresAt,
       refreshSegmentToken,

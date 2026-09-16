@@ -7,6 +7,28 @@ export const videoPlaybackTrackSchema = z.strictObject({
   kind: z.string().min(1).optional(),
 });
 
+export const videoPlaybackDrmSchema = z.strictObject({
+  scheme: z.literal("cenc-aes-ctr"),
+  keySystem: z.literal("org.w3.clearkey"),
+  licenseUrl: z.string().min(1),
+});
+
+export const videoPlaybackClearKeyLicenseRequestSchema = z.strictObject({
+  kids: z.array(z.string().min(1).max(64)).min(1).max(32),
+  type: z.literal("temporary").optional(),
+});
+
+export const videoPlaybackClearKeyLicenseResponseSchema = z.strictObject({
+  keys: z.array(
+    z.strictObject({
+      kty: z.literal("oct"),
+      kid: z.string().min(1),
+      k: z.string().min(1),
+    }),
+  ),
+  type: z.literal("temporary"),
+});
+
 /**
  * Minimal runtime data needed to start a lesson video. Keep this separate
  * from course and lesson responses so it can be embedded or fetched without
@@ -18,6 +40,8 @@ export const videoPlaybackBootstrapSchema = z.strictObject({
   lessonId: z.union([z.string().min(1), z.number().int().positive()]),
   mediaKey: z.string().min(1),
   manifestUrl: z.string().min(1),
+  manifestType: z.enum(["hls", "dash"]).optional(),
+  drm: videoPlaybackDrmSchema.optional(),
   segmentToken: z.string().min(1).optional(),
   segmentTokenExpiresAt: z.number().int().positive().optional(),
   duration: z.number().nonnegative().optional(),
@@ -41,3 +65,13 @@ export type VideoPlaybackBootstrap = z.infer<
 export type VideoPlaybackToken = z.infer<typeof videoPlaybackTokenSchema>;
 
 export type VideoPlaybackTrack = z.infer<typeof videoPlaybackTrackSchema>;
+
+export type VideoPlaybackDrm = z.infer<typeof videoPlaybackDrmSchema>;
+
+export type VideoPlaybackClearKeyLicenseRequest = z.infer<
+  typeof videoPlaybackClearKeyLicenseRequestSchema
+>;
+
+export type VideoPlaybackClearKeyLicenseResponse = z.infer<
+  typeof videoPlaybackClearKeyLicenseResponseSchema
+>;

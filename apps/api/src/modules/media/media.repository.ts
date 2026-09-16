@@ -123,7 +123,11 @@ export async function updateMediaAssetMetadata(
   mediaId: string,
   metadata: Json,
 ) {
-  await database.updateTable("media_assets").set({ metadata, updated_at: new Date() }).where("id", "=", mediaId).execute();
+  await database
+    .updateTable("media_assets")
+    .set({ metadata, updated_at: new Date() })
+    .where("id", "=", mediaId)
+    .execute();
 }
 
 export async function insertVideoJob(
@@ -313,6 +317,41 @@ export async function findVideoOutputsByVideoIds(
     .selectFrom("video_outputs")
     .selectAll()
     .where("video_id", "in", videoIds)
+    .execute();
+}
+
+export async function findEncryptedMediaOutputByMediaId(
+  database: Kysely<Database>,
+  mediaId: string,
+) {
+  return await database
+    .selectFrom("encrypted_media_outputs")
+    .selectAll()
+    .where("media_id", "=", mediaId)
+    .executeTakeFirst();
+}
+
+export async function findEncryptedPeriodsByMediaId(
+  database: Kysely<Database>,
+  mediaId: string,
+) {
+  return await database
+    .selectFrom("encrypted_media_periods")
+    .selectAll()
+    .where("media_id", "=", mediaId)
+    .orderBy("period_index", "asc")
+    .execute();
+}
+
+export async function findEncryptedDrmKeysByIds(
+  database: Kysely<Database>,
+  keyIds: string[],
+) {
+  if (keyIds.length === 0) return [];
+  return await database
+    .selectFrom("encrypted_drm_keys")
+    .selectAll()
+    .where("key_id", "in", keyIds)
     .execute();
 }
 

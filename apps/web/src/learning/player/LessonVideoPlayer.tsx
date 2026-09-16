@@ -228,6 +228,7 @@ export function LessonVideoPlayer({
         : protectedPlayback,
       segmentToken: playbackBootstrap?.segmentToken,
       segmentTokenExpiresAt: playbackBootstrap?.segmentTokenExpiresAt,
+      drm: playbackBootstrap?.drm,
       refreshSegmentToken:
         playbackBootstrap?.segmentToken && refreshPlaybackToken
           ? refreshPlaybackToken

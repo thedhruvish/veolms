@@ -157,6 +157,14 @@ async function requestBootstrap(
   return {
     ...parsed.data,
     manifestUrl: resolveVideoPlaybackCdnUrl(parsed.data.manifestUrl),
+    ...(parsed.data.drm
+      ? {
+          drm: {
+            ...parsed.data.drm,
+            licenseUrl: resolveVideoPlaybackApiUrl(parsed.data.drm.licenseUrl),
+          },
+        }
+      : {}),
   };
 }
 

@@ -103,7 +103,7 @@ export function appendLearningHlsCacheVersion(
   );
 }
 
-export function createLearningHlsRequestFilter(options?: {
+export function createLearningStreamingRequestFilter(options?: {
   protectedPlayback?: boolean;
   segmentToken?: string;
   segmentTokenExpiresAt?: number;
@@ -112,7 +112,11 @@ export function createLearningHlsRequestFilter(options?: {
     expiresAt?: number;
   } | null>;
 }) {
-  if (!options?.segmentToken && !options?.refreshSegmentToken) {
+  if (
+    !options?.segmentToken &&
+    !options?.refreshSegmentToken &&
+    !options?.protectedPlayback
+  ) {
     return appendLearningHlsCacheVersion;
   }
   let currentToken = options.segmentToken;
@@ -121,8 +125,17 @@ export function createLearningHlsRequestFilter(options?: {
     Promise<{ token: string; expiresAt?: number } | null> | undefined;
 
   return async (request: VideoNetworkRequest): Promise<void> => {
+    if (options?.protectedPlayback) {
+      request.allowCrossSiteCredentials = true;
+    }
     appendLearningHlsCacheVersion(request);
-    if (request.type !== "segment" && request.type !== "text") return;
+    if (request.type === "license") return;
+    if (
+      request.type !== "manifest" &&
+      request.type !== "segment" &&
+      request.type !== "text"
+    )
+      return;
 
     const refreshBefore = Math.floor(Date.now() / 1000) + 30;
     if (
@@ -148,6 +161,13 @@ export function createLearningHlsRequestFilter(options?: {
       appendLearningHlsQueryParameter(uri, "veo_token", currentToken!),
     );
   };
+}
+
+/** Backwards-compatible name used by the HLS-only preload path. */
+export function createLearningHlsRequestFilter(
+  options?: Parameters<typeof createLearningStreamingRequestFilter>[0],
+) {
+  return createLearningStreamingRequestFilter(options);
 }
 
 function appendLearningHlsQueryParameter(

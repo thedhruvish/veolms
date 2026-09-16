@@ -1,5 +1,8 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
-import type { PresignMediaRequest } from "@veolms/contracts";
+import type {
+  PresignMediaRequest,
+  VideoPlaybackClearKeyLicenseRequest,
+} from "@veolms/contracts";
 import type { MediaService } from "./media.service.ts";
 
 export function createMediaController({ service }: { service: MediaService }) {
@@ -74,6 +77,25 @@ export function createMediaController({ service }: { service: MediaService }) {
       request.params.idOrSlug,
       request.params.lessonNumber,
       user,
+    );
+  }
+
+  async function getClearKeyLicense(
+    request: FastifyRequest<{
+      Params: { idOrSlug: string; lessonNumber: number };
+      Body: VideoPlaybackClearKeyLicenseRequest;
+    }>,
+    reply: FastifyReply,
+  ) {
+    reply.header("Cache-Control", "no-store");
+    const user = request.user
+      ? { id: request.user.id, roles: request.user.roles }
+      : undefined;
+    return await service.getClearKeyLicense(
+      request.params.idOrSlug,
+      request.params.lessonNumber,
+      user,
+      request.body,
     );
   }
 
@@ -172,7 +194,7 @@ export function createMediaController({ service }: { service: MediaService }) {
     }
     response.end();
   }
-    async function streamHlsResource(
+  async function streamHlsResource(
     request: FastifyRequest<{
       Params: { mediaId: string; "*": string };
     }>,
@@ -223,10 +245,21 @@ export function createMediaController({ service }: { service: MediaService }) {
     return reply.send(result.stream);
   }
 
-  async function getImageVariantStream(request: FastifyRequest<{ Params: { mediaId: string; width: number } }>, reply: FastifyReply) {
-    const result = await service.getImageVariantStream(request.params.mediaId, Number(request.params.width), request.user?.id, request.user?.roles);
-    reply.header("Content-Type", result.contentType).header("Cache-Control", "public, max-age=31536000, immutable");
-    if (result.contentLength !== undefined) reply.header("Content-Length", result.contentLength);
+  async function getImageVariantStream(
+    request: FastifyRequest<{ Params: { mediaId: string; width: number } }>,
+    reply: FastifyReply,
+  ) {
+    const result = await service.getImageVariantStream(
+      request.params.mediaId,
+      Number(request.params.width),
+      request.user?.id,
+      request.user?.roles,
+    );
+    reply
+      .header("Content-Type", result.contentType)
+      .header("Cache-Control", "public, max-age=31536000, immutable");
+    if (result.contentLength !== undefined)
+      reply.header("Content-Length", result.contentLength);
     return reply.send(result.stream);
   }
 
@@ -236,6 +269,7 @@ export function createMediaController({ service }: { service: MediaService }) {
     getVideoJobProgress,
     getPlaybackBootstrap,
     getPlaybackToken,
+    getClearKeyLicense,
     getMediaDelivery,
     retryVideoJob,
     cancelVideoJob,

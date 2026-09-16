@@ -1,7 +1,8 @@
 import type { ExternalTextTrack, VideoSource } from "@veolms/video-player";
+import type { VideoPlaybackDrm } from "@veolms/contracts";
 import type { CourseVideo } from "../courseContent";
 import {
-  createLearningHlsRequestFilter,
+  createLearningStreamingRequestFilter,
   LEARNING_HLS_MIME_TYPE,
   LEARNING_HLS_STREAMING,
   toAbsoluteLearningMediaUrl,
@@ -27,6 +28,10 @@ export function isHlsUrl(src: string): boolean {
   return /\.m3u8(?:$|[?#])/i.test(src);
 }
 
+export function isDashUrl(src: string): boolean {
+  return /\.mpd(?:$|[?#])/i.test(src);
+}
+
 export function createLearningLessonVideoSource(options: {
   media: CourseVideo;
   lessonTitle: string;
@@ -35,19 +40,27 @@ export function createLearningLessonVideoSource(options: {
   protectedPlayback?: boolean;
   segmentToken?: string;
   segmentTokenExpiresAt?: number;
+  drm?: VideoPlaybackDrm;
   refreshSegmentToken?: () => Promise<{
     token: string;
     expiresAt?: number;
   } | null>;
 }): VideoSource {
   const hls = isHlsUrl(options.media.src);
+  const dash = !hls && isDashUrl(options.media.src);
+  const kind = dash ? "dash" : hls ? "hls" : "file";
   return {
     id: options.mediaKey,
-    src: hls
-      ? toAbsoluteLearningMediaUrl(options.media.src)
-      : options.media.src,
-    type: hls ? LEARNING_HLS_MIME_TYPE : "video/mp4",
-    kind: hls ? "hls" : "file",
+    src:
+      hls || dash
+        ? toAbsoluteLearningMediaUrl(options.media.src)
+        : options.media.src,
+    type: dash
+      ? "application/dash+xml"
+      : hls
+        ? LEARNING_HLS_MIME_TYPE
+        : "video/mp4",
+    kind,
     // The catalog duration can be stale after an asset replacement. Shaka
     // receives the stored position and the loaded event clamps it against
     // the actual media duration before progress is reported.
@@ -56,17 +69,25 @@ export function createLearningLessonVideoSource(options: {
       duration: options.media.duration,
       title: options.lessonTitle,
     },
-    streaming: hls ? { ...LEARNING_HLS_STREAMING } : undefined,
-    networking: hls
+    streaming: hls || dash ? { ...LEARNING_HLS_STREAMING } : undefined,
+    drm: options.drm
       ? {
-          requestFilter: createLearningHlsRequestFilter({
-            protectedPlayback: options.protectedPlayback,
-            segmentToken: options.segmentToken,
-            segmentTokenExpiresAt: options.segmentTokenExpiresAt,
-            refreshSegmentToken: options.refreshSegmentToken,
-          }),
+          clearKey: { licenseUrl: options.drm.licenseUrl },
+          preferredSystems: ["clearkey"] as const,
         }
       : undefined,
+    networking:
+      hls || dash
+        ? {
+            requestFilter: createLearningStreamingRequestFilter({
+              protectedPlayback:
+                options.protectedPlayback || Boolean(options.drm),
+              segmentToken: options.segmentToken,
+              segmentTokenExpiresAt: options.segmentTokenExpiresAt,
+              refreshSegmentToken: options.refreshSegmentToken,
+            }),
+          }
+        : undefined,
     textTracks: undefined,
   };
 }

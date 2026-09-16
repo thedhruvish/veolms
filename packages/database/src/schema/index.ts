@@ -13,6 +13,7 @@ export * from "./json.schema.ts";
 export * from "./fleet.schema.ts";
 export * from "./quizzes.schema.ts";
 export * from "./learning-progress.schema.ts";
+export * from "./encrypted-media.schema.ts";
 
 // Import table interfaces to assemble unified Database schema
 import type {
@@ -120,6 +121,11 @@ import type {
   QuizAttemptAnswerTable,
 } from "./quizzes.schema.ts";
 import type { LearningProgressTable } from "./learning-progress.schema.ts";
+import type {
+  EncryptedDrmKeyTable,
+  EncryptedMediaOutputTable,
+  EncryptedMediaPeriodTable,
+} from "./encrypted-media.schema.ts";
 
 export interface Database {
   // Auth & Roles
@@ -217,6 +223,11 @@ export interface Database {
   quiz_attempts: QuizAttemptTable;
   quiz_attempt_answers: QuizAttemptAnswerTable;
   learning_progress: LearningProgressTable;
+
+  // Encrypted YouTube CENC/DASH publication
+  encrypted_drm_keys: EncryptedDrmKeyTable;
+  encrypted_media_outputs: EncryptedMediaOutputTable;
+  encrypted_media_periods: EncryptedMediaPeriodTable;
 }
 
 export type PurchaseTable = OrderTable;

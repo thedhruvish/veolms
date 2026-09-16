@@ -3,6 +3,7 @@ import {
   resolveLessonIdentifier,
 } from "./courseContent";
 import { serializeForInlineJson } from "../lib/serializeForInlineJson";
+import type { VideoPlaybackDrm } from "@veolms/contracts";
 import { PRERENDERED_LEARNING_COURSE_SLUGS } from "./prerenderLearningPaths";
 
 export const LEARNING_HLS_MANIFEST_META_NAME = "veo-hls-manifest";
@@ -15,6 +16,8 @@ export const EARLY_HLS_PRELOAD_URL_PLACEHOLDER =
 export interface LearningHlsBootstrap {
   manifestUrl: string;
   mediaKey: string;
+  manifestType?: "hls" | "dash";
+  drm?: VideoPlaybackDrm;
   segmentToken?: string;
   segmentTokenExpiresAt?: number;
 }

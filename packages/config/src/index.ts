@@ -91,6 +91,8 @@ const serverConfigSchema = z.object({
     .string()
     .min(32, "MFA_ENCRYPTION_KEY must be at least 32 characters")
     .default("default_mfa_encryption_key_at_least_32_chars_long"),
+  /** 32-byte AES key used to unwrap CENC content keys for the ClearKey API. */
+  DRM_MASTER_KEY: z.string().trim().optional(),
   WEB_URL: z.url().default("http://localhost:3000"),
   SETUP_TOKEN: z.string().default("veo_setup_token_123"),
 

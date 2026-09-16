@@ -13,6 +13,7 @@ import type {
 } from "@veolms/contracts";
 import { AppError } from "../../lib/errors.ts";
 import type { AppServices } from "../../services/index.ts";
+import { config } from "../../config.ts";
 import { ADMIN_ROLE } from "../auth/index.ts";
 import { createAccessService } from "../access/index.ts";
 import * as mediaRepo from "./media.repository.ts";
@@ -33,6 +34,24 @@ type PlaybackUser = {
 
 function normalizeOutputPrefix(outputPrefix: string): string {
   return outputPrefix.replace(/^\/+|\/+$/g, "");
+}
+
+function assertEncryptedOutputPath(
+  mediaId: string,
+  outputPrefix: string,
+  manifestKey: string,
+): void {
+  const expectedPrefix = `protected/transcoded/${mediaId}`;
+  if (
+    outputPrefix !== expectedPrefix ||
+    manifestKey !== `${expectedPrefix}/manifest.mpd`
+  ) {
+    throw new AppError(
+      503,
+      "MEDIA_CONFIGURATION_INVALID",
+      "Encrypted media storage is not configured correctly.",
+    );
+  }
 }
 
 function resolveMediaVisibility(storageKey: string): "public" | "protected" {
@@ -130,6 +149,73 @@ function hlsContentType(path: string): string {
   if (/\.aac$/i.test(path)) return "audio/aac";
   if (/\.vtt$/i.test(path)) return "text/vtt";
   return "application/octet-stream";
+}
+
+function decodeDrmMasterKey(value: string | undefined): Buffer {
+  const raw = value?.trim() ?? "";
+  if (/^[0-9a-f]{64}$/iu.test(raw)) return Buffer.from(raw, "hex");
+  const decoded = Buffer.from(raw, "base64");
+  if (decoded.length === 32) return decoded;
+  throw new AppError(
+    503,
+    "DRM_NOT_CONFIGURED",
+    "Encrypted video playback is not configured.",
+  );
+}
+
+function decodeKid(value: string): Buffer {
+  const normalized = value.replace(/-/gu, "+").replace(/_/gu, "/");
+  if (!/^[A-Za-z0-9+/]+={0,2}$/u.test(normalized)) {
+    throw new AppError(400, "INVALID_LICENSE_REQUEST", "Invalid ClearKey KID.");
+  }
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+  const decoded = Buffer.from(padded, "base64");
+  if (decoded.length !== 16) {
+    throw new AppError(
+      400,
+      "INVALID_LICENSE_REQUEST",
+      "ClearKey KIDs must be 16 bytes.",
+    );
+  }
+  return decoded;
+}
+
+function decryptCencKey(
+  record: {
+    algorithm: string;
+    ciphertext: Buffer;
+    nonce: Buffer;
+    auth_tag: Buffer;
+  },
+  masterKey: Buffer,
+): Buffer {
+  if (record.algorithm !== "aes-256-gcm") {
+    throw new AppError(
+      503,
+      "DRM_NOT_CONFIGURED",
+      "Unsupported encrypted key format.",
+    );
+  }
+  try {
+    const decipher = crypto.createDecipheriv(
+      "aes-256-gcm",
+      masterKey,
+      record.nonce,
+    );
+    decipher.setAuthTag(record.auth_tag);
+    const key = Buffer.concat([
+      decipher.update(record.ciphertext),
+      decipher.final(),
+    ]);
+    if (key.length !== 16) throw new Error("invalid content key length");
+    return key;
+  } catch {
+    throw new AppError(
+      503,
+      "DRM_NOT_CONFIGURED",
+      "Encrypted video playback is not configured.",
+    );
+  }
 }
 
 export function createMediaService({
@@ -688,8 +774,9 @@ export function createMediaService({
     mediaId: string,
     options: { verifyManifest?: boolean } = {},
   ) {
-    const [media, job, outputs] = await Promise.all([
+    const [media, encryptedOutput, job, outputs] = await Promise.all([
       mediaRepo.findMediaAssetById(database, mediaId),
+      mediaRepo.findEncryptedMediaOutputByMediaId(database, mediaId),
       mediaRepo.findVideoJobByVideoId(database, mediaId),
       mediaRepo.findVideoOutputsByVideoIds(database, [mediaId]),
     ]);
@@ -697,7 +784,39 @@ export function createMediaService({
       throw new AppError(404, "MEDIA_NOT_FOUND", "Video asset not found.");
     }
 
-    if (!job || job.status !== "completed" || media.status !== "ready") {
+    if (media.status !== "ready") {
+      throw new AppError(
+        409,
+        "MEDIA_NOT_READY",
+        "This video is still being prepared.",
+      );
+    }
+
+    if (encryptedOutput?.status === "ready") {
+      const outputPrefix = normalizeOutputPrefix(encryptedOutput.output_prefix);
+      const manifestKey = normalizeOutputPrefix(encryptedOutput.manifest_path);
+      assertEncryptedOutputPath(mediaId, outputPrefix, manifestKey);
+      if (options.verifyManifest !== false) {
+        const manifest = await services.storage.headObject(manifestKey);
+        if (!manifest) {
+          throw new AppError(
+            409,
+            "MEDIA_NOT_READY",
+            "This video is still being prepared.",
+          );
+        }
+      }
+      return {
+        media,
+        job: null,
+        outputPrefix,
+        manifestKey,
+        kind: "dash" as const,
+        encryptedOutput,
+      };
+    }
+
+    if (!job || job.status !== "completed") {
       throw new AppError(
         409,
         "MEDIA_NOT_READY",
@@ -723,7 +842,14 @@ export function createMediaService({
       }
     }
 
-    return { media, job, outputPrefix, manifestKey };
+    return {
+      media,
+      job,
+      outputPrefix,
+      manifestKey,
+      kind: "hls" as const,
+      encryptedOutput: null,
+    };
   }
 
   function getDirectDelivery(storageKey: string) {
@@ -881,12 +1007,10 @@ export function createMediaService({
     // The transcode worker only marks a job completed after publishing its
     // output. Avoid an extra storage HEAD round-trip on every first play;
     // the CDN manifest request itself remains the authoritative final check.
-    const { media, manifestKey } = await getReadyPlaybackOutput(
-      context.content_media_id!,
-      {
-        verifyManifest: false,
-      },
-    );
+    const playback = await getReadyPlaybackOutput(context.content_media_id!, {
+      verifyManifest: false,
+    });
+    const { media, manifestKey } = playback;
     const manifestUrl = services.storage.getCdnObjectUrl(manifestKey);
     if (!manifestUrl) {
       throw new AppError(
@@ -903,6 +1027,16 @@ export function createMediaService({
       lessonId: context.lesson_id,
       mediaKey: `${encodeURIComponent(context.course_slug)}-lesson-${lessonNumber}`,
       manifestUrl,
+      manifestType: playback.kind,
+      ...(playback.kind === "dash"
+        ? {
+            drm: {
+              scheme: "cenc-aes-ctr" as const,
+              keySystem: "org.w3.clearkey" as const,
+              licenseUrl: `/courses/${encodeURIComponent(context.course_slug)}/lessons/${lessonNumber}/drm/clearkey`,
+            },
+          }
+        : {}),
       ...(playbackToken
         ? {
             segmentToken: playbackToken.token,
@@ -943,6 +1077,88 @@ export function createMediaService({
     return playbackToken;
   }
 
+  async function getClearKeyLicense(
+    courseIdOrSlug: string,
+    lessonNumber: number,
+    user: PlaybackUser | undefined,
+    payload: { kids: string[] },
+  ) {
+    const context = await resolveAuthorizedPlaybackLesson(
+      courseIdOrSlug,
+      lessonNumber,
+      user,
+    );
+    const playback = await getReadyPlaybackOutput(context.content_media_id!, {
+      verifyManifest: false,
+    });
+    if (playback.kind !== "dash") {
+      throw new AppError(
+        404,
+        "DRM_NOT_AVAILABLE",
+        "This lesson does not use encrypted DASH playback.",
+      );
+    }
+
+    const requestedKids = payload.kids;
+    if (
+      !Array.isArray(requestedKids) ||
+      requestedKids.length < 1 ||
+      requestedKids.length > 32
+    ) {
+      throw new AppError(
+        400,
+        "INVALID_LICENSE_REQUEST",
+        "A ClearKey request must contain one to thirty-two KIDs.",
+      );
+    }
+    const requested = new Map<string, string>();
+    for (const kid of requestedKids) {
+      if (typeof kid !== "string") {
+        throw new AppError(
+          400,
+          "INVALID_LICENSE_REQUEST",
+          "Invalid ClearKey KID.",
+        );
+      }
+      const bytes = decodeKid(kid);
+      requested.set(bytes.toString("hex"), bytes.toString("base64url"));
+    }
+
+    const periods = await mediaRepo.findEncryptedPeriodsByMediaId(
+      database,
+      context.content_media_id!,
+    );
+    const allowedKeyIds = new Set(
+      periods.map((period) => period.key_id.toLowerCase()),
+    );
+    const keyIds = [...requested.keys()];
+    if (keyIds.some((keyId) => !allowedKeyIds.has(keyId))) {
+      throw new AppError(
+        403,
+        "DRM_KEY_NOT_AUTHORIZED",
+        "The requested ClearKey is not part of this lesson.",
+      );
+    }
+
+    const records = await mediaRepo.findEncryptedDrmKeysByIds(database, keyIds);
+    if (records.length !== keyIds.length) {
+      throw new AppError(
+        503,
+        "DRM_NOT_READY",
+        "The encrypted video key set is incomplete.",
+      );
+    }
+    const masterKey = decodeDrmMasterKey(config.DRM_MASTER_KEY);
+    return {
+      keys: records.map((record) => ({
+        kty: "oct" as const,
+        kid: requested.get(record.key_id.toLowerCase())!,
+        k: decryptCencKey(record, masterKey).toString("base64url"),
+      })),
+      type: "temporary" as const,
+    };
+  }
+
   async function getHlsStream(
     mediaId: string,
     requestedPath: string,
@@ -954,9 +1170,13 @@ export function createMediaService({
     }
 
     await assertPlaybackAccess(context, user);
-    const { outputPrefix } = await getReadyPlaybackOutput(mediaId, {
+    const playback = await getReadyPlaybackOutput(mediaId, {
       verifyManifest: false,
     });
+    if (playback.kind !== "hls") {
+      throw new AppError(404, "MEDIA_NOT_FOUND", "HLS resource not found.");
+    }
+    const { outputPrefix } = playback;
     const hlsPath = requestedPath.replace(/^\/+/, "");
     if (!isSafeHlsPath(hlsPath)) {
       throw new AppError(404, "MEDIA_NOT_FOUND", "HLS resource not found.");
@@ -1094,6 +1314,7 @@ export function createMediaService({
     getVideoJobProgress,
     getPlaybackBootstrap,
     getPlaybackToken,
+    getClearKeyLicense,
     getMediaDelivery,
     getHlsStream,
     getMediaStream,

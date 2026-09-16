@@ -7,6 +7,8 @@ import {
   videoJobProgressResponseSchema,
   videoPlaybackBootstrapSchema,
   videoPlaybackTokenSchema,
+  videoPlaybackClearKeyLicenseRequestSchema,
+  videoPlaybackClearKeyLicenseResponseSchema,
 } from "@veolms/contracts";
 
 import { errorResponse } from "../../lib/errors.ts";
@@ -64,6 +66,41 @@ const mediaRoutes: RoutePlugin = async (app, options) => {
       ],
     },
     controller.getPlaybackBootstrap,
+  );
+
+  app.post(
+    "/courses/:idOrSlug/lessons/:lessonNumber/drm/clearkey",
+    {
+      schema: {
+        operationId: "getVideoClearKeyLicense",
+        tags: ["Media"],
+        summary: "Resolve an authorized ClearKey license",
+        description:
+          "Returns only the requested period keys after session, MFA, course-access, lesson, and media checks. Plaintext content keys are never stored or returned outside this short-lived license response.",
+        params: z.object({
+          idOrSlug: z.string().min(1).max(160),
+          lessonNumber: z.coerce.number().int().positive(),
+        }),
+        body: videoPlaybackClearKeyLicenseRequestSchema,
+        response: {
+          200: jsonResponse(
+            "Authorized ClearKey license",
+            videoPlaybackClearKeyLicenseResponseSchema,
+          ),
+          400: errorResponse("Invalid ClearKey request"),
+          401: errorResponse("Authentication required"),
+          403: errorResponse("Course or key access denied"),
+          404: errorResponse("Lesson or encrypted media not found"),
+          409: errorResponse("Video is not ready for playback"),
+          503: errorResponse("Encryption service is not configured"),
+        },
+      },
+      preHandler: [
+        authMiddleware.authenticate,
+        authMiddleware.requireMfaVerifiedIfAuthenticated,
+      ],
+    },
+    controller.getClearKeyLicense,
   );
 
   app.get(
@@ -219,7 +256,12 @@ const mediaRoutes: RoutePlugin = async (app, options) => {
   app.get(
     "/media/:mediaId/variants/:width",
     {
-      schema: { params: z.object({ mediaId: z.uuid(), width: z.coerce.number().int().positive() }) },
+      schema: {
+        params: z.object({
+          mediaId: z.uuid(),
+          width: z.coerce.number().int().positive(),
+        }),
+      },
       preHandler: [authMiddleware.authenticate],
     },
     controller.getImageVariantStream,
