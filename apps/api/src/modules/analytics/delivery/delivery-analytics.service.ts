@@ -159,93 +159,89 @@ export function createDeliveryAnalyticsService({
     const cacheHitRatio = currentCloudflare ? currentCloudflare.cacheHitRatio : 0;
     const prevCacheHitRatio = compareCloudflare ? compareCloudflare.cacheHitRatio : 0;
 
-    // 5. Total delivered bytes: computed from DB courses and media totals
-    let totalDeliveredBytes = dbTotals.totalBytes;
-    let videoBytes = dbTotals.videoBytes;
-    let imagesBytes = dbTotals.imageBytes;
-    let resourcesBytes = dbTotals.resourceBytes;
-    let audioBytes = dbTotals.audioBytes;
-    let hlsBytes = dbTotals.hlsBytes ?? 0;
-    let streamSegmentBytes = dbTotals.streamSegmentBytes ?? 0;
-    let encryptedMediaBytes = dbTotals.encryptedMediaBytes ?? 0;
-    let otherBytes = dbTotals.otherBytes;
+    // 5. Aggregate video streaming catalog totals (direct video + HLS + segments + encrypted DRM)
+    const catalogDirectVideoBytes = dbTotals.videoBytes;
+    const catalogHlsBytes = dbTotals.hlsBytes ?? 0;
+    const catalogStreamSegmentsBytes = dbTotals.streamSegmentBytes ?? 0;
+    const catalogEncryptedMediaBytes = dbTotals.encryptedMediaBytes ?? 0;
+    const catalogVideoBytes =
+      catalogDirectVideoBytes +
+      catalogHlsBytes +
+      catalogStreamSegmentsBytes +
+      catalogEncryptedMediaBytes;
 
-    // Filter by assetType if single type selected
+    const catalogImagesBytes = dbTotals.imageBytes;
+    const catalogResourcesBytes = dbTotals.resourceBytes;
+    const catalogAudioBytes = dbTotals.audioBytes;
+    const catalogOtherBytes = dbTotals.otherBytes;
+
+    const totalCatalogBytes =
+      catalogVideoBytes +
+      catalogImagesBytes +
+      catalogResourcesBytes +
+      catalogAudioBytes +
+      catalogOtherBytes;
+
+    // Determine category ratios based on requested assetType filter and catalog composition
+    let videoRatio = 0;
+    let imagesRatio = 0;
+    let resourcesRatio = 0;
+    let audioRatio = 0;
+    let otherRatio = 0;
+
     if (assetType !== "all") {
-      if (assetType === "video") {
-        totalDeliveredBytes = videoBytes;
-        imagesBytes = 0;
-        resourcesBytes = 0;
-        audioBytes = 0;
-        hlsBytes = 0;
-        streamSegmentBytes = 0;
-        encryptedMediaBytes = 0;
-        otherBytes = 0;
-      } else if (assetType === "hls") {
-        totalDeliveredBytes = hlsBytes;
-        videoBytes = 0;
-        imagesBytes = 0;
-        resourcesBytes = 0;
-        audioBytes = 0;
-        streamSegmentBytes = 0;
-        encryptedMediaBytes = 0;
-        otherBytes = 0;
-      } else if (assetType === "stream_segment") {
-        totalDeliveredBytes = streamSegmentBytes;
-        videoBytes = 0;
-        imagesBytes = 0;
-        resourcesBytes = 0;
-        audioBytes = 0;
-        hlsBytes = 0;
-        encryptedMediaBytes = 0;
-        otherBytes = 0;
-      } else if (assetType === "encrypted_media") {
-        totalDeliveredBytes = encryptedMediaBytes;
-        videoBytes = 0;
-        imagesBytes = 0;
-        resourcesBytes = 0;
-        audioBytes = 0;
-        hlsBytes = 0;
-        streamSegmentBytes = 0;
-        otherBytes = 0;
-      } else if (assetType === "image") {
-        totalDeliveredBytes = imagesBytes;
-        videoBytes = 0;
-        resourcesBytes = 0;
-        audioBytes = 0;
-        hlsBytes = 0;
-        streamSegmentBytes = 0;
-        encryptedMediaBytes = 0;
-        otherBytes = 0;
-      } else if (assetType === "resource" || assetType === "document") {
-        totalDeliveredBytes = resourcesBytes;
-        videoBytes = 0;
-        imagesBytes = 0;
-        audioBytes = 0;
-        hlsBytes = 0;
-        streamSegmentBytes = 0;
-        encryptedMediaBytes = 0;
-        otherBytes = 0;
-      } else if (assetType === "audio") {
-        totalDeliveredBytes = audioBytes;
-        videoBytes = 0;
-        imagesBytes = 0;
-        resourcesBytes = 0;
-        hlsBytes = 0;
-        streamSegmentBytes = 0;
-        encryptedMediaBytes = 0;
-        otherBytes = 0;
-      } else if (assetType === "other") {
-        totalDeliveredBytes = otherBytes;
-        videoBytes = 0;
-        imagesBytes = 0;
-        resourcesBytes = 0;
-        audioBytes = 0;
-        hlsBytes = 0;
-        streamSegmentBytes = 0;
-        encryptedMediaBytes = 0;
+      switch (assetType) {
+        case "video":
+        case "hls":
+        case "dash":
+        case "stream_segment":
+        case "encrypted_media":
+          videoRatio = 1;
+          break;
+        case "image":
+          imagesRatio = 1;
+          break;
+        case "resource":
+        case "document":
+          resourcesRatio = 1;
+          break;
+        case "audio":
+          audioRatio = 1;
+          break;
+        case "other":
+          otherRatio = 1;
+          break;
       }
+    } else if (totalCatalogBytes > 0) {
+      videoRatio = catalogVideoBytes / totalCatalogBytes;
+      imagesRatio = catalogImagesBytes / totalCatalogBytes;
+      resourcesRatio = catalogResourcesBytes / totalCatalogBytes;
+      audioRatio = catalogAudioBytes / totalCatalogBytes;
+      otherRatio = Math.max(
+        0,
+        1 - (videoRatio + imagesRatio + resourcesRatio + audioRatio),
+      );
+    } else {
+      videoRatio = 1;
     }
+
+    // Total delivered bytes: if Cloudflare metrics are available, use live delivered edge traffic
+    const hasLiveCloudflare = Boolean(
+      currentCloudflare && currentCloudflare.totalResponseBodyBytes > 0,
+    );
+    const totalDeliveredBytes = hasLiveCloudflare
+      ? currentCloudflare!.totalResponseBodyBytes
+      : (assetType === "all" ? totalCatalogBytes : Math.round(totalCatalogBytes * videoRatio));
+
+    const videoBytes = Math.round(totalDeliveredBytes * videoRatio);
+    const imagesBytes = Math.round(totalDeliveredBytes * imagesRatio);
+    const resourcesBytes = Math.round(totalDeliveredBytes * resourcesRatio);
+    const audioBytes = Math.round(totalDeliveredBytes * audioRatio);
+    const otherBytes = Math.max(
+      0,
+      totalDeliveredBytes -
+        (videoBytes + imagesBytes + resourcesBytes + audioBytes),
+    );
 
     const originEgressBytes = Math.round(
       totalDeliveredBytes * (1 - cacheHitRatio / 100),
@@ -307,88 +303,169 @@ export function createDeliveryAnalyticsService({
       },
     );
 
-    // 8. Delivery Split Categories dynamically from DB totals
-    const totalForSplit = totalDeliveredBytes > 0 ? totalDeliveredBytes : 1;
-    const videoShare = calcPercentage(videoBytes, totalForSplit);
-    const imagesShare = calcPercentage(imagesBytes, totalForSplit);
-    const resourcesShare = calcPercentage(resourcesBytes, totalForSplit);
-    const audioShare = calcPercentage(audioBytes, totalForSplit);
-    const hlsShare = calcPercentage(hlsBytes, totalForSplit);
-    const streamSegmentsShare = calcPercentage(streamSegmentBytes, totalForSplit);
-    const encryptedShare = calcPercentage(encryptedMediaBytes, totalForSplit);
-    const otherShare = Math.max(
-      0,
-      parseFloat(
-        (
-          100 -
-          (videoShare +
-            imagesShare +
-            resourcesShare +
-            audioShare +
-            hlsShare +
-            streamSegmentsShare +
-            encryptedShare)
-        ).toFixed(1),
-      ),
+    // 8. Delivery Split Categories dynamically from DB totals & delivered volume
+    const catalogBase = totalCatalogBytes > 0 ? totalCatalogBytes : 1;
+    let splitVideoBytes = Math.round(
+      totalDeliveredBytes * (catalogDirectVideoBytes / catalogBase),
     );
+    let splitHlsBytes = Math.round(
+      totalDeliveredBytes * (catalogHlsBytes / catalogBase),
+    );
+    let splitStreamBytes = Math.round(
+      totalDeliveredBytes * (catalogStreamSegmentsBytes / catalogBase),
+    );
+    let splitEncryptedBytes = Math.round(
+      totalDeliveredBytes * (catalogEncryptedMediaBytes / catalogBase),
+    );
+    let splitImagesBytes = Math.round(
+      totalDeliveredBytes * (catalogImagesBytes / catalogBase),
+    );
+    let splitResourcesBytes = Math.round(
+      totalDeliveredBytes * (catalogResourcesBytes / catalogBase),
+    );
+    let splitAudioBytes = Math.round(
+      totalDeliveredBytes * (catalogAudioBytes / catalogBase),
+    );
+
+    if (assetType !== "all") {
+      if (assetType === "video") {
+        splitVideoBytes = totalDeliveredBytes;
+        splitHlsBytes = 0;
+        splitStreamBytes = 0;
+        splitEncryptedBytes = 0;
+        splitImagesBytes = 0;
+        splitResourcesBytes = 0;
+        splitAudioBytes = 0;
+      } else if (assetType === "hls") {
+        splitHlsBytes = totalDeliveredBytes;
+        splitVideoBytes = 0;
+        splitStreamBytes = 0;
+        splitEncryptedBytes = 0;
+        splitImagesBytes = 0;
+        splitResourcesBytes = 0;
+        splitAudioBytes = 0;
+      } else if (assetType === "stream_segment") {
+        splitStreamBytes = totalDeliveredBytes;
+        splitVideoBytes = 0;
+        splitHlsBytes = 0;
+        splitEncryptedBytes = 0;
+        splitImagesBytes = 0;
+        splitResourcesBytes = 0;
+        splitAudioBytes = 0;
+      } else if (assetType === "encrypted_media") {
+        splitEncryptedBytes = totalDeliveredBytes;
+        splitVideoBytes = 0;
+        splitHlsBytes = 0;
+        splitStreamBytes = 0;
+        splitImagesBytes = 0;
+        splitResourcesBytes = 0;
+        splitAudioBytes = 0;
+      } else if (assetType === "image") {
+        splitImagesBytes = totalDeliveredBytes;
+        splitVideoBytes = 0;
+        splitHlsBytes = 0;
+        splitStreamBytes = 0;
+        splitEncryptedBytes = 0;
+        splitResourcesBytes = 0;
+        splitAudioBytes = 0;
+      } else if (assetType === "resource" || assetType === "document") {
+        splitResourcesBytes = totalDeliveredBytes;
+        splitVideoBytes = 0;
+        splitHlsBytes = 0;
+        splitStreamBytes = 0;
+        splitEncryptedBytes = 0;
+        splitImagesBytes = 0;
+        splitAudioBytes = 0;
+      } else if (assetType === "audio") {
+        splitAudioBytes = totalDeliveredBytes;
+        splitVideoBytes = 0;
+        splitHlsBytes = 0;
+        splitStreamBytes = 0;
+        splitEncryptedBytes = 0;
+        splitImagesBytes = 0;
+        splitResourcesBytes = 0;
+      }
+    }
+
+    const splitOtherBytes = Math.max(
+      0,
+      totalDeliveredBytes -
+        (splitVideoBytes +
+          splitHlsBytes +
+          splitStreamBytes +
+          splitEncryptedBytes +
+          splitImagesBytes +
+          splitResourcesBytes +
+          splitAudioBytes),
+    );
+
+    const totalForSplit = totalDeliveredBytes > 0 ? totalDeliveredBytes : 1;
+    const videoShare = calcPercentage(splitVideoBytes, totalForSplit);
+    const imagesShare = calcPercentage(splitImagesBytes, totalForSplit);
+    const resourcesShare = calcPercentage(splitResourcesBytes, totalForSplit);
+    const audioShare = calcPercentage(splitAudioBytes, totalForSplit);
+    const hlsShare = calcPercentage(splitHlsBytes, totalForSplit);
+    const streamSegmentsShare = calcPercentage(splitStreamBytes, totalForSplit);
+    const encryptedShare = calcPercentage(splitEncryptedBytes, totalForSplit);
+    const otherShare = calcPercentage(splitOtherBytes, totalForSplit);
 
     const deliverySplitCategories: DeliverySplitCategory[] = [
       {
         key: "video",
-        type: "Video",
-        bytes: videoBytes,
-        formatted: formatBytes(videoBytes),
+        type: "Direct Video",
+        bytes: splitVideoBytes,
+        formatted: formatBytes(splitVideoBytes),
         sharePercentage: videoShare,
       },
       {
         key: "images",
         type: "Images",
-        bytes: imagesBytes,
-        formatted: formatBytes(imagesBytes),
+        bytes: splitImagesBytes,
+        formatted: formatBytes(splitImagesBytes),
         sharePercentage: imagesShare,
       },
       {
         key: "resources",
         type: "Resources",
-        bytes: resourcesBytes,
-        formatted: formatBytes(resourcesBytes),
+        bytes: splitResourcesBytes,
+        formatted: formatBytes(splitResourcesBytes),
         sharePercentage: resourcesShare,
       },
       {
         key: "audio",
         type: "Audio",
-        bytes: audioBytes,
-        formatted: formatBytes(audioBytes),
+        bytes: splitAudioBytes,
+        formatted: formatBytes(splitAudioBytes),
         sharePercentage: audioShare,
       },
     ];
 
-    if (streamSegmentBytes > 0) {
+    if (splitStreamBytes > 0 || catalogStreamSegmentsBytes > 0) {
       deliverySplitCategories.push({
         key: "stream_segments",
         type: "Stream Segments (ts/m4u)",
-        bytes: streamSegmentBytes,
-        formatted: formatBytes(streamSegmentBytes),
+        bytes: splitStreamBytes,
+        formatted: formatBytes(splitStreamBytes),
         sharePercentage: streamSegmentsShare,
       });
     }
 
-    if (hlsBytes > 0) {
+    if (splitHlsBytes > 0 || catalogHlsBytes > 0) {
       deliverySplitCategories.push({
         key: "hls",
         type: "HLS Playlists (m3u8)",
-        bytes: hlsBytes,
-        formatted: formatBytes(hlsBytes),
+        bytes: splitHlsBytes,
+        formatted: formatBytes(splitHlsBytes),
         sharePercentage: hlsShare,
       });
     }
 
-    if (encryptedMediaBytes > 0) {
+    if (splitEncryptedBytes > 0 || catalogEncryptedMediaBytes > 0) {
       deliverySplitCategories.push({
         key: "encrypted_media",
         type: "Encrypted DRM / Keys",
-        bytes: encryptedMediaBytes,
-        formatted: formatBytes(encryptedMediaBytes),
+        bytes: splitEncryptedBytes,
+        formatted: formatBytes(splitEncryptedBytes),
         sharePercentage: encryptedShare,
       });
     }
@@ -396,8 +473,8 @@ export function createDeliveryAnalyticsService({
     deliverySplitCategories.push({
       key: "other",
       type: "Other",
-      bytes: otherBytes,
-      formatted: formatBytes(otherBytes),
+      bytes: splitOtherBytes,
+      formatted: formatBytes(splitOtherBytes),
       sharePercentage: otherShare,
     });
 
@@ -409,11 +486,10 @@ export function createDeliveryAnalyticsService({
       for (const d of sortedDates) {
         const metric = currentCloudflare.dailyMetrics.get(d)!;
         const ptBytes = metric.responseBodyBytes;
-        const ptTotalForSplit = totalDeliveredBytes > 0 ? totalDeliveredBytes : 1;
-        const ptVideo = Math.round((videoBytes / ptTotalForSplit) * ptBytes);
-        const ptImages = Math.round((imagesBytes / ptTotalForSplit) * ptBytes);
-        const ptResources = Math.round((resourcesBytes / ptTotalForSplit) * ptBytes);
-        const ptAudio = Math.round((audioBytes / ptTotalForSplit) * ptBytes);
+        const ptVideo = Math.round(videoRatio * ptBytes);
+        const ptImages = Math.round(imagesRatio * ptBytes);
+        const ptResources = Math.round(resourcesRatio * ptBytes);
+        const ptAudio = Math.round(audioRatio * ptBytes);
         const ptOther = Math.max(0, ptBytes - (ptVideo + ptImages + ptResources + ptAudio));
 
         const ptTime = new Date(d);
@@ -586,9 +662,18 @@ export function createDeliveryAnalyticsService({
 
     const prevEgressBytes = Math.round(prevDeliveredBytes * (1 - prevCacheHitRatio / 100));
     const totalChangePct = calcChangePercentage(totalDeliveredBytes, prevDeliveredBytes);
-    const videoChangePct = calcChangePercentage(videoBytes, Math.round(prevDeliveredBytes * 0.7));
-    const imagesChangePct = calcChangePercentage(imagesBytes, Math.round(prevDeliveredBytes * 0.15));
-    const resourcesChangePct = calcChangePercentage(resourcesBytes, Math.round(prevDeliveredBytes * 0.1));
+    const videoChangePct = calcChangePercentage(
+      videoBytes,
+      Math.round(prevDeliveredBytes * videoRatio),
+    );
+    const imagesChangePct = calcChangePercentage(
+      imagesBytes,
+      Math.round(prevDeliveredBytes * imagesRatio),
+    );
+    const resourcesChangePct = calcChangePercentage(
+      resourcesBytes,
+      Math.round(prevDeliveredBytes * resourcesRatio),
+    );
     const egressChangePct = calcChangePercentage(originEgressBytes, prevEgressBytes);
     const cacheHitChangePct = parseFloat((cacheHitRatio - prevCacheHitRatio).toFixed(1));
 

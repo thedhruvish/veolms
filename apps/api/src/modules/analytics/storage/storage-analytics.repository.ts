@@ -95,9 +95,9 @@ export async function listStorageByCourse(
       c.title as "courseTitle",
       c.slug as "courseSlug",
       c.thumbnail_url as "thumbnailUrl",
-      COALESCE(SUM(CASE WHEN m.type LIKE '%video%' THEN CAST(m.size_bytes AS BIGINT) ELSE 0 END), 0) as "videoBytes",
-      COALESCE(SUM(CASE WHEN m.type LIKE '%image%' THEN CAST(m.size_bytes AS BIGINT) ELSE 0 END), 0) as "imageBytes",
-      COALESCE(SUM(CASE WHEN m.type NOT LIKE '%video%' AND m.type NOT LIKE '%image%' THEN CAST(m.size_bytes AS BIGINT) ELSE 0 END), 0) as "resourceBytes",
+      COALESCE(SUM(CASE WHEN m.type LIKE '%video%' OR m.mime_type LIKE 'video/%' OR m.original_filename ILIKE '%.m3u8' OR m.storage_key ILIKE '%.m3u8' OR m.original_filename ILIKE '%.ts' OR m.storage_key ILIKE '%.ts' OR m.mime_type ILIKE '%mpegurl%' THEN CAST(m.size_bytes AS BIGINT) ELSE 0 END), 0) as "videoBytes",
+      COALESCE(SUM(CASE WHEN m.type LIKE '%image%' OR m.mime_type LIKE 'image/%' THEN CAST(m.size_bytes AS BIGINT) ELSE 0 END), 0) as "imageBytes",
+      COALESCE(SUM(CASE WHEN m.type NOT LIKE '%video%' AND m.type NOT LIKE '%image%' AND m.mime_type NOT LIKE 'video/%' AND m.mime_type NOT LIKE 'image/%' AND m.original_filename NOT ILIKE '%.m3u8' AND m.storage_key NOT ILIKE '%.m3u8' AND m.original_filename NOT ILIKE '%.ts' AND m.storage_key NOT ILIKE '%.ts' THEN CAST(m.size_bytes AS BIGINT) ELSE 0 END), 0) as "resourceBytes",
       COALESCE(SUM(CAST(m.size_bytes AS BIGINT)), 0) as "totalBytes"
     FROM courses c
     LEFT JOIN course_media cm ON cm.course_id = c.id
@@ -255,14 +255,14 @@ export async function getOverallMediaTotals(
     )
     SELECT
       COALESCE(SUM(CAST(m.size_bytes AS BIGINT)), 0) as "totalBytes",
-      COALESCE(SUM(CASE WHEN (m.type LIKE '%video%' OR m.mime_type LIKE 'video/%') AND NOT (m.original_filename LIKE '%.ts' OR m.original_filename LIKE '%.m3u8' OR m.original_filename LIKE '%.mpd') THEN CAST(m.size_bytes AS BIGINT) ELSE 0 END), 0) as "videoBytes",
+      COALESCE(SUM(CASE WHEN (m.type LIKE '%video%' OR m.mime_type LIKE 'video/%') AND NOT (m.original_filename ILIKE '%.ts' OR m.original_filename ILIKE '%.m3u8' OR m.original_filename ILIKE '%.mpd' OR m.storage_key ILIKE '%.m3u8' OR m.storage_key ILIKE '%.ts') THEN CAST(m.size_bytes AS BIGINT) ELSE 0 END), 0) as "videoBytes",
       COALESCE(SUM(CASE WHEN m.type LIKE '%image%' OR m.mime_type LIKE 'image/%' THEN CAST(m.size_bytes AS BIGINT) ELSE 0 END), 0) as "imageBytes",
       COALESCE(SUM(CASE WHEN m.type LIKE '%pdf%' OR m.type LIKE '%doc%' OR m.type LIKE '%document%' OR m.type LIKE '%text%' OR m.type LIKE '%zip%' THEN CAST(m.size_bytes AS BIGINT) ELSE 0 END), 0) as "resourceBytes",
       COALESCE(SUM(CASE WHEN m.type LIKE '%audio%' OR m.mime_type LIKE 'audio/%' THEN CAST(m.size_bytes AS BIGINT) ELSE 0 END), 0) as "audioBytes",
       COALESCE(SUM(CASE WHEN m.original_filename ILIKE '%.m3u8' OR m.storage_key ILIKE '%.m3u8' OR m.mime_type ILIKE '%mpegurl%' THEN CAST(m.size_bytes AS BIGINT) ELSE 0 END), 0) as "hlsBytes",
       COALESCE(SUM(CASE WHEN m.original_filename ILIKE '%.ts' OR m.original_filename ILIKE '%.m4u' OR m.original_filename ILIKE '%.m4s' OR m.storage_key ILIKE '%.ts' OR m.mime_type ILIKE '%mp2t%' OR m.mime_type ILIKE '%iso.segment%' THEN CAST(m.size_bytes AS BIGINT) ELSE 0 END), 0) as "streamSegmentBytes",
       COALESCE(SUM(CASE WHEN m.original_filename ILIKE '%.key' OR m.original_filename ILIKE '%.enc' OR m.original_filename ILIKE '%.bin' OR m.type ILIKE '%encrypt%' THEN CAST(m.size_bytes AS BIGINT) ELSE 0 END), 0) as "encryptedMediaBytes",
-      COALESCE(SUM(CASE WHEN m.type NOT LIKE '%video%' AND m.type NOT LIKE '%image%' AND m.type NOT LIKE '%pdf%' AND m.type NOT LIKE '%doc%' AND m.type NOT LIKE '%document%' AND m.type NOT LIKE '%zip%' AND m.type NOT LIKE '%audio%' AND NOT (m.original_filename LIKE '%.m3u8' OR m.original_filename LIKE '%.ts') THEN CAST(m.size_bytes AS BIGINT) ELSE 0 END), 0) as "otherBytes",
+      COALESCE(SUM(CASE WHEN m.type NOT LIKE '%video%' AND m.type NOT LIKE '%image%' AND m.type NOT LIKE '%pdf%' AND m.type NOT LIKE '%doc%' AND m.type NOT LIKE '%document%' AND m.type NOT LIKE '%zip%' AND m.type NOT LIKE '%audio%' AND NOT (m.original_filename ILIKE '%.m3u8' OR m.storage_key ILIKE '%.m3u8' OR m.original_filename ILIKE '%.ts' OR m.storage_key ILIKE '%.ts') THEN CAST(m.size_bytes AS BIGINT) ELSE 0 END), 0) as "otherBytes",
       COUNT(DISTINCT m.id) as "totalAssetsCount"
     FROM media_assets m
     ${

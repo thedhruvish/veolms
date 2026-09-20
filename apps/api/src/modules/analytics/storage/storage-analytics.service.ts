@@ -132,23 +132,37 @@ export function createStorageAnalyticsService({
 
     // 3. Reconcile total storage numbers
     // In video streaming platforms (HLS multi-bitrate), transcode renditions (1080p, 720p, 480p, 360p)
+    // In video streaming platforms (HLS multi-bitrate), transcode renditions (1080p, 720p, 480p, 360p)
     // take approximately 45-60% extra storage above original master uploads.
     const transcodedVariantsRatio = 0.457;
     const thumbnailVariantsRatio = 0.093;
 
     const dbOriginalVideosBytes = currentDbTotals.videoBytes;
-    const dbTranscodedBytes = Math.round(dbOriginalVideosBytes * transcodedVariantsRatio);
+    const dbHlsBytes = currentDbTotals.hlsBytes ?? 0;
+    const dbStreamSegmentsBytes = currentDbTotals.streamSegmentBytes ?? 0;
+    const dbEncryptedBytes = currentDbTotals.encryptedMediaBytes ?? 0;
+    const dbTranscodedBytes = Math.round(
+      dbOriginalVideosBytes * transcodedVariantsRatio,
+    );
     const dbThumbnailsBytes = Math.round(
-      currentDbTotals.imageBytes * 0.32 + dbOriginalVideosBytes * thumbnailVariantsRatio,
+      currentDbTotals.imageBytes * 0.32 +
+        dbOriginalVideosBytes * thumbnailVariantsRatio,
     );
     const dbImagesBytes = currentDbTotals.imageBytes;
     const dbResourcesBytes = currentDbTotals.resourceBytes;
     const dbAudioBytes = currentDbTotals.audioBytes;
     const dbOtherBytes = currentDbTotals.otherBytes;
 
-    const computedDbTotalBytes =
+    const dbTotalVideoStorageBytes =
       dbOriginalVideosBytes +
+      dbHlsBytes +
       dbTranscodedBytes +
+      dbStreamSegmentsBytes +
+      dbEncryptedBytes;
+
+    const computedDbTotalBytes =
+      dbTotalVideoStorageBytes +
+      dbThumbnailsBytes +
       dbImagesBytes +
       dbResourcesBytes +
       dbAudioBytes +
@@ -161,13 +175,25 @@ export function createStorageAnalyticsService({
         : computedDbTotalBytes;
 
     const previousOriginalVideos = previousDbTotals.videoBytes;
-    const previousTranscoded = Math.round(previousOriginalVideos * transcodedVariantsRatio);
-    const previousThumbnails = Math.round(
-      previousDbTotals.imageBytes * 0.32 + previousOriginalVideos * thumbnailVariantsRatio,
+    const previousHlsBytes = previousDbTotals.hlsBytes ?? 0;
+    const previousStreamSegments = previousDbTotals.streamSegmentBytes ?? 0;
+    const previousEncrypted = previousDbTotals.encryptedMediaBytes ?? 0;
+    const previousTranscoded = Math.round(
+      previousOriginalVideos * transcodedVariantsRatio,
     );
-    const previousTotal =
+    const previousThumbnails = Math.round(
+      previousDbTotals.imageBytes * 0.32 +
+        previousOriginalVideos * thumbnailVariantsRatio,
+    );
+    const previousTotalVideo =
       previousOriginalVideos +
+      previousHlsBytes +
       previousTranscoded +
+      previousStreamSegments +
+      previousEncrypted;
+    const previousTotal =
+      previousTotalVideo +
+      previousThumbnails +
       previousDbTotals.imageBytes +
       previousDbTotals.resourceBytes +
       previousDbTotals.audioBytes +
@@ -192,7 +218,7 @@ export function createStorageAnalyticsService({
 
     const summary = {
       totalStorage: buildKpi(totalStorageBytes, previousTotal),
-      videoStorage: buildKpi(dbOriginalVideosBytes, previousOriginalVideos),
+      videoStorage: buildKpi(dbTotalVideoStorageBytes, previousTotalVideo),
       imageStorage: buildKpi(dbImagesBytes, previousDbTotals.imageBytes),
       resourceStorage: buildKpi(dbResourcesBytes, previousDbTotals.resourceBytes),
       thumbnailsStorage: buildKpi(dbThumbnailsBytes, previousThumbnails),
@@ -247,14 +273,25 @@ export function createStorageAnalyticsService({
     // If Cloudflare has time-series, use Cloudflare actual values directly
     if (cfResult && cfResult.timeSeries.length > 0) {
       const totalDbSplit = computedDbTotalBytes > 0 ? computedDbTotalBytes : 1;
+      const totalTranscodedAndHls =
+        dbHlsBytes + dbTranscodedBytes + dbStreamSegmentsBytes;
       storageGrowthOverTime = cfResult.timeSeries.map((pt) => {
         const dateObj = new Date(pt.datetime);
         const ptTotal = pt.payloadSizeBytes;
-        const videos = Math.round((dbOriginalVideosBytes / totalDbSplit) * ptTotal);
-        const transcoded = Math.round((dbTranscodedBytes / totalDbSplit) * ptTotal);
+        const videos = Math.round(
+          (dbOriginalVideosBytes / totalDbSplit) * ptTotal,
+        );
+        const transcoded = Math.round(
+          (totalTranscodedAndHls / totalDbSplit) * ptTotal,
+        );
         const images = Math.round((dbImagesBytes / totalDbSplit) * ptTotal);
-        const resources = Math.round((dbResourcesBytes / totalDbSplit) * ptTotal);
-        const other = Math.max(0, ptTotal - (videos + transcoded + images + resources));
+        const resources = Math.round(
+          (dbResourcesBytes / totalDbSplit) * ptTotal,
+        );
+        const other = Math.max(
+          0,
+          ptTotal - (videos + transcoded + images + resources),
+        );
 
         return {
           date: formatDateShort(dateObj),
@@ -281,10 +318,6 @@ export function createStorageAnalyticsService({
     }
 
     // 7. Storage Breakdown (Donut Chart & Table)
-    const dbHlsBytes = currentDbTotals.hlsBytes ?? 0;
-    const dbStreamSegmentsBytes = currentDbTotals.streamSegmentBytes ?? 0;
-    const dbEncryptedBytes = currentDbTotals.encryptedMediaBytes ?? 0;
-
     const breakdownCategories: StorageBreakdownItem[] = [
       {
         key: "original_videos",
@@ -360,12 +393,15 @@ export function createStorageAnalyticsService({
       });
     }
 
+    const accountedBytes = breakdownCategories.reduce((acc, c) => acc + c.bytes, 0);
+    const unassignedOrOtherBytes = Math.max(0, totalStorageBytes - accountedBytes);
+
     breakdownCategories.push({
       key: "other",
       type: "Other",
-      bytes: dbOtherBytes,
-      formatted: formatBytes(dbOtherBytes),
-      sharePercentage: calcPercentage(dbOtherBytes, totalStorageBytes),
+      bytes: unassignedOrOtherBytes,
+      formatted: formatBytes(unassignedOrOtherBytes),
+      sharePercentage: calcPercentage(unassignedOrOtherBytes, totalStorageBytes),
     });
 
     const storageBreakdown = {
@@ -460,8 +496,14 @@ export function createStorageAnalyticsService({
     );
 
     // 10. Video Storage Composition
+    const totalVideoVariantsBytes =
+      dbHlsBytes + dbTranscodedBytes + dbStreamSegmentsBytes;
     const totalVideoStorageBytes =
-      dbOriginalVideosBytes + dbTranscodedBytes + dbThumbnailsBytes;
+      dbOriginalVideosBytes +
+      totalVideoVariantsBytes +
+      dbThumbnailsBytes +
+      dbEncryptedBytes;
+
     const videoStorageComposition = {
       originalUploadsBytes: dbOriginalVideosBytes,
       originalUploadsFormatted: formatBytes(dbOriginalVideosBytes),
@@ -469,10 +511,10 @@ export function createStorageAnalyticsService({
         dbOriginalVideosBytes,
         totalStorageBytes,
       ),
-      transcodedVariantsBytes: dbTranscodedBytes,
-      transcodedVariantsFormatted: formatBytes(dbTranscodedBytes),
+      transcodedVariantsBytes: totalVideoVariantsBytes,
+      transcodedVariantsFormatted: formatBytes(totalVideoVariantsBytes),
       transcodedVariantsShare: calcPercentage(
-        dbTranscodedBytes,
+        totalVideoVariantsBytes,
         totalStorageBytes,
       ),
       thumbnailsPreviewsBytes: dbThumbnailsBytes,

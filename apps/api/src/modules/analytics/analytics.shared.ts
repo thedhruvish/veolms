@@ -500,17 +500,17 @@ export function buildCourseMediaCte(targetCourseId?: string) {
       : sql``;
 
   return sql`
-    SELECT c.id as course_id, c.title as course_title, c.thumbnail_media_id as media_id, 'Course Thumbnail' as asset_context, NULL::text as lesson_id
+    SELECT c.id as course_id, c.title as course_title, c.thumbnail_media_id as media_id, 'Course Thumbnail'::text as asset_context, NULL::uuid as lesson_id
     FROM courses c WHERE c.thumbnail_media_id IS NOT NULL AND c.deleted_at IS NULL ${courseFilter}
-    UNION
-    SELECT c.id as course_id, c.title as course_title, c.trailer_media_id as media_id, 'Course Trailer' as asset_context, NULL::text as lesson_id
+    UNION ALL
+    SELECT c.id as course_id, c.title as course_title, c.trailer_media_id as media_id, 'Course Trailer'::text as asset_context, NULL::uuid as lesson_id
     FROM courses c WHERE c.trailer_media_id IS NOT NULL AND c.deleted_at IS NULL ${courseFilter}
-    UNION
+    UNION ALL
     SELECT cl.course_id, c.title as course_title, cl.content_media_id as media_id, cl.title as asset_context, cl.id as lesson_id
     FROM course_lessons cl
     JOIN courses c ON c.id = cl.course_id
     WHERE cl.content_media_id IS NOT NULL AND cl.deleted_at IS NULL AND c.deleted_at IS NULL ${courseFilter}
-    UNION
+    UNION ALL
     SELECT cl.course_id, c.title as course_title, lr.media_asset_id as media_id, lr.title as asset_context, cl.id as lesson_id
     FROM lesson_resources lr
     JOIN course_lessons cl ON cl.id = lr.lesson_id
