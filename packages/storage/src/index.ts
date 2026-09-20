@@ -602,22 +602,57 @@ export class S3StorageService {
 }
 
 export function getMimeType(filename: string): string {
-  if (filename.endsWith(".m3u8")) {
+  const lower = filename.toLowerCase();
+  // HLS and DASH manifests
+  if (lower.endsWith(".m3u8")) {
     return "application/vnd.apple.mpegurl";
   }
-  if (filename.endsWith(".ts")) {
+  if (lower.endsWith(".mpd")) {
+    return "application/dash+xml";
+  }
+  // Video and audio stream segments
+  if (lower.endsWith(".ts")) {
     return "video/mp2t";
   }
-  if (filename.endsWith(".mp4")) {
+  if (lower.endsWith(".m4s") || lower.endsWith(".m4u")) {
+    return "video/iso.segment";
+  }
+  // DRM and encrypted media keys
+  if (lower.endsWith(".key") || lower.endsWith(".bin") || lower.endsWith(".enc")) {
+    return "application/octet-stream";
+  }
+  // Standard video formats
+  if (lower.endsWith(".mp4") || lower.endsWith(".m4v")) {
     return "video/mp4";
   }
-  if (filename.endsWith(".jpg") || filename.endsWith(".jpeg")) {
+  if (lower.endsWith(".webm")) {
+    return "video/webm";
+  }
+  // Audio formats
+  if (lower.endsWith(".mp3")) {
+    return "audio/mpeg";
+  }
+  if (lower.endsWith(".aac") || lower.endsWith(".m4a")) {
+    return "audio/mp4";
+  }
+  // Images
+  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) {
     return "image/jpeg";
   }
-  if (filename.endsWith(".png")) {
+  if (lower.endsWith(".png")) {
     return "image/png";
   }
-  if (filename.endsWith(".json")) {
+  if (lower.endsWith(".webp")) {
+    return "image/webp";
+  }
+  if (lower.endsWith(".svg")) {
+    return "image/svg+xml";
+  }
+  // Documents & data
+  if (lower.endsWith(".pdf")) {
+    return "application/pdf";
+  }
+  if (lower.endsWith(".json")) {
     return "application/json";
   }
   return "application/octet-stream";

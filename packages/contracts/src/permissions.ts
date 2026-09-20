@@ -60,6 +60,8 @@ export const permissions = [
   "discussion.moderate",
   "analytics.course.read",
   "analytics.revenue.read",
+  "analytics.storage.read",
+  "analytics.delivery.read",
   "certificate.issue",
   "certificate.revoke",
   "billing.read",

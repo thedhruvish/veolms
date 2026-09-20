@@ -56,6 +56,16 @@ const OPENAPI_TAGS = [
     description:
       "Administrator-only recovery and retention management for deleted courses.",
   },
+  {
+    name: "Storage Analytics",
+    description:
+      "Storage footprint, media distribution, Cloudflare R2 metrics, and course storage analytics.",
+  },
+  {
+    name: "Data Delivery Analytics",
+    description:
+      "Data delivery analytics, CDN vs origin bandwidth, worker proxy metrics, device breakdowns, and regional delivery.",
+  },
 ];
 
 /**

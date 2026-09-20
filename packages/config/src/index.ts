@@ -203,6 +203,17 @@ const serverConfigSchema = z.object({
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),
   RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
+
+  // Cloudflare Analytics & GraphQL API
+  CLOUDFLARE_ACCOUNT_ID: z.string().optional(),
+  CLOUDFLARE_API_TOKEN: z.string().optional(),
+  CLOUDFLARE_R2_BUCKET_NAME: z.string().optional(),
+  CLOUDFLARE_WORKER_NAME: z.string().optional(),
+  CLOUDFLARE_ZONE_ID: z.string().optional(),
+  CLOUDFLARE_GRAPHQL_ENDPOINT: z
+    .string()
+    .url()
+    .default("https://api.cloudflare.com/client/v4/graphql"),
 });
 
 const webConfigSchema = z.object({

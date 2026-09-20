@@ -14,3 +14,5 @@ export * from "./fleet.ts";
 export * from "./quiz.ts";
 export * from "./permissions.ts";
 export * from "./student.ts";
+export * from "./analytics-storage.ts";
+export * from "./analytics-data-delivery.ts";
