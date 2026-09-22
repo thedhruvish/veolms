@@ -193,7 +193,6 @@ export function createFleetManager(
       console.info(
         `[fleet-manager] Starting serverful loop with poll interval ${config.POLL_INTERVAL_MS}ms...`,
       );
-
       while (!signal?.aborted) {
         try {
           await this.runTick();
