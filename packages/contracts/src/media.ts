@@ -250,11 +250,13 @@ export const mediaUploadCompleteResponseSchema = z.object({
   status: mediaAssetStatusSchema,
   deliveryUrl: z.string().min(1).optional(),
   deliveryUrlExpiresAt: z.number().int().positive().optional(),
+  thumbnailUrl: z.string().min(1).optional(),
 });
 
 export const mediaDeliveryResponseSchema = z.object({
   url: z.string().min(1),
   expiresAt: z.number().int().positive().optional(),
+  thumbnailUrl: z.string().min(1).optional(),
 });
 
 export const videoJobProgressResponseSchema = z.object({
@@ -299,6 +301,7 @@ export const videoJobEventSchema = z.looseObject({
   videoMetadata: videoMetadataSchema.optional(),
   deleteFiles: z.boolean().optional(),
   deleteMedia: z.boolean().optional(),
+  thumbnailDestination: z.string().optional(),
 });
 
 export const lambdaResponseSchema = z.object({
