@@ -4,7 +4,6 @@ import type { Kysely, Transaction } from "kysely";
 export * from "./auth.schema.ts";
 export * from "./authorization.schema.ts";
 export * from "./courses.schema.ts";
-export * from "./chapters.schema.ts";
 export * from "./media.schema.ts";
 export * from "./commerce.schema.ts";
 export * from "./learning-interactions.schema.ts";
@@ -53,8 +52,6 @@ import type {
   CourseDeletionJobTable,
   CourseDeletionStorageItemTable,
 } from "./courses.schema.ts";
-import type { LessonChapterTable } from "./chapters.schema.ts";
-
 import type {
   ImageJobTable,
   MediaAssetTable,
@@ -159,7 +156,6 @@ export interface Database {
   course_includes: CourseIncludeTable;
   course_deletion_jobs: CourseDeletionJobTable;
   course_deletion_storage_items: CourseDeletionStorageItemTable;
-  lesson_chapters: LessonChapterTable;
 
   // Media & Video Processing
   media_assets: MediaAssetTable;
