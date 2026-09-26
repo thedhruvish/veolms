@@ -367,10 +367,9 @@ async function fetchMissingImageVariant(
   const configuredUrl = String(env.IMAGE_TRANSFORM_WORKER_URL || "").trim();
   const transformToken = String(env.IMAGE_TRANSFORM_TOKEN || "");
   if (!configuredUrl || !transformToken) {
-    return avatarFallbackOrError(
+    return createErrorResponse(
       request,
       env,
-      objectKey,
       503,
       "IMAGE_TRANSFORM_NOT_CONFIGURED",
       "The image transform service is not configured.",
@@ -381,10 +380,9 @@ async function fetchMissingImageVariant(
   try {
     transformUrl = new URL(configuredUrl);
   } catch {
-    return avatarFallbackOrError(
+    return createErrorResponse(
       request,
       env,
-      objectKey,
       503,
       "IMAGE_TRANSFORM_NOT_CONFIGURED",
       "The image transform service URL is invalid.",
@@ -392,10 +390,9 @@ async function fetchMissingImageVariant(
   }
 
   if (transformUrl.protocol !== "https:" && transformUrl.protocol !== "http:") {
-    return avatarFallbackOrError(
+    return createErrorResponse(
       request,
       env,
-      objectKey,
       503,
       "IMAGE_TRANSFORM_NOT_CONFIGURED",
       "The image transform service URL is invalid.",
@@ -403,10 +400,9 @@ async function fetchMissingImageVariant(
   }
 
   if (transformUrl.origin === new URL(request.url).origin) {
-    return avatarFallbackOrError(
+    return createErrorResponse(
       request,
       env,
-      objectKey,
       503,
       "IMAGE_TRANSFORM_NOT_CONFIGURED",
       "The image transform service must use a different Worker endpoint.",
@@ -436,22 +432,13 @@ async function fetchMissingImageVariant(
       objectKey,
       error: error instanceof Error ? error.message : String(error),
     });
-    return avatarFallbackOrError(
+    return createErrorResponse(
       request,
       env,
-      objectKey,
       502,
       "IMAGE_TRANSFORM_UNAVAILABLE",
       "The image transform service is unavailable.",
     );
-  }
-
-  if (!response.ok) {
-    const fallback = await serveStoredAvatarOriginal(request, env, objectKey);
-    if (fallback) {
-      await response.body?.cancel().catch(() => undefined);
-      return fallback;
-    }
   }
 
   const responseHeaders = new Headers(response.headers);
@@ -473,88 +460,6 @@ async function fetchMissingImageVariant(
     context.waitUntil(caches.default.put(cacheKey, proxiedResponse.clone()));
   }
   return proxiedResponse;
-}
-
-async function avatarFallbackOrError(
-  request,
-  env,
-  objectKey,
-  status,
-  code,
-  message,
-) {
-  const fallback = await serveStoredAvatarOriginal(request, env, objectKey);
-  return fallback ?? createErrorResponse(request, env, status, code, message);
-}
-
-async function serveStoredAvatarOriginal(request, env, objectKey) {
-  const match =
-    /^(public|protected)\/avatars\/([A-Za-z0-9_-]{1,200})\/(?:45|96|160)\.webp$/u.exec(
-      objectKey,
-    );
-  if (!match) return null;
-
-  try {
-    const prefix = `${match[1]}/avatars/${match[2]}/original.`;
-    const listing = await env.MEDIA_BUCKET.list({ prefix, limit: 4 });
-    const original = listing.objects?.find((item) =>
-      /\/original\.(?:jpg|png|webp|gif)$/u.test(item.key),
-    );
-    if (!original) return null;
-
-    const metadata = await env.MEDIA_BUCKET.head(original.key);
-    if (!metadata) return null;
-    if (isNotModified(request, metadata)) {
-      return createNotModifiedResponse(request, env, objectKey, metadata);
-    }
-    if (request.method === "HEAD") {
-      return createObjectResponse(
-        request,
-        env,
-        objectKey,
-        metadata,
-        null,
-        metadata,
-        "HEAD",
-      );
-    }
-
-    const rangeHeader = request.headers.get("Range");
-    let range = null;
-    if (rangeHeader) {
-      range = parseRange(rangeHeader, metadata.size);
-      if (!range) {
-        return createErrorResponse(
-          request,
-          env,
-          416,
-          "RANGE_NOT_SATISFIABLE",
-          "The requested byte range is invalid.",
-          { "Content-Range": `bytes */${metadata.size}` },
-        );
-      }
-    }
-
-    const object = await env.MEDIA_BUCKET.get(
-      original.key,
-      range
-        ? { range: { offset: range.start, length: range.length } }
-        : undefined,
-    );
-    if (!object) return null;
-
-    return createObjectResponse(
-      request,
-      env,
-      objectKey,
-      object,
-      range,
-      metadata,
-      request.method,
-    );
-  } catch {
-    return null;
-  }
 }
 
 function classifyObjectKey(objectKey, env) {
