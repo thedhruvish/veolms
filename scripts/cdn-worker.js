@@ -48,6 +48,9 @@ const DEFAULT_PUBLIC_FOLDERS = [
 const DEFAULT_PRIVATE_FOLDERS = ["protected", "media", "transcoded"];
 const DEFAULT_AVATAR_IMAGE_WIDTHS = [45, 96, 160];
 const DEFAULT_THUMBNAIL_IMAGE_WIDTHS = [160, 240, 320, 480, 640, 960, 1280];
+const AVATAR_VARIANT_ORIGINAL_PATTERN =
+  /^((?:public|protected)\/avatars\/[A-Za-z0-9_-]{1,200})\/(?:45|96|160)\.webp$/u;
+const AVATAR_ORIGINAL_EXTENSIONS = ["jpg", "png", "webp", "gif"];
 const IMAGE_TRANSFORM_VARIANT_PATTERN =
   /^(?:public|protected)\/(?:thumbnails|avatars)\/[A-Za-z0-9_-]{1,200}\/(?:full|[1-9]\d*)\.webp$/u;
 const textEncoder = new TextEncoder();
@@ -367,6 +370,8 @@ async function fetchMissingImageVariant(
   const configuredUrl = String(env.IMAGE_TRANSFORM_WORKER_URL || "").trim();
   const transformToken = String(env.IMAGE_TRANSFORM_TOKEN || "");
   if (!configuredUrl || !transformToken) {
+    const original = await serveAvatarOriginal(request, env, objectKey);
+    if (original) return original;
     return createErrorResponse(
       request,
       env,
@@ -380,6 +385,8 @@ async function fetchMissingImageVariant(
   try {
     transformUrl = new URL(configuredUrl);
   } catch {
+    const original = await serveAvatarOriginal(request, env, objectKey);
+    if (original) return original;
     return createErrorResponse(
       request,
       env,
@@ -390,6 +397,8 @@ async function fetchMissingImageVariant(
   }
 
   if (transformUrl.protocol !== "https:" && transformUrl.protocol !== "http:") {
+    const original = await serveAvatarOriginal(request, env, objectKey);
+    if (original) return original;
     return createErrorResponse(
       request,
       env,
@@ -400,6 +409,8 @@ async function fetchMissingImageVariant(
   }
 
   if (transformUrl.origin === new URL(request.url).origin) {
+    const original = await serveAvatarOriginal(request, env, objectKey);
+    if (original) return original;
     return createErrorResponse(
       request,
       env,
@@ -432,6 +443,8 @@ async function fetchMissingImageVariant(
       objectKey,
       error: error instanceof Error ? error.message : String(error),
     });
+    const original = await serveAvatarOriginal(request, env, objectKey);
+    if (original) return original;
     return createErrorResponse(
       request,
       env,
@@ -439,6 +452,11 @@ async function fetchMissingImageVariant(
       "IMAGE_TRANSFORM_UNAVAILABLE",
       "The image transform service is unavailable.",
     );
+  }
+
+  if (!response.ok) {
+    const original = await serveAvatarOriginal(request, env, objectKey);
+    if (original) return original;
   }
 
   const responseHeaders = new Headers(response.headers);
@@ -460,6 +478,59 @@ async function fetchMissingImageVariant(
     context.waitUntil(caches.default.put(cacheKey, proxiedResponse.clone()));
   }
   return proxiedResponse;
+}
+
+/**
+ * Avatar variants are generated on demand, but the optional transform service
+ * can be unavailable or not configured in a deployment. Serve the stored
+ * source image in that case so profile pictures remain visible; the variant
+ * URL stays no-store and the browser still decodes the original content type.
+ */
+async function serveAvatarOriginal(request, env, variantKey) {
+  const match = AVATAR_VARIANT_ORIGINAL_PATTERN.exec(variantKey);
+  if (!match) return null;
+
+  const sourcePrefix = match[1];
+  const rangeHeader = request.headers.get("Range");
+  for (const extension of AVATAR_ORIGINAL_EXTENSIONS) {
+    const originalKey = `${sourcePrefix}/original.${extension}`;
+    const metadata = await env.MEDIA_BUCKET.head(originalKey);
+    if (!metadata) continue;
+
+    let object = metadata;
+    let range = null;
+    if (rangeHeader && request.method === "GET") {
+      range = parseRange(rangeHeader, metadata.size);
+      if (!range) {
+        return createErrorResponse(
+          request,
+          env,
+          416,
+          "RANGE_NOT_SATISFIABLE",
+          "The requested byte range is invalid.",
+          { "Content-Range": `bytes */${metadata.size}` },
+        );
+      }
+      object = await env.MEDIA_BUCKET.get(originalKey, {
+        range: { offset: range.start, length: range.length },
+      });
+    } else if (request.method !== "HEAD") {
+      object = await env.MEDIA_BUCKET.get(originalKey);
+    }
+
+    if (!object) continue;
+    return createObjectResponse(
+      request,
+      env,
+      variantKey,
+      object,
+      range,
+      metadata,
+      request.method,
+    );
+  }
+
+  return null;
 }
 
 function classifyObjectKey(objectKey, env) {
