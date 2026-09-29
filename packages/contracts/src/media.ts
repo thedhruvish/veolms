@@ -259,6 +259,17 @@ export const mediaDeliveryResponseSchema = z.object({
   thumbnailUrl: z.string().min(1).optional(),
 });
 
+export const mediaImageVariantManifestSchema = z.object({
+  width: z.number().int().positive().nullable(),
+  height: z.number().int().positive().nullable(),
+  variants: z.array(
+    z.object({
+      width: z.number().int().positive(),
+      height: z.number().int().positive(),
+    }),
+  ),
+});
+
 export const videoJobProgressResponseSchema = z.object({
   status: videoJobStatusSchema,
   progressPercent: z.number().int().min(0).max(100),
@@ -318,6 +329,9 @@ export type MediaUploadCompleteResponse = z.infer<
   typeof mediaUploadCompleteResponseSchema
 >;
 export type MediaDeliveryResponse = z.infer<typeof mediaDeliveryResponseSchema>;
+export type MediaImageVariantManifest = z.infer<
+  typeof mediaImageVariantManifestSchema
+>;
 export type VideoJobProgressResponse = z.infer<
   typeof videoJobProgressResponseSchema
 >;
