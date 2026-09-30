@@ -1,17 +1,17 @@
 name: Deploy Video Fleet Infrastructure & Artifacts
 
 on:
-  push:
-    branches:
-      - development
-    paths:
-      - "apps/fleet-manager/**"
-      - "apps/media-worker/**"
-      - "packages/fleet-provider-aws/**"
-      - "packages/fleet-types/**"
-      - "packages/config/**"
-      - "packages/database/**"
-      - ".github/workflows/deploy-video-fleet-infra.yml"
+    # push:
+    # branches:
+    #   - development
+    # paths:
+    #   - "apps/fleet-manager/**"
+    #   - "apps/media-worker/**"
+    #   - "packages/fleet-provider-aws/**"
+    #   - "packages/fleet-types/**"
+    #   - "packages/config/**"
+    #   - "packages/database/**"
+    #   - ".github/workflows/deploy-video-fleet-infra.yml"
   workflow_dispatch:
     inputs:
       deploy_worker:
